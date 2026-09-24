@@ -257,18 +257,21 @@
   let material = MATERIALS[0];
 
   // Umieszcza manekina w kadrze W×H. Skala zależy tylko od kadru i postaci stojącej.
-  function place(fig, shot, W, H) {
+  // anchorX: środek pozy bazowej w układzie manekina, żeby gesty nie przesuwały postaci w kadrze.
+  function place(fig, shot, W, H, anchorX) {
     const b = fig.box;
     let scale, x, y, groundY;
     if (shot === "portrait") {
       scale = (H * 0.78) / (REF.h * 0.42);
-      y = H * 0.1;
+      const headY = H * 0.1 + 16 * scale;
+      y = headY - (fig.head[1] - b.minY) * scale;
       x = W / 2 - (fig.head[0] - b.minX) * scale;
       groundY = y + b.h * scale;
     } else {
       groundY = H * 0.86;
       scale = (groundY - H * 0.14) / REF.h;
-      x = W / 2 - (b.w * scale) / 2;
+      const ax = anchorX === undefined ? (b.minX + b.maxX) / 2 : anchorX;
+      x = W / 2 - (ax - b.minX) * scale;
       y = groundY - b.h * scale;
     }
     const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
@@ -306,7 +309,8 @@
     el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, el("defs", {}, svg)));
     const g = el("g", { "clip-path": `url(#${id})` }, svg);
 
-    const pl = place(st.fig || buildFigure(st.pose, st.body), st.shot, W, H);
+    const base = buildFigure(st.pose, st.body).box;
+    const pl = place(st.fig || buildFigure(st.pose, st.body), st.shot, W, H, (base.minX + base.maxX) / 2);
     const cx = pl.x + pl.w / 2;
     const horizonY = st.camera === "eye" ? pl.head[1] : Math.min(pl.groundY - pl.h * 0.04, H * 0.93);
     const u = H / 100;
@@ -536,8 +540,7 @@
     animateFigure();
   }
 
-  // ---------- Animacja zmiany pozy i sylwetki ----------
-  // Kąty stawów i proporcje ciała przechodzą płynnie od stanu widocznego do wybranego.
+  // ---------- Animacja: pozy, sylwetka i reakcje Manikuna ----------
   const lerp = (a, b, t) => a + (b - a) * t;
   const lerpObj = (a, b, t) => {
     const o = {};
@@ -545,37 +548,137 @@
     return o;
   };
   const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const DURATION = 550;
-  let shown = null, animFrame = null;
+  let shown = null, animFrame = null, runId = 0;
+
+  // Odtwarza klatki kluczowe [{ pose, dur }] od aktualnie widocznej pozy.
+  function playFrames(frames) {
+    const id = ++runId;
+    cancelAnimationFrame(animFrame);
+    const rig = BODIES[scene.body];
+    let k = 0;
+    const next = () => {
+      if (id !== runId) return;
+      if (k >= frames.length) {
+        animFrame = null;
+        shown = { pose: POSES[scene.pose], rig: BODIES[scene.body] };
+        renderPreview();
+        return;
+      }
+      const { pose, dur } = frames[k++];
+      const from = shown, start = performance.now();
+      const step = now => {
+        if (id !== runId) return;
+        const t = Math.min(1, (now - start) / dur), e = ease(t);
+        shown = { pose: lerpObj(from.pose, pose, e), rig: lerpObj(from.rig, rig, e) };
+        renderPreview(computeFigure(shown.pose, shown.rig));
+        if (t < 1) animFrame = requestAnimationFrame(step); else next();
+      };
+      animFrame = requestAnimationFrame(step);
+    };
+    next();
+  }
+
+  // Poza bazowa z nałożonymi zmianami: abs podmienia kąty, rel je dodaje.
+  const variant = (abs = {}, rel = {}) => {
+    const p = { ...POSES[scene.pose], ...abs };
+    for (const key in rel) p[key] += rel[key];
+    return p;
+  };
+
+  // Położenie obiektów sceny w podglądzie (te same wzory co w renderScene)
+  function sceneGeometry() {
+    const fmt = currentFormat(), H = 300, W = H * fmt.w / fmt.h, u = H / 100;
+    const fig = buildFigure(scene.pose, scene.body), b = fig.box;
+    const pl = place(fig, scene.shot, W, H, (b.minX + b.maxX) / 2);
+    const cx = pl.x + pl.w / 2;
+    const horizonY = scene.camera === "eye" ? pl.head[1] : Math.min(pl.groundY - pl.h * 0.04, H * 0.93);
+    const s = u * 7, bw = Math.max(W * 0.14, u * 12), bh = u * 7;
+    return {
+      head: pl.head,
+      camera: [W * 0.06 + s * 0.7, horizonY],
+      light: scene.light === "soft" ? [W * 0.94 - bw / 2, H * 0.08 + bh / 2] : [cx + pl.w * 0.28, pl.y + pl.h * 0.08]
+    };
+  }
+
+  // Kierunek od głowy do obiektu jako kąt manekina (180 = w górę)
+  function angleTo(from, to) {
+    return Math.atan2(to[0] - from[0], to[1] - from[1]) * 180 / Math.PI;
+  }
+  const diffFromUp = a => ((a - 180 + 540) % 360) - 180;
+
+  // Reakcje: kilka wariantów każdej, losowane bez powtórzenia poprzedniego
+  const lastVariant = {};
+  function pick(kind, list) {
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === lastVariant[kind]) i = (i + 1) % list.length;
+    lastVariant[kind] = i;
+    return list[i]();
+  }
+  const back = dur => ({ pose: POSES[scene.pose], dur });
+
+  const REACTIONS = {
+    // Więcej miejsca: rozgląda się
+    bigger: () => pick("bigger", [
+      () => [{ pose: variant({}, { head: 16, spine: 2 }), dur: 380 }, { pose: variant({}, { head: -16, spine: -2 }), dur: 520 }, back(450)],
+      () => [{ pose: variant({ farUpper: 150, farFore: 262 }, { head: 12 }), dur: 420 }, { pose: variant({ farUpper: 150, farFore: 262 }, { head: -14 }), dur: 600 }, back(480)],
+      () => [{ pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: -6 }), dur: 450 }, { pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: 6 }), dur: 350 }, back(500)]
+    ]),
+    // Mniej miejsca: przestrasza się, że kadr go zgniecie
+    smaller: () => pick("smaller", [
+      () => [{ pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 8, spine: 3 }), dur: 170 }, { pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 12, spine: 3 }), dur: 450 }, back(600)],
+      () => [{ pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -4, head: -6 }), dur: 180 }, { pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -5, head: -10 }), dur: 420 }, back(600)],
+      () => [{ pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 22, spine: 4 }), dur: 160 }, { pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 26, spine: 4 }), dur: 480 }, back(600)]
+    ]),
+    // Patrzy na obiekt, który się przesunął, potem wraca do swojej pozy
+    look: target => {
+      const g = sceneGeometry();
+      const a = angleTo(g.head, g[target]);
+      const turn = clamp(diffFromUp(a) * 0.35, -38, 38), lean = clamp(diffFromUp(a) * 0.05, -6, 6);
+      const onRight = g[target][0] > g.head[0];
+      const armUp = onRight ? { farUpper: a, farFore: a } : { nearUpper: a, nearFore: a };
+      const shade = onRight ? { farUpper: 150, farFore: 262 } : { nearUpper: -150, nearFore: -262 };
+      return pick("look-" + target, [
+        () => [{ pose: variant({}, { head: turn, spine: lean }), dur: 420 }, { pose: variant({}, { head: turn * 1.1, spine: lean }), dur: 550 }, back(500)],
+        () => [{ pose: variant(armUp, { head: turn, spine: lean }), dur: 450 }, { pose: variant(armUp, { head: turn, spine: lean }), dur: 500 }, back(520)],
+        () => [{ pose: variant(target === "light" ? shade : {}, { head: turn * 0.8, spine: lean * 1.5 }), dur: 450 }, { pose: variant(target === "light" ? shade : {}, { head: turn, spine: lean * 1.5 }), dur: 550 }, back(520)]
+      ]);
+    }
+  };
+
+  // Ocena, czy kadr zrobił się większy czy mniejszy względem Manikuna
+  const frameRoom = st => {
+    const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
+    return (fmt.w / fmt.h) * (st.shot === "portrait" ? 0.35 : 1);
+  };
+  let lastScene = null;
 
   function animateFigure() {
+    const prev = lastScene;
+    lastScene = { ...scene, format: { ...scene.format } };
     const target = { pose: POSES[scene.pose], rig: BODIES[scene.body] };
-    if (!shown || reduceMotion.matches) {
+    if (!shown || !prev || reduceMotion.matches) {
+      cancelAnimationFrame(animFrame);
+      runId++;
+      animFrame = null;
       shown = target;
       renderPreview();
       return;
     }
-    if (shown.pose === target.pose && shown.rig === target.rig && !animFrame) {
-      renderPreview();
+    if (prev.pose !== scene.pose || prev.body !== scene.body) {
+      playFrames([{ pose: POSES[scene.pose], dur: 550 }]);
       return;
     }
-    cancelAnimationFrame(animFrame);
-    const from = { pose: shown.pose, rig: shown.rig }, start = performance.now();
-    const step = now => {
-      const t = Math.min(1, (now - start) / DURATION), e = ease(t);
-      shown = { pose: lerpObj(from.pose, target.pose, e), rig: lerpObj(from.rig, target.rig, e) };
-      if (t < 1) {
-        renderPreview(computeFigure(shown.pose, shown.rig));
-        animFrame = requestAnimationFrame(step);
-      } else {
-        shown = target;
-        animFrame = null;
-        renderPreview();
-      }
-    };
-    animFrame = requestAnimationFrame(step);
+    const roomBefore = frameRoom(prev), roomAfter = frameRoom(scene);
+    if (roomAfter > roomBefore + 1e-6) return playFrames(REACTIONS.bigger());
+    if (roomAfter < roomBefore - 1e-6) return playFrames(REACTIONS.smaller());
+    if (prev.camera !== scene.camera) return playFrames(REACTIONS.look("camera"));
+    if (prev.light !== scene.light) return playFrames(REACTIONS.look("light"));
+    // Bez zmiany dla Manikuna: odśwież podgląd, jeśli nic nie jest w trakcie animacji
+    if (!animFrame) renderPreview();
   }
+
 
   document.querySelectorAll(".modes .chip").forEach(b => b.addEventListener("click", () => { scene.mode = b.dataset.mode; render(); }));
 
