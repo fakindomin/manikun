@@ -1,0 +1,295 @@
+<title>Dairecto Start</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #D6D6D6;
+    --tile: #EDEDED;
+    --tile-line: #B5B5B5;
+    --ink: #1E1E1E;
+    --muted: #4A4A4A;
+    --selected: #1E1E1E;
+    --on-selected: #F2F2F2;
+    --fig-body: #F7F7F5;
+    --fig-line: #1E1E1E;
+    --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    padding: 0 16px;
+    overflow: hidden;
+  }
+  .app {
+    box-sizing: border-box;
+    height: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-block: 14px 18px;
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; }
+  .brand { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+  .readout { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #mani { flex: 1 1 0; min-height: 0; width: 100%; display: block; cursor: pointer; }
+  .hello { text-align: center; display: grid; gap: 2px; }
+  .hello h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; }
+  .hello p { margin: 0; font-size: 15px; color: var(--muted); }
+
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice {
+    font: inherit; color: var(--ink);
+    background: var(--tile); border: 1px solid var(--tile-line); border-radius: 8px;
+    padding: 16px 10px 14px; cursor: pointer;
+    display: grid; justify-items: center; gap: 6px;
+  }
+  .choice[aria-pressed="true"] { background: var(--selected); border-color: var(--selected); color: var(--on-selected); }
+  .choice svg { width: 52px; height: 52px; display: block; }
+  .choice .name { display: flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 800; }
+  .choice .desc { font-size: 12px; line-height: 1.3; opacity: 0.8; text-align: center; }
+  .patch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .ink * { vector-effect: non-scaling-stroke; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; fill: none; }
+  .ink .fig path, .ink .fig circle, .ink .fig ellipse { fill: var(--fig-body); stroke: var(--fig-line); }
+  .ink .thin { stroke-width: 1; opacity: 0.5; }
+</style>
+
+<div class="app">
+  <div class="top">
+    <span class="brand">Dairecto</span>
+    <span class="readout">MANIKUN · v0.1</span>
+  </div>
+
+  <div class="stage">
+    <svg id="mani" class="ink" role="img" aria-label="Manikun, maskotka Dairecto" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="hello">
+      <h1 id="line1">Cześć, jestem Manikun.</h1>
+      <p id="line2">Co dziś ustawiamy?</p>
+    </div>
+  </div>
+
+  <div class="choices" role="group" aria-label="Tryb">
+    <button class="choice" type="button" id="pick-photo" data-mode="photo" aria-pressed="false">
+      <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
+        <path d="M6 16h8l3-5h14l3 5h8v22H6z"/>
+        <circle cx="24" cy="26" r="7"/>
+        <circle cx="24" cy="26" r="3"/>
+        <path d="M36 20h3"/>
+      </svg>
+      <span class="name"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</span>
+      <span class="desc">Jeden kadr: poza, światło, tło</span>
+    </button>
+    <button class="choice" type="button" id="pick-video" data-mode="video" aria-pressed="false">
+      <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
+        <path d="M7 20h34v19H7z"/>
+        <path d="M6 13l33-7 1.6 7L7.6 20z"/>
+        <path d="M14 11.4l4 6.6 M22 9.7l4 6.6 M30 8l4 6.6"/>
+        <path d="M14 20l4 6 M22 20l4 6 M30 20l4 6" class="thin"/>
+      </svg>
+      <span class="name"><span class="patch" style="background:#AF363C"></span>Wideo</span>
+      <span class="desc">Ujęcie z ruchem kamery</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  const NS = "http://www.w3.org/2000/svg";
+
+  // ---------- Manikun: ten sam manekin co w podglądzie ----------
+  const RIG = {
+    pelvisDown: 6, pelvisUp: 14, waistTop: 20, chest: 45, neck: 9, headRx: 11, headRy: 15,
+    upperArm: 36, forearm: 32, thigh: 46, shin: 44, foot: 16,
+    shoulderNear: 17, shoulderFar: 12, hipNear: 9, hipFar: 7,
+    chestTop: [19, 14], chestBottom: [11, 9], pelvisTop: [11, 9], pelvisBottom: [13, 10]
+  };
+
+  // Pozy maskotki. Kąty bezwzględne: 0 = w dół, 90 = w prawo, 180 = w górę.
+  const BASE = {
+    spine: 180, head: 180,
+    nearUpper: -7, nearFore: -2, farUpper: 7, farFore: 3,
+    nearThigh: -3, nearShin: 1, farThigh: 3, farShin: 0,
+    nearFoot: 62, farFoot: 62
+  };
+  const POSES = {
+    stand: BASE,
+    waveA: { ...BASE, head: 176, farUpper: 140, farFore: 160, nearUpper: -5 },
+    waveB: { ...BASE, head: 176, farUpper: 140, farFore: 205, nearUpper: -5 },
+    // Ręka na biodrze i ciężar na jednej nodze, jak drewniany model
+    hip: { ...BASE, spine: 177, head: 184, nearUpper: -38, nearFore: 48, farUpper: 9, farFore: 4,
+           nearThigh: -7, nearShin: 2, farThigh: 7, farShin: -3, farFoot: 70 },
+    hipTilt: { ...BASE, spine: 177, head: 172, nearUpper: -38, nearFore: 48, farUpper: 9, farFore: 4,
+           nearThigh: -7, nearShin: 2, farThigh: 7, farShin: -3, farFoot: 70 },
+    // Wskazuje na wybrany kafelek
+    pointLeft: { ...BASE, head: 188, nearUpper: -58, nearFore: -62, farUpper: 10, farFore: 5 },
+    pointRight: { ...BASE, head: 172, farUpper: 58, farFore: 62, nearUpper: -10, nearFore: -5 }
+  };
+
+  const rad = d => d * Math.PI / 180;
+  const dir = a => [Math.sin(rad(a)), Math.cos(rad(a))];
+  const add = (p, v, s = 1) => [p[0] + v[0] * s, p[1] + v[1] * s];
+  const f = n => (+n).toFixed(2);
+
+  function capsule(A, B, rA, rB) {
+    const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy) || 1;
+    const n = [-dy / len, dx / len];
+    const p1 = add(A, n, rA), p2 = add(B, n, rB), p3 = add(B, n, -rB), p4 = add(A, n, -rA);
+    return `M${f(p1[0])},${f(p1[1])} L${f(p2[0])},${f(p2[1])} A${rB},${rB} 0 0 0 ${f(p3[0])},${f(p3[1])} L${f(p4[0])},${f(p4[1])} A${rA},${rA} 0 0 0 ${f(p1[0])},${f(p1[1])} Z`;
+  }
+  const poly = pts => "M" + pts.map(p => f(p[0]) + "," + f(p[1])).join(" L") + " Z";
+
+  function computeFigure(pose) {
+    const P = [0, 0], u = dir(pose.spine), r = [-u[1], u[0]];
+    const shapes = [];
+    const Ct = add(P, u, RIG.waistTop + RIG.chest), Cb = add(P, u, RIG.waistTop);
+    const shoulder = side => add(add(Ct, u, -6), r, side === "near" ? -RIG.shoulderNear : RIG.shoulderFar);
+    const hip = side => add(P, r, side === "near" ? -RIG.hipNear : RIG.hipFar);
+
+    function arm(side) {
+      const S = shoulder(side);
+      const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
+      const W = add(E, dir(pose[side + "Fore"]), RIG.forearm);
+      const Hc = add(W, dir(pose[side + "Fore"]), 7);
+      shapes.push({ t: "path", d: capsule(S, E, 5, 4) });
+      shapes.push({ t: "path", d: capsule(E, W, 4, 3) });
+      shapes.push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] });
+      shapes.push({ t: "circle", cx: E[0], cy: E[1], r: 3.5 });
+      shapes.push({ t: "circle", cx: S[0], cy: S[1], r: 5.5 });
+    }
+    function leg(side) {
+      const H = hip(side);
+      const K = add(H, dir(pose[side + "Thigh"]), RIG.thigh);
+      const A = add(K, dir(pose[side + "Shin"]), RIG.shin);
+      const T = add(A, dir(pose[side + "Foot"]), RIG.foot);
+      shapes.push({ t: "path", d: capsule(H, K, 7, 5) });
+      shapes.push({ t: "path", d: capsule(K, A, 5, 3.5) });
+      shapes.push({ t: "path", d: capsule(A, T, 4.5, 2.5) });
+      shapes.push({ t: "circle", cx: A[0], cy: A[1], r: 3 });
+      shapes.push({ t: "circle", cx: K[0], cy: K[1], r: 4.5 });
+    }
+
+    leg("far");
+    arm("far");
+    const pb = add(P, u, -RIG.pelvisDown), pt = add(P, u, RIG.pelvisUp);
+    const [pbn, pbf] = RIG.pelvisBottom, [ptn, ptf] = RIG.pelvisTop, [ctn, ctf] = RIG.chestTop, [cbn, cbf] = RIG.chestBottom;
+    shapes.push({ t: "path", d: capsule(pt, Cb, 7, 8) });
+    shapes.push({ t: "path", d: poly([add(pb, r, -pbn), add(pb, r, pbf), add(pt, r, ptf), add(pt, r, -ptn)]) });
+    shapes.push({ t: "path", d: poly([add(Ct, r, -ctn), add(Ct, r, ctf), add(Cb, r, cbf), add(Cb, r, -cbn)]) });
+    const hd = dir(pose.head);
+    const N1 = add(Ct, hd, RIG.neck);
+    const Hc = add(N1, hd, RIG.headRy - 1);
+    shapes.push({ t: "path", d: capsule(Ct, N1, 3.5, 3.5) });
+    shapes.push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: RIG.headRx, ry: RIG.headRy, rot: 180 - pose.head });
+    leg("near");
+    arm("near");
+    return shapes;
+  }
+
+  function el(tag, attrs = {}, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  // ---------- Scena maskotki ----------
+  // Stałe pole i stała skala: biodra zawsze w tym samym miejscu, stopy na podłożu.
+  const svg = document.getElementById("mani");
+  const W = 300, H = 300, GROUND = 280, SCALE = 1.05;
+  const HIP_Y = GROUND - (RIG.shin + RIG.thigh + 5) * SCALE;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  function draw(pose) {
+    svg.replaceChildren();
+    // Narożniki wizjera i podłoże
+    const c = 16, i = 6;
+    [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]].forEach(([x, y, sx, sy]) => {
+      el("path", { d: `M${x},${y + sy * c} L${x},${y} L${x + sx * c},${y}`, class: "thin" }, svg);
+    });
+    el("line", { x1: 40, y1: GROUND, x2: W - 40, y2: GROUND, class: "thin" }, svg);
+    const g = el("g", { class: "fig", transform: `translate(${W / 2} ${f(HIP_Y)}) scale(${SCALE})` }, svg);
+    computeFigure(pose).forEach(s => {
+      if (s.t === "path") el("path", { d: s.d }, g);
+      else if (s.t === "circle") el("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r }, g);
+      else el("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` }, g);
+    });
+  }
+
+  // ---------- Animacja: sekwencje póz ----------
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const lerpPose = (a, b, t) => { const o = {}; for (const k in b) o[k] = lerp(a[k], b[k], t); return o; };
+  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  let shown = POSES.stand, frame = null, idleTimer = null, runId = 0;
+
+  // Odtwarza kroki [nazwa pozy, czas ms] po kolei, zaczynając od aktualnie widocznej pozy.
+  function play(steps, done) {
+    const id = ++runId;
+    cancelAnimationFrame(frame);
+    clearTimeout(idleTimer);
+    if (reduceMotion.matches) {
+      shown = POSES[steps[steps.length - 1][0]];
+      draw(shown);
+      if (done) done();
+      return;
+    }
+    let k = 0;
+    const next = () => {
+      if (id !== runId) return;
+      if (k >= steps.length) { if (done) done(); return; }
+      const [name, dur] = steps[k++];
+      const from = shown, to = POSES[name], start = performance.now();
+      const step = now => {
+        if (id !== runId) return;
+        const t = Math.min(1, (now - start) / dur);
+        shown = t < 1 ? lerpPose(from, to, ease(t)) : to;
+        draw(shown);
+        if (t < 1) frame = requestAnimationFrame(step); else next();
+      };
+      frame = requestAnimationFrame(step);
+    };
+    next();
+  }
+
+  // Bezczynność: co kilka sekund lekki przechył głowy
+  function idle() {
+    clearTimeout(idleTimer);
+    if (reduceMotion.matches) return;
+    idleTimer = setTimeout(() => play([["hipTilt", 700], ["hip", 800]], idle), 4500);
+  }
+
+  function greet() {
+    play([["waveA", 550], ["waveB", 260], ["waveA", 260], ["waveB", 260], ["waveA", 260], ["hip", 650]], idle);
+  }
+
+  // ---------- Wybór trybu ----------
+  const COPY = {
+    photo: ["Zdjęcie. Świetnie.", "Ustawiamy jeden kadr."],
+    video: ["Wideo. Kamera w ruch.", "Ustawiamy ujęcie z ruchem."]
+  };
+  document.querySelectorAll(".choice").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.mode;
+      document.querySelectorAll(".choice").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      document.getElementById("line1").textContent = COPY[mode][0];
+      document.getElementById("line2").textContent = COPY[mode][1];
+      play([[mode === "photo" ? "pointLeft" : "pointRight", 450]]);
+    });
+  });
+
+  // Kliknięcie w Manikuna: macha jeszcze raz
+  svg.addEventListener("click", greet);
+
+  draw(shown);
+  greet();
+</script>
