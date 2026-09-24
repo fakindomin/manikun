@@ -270,10 +270,8 @@
   const poly = pts => "M" + pts.map(p => f(p[0]) + "," + f(p[1])).join(" L") + " Z";
 
   const figCache = {};
-  function buildFigure(poseId, bodyId = "male") {
-    const key = poseId + "/" + bodyId;
-    if (figCache[key]) return figCache[key];
-    const pose = POSES[poseId], RIG = BODIES[bodyId];
+  // Liczy kształty manekina z kątów stawów (pose) i proporcji ciała (RIG).
+  function computeFigure(pose, RIG) {
     const P = [0, 0], u = dir(pose.spine), r = [-u[1], u[0]];
     const shapes = [], pts = [];
     const push = (s, ...ps) => { shapes.push(s); pts.push(...ps); };
@@ -324,8 +322,13 @@
       minX = Math.min(minX, p[0] - rr); maxX = Math.max(maxX, p[0] + rr);
       minY = Math.min(minY, p[1] - rr); maxY = Math.max(maxY, p[1] + rr);
     });
-    return (figCache[key] = { shapes, head: Hc, box: { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY } });
+    return ({ shapes, head: Hc, box: { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY } });
   }
+  function buildFigure(poseId, bodyId = "male") {
+    const key = poseId + "/" + bodyId;
+    return figCache[key] || (figCache[key] = computeFigure(POSES[poseId], BODIES[bodyId]));
+  }
+
   // Wzorzec skali: stojący mężczyzna. Każda poza ma ten sam rozmiar ciała, kobieta jest nieco niższa.
   const REF = buildFigure("stand", "male").box;
 
@@ -345,8 +348,8 @@
   }
 
   // Umieszcza manekina w kadrze W×H. Skala zależy tylko od kadru i postaci stojącej.
-  function place(poseId, bodyId, shot, W, H) {
-    const fig = buildFigure(poseId, bodyId), b = fig.box;
+  function place(fig, shot, W, H) {
+    const b = fig.box;
     let scale, x, y, groundY;
     if (shot === "portrait") {
       scale = (H * 0.78) / (REF.h * 0.42);
@@ -394,7 +397,7 @@
     el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, el("defs", {}, svg)));
     const g = el("g", { "clip-path": `url(#${id})` }, svg);
 
-    const pl = place(st.pose, st.body, st.shot, W, H);
+    const pl = place(st.fig || buildFigure(st.pose, st.body), st.shot, W, H);
     const cx = pl.x + pl.w / 2;
     const horizonY = st.camera === "eye" ? pl.head[1] : Math.min(pl.groundY - pl.h * 0.04, H * 0.93);
     const u = H / 100;
@@ -603,12 +606,12 @@
       svg => renderScene(svg, { ...scene, [catId]: o.id }, 100, 100, new Set(TILE_LAYERS[catId]))));
   }
 
-  function renderPreview() {
+  function renderPreview(fig) {
     const fmt = currentFormat();
     const H = 300, W = H * fmt.w / fmt.h;
     const layers = ["ground", "camera", "light", "background"];
     if (scene.mode === "video") layers.push("motion");
-    renderScene(preview, scene, W, H, new Set(layers), { corners: true });
+    renderScene(preview, fig ? { ...scene, fig } : scene, W, H, new Set(layers), { corners: true });
     const ro = document.getElementById("readout");
     ro.replaceChildren();
     if (scene.mode === "video") { const d = document.createElement("span"); d.className = "rec"; ro.appendChild(d); }
@@ -621,7 +624,48 @@
     if (scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
     renderBar();
     renderPanel();
-    renderPreview();
+    animateFigure();
+  }
+
+  // ---------- Animacja zmiany pozy i sylwetki ----------
+  // Kąty stawów i proporcje ciała przechodzą płynnie od stanu widocznego do wybranego.
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const lerpObj = (a, b, t) => {
+    const o = {};
+    for (const k in b) o[k] = Array.isArray(b[k]) ? b[k].map((v, i) => lerp(a[k][i], v, t)) : lerp(a[k], b[k], t);
+    return o;
+  };
+  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const DURATION = 550;
+  let shown = null, animFrame = null;
+
+  function animateFigure() {
+    const target = { pose: POSES[scene.pose], rig: BODIES[scene.body] };
+    if (!shown || reduceMotion.matches) {
+      shown = target;
+      renderPreview();
+      return;
+    }
+    if (shown.pose === target.pose && shown.rig === target.rig && !animFrame) {
+      renderPreview();
+      return;
+    }
+    cancelAnimationFrame(animFrame);
+    const from = { pose: shown.pose, rig: shown.rig }, start = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - start) / DURATION), e = ease(t);
+      shown = { pose: lerpObj(from.pose, target.pose, e), rig: lerpObj(from.rig, target.rig, e) };
+      if (t < 1) {
+        renderPreview(computeFigure(shown.pose, shown.rig));
+        animFrame = requestAnimationFrame(step);
+      } else {
+        shown = target;
+        animFrame = null;
+        renderPreview();
+      }
+    };
+    animFrame = requestAnimationFrame(step);
   }
 
   document.querySelectorAll(".modes .chip").forEach(b => b.addEventListener("click", () => { scene.mode = b.dataset.mode; render(); }));
