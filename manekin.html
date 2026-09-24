@@ -296,11 +296,21 @@
     el("rect", { x: f(32 - w / 2), y: f(32 - h / 2), width: f(w), height: f(h), rx: 2, class: "none" }, svg);
   }));
 
+  // Stała skala manekina: wzorcem jest postać stojąca. Każda poza ma ten sam rozmiar ciała.
+  const REF = buildFigure(POSES.stand).box;
+  // Wspólne pole kafelków pozy: mieści każdą pozę w tej samej skali, podłoże zawsze na dole.
+  const TILE_BOX = Object.keys(POSES).reduce((acc, id) => {
+    const b = buildFigure(POSES[id]).box;
+    return { w: Math.max(acc.w, b.w), h: Math.max(acc.h, b.h) };
+  }, { w: 0, h: 0 });
+
   POSE_TILES.forEach(p => makeTile(document.getElementById("opts-pose"), "pose", p, (svg, o) => {
     const g = el("g", {}, svg);
-    const box = drawFigure(g, o.id, true);
-    const pad = 6;
-    svg.setAttribute("viewBox", `${f(box.minX - pad - 8)} ${f(box.minY - pad)} ${f(box.w + 2 * pad + 16)} ${f(box.h + 2 * pad)}`);
+    const box = drawFigure(g, o.id, false);
+    const pad = 6, w = TILE_BOX.w + 2 * pad, h = TILE_BOX.h + 2 * pad;
+    const x = box.minX - (TILE_BOX.w - box.w) / 2 - pad, y = box.maxY + pad - h;
+    el("line", { x1: f(x), y1: f(box.maxY), x2: f(x + w), y2: f(box.maxY), class: "thin" }, svg);
+    svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(w)} ${f(h)}`);
   }));
 
   // --- podgląd ---
@@ -326,9 +336,8 @@
     const holder = el("svg", {}, preview);
     const g = el("g", {}, holder);
     const box = drawFigure(g, scene.pose, false);
-    // Manekin mieści się w bezpiecznym obszarze kadru: ogranicza go wysokość albo szerokość.
-    const maxH = groundY - H * 0.14, maxW = W * 0.72;
-    const scale = Math.min(maxH / box.h, maxW / box.w);
+    // Skala zależy tylko od wysokości kadru i postaci stojącej, nie od pozy.
+    const scale = (groundY - H * 0.14) / REF.h;
     const figH = box.h * scale;
     const figW = box.w * scale;
     holder.setAttribute("viewBox", `${f(box.minX)} ${f(box.minY)} ${f(box.w)} ${f(box.h)}`);
