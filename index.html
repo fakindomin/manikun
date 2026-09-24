@@ -1,40 +1,30 @@
 <title>Dairecto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
+  /* Szara karta 18%: jeden świadomy wygląd, dwa tryby. Tryb zmienia tylko tokeny. */
   :root {
-    --bg: #F5F1EA;
-    --surface: #FFFDF9;
-    --ink: #2A2420;
-    --muted: #7A6F66;
-    --line: #D9D0C4;
-    --accent: #D9542B;
-    --on-accent: #FFFFFF;
-    --font: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: light;
+    --bg: #D6D6D6;
+    --tile: #EDEDED;
+    --tile-line: #B5B5B5;
+    --ink: #1E1E1E;
+    --muted: #4A4A4A;
+    --selected: #1E1E1E;
+    --on-selected: #F2F2F2;
+    --prompt-bg: #EDEDED;
+    --mode-patch: #D67E2C;
+    --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #1E1A17;
-      --surface: #28231F;
-      --ink: #EFE8DF;
-      --muted: #A89C90;
-      --line: #463E37;
-      --accent: #E8683F;
-      --on-accent: #1E1A17;
-    }
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #1E1A17;
-    --surface: #28231F;
-    --ink: #EFE8DF;
-    --muted: #A89C90;
-    --line: #463E37;
-    --accent: #E8683F;
-    --on-accent: #1E1A17;
+  body[data-mode="video"] {
+    --bg: #8A8A8A;
+    --tile: #A2A2A2;
+    --tile-line: #6E6E6E;
+    --muted: #262626;
+    --prompt-bg: #A2A2A2;
+    --mode-patch: #AF363C;
   }
 
   body {
@@ -48,48 +38,68 @@
   main {
     max-width: 640px;
     margin: 0 auto;
-    padding-block: 40px 56px;
+    padding-block: 32px 56px;
     display: grid;
-    gap: 32px;
+    gap: 28px;
   }
-  header { display: grid; gap: 4px; }
-  h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
-  header p { margin: 0; color: var(--muted); }
 
-  .questions { display: grid; gap: 20px; }
+  header { display: grid; gap: 16px; }
+  .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .readout {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rec { width: 8px; height: 8px; border-radius: 50%; background: #AF363C; }
+
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .questions { display: grid; gap: 18px; }
   .q { display: grid; gap: 8px; }
   .q-label {
-    font-size: 13px;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
   }
+  .patch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
   .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .options button {
+
+  .tile {
     font: inherit;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink);
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    background: var(--tile);
+    border: 1px solid var(--tile-line);
+    border-radius: 6px;
     padding: 14px 12px;
     cursor: pointer;
     text-align: center;
   }
-  .options button[aria-pressed="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
+  .tile[aria-pressed="true"] {
+    background: var(--selected);
+    border-color: var(--selected);
+    color: var(--on-selected);
   }
+  .modes .tile { display: flex; align-items: center; justify-content: center; gap: 10px; padding-block: 16px; }
+  .modes .tile .patch { width: 14px; height: 14px; }
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  .result { display: grid; gap: 12px; }
+  .result { display: grid; gap: 10px; }
   #prompt {
     margin: 0;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    background: var(--prompt-bg);
+    border: 1px solid var(--tile-line);
+    border-radius: 6px;
     padding: 16px;
     font-family: var(--mono);
     font-size: 14px;
@@ -101,21 +111,31 @@
   .copy-row { display: flex; align-items: center; gap: 12px; }
   #copy {
     font: inherit;
-    font-weight: 600;
-    color: var(--on-accent);
-    background: var(--accent);
+    font-weight: 700;
+    color: var(--on-selected);
+    background: var(--selected);
     border: 0;
-    border-radius: 12px;
-    padding: 14px 28px;
+    border-radius: 6px;
+    padding: 14px 32px;
     cursor: pointer;
   }
-  #status { color: var(--muted); font-size: 14px; }
+  #status { color: var(--muted); font-size: 14px; font-weight: 600; }
 </style>
 
 <main>
   <header>
-    <h1>Dairecto</h1>
-    <p>Ustaw zdjęcie i skopiuj gotowy prompt.</p>
+    <div class="title-row">
+      <h1>Dairecto</h1>
+      <div class="readout" id="readout"></div>
+    </div>
+    <div class="modes" role="group" aria-label="Tryb">
+      <button class="tile" type="button" id="mode-photo" data-mode="photo">
+        <span class="patch" style="background:#D67E2C"></span>Zdjęcie
+      </button>
+      <button class="tile" type="button" id="mode-video" data-mode="video">
+        <span class="patch" style="background:#AF363C"></span>Wideo
+      </button>
+    </div>
   </header>
 
   <section class="questions" id="questions" aria-label="Wybory"></section>
@@ -132,39 +152,59 @@
 
 <script>
   // Szablon: kroki, opcje i frazy. Kolejność kroków = kolejność w prompcie.
+  // "modes" ogranicza krok do wybranych trybów, "fixed" to stała fraza (może zależeć od trybu).
   const TEMPLATE = {
     steps: [
-      { id: "shot", label: "Kadr", options: [
+      { id: "shot", label: "Kadr", patch: "#735244", options: [
         { label: "Cała sylwetka", prompt: "Full-body shot, entire body visible from head to feet" },
         { label: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
       ]},
       { id: "subject", fixed: "of a single adult person in plain, neutral-coloured casual clothing" },
-      { id: "pose", label: "Poza", options: [
+      { id: "pose", label: "Poza", patch: "#C29682", options: [
         { label: "Stoi", prompt: "standing upright, weight evenly on both feet, arms relaxed at the sides, facing the camera" },
         { label: "Siedzi na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" }
       ]},
-      { id: "camera", label: "Kamera", options: [
+      { id: "camera", label: "Kamera", patch: "#627A9D", options: [
         { label: "Z dołu", prompt: "low-angle shot, camera near the ground looking up at the subject" },
         { label: "Na wysokości oczu", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
       ]},
-      { id: "light", label: "Światło", options: [
+      { id: "light", label: "Światło", patch: "#576C43", options: [
         { label: "Miękkie", prompt: "soft diffused frontal light, gentle shadows" },
         { label: "Kontra z tyłu", prompt: "strong rim light from behind outlining the silhouette, face in soft shadow" }
       ]},
-      { id: "background", label: "Tło", options: [
+      { id: "background", label: "Tło", patch: "#8580B1", options: [
         { label: "Studio", prompt: "plain light-grey seamless studio backdrop" },
         { label: "Ulica", prompt: "empty city street in daylight, background softly out of focus" }
       ]},
-      { id: "ending", fixed: "50mm lens, photorealistic photograph, natural skin texture, high detail" }
-    ]
+      { id: "motion", label: "Ruch kamery", patch: "#0885A1", modes: ["video"], options: [
+        { label: "Obrót wokół", prompt: "camera slowly orbits 360° around the subject, smooth steady motion" },
+        { label: "Najazd", prompt: "slow dolly-in towards the subject, smooth steady motion" }
+      ]},
+      { id: "ending", fixed: {
+        photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
+        video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
+      }}
+    ],
+    readout: {
+      photo: "f/2.8 · 1/125 · ISO 100 · 3:2",
+      video: "00:00:05:00 · 24 fps · 16:9"
+    }
   };
 
-  // Stan sceny: indeks wybranej opcji dla każdego kroku (domyślnie pierwsza).
-  const scene = {};
+  // Stan sceny: tryb i indeks wybranej opcji dla każdego kroku (domyślnie pierwsza).
+  // Zmiana trybu nie kasuje wyborów, także ruchu kamery.
+  const scene = { mode: "photo" };
   TEMPLATE.steps.forEach(s => { if (s.options) scene[s.id] = 0; });
 
+  const activeIn = (step, mode) => !step.modes || step.modes.includes(mode);
+
   function buildPrompt() {
-    const parts = TEMPLATE.steps.map(s => s.fixed || s.options[scene[s.id]].prompt);
+    const parts = TEMPLATE.steps
+      .filter(s => activeIn(s, scene.mode))
+      .map(s => {
+        if (s.fixed) return typeof s.fixed === "string" ? s.fixed : s.fixed[scene.mode];
+        return s.options[scene[s.id]].prompt;
+      });
     // Kadr i osoba łączą się spacją, reszta przecinkami.
     return parts[0] + " " + parts.slice(1).join(", ") + ".";
   }
@@ -172,11 +212,27 @@
   const questionsEl = document.getElementById("questions");
   const promptEl = document.getElementById("prompt");
   const statusEl = document.getElementById("status");
+  const readoutEl = document.getElementById("readout");
+  const stepEls = {};
 
   function render() {
+    document.body.dataset.mode = scene.mode;
+    document.querySelectorAll(".modes .tile").forEach(btn => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.mode === scene.mode));
+    });
+    TEMPLATE.steps.filter(s => s.options).forEach(s => {
+      stepEls[s.id].hidden = !activeIn(s, scene.mode);
+    });
     questionsEl.querySelectorAll("button").forEach(btn => {
       btn.setAttribute("aria-pressed", String(scene[btn.dataset.step] === Number(btn.dataset.index)));
     });
+    readoutEl.replaceChildren();
+    if (scene.mode === "video") {
+      const dot = document.createElement("span");
+      dot.className = "rec";
+      readoutEl.appendChild(dot);
+    }
+    readoutEl.append(TEMPLATE.readout[scene.mode]);
     promptEl.textContent = buildPrompt();
     statusEl.textContent = "";
   }
@@ -187,7 +243,10 @@
     const label = document.createElement("div");
     label.className = "q-label";
     label.id = "q-" + step.id;
-    label.textContent = step.label;
+    const patch = document.createElement("span");
+    patch.className = "patch";
+    patch.style.background = step.patch;
+    label.append(patch, step.label);
     const opts = document.createElement("div");
     opts.className = "options";
     opts.setAttribute("role", "group");
@@ -195,6 +254,7 @@
     step.options.forEach((opt, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.className = "tile";
       btn.id = "opt-" + step.id + "-" + i;
       btn.dataset.step = step.id;
       btn.dataset.index = i;
@@ -204,6 +264,11 @@
     });
     q.append(label, opts);
     questionsEl.appendChild(q);
+    stepEls[step.id] = q;
+  });
+
+  document.querySelectorAll(".modes .tile").forEach(btn => {
+    btn.addEventListener("click", () => { scene.mode = btn.dataset.mode; render(); });
   });
 
   document.getElementById("copy").addEventListener("click", () => {
