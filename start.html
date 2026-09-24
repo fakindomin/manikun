@@ -1,4 +1,4 @@
-<title>Dairecto Start</title>
+<title>Manikun Start</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -35,8 +35,7 @@
     gap: 14px;
     padding-block: 14px 18px;
   }
-  .top { display: flex; align-items: baseline; justify-content: space-between; }
-  .brand { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+  .top { display: flex; justify-content: flex-end; }
   .top { align-items: center; }
   .swatch-btn {
     font: inherit; font-size: 13px; font-weight: 700; color: var(--ink);
@@ -73,14 +72,13 @@
 
 <div class="app">
   <div class="top">
-    <span class="brand">Dairecto</span>
     <button type="button" class="swatch-btn" id="material" aria-label="Zmień materiał Manikuna">
       <span class="swatch" id="swatch"></span><span id="material-name">Drewno</span>
     </button>
   </div>
 
   <div class="stage">
-    <svg id="mani" class="ink" role="img" aria-label="Manikun, maskotka Dairecto" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg id="mani" class="ink" role="img" aria-label="Manikun" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="hello">
       <h1 id="line1">Cześć, jestem Manikun.</h1>
       <p id="line2">Co dziś ustawiamy?</p>
@@ -111,16 +109,9 @@
   </div>
 </div>
 
+<script src="manikun.js"></script>
 <script>
-  const NS = "http://www.w3.org/2000/svg";
-
-  // ---------- Manikun: ten sam manekin co w podglądzie ----------
-  const RIG = {
-    pelvisDown: 6, pelvisUp: 14, waistTop: 20, chest: 45, neck: 9, headRx: 11, headRy: 15,
-    upperArm: 36, forearm: 32, thigh: 46, shin: 44, foot: 16,
-    shoulderNear: 17, shoulderFar: 12, hipNear: 9, hipFar: 7,
-    chestTop: [19, 14], chestBottom: [11, 9], pelvisTop: [11, 9], pelvisBottom: [13, 10]
-  };
+  const RIG = BODIES.male;
 
   // Pozy maskotki. Kąty bezwzględne: 0 = w dół, 90 = w prawo, 180 = w górę.
   const BASE = {
@@ -147,82 +138,6 @@
     lookArm: { ...BASE, spine: 181, head: 198, nearUpper: -52, nearFore: -30, farUpper: 9, farFore: 4 }
   };
 
-  const rad = d => d * Math.PI / 180;
-  const dir = a => [Math.sin(rad(a)), Math.cos(rad(a))];
-  const add = (p, v, s = 1) => [p[0] + v[0] * s, p[1] + v[1] * s];
-  const f = n => (+n).toFixed(2);
-
-  function capsule(A, B, rA, rB) {
-    const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy) || 1;
-    const n = [-dy / len, dx / len];
-    const p1 = add(A, n, rA), p2 = add(B, n, rB), p3 = add(B, n, -rB), p4 = add(A, n, -rA);
-    return `M${f(p1[0])},${f(p1[1])} L${f(p2[0])},${f(p2[1])} A${rB},${rB} 0 0 0 ${f(p3[0])},${f(p3[1])} L${f(p4[0])},${f(p4[1])} A${rA},${rA} 0 0 0 ${f(p1[0])},${f(p1[1])} Z`;
-  }
-  const poly = pts => "M" + pts.map(p => f(p[0]) + "," + f(p[1])).join(" L") + " Z";
-
-  const cap = (A, B, rA, rB) => ({ t: "cap", A, B, rA, rB, d: capsule(A, B, rA, rB) });
-
-  function computeFigure(pose) {
-    const P = [0, 0], u = dir(pose.spine), r = [-u[1], u[0]];
-    const shapes = [];
-    const Ct = add(P, u, RIG.waistTop + RIG.chest), Cb = add(P, u, RIG.waistTop);
-    const shoulder = side => add(add(Ct, u, -6), r, side === "near" ? -RIG.shoulderNear : RIG.shoulderFar);
-    const hip = side => add(P, r, side === "near" ? -RIG.hipNear : RIG.hipFar);
-
-    function arm(side) {
-      const S = shoulder(side);
-      const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
-      const W = add(E, dir(pose[side + "Fore"]), RIG.forearm);
-      const Hc = add(W, dir(pose[side + "Fore"]), 7);
-      shapes.push(cap(S, E, 5, 4));
-      shapes.push(cap(E, W, 4, 3));
-      shapes.push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] });
-      shapes.push({ t: "circle", cx: E[0], cy: E[1], r: 3.5 });
-      shapes.push({ t: "circle", cx: S[0], cy: S[1], r: 5.5 });
-    }
-    function leg(side) {
-      const H = hip(side);
-      const K = add(H, dir(pose[side + "Thigh"]), RIG.thigh);
-      const A = add(K, dir(pose[side + "Shin"]), RIG.shin);
-      const T = add(A, dir(pose[side + "Foot"]), RIG.foot);
-      shapes.push(cap(H, K, 7, 5));
-      shapes.push(cap(K, A, 5, 3.5));
-      shapes.push(cap(A, T, 4.5, 2.5));
-      shapes.push({ t: "circle", cx: A[0], cy: A[1], r: 3 });
-      shapes.push({ t: "circle", cx: K[0], cy: K[1], r: 4.5 });
-    }
-
-    leg("far");
-    arm("far");
-    const pb = add(P, u, -RIG.pelvisDown), pt = add(P, u, RIG.pelvisUp);
-    const [pbn, pbf] = RIG.pelvisBottom, [ptn, ptf] = RIG.pelvisTop, [ctn, ctf] = RIG.chestTop, [cbn, cbf] = RIG.chestBottom;
-    shapes.push(cap(pt, Cb, 7, 8));
-    shapes.push({ t: "poly", d: poly([add(pb, r, -pbn), add(pb, r, pbf), add(pt, r, ptf), add(pt, r, -ptn)]) });
-    shapes.push({ t: "poly", d: poly([add(Ct, r, -ctn), add(Ct, r, ctf), add(Cb, r, cbf), add(Cb, r, -cbn)]) });
-    const hd = dir(pose.head);
-    const N1 = add(Ct, hd, RIG.neck);
-    const Hc = add(N1, hd, RIG.headRy - 1);
-    shapes.push(cap(Ct, N1, 3.5, 3.5));
-    shapes.push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: RIG.headRx, ry: RIG.headRy, rot: 180 - pose.head });
-    leg("near");
-    arm("near");
-    return shapes;
-  }
-
-  function el(tag, attrs = {}, parent) {
-    const e = document.createElementNS(NS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (parent) parent.appendChild(e);
-    return e;
-  }
-
-  // ---------- Materiały Manikuna ----------
-  // light/mid/dark: cieniowanie w poprzek członu, line: kontur, grain: słoje (tylko drewno)
-  const MATERIALS = [
-    { id: "wood", name: "Drewno", light: "#F1D5A8", mid: "#DDB47E", dark: "#B4834B", line: "#5B3D20", grain: "#8E6034" },
-    { id: "matte", name: "Mat", light: "#FFFFFF", mid: "#EEECE7", dark: "#C4C1BA", line: "#3A3A3A" },
-    { id: "color", name: "Kolor", light: "#F6CD6E", mid: "#E0A32E", dark: "#A8740F", line: "#4A3208" }
-  ];
   let material = MATERIALS[0];
 
   // ---------- Scena maskotki ----------
@@ -243,47 +158,12 @@
     // Miękki cień kontaktowy pod stopami
     el("ellipse", { cx: W / 2 + 4, cy: GROUND, rx: 46, ry: 5, style: "fill:url(#shadow);stroke:none" }, svg);
 
-    const m = material, defs = el("defs", {}, svg);
+    const defs = el("defs", {}, svg);
     const shadow = el("radialGradient", { id: "shadow" }, defs);
     el("stop", { offset: "0", "stop-color": "#000", "stop-opacity": "0.28" }, shadow);
     el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": "0" }, shadow);
-    // Wspólne gradienty: kulki stawów, dłonie, głowa (światło z lewej góry) i bryły tułowia
-    const ball = el("radialGradient", { id: "ball", cx: "0.4", cy: "0.35", r: "0.7" }, defs);
-    [[0, m.light], [0.55, m.mid], [1, m.dark]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, ball));
-    const block = el("linearGradient", { id: "block", x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
-    [[0, m.mid], [0.3, m.light], [1, m.dark]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, block));
-
     const g = el("g", { class: "fig", transform: `translate(${W / 2} ${f(HIP_Y)}) scale(${SCALE})` }, svg);
-    const lineStyle = `stroke:${m.line}`;
-    let n = 0;
-    computeFigure(pose).forEach(s => {
-      if (s.t === "cap") {
-        // Cieniowanie w poprzek członu: wygląda na walec, a nie płaski pasek
-        const id = "c" + (++n);
-        const dx = s.B[0] - s.A[0], dy = s.B[1] - s.A[1], len = Math.hypot(dx, dy) || 1;
-        const nx = -dy / len, ny = dx / len, r = Math.max(s.rA, s.rB);
-        const mx = (s.A[0] + s.B[0]) / 2, my = (s.A[1] + s.B[1]) / 2;
-        const lg = el("linearGradient", { id, gradientUnits: "userSpaceOnUse",
-          x1: f(mx + nx * r), y1: f(my + ny * r), x2: f(mx - nx * r), y2: f(my - ny * r) }, defs);
-        [[0, m.dark], [0.38, m.light], [0.62, m.mid], [1, m.dark]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lg));
-        el("path", { d: s.d, style: `fill:url(#${id});${lineStyle}` }, g);
-        if (m.grain) {
-          // Słoje drewna wzdłuż członu
-          [[0.28, 0.2], [-0.32, 0.8]].forEach(([k, off]) => {
-            const a = [s.A[0] + dx * 0.12 + nx * s.rA * k, s.A[1] + dy * 0.12 + ny * s.rA * k];
-            const b = [s.A[0] + dx * 0.88 + nx * s.rB * (k + 0.1), s.A[1] + dy * 0.88 + ny * s.rB * (k + 0.1)];
-            el("path", { d: `M${f(a[0])},${f(a[1])} Q${f((a[0] + b[0]) / 2 + nx * off)},${f((a[1] + b[1]) / 2 + ny * off)} ${f(b[0])},${f(b[1])}`,
-              style: `fill:none;stroke:${m.grain};stroke-width:0.8;opacity:0.45` }, g);
-          });
-        }
-      } else if (s.t === "poly") {
-        el("path", { d: s.d, style: `fill:url(#block);${lineStyle}` }, g);
-      } else if (s.t === "circle") {
-        el("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r, style: `fill:url(#ball);${lineStyle}` }, g);
-      } else {
-        el("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})`, style: `fill:url(#ball);${lineStyle}` }, g);
-      }
-    });
+    paintFigure(g, computeFigure(pose, RIG).shapes, material);
   }
 
   // ---------- Animacja: sekwencje póz ----------
@@ -353,7 +233,7 @@
   const matBtn = document.getElementById("material");
   function paintSwatch() {
     const m = material;
-    document.getElementById("swatch").style.background = `radial-gradient(circle at 38% 32%, ${m.light}, ${m.mid} 55%, ${m.dark})`;
+    document.getElementById("swatch").style.background = swatchCss(m);
     document.getElementById("material-name").textContent = m.name;
   }
   matBtn.addEventListener("click", () => {
