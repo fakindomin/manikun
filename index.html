@@ -1,0 +1,229 @@
+<title>Dairecto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  :root {
+    --bg: #F5F1EA;
+    --surface: #FFFDF9;
+    --ink: #2A2420;
+    --muted: #7A6F66;
+    --line: #D9D0C4;
+    --accent: #D9542B;
+    --on-accent: #FFFFFF;
+    --font: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #1E1A17;
+      --surface: #28231F;
+      --ink: #EFE8DF;
+      --muted: #A89C90;
+      --line: #463E37;
+      --accent: #E8683F;
+      --on-accent: #1E1A17;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #1E1A17;
+    --surface: #28231F;
+    --ink: #EFE8DF;
+    --muted: #A89C90;
+    --line: #463E37;
+    --accent: #E8683F;
+    --on-accent: #1E1A17;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 0 16px;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding-block: 40px 56px;
+    display: grid;
+    gap: 32px;
+  }
+  header { display: grid; gap: 4px; }
+  h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); }
+
+  .questions { display: grid; gap: 20px; }
+  .q { display: grid; gap: 8px; }
+  .q-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .options button {
+    font: inherit;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 12px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .options button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .result { display: grid; gap: 12px; }
+  #prompt {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+  .copy-row { display: flex; align-items: center; gap: 12px; }
+  #copy {
+    font: inherit;
+    font-weight: 600;
+    color: var(--on-accent);
+    background: var(--accent);
+    border: 0;
+    border-radius: 12px;
+    padding: 14px 28px;
+    cursor: pointer;
+  }
+  #status { color: var(--muted); font-size: 14px; }
+</style>
+
+<main>
+  <header>
+    <h1>Dairecto</h1>
+    <p>Ustaw zdjęcie i skopiuj gotowy prompt.</p>
+  </header>
+
+  <section class="questions" id="questions" aria-label="Wybory"></section>
+
+  <section class="result" aria-label="Gotowy prompt">
+    <div class="q-label">Prompt</div>
+    <p id="prompt"></p>
+    <div class="copy-row">
+      <button id="copy" type="button">Kopiuj</button>
+      <span id="status" role="status"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Szablon: kroki, opcje i frazy. Kolejność kroków = kolejność w prompcie.
+  const TEMPLATE = {
+    steps: [
+      { id: "shot", label: "Kadr", options: [
+        { label: "Cała sylwetka", prompt: "Full-body shot, entire body visible from head to feet" },
+        { label: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
+      ]},
+      { id: "subject", fixed: "of a single adult person in plain, neutral-coloured casual clothing" },
+      { id: "pose", label: "Poza", options: [
+        { label: "Stoi", prompt: "standing upright, weight evenly on both feet, arms relaxed at the sides, facing the camera" },
+        { label: "Siedzi na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" }
+      ]},
+      { id: "camera", label: "Kamera", options: [
+        { label: "Z dołu", prompt: "low-angle shot, camera near the ground looking up at the subject" },
+        { label: "Na wysokości oczu", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
+      ]},
+      { id: "light", label: "Światło", options: [
+        { label: "Miękkie", prompt: "soft diffused frontal light, gentle shadows" },
+        { label: "Kontra z tyłu", prompt: "strong rim light from behind outlining the silhouette, face in soft shadow" }
+      ]},
+      { id: "background", label: "Tło", options: [
+        { label: "Studio", prompt: "plain light-grey seamless studio backdrop" },
+        { label: "Ulica", prompt: "empty city street in daylight, background softly out of focus" }
+      ]},
+      { id: "ending", fixed: "50mm lens, photorealistic photograph, natural skin texture, high detail" }
+    ]
+  };
+
+  // Stan sceny: indeks wybranej opcji dla każdego kroku (domyślnie pierwsza).
+  const scene = {};
+  TEMPLATE.steps.forEach(s => { if (s.options) scene[s.id] = 0; });
+
+  function buildPrompt() {
+    const parts = TEMPLATE.steps.map(s => s.fixed || s.options[scene[s.id]].prompt);
+    // Kadr i osoba łączą się spacją, reszta przecinkami.
+    return parts[0] + " " + parts.slice(1).join(", ") + ".";
+  }
+
+  const questionsEl = document.getElementById("questions");
+  const promptEl = document.getElementById("prompt");
+  const statusEl = document.getElementById("status");
+
+  function render() {
+    questionsEl.querySelectorAll("button").forEach(btn => {
+      btn.setAttribute("aria-pressed", String(scene[btn.dataset.step] === Number(btn.dataset.index)));
+    });
+    promptEl.textContent = buildPrompt();
+    statusEl.textContent = "";
+  }
+
+  TEMPLATE.steps.filter(s => s.options).forEach(step => {
+    const q = document.createElement("div");
+    q.className = "q";
+    const label = document.createElement("div");
+    label.className = "q-label";
+    label.id = "q-" + step.id;
+    label.textContent = step.label;
+    const opts = document.createElement("div");
+    opts.className = "options";
+    opts.setAttribute("role", "group");
+    opts.setAttribute("aria-labelledby", label.id);
+    step.options.forEach((opt, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "opt-" + step.id + "-" + i;
+      btn.dataset.step = step.id;
+      btn.dataset.index = i;
+      btn.textContent = opt.label;
+      btn.addEventListener("click", () => { scene[step.id] = i; render(); });
+      opts.appendChild(btn);
+    });
+    q.append(label, opts);
+    questionsEl.appendChild(q);
+  });
+
+  document.getElementById("copy").addEventListener("click", () => {
+    const text = buildPrompt();
+    const selectFallback = () => {
+      const range = document.createRange();
+      range.selectNodeContents(promptEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      statusEl.textContent = "Zaznaczono, skopiuj ręcznie";
+    };
+    try {
+      navigator.clipboard.writeText(text)
+        .then(() => { statusEl.textContent = "Skopiowano"; })
+        .catch(selectFallback);
+    } catch (e) {
+      selectFallback();
+    }
+  });
+
+  render();
+</script>
