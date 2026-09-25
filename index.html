@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="pl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#09090B">
 <title>Manikun Reżyser</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,6 +41,8 @@
   }
 
   html, body { height: 100%; }
+  /* Na telefonie wysokość bez paska przeglądarki, żeby dół z kafelkami był zawsze widoczny */
+  @supports (height: 100dvh) { html, body { height: 100dvh; } }
   body {
     background: var(--bg) radial-gradient(120% 70% at 50% 28%, var(--bg-glow) 0%, var(--bg) 62%) no-repeat;
     color: var(--ink);
