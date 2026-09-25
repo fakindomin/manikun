@@ -103,6 +103,10 @@
   .modes .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
   .patch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .chip.mat { padding: 4px 12px 4px 4px; }
+  .chip.home { padding: 6px 8px; gap: 6px; }
+  .chip.home svg { width: 20px; height: 20px; display: block; }
+  .chip.home.armed { color: var(--accent); border-color: var(--accent); }
+
   /* W reżyserze przełącznik materiału to sama próbka, żeby pasek się mieścił */
   [data-phase="director"] .chip.mat { padding: 4px; }
   [data-phase="director"] #material-name { display: none; }
@@ -305,7 +309,12 @@
       <button class="chip" type="button" id="mode-photo" data-mode="photo"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</button>
       <button class="chip" type="button" id="mode-video" data-mode="video"><span class="patch" style="background:#AF363C"></span>Wideo</button>
     </div>
-    <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna"><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
+    <!-- Przełącznik materiału (drewno / biały) jest ukryty, ale działa: wystarczy usunąć atrybut hidden -->
+    <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna" hidden><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
+    <!-- Powrót do ekranu startowego: pierwsze stuknięcie pyta, drugie wraca -->
+    <button class="chip home director-only" type="button" id="home" aria-label="Wróć do strony głównej">
+      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/></svg>
+    </button>
     <button class="chip director-only" type="button" id="copy">Kopiuj</button>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
@@ -2691,6 +2700,20 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove("show"), 4200);
   }
+  // Powrót do strony głównej: ustawienia sceny znikają, więc najpierw pytanie ("Start?"), potem powrót
+  const homeBtn = document.getElementById("home");
+  let homeArmed = null;
+  homeBtn.addEventListener("click", () => {
+    if (!homeArmed) {
+      homeBtn.classList.add("armed");
+      showToast("Stuknij domek jeszcze raz, aby wrócić na start (ustawienia znikną)");
+      homeArmed = setTimeout(() => { homeArmed = null; homeBtn.classList.remove("armed"); }, 3000);
+      return;
+    }
+    clearTimeout(homeArmed);
+    location.reload();
+  });
+
   copyBtn.addEventListener("click", () => {
     const text = buildPrompt();
     if (scene.face) showToast("Wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
