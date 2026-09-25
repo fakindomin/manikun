@@ -311,7 +311,7 @@
         { id: "contra", name: "Kontrapost", short: "Kontrapost", prompt: "standing in a relaxed contrapposto, weight shifted onto one leg, hip slightly out to the side" },
         { id: "wide", name: "Rozkrok", short: "Rozkrok", prompt: "standing in a wide, stable stance with feet planted firmly apart" },
         { id: "stride", name: "W pół kroku", short: "Pół kroku", prompt: "caught mid-stride as if walking, one foot in front of the other" },
-        { id: "crouch", name: "Przysiad", short: "Przysiad", prompt: "in a half crouch with knees clearly bent and the torso leaning forward, ready to move" }
+        { id: "crouch", name: "Kuca", short: "Kuca", prompt: "crouching low in a deep squat, knees bent, heels close to the hips" }
       ]},
       { id: "sitting", name: "Siedzi", children: [
         { id: "sit", name: "Na ziemi", short: "Na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
@@ -478,10 +478,13 @@
     return set[isBackLight(scene.light) ? 1 : 0].replace("{from}", from);
   }
 
+  // W kucaniu luźne ręce opierają się przedramionami o kolana
+  const armsPrompt = () => scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
+
   function buildPrompt() {
     const parts = [
       optionOf("shot", scene.shot).prompt + " " + optionOf("body", scene.body).prompt,
-      optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + optionOf("arms", scene.arms).prompt + ", facing the camera" : ""),
+      optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : ""),
       optionOf("camera", scene.camera).prompt,
       lightPrompt(),
       optionOf("background", scene.background).prompt + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
@@ -521,10 +524,10 @@
       nearFoot: 20, farFoot: 75
     },
     crouch: {
-      spine: 156, head: 196,
-      nearUpper: 28, nearFore: 48, farUpper: 34, farFore: 56,
-      nearThigh: 46, nearShin: -26, farThigh: 52, farShin: -20,
-      nearFoot: 62, farFoot: 62
+      spine: 172, head: 184,
+      nearUpper: -30, nearFore: -12, farUpper: 30, farFore: 22,
+      nearThigh: -108, nearShin: 16, farThigh: 112, farShin: -24,
+      nearFoot: 55, farFoot: 60
     },
     sit: {
       spine: 172, head: 178,
