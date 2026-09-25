@@ -140,7 +140,11 @@
   .sheet-copy {
     font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; border: 0; border-radius: 16px; padding: 14px;
     background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px var(--accent-soft);
+    display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: -0.01em;
   }
+  .sheet-copy svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .sheet-copy .done-ico, .sheet-copy.done .copy-ico { display: none; }
+  .sheet-copy.done .done-ico { display: block; }
 
   /* Menu wysuwane z lewej */
   .menu-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: opacity 280ms ease; }
@@ -445,7 +449,12 @@
       </ol>
     </div>
     <p class="sheet-note" id="sheetNote">Wklej prompt w generatorze obrazów lub wideo.</p>
-    <button class="sheet-copy" type="button" id="sheetCopy">Kopiuj prompt</button>
+    <!-- Główny przycisk kopiowania: napis „Manikun” i ikona kopiowania (po skopiowaniu: ptaszek) -->
+    <button class="sheet-copy" type="button" id="sheetCopy" aria-label="Kopiuj prompt">
+      <span id="sheetCopyLabel">Manikun</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="copy-ico"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="done-ico"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    </button>
   </section>
 
   <div class="stage">
@@ -2879,7 +2888,7 @@
 
   // "Kopiuj" otwiera panel kopiowania; samo kopiowanie jest pod dużym przyciskiem w panelu
   const sheetEl = document.getElementById("copySheet"), faceSwitch = document.getElementById("faceSwitch");
-  const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetNote = document.getElementById("sheetNote");
+  const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetCopyLabel = document.getElementById("sheetCopyLabel"), sheetNote = document.getElementById("sheetNote");
   function syncSheet() {
     const person = scene.subject === "person";
     faceSwitch.hidden = !person;
@@ -2903,7 +2912,8 @@
     if (open) { sheetPhoto = false; syncSheet(); }
     document.body.classList.toggle("sheet-open", open);
     sheetEl.setAttribute("aria-hidden", String(!open));
-    sheetCopy.textContent = "Kopiuj prompt";
+    sheetCopyLabel.textContent = "Manikun";
+    sheetCopy.classList.remove("done");
   }
   copyBtn.addEventListener("click", () => setSheet(true));
   document.getElementById("sheetScrim").addEventListener("click", () => setSheet(false));
@@ -2911,7 +2921,8 @@
   sheetCopy.addEventListener("click", () => {
     const text = buildPrompt(sheetPhoto);
     const done = ok => {
-      sheetCopy.textContent = ok ? "Skopiowano ✓" : "Nie udało się skopiować";
+      sheetCopyLabel.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
+      sheetCopy.classList.toggle("done", ok);
       if (ok && sheetPhoto && scene.subject === "person") showToast("Teraz wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
       if (ok) setTimeout(() => setSheet(false), 1100);
     };
