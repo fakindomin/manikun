@@ -64,7 +64,8 @@ function computeFigure(pose, RIG) {
   }
   function leg(side) {
     const H = hip(side);
-    const K = add(H, dir(pose[side + "Thigh"]), RIG.thigh);
+    // ThighLen < 1: udo skierowane do kamery wygląda na krótsze (skrót perspektywiczny)
+    const K = add(H, dir(pose[side + "Thigh"]), RIG.thigh * (pose[side + "ThighLen"] ?? 1));
     const A = add(K, dir(pose[side + "Shin"]), RIG.shin);
     const T = add(A, dir(pose[side + "Foot"]), RIG.foot);
     push(cap(H, K, 7, 5), [H, 8], [K, 6]);
@@ -205,12 +206,14 @@ const STAGGER = {
   nearUpper: 0.1, farUpper: 0.1, nearFore: 0.2, farFore: 0.2
 };
 const STAGGER_MAX = 0.2;
+// Długości członów (klucze *Len) są opcjonalne; brak oznacza pełną długość 1
 function blendPose(a, b, t) {
   const o = {};
-  for (const k in b) {
+  for (const k in { ...a, ...b }) {
     const d = STAGGER[k] || 0;
     const lt = Math.min(1, Math.max(0, (t - d) / (1 - STAGGER_MAX)));
-    o[k] = a[k] + (b[k] - a[k]) * easeInOut(lt);
+    const av = a[k] ?? 1, bv = b[k] ?? 1;
+    o[k] = av + (bv - av) * easeInOut(lt);
   }
   return o;
 }
