@@ -167,7 +167,7 @@
     border-color: var(--accent);
     box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft), var(--lift);
   }
-  .tile svg { display: block; height: 60px; width: 60px; border-radius: 10px; }
+  .tile > svg { display: block; height: 60px; width: 60px; border-radius: 10px; }
   .tile .name {
     font-weight: 600; font-size: 12px; line-height: 1.2; text-align: center;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -215,7 +215,7 @@
   }
   [data-phase="director"] .cat:disabled { opacity: 0.35; cursor: default; }
   .cat[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
-  .cat svg { width: 22px; height: 22px; display: block; }
+  .cat > svg { width: 22px; height: 22px; display: block; }
   .cat .label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--ink); }
   .cat[aria-pressed="true"] .label { color: var(--accent); }
   .cat .label .patch { width: 6px; height: 6px; }
@@ -246,7 +246,8 @@
   .choice .name { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
   .choice .desc { font-size: 12px; line-height: 1.3; color: var(--muted); text-align: center; }
   .dock-start.leaving .hello { opacity: 0; transform: translateY(-8px); }
-  .dock-start.leaving .choice { transform: translateY(calc(100% + 60px)); }
+  .dock-start.leaving .choice, .dock-start.swap .choice { transform: translateY(calc(100% + 60px)); }
+  .choice.rise { transition: transform 420ms var(--ease), border-color 300ms ease, box-shadow 300ms ease; }
 
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .toast {
@@ -343,12 +344,27 @@
   // ---------- Szablon: kategorie, opcje, frazy promptu ----------
   const CATEGORIES = [
     { id: "format", label: "Format", patch: "#E0A32E" },
-    { id: "body", label: "Postać", patch: "#BB5695", options: [
+    // Obiekt: przedmiot, podstawa i kolor; reszta (kamera, światło, tło, pora dnia) wspólna z postacią
+    { id: "item", label: "Obiekt", subjects: ["object"], patch: "#6E8B4A", options: [
+      { id: "bottle", name: "Butelka", short: "Butelka" }, { id: "serum", name: "Kosmetyk", short: "Kosmetyk" },
+      { id: "mug", name: "Kubek", short: "Kubek" }, { id: "sneaker", name: "But", short: "But" },
+      { id: "watch", name: "Zegarek", short: "Zegarek" }, { id: "bag", name: "Torebka", short: "Torebka" },
+      { id: "phone", name: "Telefon", short: "Telefon" }, { id: "food", name: "Jedzenie", short: "Jedzenie" }
+    ]},
+    { id: "base", label: "Podstawa", subjects: ["object"], patch: "#8E7A62", options: [
+      { id: "table", name: "Stół", short: "Stół", prompt: "standing on a wooden table" },
+      { id: "pedestal", name: "Cokół", short: "Cokół", prompt: "displayed on a minimalist stone pedestal" },
+      { id: "stone", name: "Kamień", short: "Kamień", prompt: "resting on a natural flat stone" },
+      { id: "water", name: "Woda", short: "Woda", prompt: "standing in shallow still water with gentle ripples around it" },
+      { id: "float", name: "Lewitacja", short: "Lewitacja", prompt: "levitating in mid-air above the ground with a soft shadow below" }
+    ]},
+    { id: "itemColor", label: "Kolor", subjects: ["object"], patch: "#A8433C", options: [] },
+    { id: "body", label: "Postać", subjects: ["person"], patch: "#BB5695", options: [
       { id: "female", name: "Kobieta", short: "Kobieta", prompt: "of a single adult woman" },
       { id: "male", name: "Mężczyzna", short: "Mężczyz.", prompt: "of a single adult man" }
     ]},
     // Ubiór: prompt może zależeć od postaci; sukienka tylko dla kobiety
-    { id: "outfit", label: "Ubiór", patch: "#5E7FA3", options: [
+    { id: "outfit", label: "Ubiór", subjects: ["person"], patch: "#5E7FA3", options: [
       { id: "casual", name: "Codzienny", short: "Codzienny" },
       { id: "elegant", name: "Elegancki", short: "Elegancki" },
       { id: "sport", name: "Sportowy", short: "Sportowy" },
@@ -357,8 +373,8 @@
       { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"] }
     ]},
     // Twarz: włosy, zarost, usta i okulary. Opcje są w LOOK niżej, kafelki buduje lookTiles()
-    { id: "look", label: "Twarz", patch: "#C9A24A", options: [] },
-    { id: "pose", label: "Poza", patch: "#C29682", options: [
+    { id: "look", label: "Twarz", subjects: ["person"], patch: "#C9A24A", options: [] },
+    { id: "pose", label: "Poza", subjects: ["person"], patch: "#C29682", options: [
       { id: "standing", name: "Stoi", children: [
         { id: "stand", name: "Prosto", short: "Stoi", prompt: "standing upright, weight evenly on both feet" },
         { id: "contra", name: "Kontrapost", short: "Kontrapost", prompt: "standing in a relaxed contrapposto, weight shifted onto one leg, hip slightly out to the side" },
@@ -376,16 +392,24 @@
       ]}
     ]},
     // Ręce tylko przy postawach stojących; siedząc ręce opiera na kolanach lub udach
-    { id: "arms", label: "Ręce", patch: "#B77A5B", options: [
+    { id: "arms", label: "Ręce", subjects: ["person"], patch: "#B77A5B", options: [
       { id: "down", name: "Wzdłuż ciała", short: "Luźno", prompt: "arms relaxed at the sides" },
       { id: "hipOne", name: "Ręka na biodrze", short: "Biodro", prompt: "one hand resting on the hip, the other arm relaxed" },
       { id: "hips", name: "Na biodrach", short: "Biodra", prompt: "both hands on the hips" },
       { id: "chin", name: "Dłoń przy brodzie", short: "Broda", prompt: "one hand raised to the chin in a thoughtful gesture" },
       { id: "shade", name: "Osłania oczy", short: "Osłania", prompt: "one hand raised to the forehead, shading the eyes" }
     ]},
-    { id: "shot", label: "Kadr", patch: "#735244", options: [
+    { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
-      { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
+      { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" },
+      // Twarz: zbliżenie na samą twarz, w środku wybór miny
+      { id: "face", name: "Twarz", children: [
+        { id: "face-joy", name: "Radość", short: "Radość", prompt: "Extreme close-up of the face", expr: "with a big genuine joyful smile and bright happy eyes" },
+        { id: "face-anger", name: "Złość", short: "Złość", prompt: "Extreme close-up of the face", expr: "with an angry expression, furrowed brows, a clenched jaw and an intense glare" },
+        { id: "face-sad", name: "Smutek", short: "Smutek", prompt: "Extreme close-up of the face", expr: "with a sad expression, a downturned mouth and glossy eyes looking slightly down" },
+        { id: "face-thought", name: "Zamyślenie", short: "Zamyśl.", prompt: "Extreme close-up of the face", expr: "with a thoughtful, pensive expression, eyes looking slightly away and lips gently pressed" },
+        { id: "face-cry", name: "Płacz", short: "Płacz", prompt: "Extreme close-up of the face", expr: "crying, with tears running down the cheeks, trembling lips and reddened eyes" }
+      ]}
     ]},
     { id: "camera", label: "Kamera", patch: "#627A9D", options: [
       // Opis kamery trafia na początek promptu: kąt, wysokość i kierunek patrzenia obiektywu
@@ -452,6 +476,11 @@
     ]
   };
 
+  const ENDING_OBJECT = {
+    photo: "100mm lens, photorealistic commercial product photography, crisp detail, clean composition",
+    video: "100mm lens, cinematic photorealistic commercial product video, crisp detail, clean composition"
+  };
+  const isFaceShot = st => st.shot.startsWith("face-");
   const ENDING = {
     photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
     video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
@@ -462,11 +491,11 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", face: false, look: { hair: "none", hairColor: "auto", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    subject: "person", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "none", hairColor: "auto", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
     open: null, sub: null
   };
 
-  const activeCats = () => CATEGORIES.filter(c => !c.modes || c.modes.includes(scene.mode));
+  const activeCats = () => CATEGORIES.filter(c => (!c.modes || c.modes.includes(scene.mode)) && (!c.subjects || c.subjects.includes(scene.subject)));
   const currentFormat = () => FORMATS[scene.mode].find(x => x.id === scene.format[scene.mode]);
   const optionsOf = catId => CATEGORIES.find(c => c.id === catId).options;
   // 8 stref kotwiczenia aparatu i światła: 3 po lewej, 3 po prawej, góra i dół na środku (x, y w ułamkach kadru)
@@ -665,14 +694,20 @@
 
   function buildPrompt() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
-    const parts = [
-      optionOf("shot", scene.shot).prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt(),
-      optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : ""),
+    const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
+    const parts = scene.subject === "object" ? [
+      // Obiekt: zdjęcie produktowe przedmiotu na wybranej podstawie
+      "Product photograph of " + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
+      lightPrompt()
+    ] : [
+      shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (shot.expr ? ", " + shot.expr : ""),
+      // Przy zbliżeniu na twarz poza ciała nie jest widoczna
+      ...(faceShot ? [] : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : "")]),
       lightPrompt(),
       optionOf("background", scene.background).prompt + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
     if (scene.mode === "video") parts.push(optionOf("motion", scene.motion).prompt);
-    parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", ENDING[scene.mode]);
+    parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", (scene.subject === "object" ? ENDING_OBJECT : ENDING)[scene.mode]);
     return optionOf("camera", scene.camera).prompt + ". " + parts.join(", ") + ".";
   }
 
@@ -766,12 +801,17 @@
   };
   const armsApply = st => STANDING.includes(st.pose);
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
-  const poseKey = st => armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose;
+  // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)
+  const EXPR_POSE = { joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
+  const exprOf = st => st.shot && st.shot.startsWith("face-") ? st.shot.slice(5) : null;
+  const poseKey = st => (armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose) + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
-    const [base, arms] = key.split("+");
-    return (poseCache[key] = arms ? { ...POSES[base], ...ARMS[arms] } : POSES[base]);
+    const [main, expr] = key.split("!"), [base, arms] = main.split("+");
+    let p = arms ? { ...POSES[base], ...ARMS[arms] } : POSES[base];
+    if (expr) p = { ...p, ...EXPR_POSE[expr] };
+    return (poseCache[key] = p);
   }
   const curPose = () => poseOf(poseKey(scene));
 
@@ -816,12 +856,12 @@
       c.top = colorOf(topId).hex;
     }
     if (bottomId !== "auto" && c.pants) c.pants = colorOf(bottomId).hex;
-    c.look = lookDraw(scene.look, bodyId);
+    c.look = { ...lookDraw(scene.look, bodyId), expr: exprOf(scene) };
     return c;
   }
 
   function buildFigure(poseId, bodyId = "male", outfitId = null) {
-    const key = [poseId, bodyId, outfitId, outfitId && scene.topColor, outfitId && scene.bottomColor, outfitId && JSON.stringify(scene.look)].join("/");
+    const key = [poseId, bodyId, outfitId, outfitId && scene.topColor, outfitId && scene.bottomColor, outfitId && JSON.stringify(scene.look), outfitId && exprOf(scene)].join("/");
     return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], outfitId ? clothOf(outfitId, bodyId) : null));
   }
 
@@ -836,7 +876,13 @@
   function place(fig, shot, W, H, anchorX) {
     const b = fig.box;
     let scale, x, y, groundY;
-    if (shot === "portrait") {
+    if (shot.startsWith("face-")) {
+      // Zbliżenie na twarz: głowa wypełnia większość kadru
+      scale = (H * 0.5) / (REF.h * 0.15);
+      y = H * 0.46 - (fig.head[1] - b.minY) * scale;
+      x = W / 2 - (fig.head[0] - b.minX) * scale;
+      groundY = y + b.h * scale;
+    } else if (shot === "portrait") {
       scale = (H * 0.78) / (REF.h * 0.42);
       const headY = H * 0.1 + 16 * scale;
       y = headY - (fig.head[1] - b.minY) * scale;
@@ -1152,6 +1198,85 @@
     if (kind > 0) lampGlyph(el("g", { opacity: f(kind * depth) }, g), L.x, L.y, r);
   }
 
+  // ---------- Obiekt: szkice przedmiotów w polu 100×100 (dół = 100, środek x = 50) ----------
+  // Części: main (kolor przedmiotu z cieniowaniem), dark/light (odcienie), line (sama kreska) i stałe kolory detali
+  const ITEMS = {
+    bottle: { color: "#5E7F6A", prompt: c => `a ${c}glass bottle`, parts: [
+      ["M36 100 Q32 100 32 94 L32 52 Q32 40 44 33 L44 16 L56 16 L56 33 Q68 40 68 52 L68 94 Q68 100 64 100 Z", "main"],
+      ["M42 4 L58 4 L58 17 L42 17 Z", "dark"], ["M38 58 L62 58 L62 80 L38 80 Z", "light"]] },
+    serum: { color: "#C8B79A", prompt: c => `a ${c}cosmetic serum bottle with a dropper cap`, parts: [
+      ["M36 100 Q34 100 34 96 L34 54 Q34 46 42 46 L58 46 Q66 46 66 54 L66 96 Q66 100 64 100 Z", "main"],
+      ["M44 30 L56 30 L56 46 L44 46 Z", "dark"], ["M43 21 A7 9 0 1 1 57 21 A7 9 0 1 1 43 21 Z", "dark"], ["M40 64 L60 64 L60 84 L40 84 Z", "light"]] },
+    mug: { color: "#E6E3DC", prompt: c => `a ${c}ceramic coffee mug`, parts: [
+      ["M66 56 Q86 56 86 72 Q86 88 66 88 L66 80 Q78 80 78 72 Q78 64 66 64 Z", "main"],
+      ["M26 44 L68 44 L68 94 Q68 100 62 100 L32 100 Q26 100 26 94 Z", "main"], ["M26 44 L68 44 L68 50 L26 50 Z", "dark"]] },
+    sneaker: { color: "#E6E3DC", prompt: c => `a ${c}sneaker`, parts: [
+      ["M10 90 L10 76 Q12 68 22 66 L42 60 Q50 46 62 52 L72 64 Q88 68 92 80 L92 90 Z", "main"],
+      ["M8 88 L94 88 L94 100 L8 100 Z", "sole"], ["M46 60 L52 70 M54 56 L60 66", "line"]] },
+    watch: { color: "#7A5C44", prompt: c => `a wristwatch with a ${c}leather strap`, parts: [
+      ["M40 22 L60 22 L60 100 L40 100 Z", "main"], ["M28 58 A22 22 0 1 1 72 58 A22 22 0 1 1 28 58 Z", "metal"],
+      ["M33 58 A17 17 0 1 1 67 58 A17 17 0 1 1 33 58 Z", "face"], ["M50 58 L50 46 M50 58 L58 62", "line"]] },
+    bag: { color: "#7E3B45", prompt: c => `a ${c}leather handbag`, parts: [
+      ["M34 58 Q34 26 50 26 Q66 26 66 58 L60 58 Q60 33 50 33 Q40 33 40 58 Z", "dark"],
+      ["M20 100 L26 56 L74 56 L80 100 Z", "main"], ["M26 66 L74 66", "line"], ["M46 66 L54 66 L54 74 L46 74 Z", "metal"]] },
+    phone: { color: "#2B2C30", prompt: c => `a ${c}smartphone`, parts: [
+      ["M36 100 Q32 100 32 96 L32 28 Q32 24 36 24 L64 24 Q68 24 68 28 L68 96 Q68 100 64 100 Z", "main"],
+      ["M36 30 L64 30 L64 92 L36 92 Z", "screen"], ["M48.5 27 A1.5 1.5 0 1 1 51.5 27 A1.5 1.5 0 1 1 48.5 27 Z", "dark"]] },
+    food: { color: "#E6E3DC", prompt: c => `a beautifully plated gourmet dish on a ${c}plate`, parts: [
+      ["M10 94 Q10 88 50 88 Q90 88 90 94 Q90 100 50 100 Q10 100 10 94 Z", "main"],
+      ["M24 90 Q26 66 50 64 Q74 66 76 90 Z", "food"], ["M36 70 A4 4 0 1 1 44 70 A4 4 0 1 1 36 70 Z", "green"],
+      ["M55 74 A3 3 0 1 1 61 74 A3 3 0 1 1 55 74 Z", "red"]] }
+  };
+  const itemHex = (st = scene) => st.itemColor === "auto" ? ITEMS[st.item].color : colorOf(st.itemColor).hex;
+  let itemSeq = 0;
+  // Rysuje przedmiot: środek podstawy w (x, yBottom), skala s px na jednostkę
+  function drawItem(parent, defs, kind, x, yBottom, s, color) {
+    const g = el("g", { transform: `translate(${f(x - 50 * s)} ${f(yBottom - 100 * s)}) scale(${f(s)})` }, parent);
+    const id = "itm" + (++itemSeq);
+    const lg = el("linearGradient", { id, x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
+    [[0, shadeHex(color, -0.28)], [0.35, shadeHex(color, 0.18)], [0.7, color], [1, shadeHex(color, -0.35)]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lg));
+    const FILL = { main: `url(#${id})`, dark: shadeHex(color, -0.45), light: shadeHex(color, 0.35), sole: "#EDEAE3", metal: "#BFC3C8",
+      face: "#F1EFEA", screen: "#15161A", food: "#B8743C", green: "#6E8B4A", red: "#B3262E" };
+    ITEMS[kind].parts.forEach(([d, kindOf]) => {
+      const style = kindOf === "line" ? "fill:none;stroke:#2A2622;stroke-width:1.4"
+        : `fill:${FILL[kindOf]};stroke:#2A2622;stroke-width:1.2` + (kindOf === "light" ? ";fill-opacity:0.55" : "");
+      el("path", { d, style }, g);
+    });
+  }
+  // Wysokość podstawy nad podłożem (ułamek H) i jej rysunek; przedmiot stoi na jej górze
+  const BASE_H = { table: 0.2, pedestal: 0.16, stone: 0.065, water: -0.01, float: 0.13 };
+  function drawBase(parent, kind, W, H, gy, u, front) {
+    const cx = W / 2, paintB = (tag, attrs, fill, op) => el(tag, { ...attrs, style: `fill:${fill};stroke:#2A2622;stroke-width:1.2` + (op !== undefined ? `;opacity:${op}` : "") }, parent);
+    if (front) {
+      // Woda przed przedmiotem: półprzezroczysta tafla i zmarszczki
+      if (kind === "water") {
+        el("ellipse", { cx: f(cx), cy: f(gy), rx: f(W * 0.3), ry: f(u * 2.6), style: "fill:#7FA2BC;fill-opacity:0.45;stroke:#CFE0EC;stroke-width:1.2" }, parent);
+        el("ellipse", { cx: f(cx), cy: f(gy), rx: f(W * 0.18), ry: f(u * 1.4), style: "fill:none;stroke:#CFE0EC;stroke-width:1;opacity:0.7" }, parent);
+      }
+      return;
+    }
+    const top = gy - H * BASE_H[kind];
+    if (kind === "table") {
+      const w = Math.min(W * 0.84, H * 0.8);
+      [-1, 1].forEach(sd => paintB("rect", { x: f(cx + sd * w * 0.4 - u * 0.9), y: f(top), width: f(u * 1.8), height: f(gy - top) }, "#4E3E31"));
+      paintB("rect", { x: f(cx - w / 2), y: f(top - u * 0.4), width: f(w), height: f(u * 2.4), rx: f(u * 0.4) }, "#7A6250");
+    } else if (kind === "pedestal") {
+      const w = Math.min(W * 0.36, H * 0.3);
+      paintB("rect", { x: f(cx - w / 2), y: f(top), width: f(w), height: f(gy - top) }, "#8D8A85");
+      paintB("rect", { x: f(cx - w / 2 - u), y: f(top - u * 0.8), width: f(w + u * 2), height: f(u * 1.6), rx: f(u * 0.3) }, "#A7A49E");
+    } else if (kind === "stone") {
+      const w = Math.min(W * 0.36, H * 0.3);
+      paintB("path", { d: `M${f(cx - w / 2)},${f(gy)} Q${f(cx - w / 2)},${f(top)} ${f(cx - w * 0.1)},${f(top)} L${f(cx + w * 0.2)},${f(top + u * 0.4)} Q${f(cx + w / 2)},${f(top + u)} ${f(cx + w / 2)},${f(gy)} Z` }, "#6E6A64");
+    } else if (kind === "float") {
+      el("ellipse", { cx: f(cx), cy: f(gy), rx: f(W * 0.13), ry: f(u * 1.4), style: "fill:#000;stroke:none;opacity:0.35" }, parent);
+    }
+  }
+  // Miejsce przedmiotu w kadrze: ten sam poziom podłoża co Manikun
+  function objectPlace(st, W, H) {
+    const gy = H * 0.86, s = H * 0.36 / 100, bottom = gy - H * BASE_H[st.base];
+    return { x: W / 2 - 30 * s, y: bottom - 100 * s, w: 60 * s, h: 100 * s, bottom, gy, s };
+  }
+
   let clipSeq = 0;
   // Składa szkic sceny. layers: które warstwy narysować (kafelek pokazuje tylko swoją).
   function renderScene(svg, st, W, H, layers, opts = {}) {
@@ -1163,7 +1288,11 @@
     const g = el("g", { "clip-path": `url(#${id})` }, svg);
 
     const A = anchors(st, W, H);
-    const { pl, u, cx } = A;
+    const { u } = A;
+    // Obiekt albo postać: przy przejściu jedno przenika się z drugim (subj 0 = Manikun, 1 = przedmiot)
+    const subj = st.props && st.props.subj != null ? st.props.subj : (st.subject === "object" ? 1 : 0);
+    const ob = objectPlace(st, W, H);
+    const pl = subj >= 0.5 ? { ...ob, groundY: ob.gy } : A.pl, cx = pl.x + pl.w / 2;
     // Położenie aparatu i lampy: w trakcie animacji lub przeciągania z props, inaczej środek strefy
     const P = st.props || {};
     const zc = camZone(st.camera), zl = ZONES[st.lightZone];
@@ -1241,7 +1370,7 @@
       grab: opts.grab === "light", icon: 1 - skyT
     } : null;
     if (lamp && lamp.behind) drawLamp(layer(), lamp, u, kindT);
-    if (lamp && lamp.glow > 0) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal) }, g), pl, "glow");
+    if (lamp && lamp.glow > 0 && subj < 1) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal * (1 - subj)) }, g), A.pl, "glow");
 
     // Ruch: tylna połowa orbity za postacią
     const orbit = { cx, cy: pl.y + pl.h * 0.62, rx: Math.max(pl.w * 0.75, W * 0.3), ry: u * 6 };
@@ -1249,8 +1378,17 @@
       el("path", { d: `M${f(orbit.cx - orbit.rx)},${f(orbit.cy)} A${f(orbit.rx)},${f(orbit.ry)} 0 0 1 ${f(orbit.cx + orbit.rx)},${f(orbit.cy)}`, class: "dash" }, layer());
     }
 
-    if (POSE_PROPS[st.pose]) drawProp(g, POSE_PROPS[st.pose], A.plBase.hip, A.plBase.scale, A.plBase.groundY);
-    drawFigureAt(g, pl, "fig");
+    if (subj < 1) {
+      const fg = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
+      if (POSE_PROPS[st.pose]) drawProp(fg, POSE_PROPS[st.pose], A.plBase.hip, A.plBase.scale, A.plBase.groundY);
+      drawFigureAt(fg, A.pl, "fig");
+    }
+    if (subj > 0) {
+      const og = subj < 1 ? el("g", { opacity: f(subj) }, g) : g;
+      drawBase(og, st.base, W, H, ob.gy, u, false);
+      drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st));
+      drawBase(og, st.base, W, H, ob.gy, u, true);
+    }
 
     // Ruch: przednia połowa orbity albo najazd kamery
     if (layers.has("motion") && reveal > 0) {
@@ -1330,6 +1468,9 @@
     pose: svg => miniFigure(svg, "sit", scene.body, scene.outfit),
     arms: svg => miniFigure(svg, "stand+hips", scene.body, scene.outfit),
     outfit: svg => outfitGlyph(svg, scene.outfit, 24),
+    item: svg => drawItem(svg, el("defs", {}, svg), scene.item, 12, 23, 0.21, itemHex()),
+    base: svg => { el("path", { d: "M3 13h18 M6 13v8 M18 13v8" }, svg); el("path", { d: "M10 13V8h4v5", class: "thin" }, svg); },
+    itemColor: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${itemHex()};stroke:rgba(255,255,255,0.3)` }, svg); },
     look: svg => { el("circle", { cx: 12, cy: 12, r: 7 }, svg); el("path", { d: "M5.5 10 Q7 4 12 4.5 Q17 4 18.5 10 Q14 7.5 5.5 10 Z" }, svg); el("path", { d: "M8 12.5 h3 M13 12.5 h3", class: "thin" }, svg); }
   };
 
@@ -1349,6 +1490,7 @@
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
     if (cat.id === "body" && scene.face) return "Moja twarz";
+    if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "look") {
       const lk = scene.look;
       if (lk.hair !== "none") return lookOpt("hair", lk.hair).name;
@@ -1425,6 +1567,8 @@
 
   // Warstwy pokazywane na miniaturach danej kategorii
   const TILE_LAYERS = {
+    item: ["ground"],
+    base: ["ground"],
     shot: ["ground"],
     camera: ["ground", "camera"],
     light: ["ground", "light"],
@@ -1532,6 +1676,12 @@
 
   function makeTiles(catId) {
     if (catId === "look") return lookTiles();
+    if (catId === "itemColor") {
+      // Kolor przedmiotu: domyślny dla danego przedmiotu albo z palety
+      return [{ id: "auto", name: "Domyślny", hex: ITEMS[scene.item].color }, ...COLORS].map(c => tile("opt-itemColor-" + c.id, c.name,
+        () => scene.itemColor === c.id, () => { scene.itemColor = c.id; render(); },
+        svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, c.id === "auto" ? ITEMS[scene.item].color : c.hex, c.id === "auto"); }));
+    }
     if (catId === "body") {
       // Postać i przełącznik "Moja twarz" (włącz/wyłącz, niezależnie od sylwetki)
       const list = optionsOf("body").map(o => tile("opt-body-" + o.id, o.name, () => scene.body === o.id,
@@ -1634,6 +1784,8 @@
       return;
     }
     renderScene(svg, { ...scene, [catId]: leafId }, 100, 100, new Set(TILE_LAYERS[catId]));
+    // Przedmiot i podstawa: kafelek przybliżony na przedmiot, żeby był dobrze widoczny
+    if (catId === "item" || catId === "base") svg.setAttribute("viewBox", "16 30 68 66");
   }
 
   // Rząd kafelków opcji. Ta sama animacja dla każdej kategorii: stary rząd chowa się w dół,
@@ -1681,7 +1833,7 @@
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
   let figAnim = null;                        // kolejka klatek kluczowych Manikuna
-  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, skyX: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
+  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, skyX: null, subj: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
   const propAnim = {};
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
@@ -1695,9 +1847,10 @@
     litX: ZONES[scene.lightZone].x, litY: ZONES[scene.lightZone].y,
     light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1,
     tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0,
-    skyX: skySide(scene)
+    skyX: skySide(scene),
+    subj: scene.subject === "object" ? 1 : 0
   });
-  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX"];
+  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX", "subj"];
   const baseShown = () => ({ pose: curPose(), rig: BODIES[scene.body] });
   const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
 
@@ -1832,7 +1985,7 @@
   // Czy kadr zrobił się większy czy mniejszy względem Manikuna
   const frameRoom = st => {
     const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
-    return (fmt.w / fmt.h) * (st.shot === "portrait" ? 0.35 : 1);
+    return (fmt.w / fmt.h) * (st.shot === "portrait" ? 0.35 : isFaceShot(st) ? 0.15 : 1);
   };
 
   function sceneChanged() {
@@ -2035,18 +2188,59 @@
     photo: ["Zdjęcie. Świetnie.", "Ustawiamy jeden kadr."],
     video: ["Wideo. Kamera w ruch.", "Ustawiamy ujęcie z ruchem."]
   };
+  // Drugi krok startu: co jest w kadrze. Te same dwa przyciski dostają nową treść.
+  const SUBJECT_CHOICES = [
+    { id: "object", name: "Obiekt", patch: "#6E8B4A", desc: "Przedmiot na podstawie: światło, tło",
+      svg: '<path d="M19 44V22q0-6 4-8V6h4v8q4 2 4 8v22z"/><path d="M9 44h32" class="thin"/><path d="M22 28h6" class="thin"/>' },
+    { id: "person", name: "Postać", patch: "#BB5695", desc: "Osoba: poza, ubiór, twarz",
+      svg: '<circle cx="24" cy="9" r="5"/><path d="M24 14v16M24 18l-9 8M24 18l9 8M24 30l-7 14M24 30l7 14"/>' }
+  ];
+  let startStep = "mode";
+  function swapToSubject(mode) {
+    const fast = reduceMotion.matches;
+    dock.classList.add("swap");
+    setTimeout(() => {
+      document.getElementById("line1").textContent = COPY[mode][0];
+      document.getElementById("line2").textContent = "Co będzie w kadrze: przedmiot czy postać?";
+      [...dock.querySelectorAll(".choice")].forEach((btn, i) => {
+        const c = SUBJECT_CHOICES[i];
+        btn.id = "pick-" + c.id;
+        btn.dataset.subject = c.id;
+        btn.setAttribute("aria-pressed", "false");
+        btn.innerHTML = `<svg viewBox="0 0 48 48" class="ink" aria-hidden="true">${c.svg}</svg>`
+          + `<span class="name"><span class="patch" style="background:${c.patch}"></span>${c.name}</span><span class="desc">${c.desc}</span>`;
+        btn.classList.add("rise");
+        btn.style.transitionDelay = (i * 70) + "ms";
+      });
+      void dock.offsetWidth;
+      dock.classList.remove("swap");
+      startStep = "subject";
+      setTimeout(() => dock.querySelectorAll(".choice").forEach(b => { b.classList.remove("rise"); b.style.transitionDelay = ""; }), 700);
+    }, fast ? 0 : 420);
+  }
   document.querySelectorAll(".choice").forEach(btn => btn.addEventListener("click", () => {
     if (phase !== "start") return;
-    const mode = btn.dataset.mode;
     document.querySelectorAll(".choice").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
-    document.getElementById("line1").textContent = COPY[mode][0];
-    document.getElementById("line2").textContent = COPY[mode][1];
     clearTimeout(idleTimer);
-    scene.mode = mode;
-    lastScene = { ...scene, format: { ...scene.format } }; // zmiana trybu na starcie to nie reakcja na kadr
+    if (startStep === "mode") {
+      const mode = btn.dataset.mode;
+      document.getElementById("line1").textContent = COPY[mode][0];
+      document.getElementById("line2").textContent = COPY[mode][1];
+      startStep = "busy";
+      scene.mode = mode;
+      lastScene = { ...scene, format: { ...scene.format } }; // zmiana trybu na starcie to nie reakcja na kadr
+      render();
+      playFrames([{ pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 800 }, { pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 250 }]);
+      setTimeout(() => swapToSubject(mode), reduceMotion.matches ? 0 : 900);
+      return;
+    }
+    if (startStep !== "subject") return;
+    // Postać: Manikun wskazuje i zostaje w kadrze. Obiekt: Manikun znika, a na jego miejscu pojawia się przedmiot.
+    startStep = "busy";
+    scene.subject = btn.dataset.subject;
+    if (scene.subject === "person") playFrames([{ pose: MP.pointLeft, dur: 700 }, { pose: MP.pointLeft, dur: 200 }]);
     render();
-    playFrames([{ pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 800 }, { pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 250 }]);
-    setTimeout(enterDirector, reduceMotion.matches ? 0 : 1000);
+    setTimeout(enterDirector, reduceMotion.matches ? 0 : 900);
   }));
 
   // Kadr zostaje nieruchomo. Kafelki trybu chowają się w dół, a spod spodu wysuwają się

@@ -209,6 +209,42 @@ function computeFigure(pose, RIG, cloth = null) {
       shapes.push({ t: "deco", d: `M${f(L(0.26, -0.6)[0])},${f(L(0.26, -0.6)[1])} Q${f(L(0.46, -0.52)[0])},${f(L(0.46, -0.52)[1])} ${f(L(0.66, -0.6)[0])},${f(L(0.66, -0.6)[1])} Q${f(L(0.46, -0.7)[0])},${f(L(0.46, -0.7)[1])} ${f(L(0.26, -0.6)[0])},${f(L(0.26, -0.6)[1])} Z`,
         style: `fill:${look.lips};stroke:${shadeHex(look.lips, -0.35)};stroke-width:0.8;opacity:0.95`, at: m });
     }
+    // Mina (tylko w zbliżeniu na twarz): przerysowane oczy, brwi i usta w stylu szkicu
+    if (look.expr) {
+      const P = (x, y) => { const q = L(x, y); return `${f(q[0])},${f(q[1])}`; };
+      const ink = "stroke:#3B2616;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round";
+      const line = d => shapes.push({ t: "deco", d, style: `fill:none;${ink}` });
+      const fill = (d, c) => shapes.push({ t: "deco", d, style: `fill:${c};${ink}` });
+      const dot = (x, y, r) => fill(`M${P(x - r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x + r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x - r, y)} Z`, "#3B2616");
+      const brows = (nearIn, nearOut, farIn, farOut) => { line(`M${P(0.04, nearOut)} L${P(0.34, nearIn)}`); line(`M${P(0.6, farIn)} L${P(0.86, farOut)}`); };
+      const e = look.expr;
+      if (e === "joy") {
+        line(`M${P(0.08, 0.06)} Q${P(0.2, 0.24)} ${P(0.32, 0.06)}`); line(`M${P(0.63, 0.06)} Q${P(0.72, 0.21)} ${P(0.81, 0.06)}`);
+        line(`M${P(0.04, 0.38)} Q${P(0.2, 0.48)} ${P(0.34, 0.4)}`); line(`M${P(0.6, 0.4)} Q${P(0.72, 0.48)} ${P(0.86, 0.38)}`);
+        fill(`M${P(0.24, -0.42)} Q${P(0.47, -0.95)} ${P(0.72, -0.42)} Z`, "#6A2222");
+      } else if (e === "anger") {
+        dot(0.2, 0.1, 0.07); dot(0.72, 0.1, 0.055);
+        brows(0.24, 0.42, 0.24, 0.42);
+        line(`M${P(0.28, -0.66)} Q${P(0.47, -0.5)} ${P(0.68, -0.66)}`);
+      } else if (e === "sad" || e === "cry") {
+        if (e === "sad") { dot(0.2, 0.06, 0.07); dot(0.72, 0.06, 0.055); }
+        else { line(`M${P(0.08, 0.1)} Q${P(0.2, -0.02)} ${P(0.32, 0.1)}`); line(`M${P(0.63, 0.1)} Q${P(0.72, 0.0)} ${P(0.81, 0.1)}`); }
+        brows(0.44, 0.28, 0.44, 0.28);
+        if (e === "sad") line(`M${P(0.28, -0.7)} Q${P(0.47, -0.5)} ${P(0.68, -0.7)}`);
+        else {
+          fill(`M${P(0.28, -0.66)} Q${P(0.47, -0.46)} ${P(0.68, -0.66)} Q${P(0.47, -0.8)} ${P(0.28, -0.66)} Z`, "#6A2222");
+          // Łzy: kropla pod każdym okiem i strużka
+          [[0.2, -0.08], [0.72, -0.1]].forEach(([x, y]) => {
+            shapes.push({ t: "deco", d: `M${P(x, y)} Q${P(x + 0.09, y - 0.2)} ${P(x, y - 0.26)} Q${P(x - 0.09, y - 0.2)} ${P(x, y)} Z`, style: "fill:#8FC3E8;stroke:#4A86B5;stroke-width:1.4" });
+            shapes.push({ t: "deco", d: `M${P(x + 0.02, y - 0.3)} L${P(x + 0.04, y - 0.5)}`, style: "fill:none;stroke:#8FC3E8;stroke-width:2;stroke-linecap:round" });
+          });
+        }
+      } else if (e === "thought") {
+        dot(0.26, 0.14, 0.065); dot(0.78, 0.14, 0.05);
+        line(`M${P(0.04, 0.36)} L${P(0.34, 0.36)}`); line(`M${P(0.6, 0.44)} Q${P(0.72, 0.56)} ${P(0.86, 0.46)}`);
+        line(`M${P(0.36, -0.6)} L${P(0.62, -0.66)}`);
+      }
+    }
     // Okulary: dwie oprawki (dalsza węższa, bo widok 3/4), mostek i zausznik
     if (look.glasses && look.glasses !== "none") {
       const g = look.glasses, fc = look.glassesColor;
