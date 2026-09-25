@@ -1,4 +1,4 @@
-// Manikun: wspólny manekin dla ekranu startowego i reżysera.
+// Manikun: manekin reżysera i jego pozy powitalne.
 // Geometria z kątów stawów, proporcje ciała i materiały (drewno, biały).
 
 const NS = "http://www.w3.org/2000/svg";
@@ -247,72 +247,3 @@ const MASCOT_POSES = {
   lookHand2: { ...MASCOT_BASE, spine: 178, head: 156, farUpper: 34, farFore: 192, nearUpper: -8, nearFore: -3 },
   lookArm: { ...MASCOT_BASE, spine: 181, head: 198, nearUpper: -52, nearFore: -30, farUpper: 9, farFore: 4 }
 };
-
-// Rysuje Manikuna w podanym <svg> i odtwarza jego sekwencje póz.
-function createMascot(svg, getMaterial) {
-  const RIG = BODIES.male;
-  const W = 300, H = 300, GROUND = 280, SCALE = 1.05;
-  const HIP_Y = GROUND - (RIG.shin + RIG.thigh + 5) * SCALE;
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  let shown = MASCOT_POSES.stand, frame = null, idleTimer = null, runId = 0;
-
-  function draw(pose) {
-    svg.replaceChildren();
-    const c = 16, i = 6;
-    [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]].forEach(([x, y, sx, sy]) => {
-      el("path", { d: `M${x},${y + sy * c} L${x},${y} L${x + sx * c},${y}`, class: "thin" }, svg);
-    });
-    el("line", { x1: 40, y1: GROUND, x2: W - 40, y2: GROUND, class: "thin" }, svg);
-    const defs = el("defs", {}, svg);
-    const shadow = el("radialGradient", { id: "mascot-shadow" }, defs);
-    el("stop", { offset: "0", "stop-color": "#000", "stop-opacity": "0.28" }, shadow);
-    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": "0" }, shadow);
-    el("ellipse", { cx: W / 2 + 4, cy: GROUND, rx: 46, ry: 5, style: "fill:url(#mascot-shadow);stroke:none" }, svg);
-    const g = el("g", { class: "fig", transform: `translate(${W / 2} ${f(HIP_Y)}) scale(${SCALE})` }, svg);
-    paintFigure(g, computeFigure(pose, RIG).shapes, getMaterial());
-  }
-
-  // steps: [nazwa pozy, czas ms]
-  function play(steps, done) {
-    const id = ++runId;
-    cancelAnimationFrame(frame);
-    clearTimeout(idleTimer);
-    if (reduceMotion.matches) {
-      shown = MASCOT_POSES[steps[steps.length - 1][0]];
-      draw(shown);
-      if (done) done();
-      return;
-    }
-    let k = 0;
-    const next = () => {
-      if (id !== runId) return;
-      if (k >= steps.length) { if (done) done(); return; }
-      const [name, dur] = steps[k++];
-      const from = shown, to = MASCOT_POSES[name], start = performance.now();
-      const step = now => {
-        if (id !== runId) return;
-        const t = Math.min(1, (now - start) / dur);
-        shown = t < 1 ? blendPose(from, to, t) : to;
-        draw(shown);
-        if (t < 1) frame = requestAnimationFrame(step); else next();
-      };
-      frame = requestAnimationFrame(step);
-    };
-    next();
-  }
-
-  // Bezczynność: co kilka sekund spokojny przechył głowy
-  function idle() {
-    clearTimeout(idleTimer);
-    if (reduceMotion.matches) return;
-    idleTimer = setTimeout(() => play([["hipTilt", 1300], ["hip", 1400]], idle), 4500);
-  }
-
-  return {
-    draw: () => draw(shown),
-    greet: () => play([["waveA", 900], ["waveB", 480], ["waveA", 480], ["waveB", 480], ["waveA", 480], ["hip", 1100]], idle),
-    point: mode => play([[mode === "photo" ? "pointLeft" : "pointRight", 800]]),
-    admire: () => play([["lookHand", 850], ["lookHand2", 650], ["lookHand", 600], ["lookArm", 900], ["hip", 950]], idle),
-    stop: () => { runId++; cancelAnimationFrame(frame); clearTimeout(idleTimer); }
-  };
-}

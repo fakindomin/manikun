@@ -1,294 +1,1741 @@
-<title>Dairecto</title>
+<title>Manikun Reżyser</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-  /* Szara karta 18%: jeden świadomy wygląd, dwa tryby. Tryb zmienia tylko tokeny. */
+  /* Ciemne studio: czarne tło z plamą światła za kadrem, zaokrąglone karty, jeden akcent.
+     Zdjęcie ma limonkowy akcent, wideo czerwony jak lampka nagrywania. */
   :root {
-    color-scheme: light;
-    --bg: #D6D6D6;
-    --tile: #EDEDED;
-    --tile-line: #B5B5B5;
-    --ink: #1E1E1E;
-    --muted: #4A4A4A;
-    --selected: #1E1E1E;
-    --on-selected: #F2F2F2;
-    --prompt-bg: #EDEDED;
-    --mode-patch: #D67E2C;
-    --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: dark;
+    --bg: #09090B;
+    --bg-glow: #1B1C22;
+    --surface: #141418;
+    --surface-2: #1C1C22;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --ink: #F4F4F5;
+    --muted: #8D8D97;
+    --accent: #BCCB7C;
+    --accent-soft: rgba(188, 203, 124, 0.14);
+    --on-accent: #0B0B0D;
+    --stage: #131316;
+    --tile-bg: #1F1F26;
+    --lift: 0 7px 16px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --fig-body: #F7F7F5;
+    --fig-line: #1E1E1E;
+    --glow: #FFFFFF;
+    --font: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
   body[data-mode="video"] {
-    --bg: #8A8A8A;
-    --tile: #A2A2A2;
-    --tile-line: #6E6E6E;
-    --muted: #262626;
-    --prompt-bg: #A2A2A2;
-    --mode-patch: #AF363C;
+    --bg-glow: #221718;
+    --accent: #FF5A4F;
+    --accent-soft: rgba(255, 90, 79, 0.16);
+    --on-accent: #0B0B0D;
   }
 
+  html, body { height: 100%; }
   body {
-    background: var(--bg);
+    background: var(--bg) radial-gradient(120% 70% at 50% 28%, var(--bg-glow) 0%, var(--bg) 62%) no-repeat;
     color: var(--ink);
     font-family: var(--font);
     font-size: 16px;
-    line-height: 1.5;
+    line-height: 1.4;
     padding: 0 16px;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
   }
-  main {
+  [hidden] { display: none !important; }
+  .screen {
+    box-sizing: border-box;
+    height: 100%;
     max-width: 640px;
     margin: 0 auto;
-    padding-block: 32px 56px;
-    display: grid;
-    gap: 28px;
-  }
-
-  header { display: grid; gap: 16px; }
-  .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
-  .readout {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-direction: column;
+    gap: 12px;
+    padding-block: 12px;
   }
-  .rec { width: 8px; height: 8px; border-radius: 50%; background: #AF363C; }
+  /* Elementy reżysera ukryte na starcie, pojawiają się po wyborze trybu */
+  .director-only { transition: opacity 420ms ease; }
+  [data-phase="start"] .director-only { opacity: 0; pointer-events: none; }
 
-  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-  .questions { display: grid; gap: 18px; }
-  .q { display: grid; gap: 8px; }
-  .q-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+  /* ---------- Pasek górny: pigułki ---------- */
+  .top { display: flex; align-items: center; gap: 8px; }
+  .modes {
+    display: flex; gap: 2px; margin-right: auto;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px;
   }
-  .patch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
-  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-  .tile {
-    font: inherit;
-    font-weight: 600;
-    color: var(--ink);
-    background: var(--tile);
-    border: 1px solid var(--tile-line);
-    border-radius: 6px;
-    padding: 14px 12px;
-    cursor: pointer;
-    text-align: center;
+  .chip {
+    font: inherit; font-size: 13px; font-weight: 600;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 8px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px;
+    transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
   }
-  .tile[aria-pressed="true"] {
-    background: var(--selected);
-    border-color: var(--selected);
-    color: var(--on-selected);
-  }
-  .modes .tile { display: flex; align-items: center; justify-content: center; gap: 10px; padding-block: 16px; }
-  .modes .tile .patch { width: 14px; height: 14px; }
-  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-
-  .result { display: grid; gap: 10px; }
-  #prompt {
-    margin: 0;
-    background: var(--prompt-bg);
-    border: 1px solid var(--tile-line);
-    border-radius: 6px;
-    padding: 16px;
-    font-family: var(--mono);
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    user-select: all;
-  }
-  .copy-row { display: flex; align-items: center; gap: 12px; }
+  .modes .chip { background: transparent; border-color: transparent; box-shadow: none; padding: 7px 12px; color: var(--muted); }
+  .modes .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .patch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .chip.mat { padding: 4px 12px 4px 4px; }
+  /* W reżyserze przełącznik materiału to sama próbka, żeby pasek się mieścił */
+  [data-phase="director"] .chip.mat { padding: 4px; }
+  [data-phase="director"] #material-name { display: none; }
+  .swatch { width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35); flex: none; }
   #copy {
-    font: inherit;
-    font-weight: 700;
-    color: var(--on-selected);
-    background: var(--selected);
-    border: 0;
-    border-radius: 6px;
-    padding: 14px 32px;
-    cursor: pointer;
+    white-space: nowrap; background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+    font-weight: 700; box-shadow: 0 6px 22px var(--accent-soft);
   }
-  #status { color: var(--muted); font-size: 14px; font-weight: 600; }
+
+  /* ---------- Podgląd: karta sceny ---------- */
+  .stage {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--stage);
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    padding: 14px 14px 10px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    color: rgba(244, 244, 245, 0.78);
+    --halo: rgba(14, 14, 17, 0.62);
+  }
+  #preview { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  [data-phase="start"] #preview { cursor: pointer; }
+  .readout {
+    font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums; text-align: center;
+    display: flex; justify-content: center; align-items: center; gap: 6px;
+  }
+  .rec { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  /* ---------- Dół ekranu: stała wysokość, kadr nad nim się nie rusza ---------- */
+  .dock { flex: none; position: relative; display: flex; flex-direction: column; gap: 10px; }
+  .options { position: relative; height: 128px; overflow: hidden; margin-bottom: -8px; }
+  .panel {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 128px;
+    display: flex; gap: 10px; align-items: flex-end;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
+    padding: 0 2px 16px;
+    box-sizing: border-box;
+  }
+  .panel::-webkit-scrollbar { display: none; }
+
+  /* Kafelki opcji: zawsze ten sam rozmiar */
+  .tile {
+    flex: none; box-sizing: border-box;
+    width: 98px; height: 108px;
+    font: inherit; color: rgba(244, 244, 245, 0.82);
+    background: var(--tile-bg);
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px;
+    box-shadow: var(--lift);
+    padding: 8px 6px; cursor: pointer;
+    display: grid; grid-template-rows: 60px auto; justify-items: center; align-content: start; gap: 4px;
+    position: relative;
+    --halo: var(--tile-bg);
+    transition: transform 420ms var(--ease), border-color 300ms ease, box-shadow 300ms ease, color 300ms ease;
+  }
+  .tile.below { transform: translateY(calc(100% + 14px)); }
+  .tile.out { transform: translateY(calc(100% + 14px)); transition: transform 280ms cubic-bezier(0.4, 0, 1, 1); pointer-events: none; }
+  .tile[aria-pressed="true"] {
+    color: var(--ink);
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft), var(--lift);
+  }
+  .tile svg { display: block; height: 60px; width: 60px; border-radius: 10px; }
+  .tile .name {
+    font-weight: 600; font-size: 12px; line-height: 1.2; text-align: center;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  /* Kafelek z wariantami: karta pod spodem i znacznik rozwinięcia */
+  .tile.group { margin-right: 5px; box-shadow: 5px -5px 0 -1px #19191F, 5px -5px 0 0 var(--line-strong), var(--lift); }
+  .tile.group[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--accent), 5px -5px 0 -1px #19191F, 5px -5px 0 0 var(--accent), 0 8px 22px var(--accent-soft), var(--lift); }
+  .tile .badge {
+    position: absolute; top: 8px; right: 9px; width: 6px; height: 6px;
+    border-top: 1.5px solid currentColor; border-right: 1.5px solid currentColor;
+    transform: rotate(45deg); opacity: 0.7;
+  }
+  .tile.back { background: transparent; border-style: dashed; border-color: var(--line-strong); box-shadow: none; }
+
+  /* ---------- Pasek kategorii: pływający dok ---------- */
+  [data-phase="start"] .cat { opacity: 0; transform: translateY(24px); }
+  .bar { transition: opacity 420ms ease; }
+  [data-phase="start"] .bar { opacity: 0; }
+  .bar {
+    flex: none;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(66px, 1fr);
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 2px;
+    background: rgba(20, 20, 24, 0.92);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 6px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .bar::-webkit-scrollbar { display: none; }
+  .cat {
+    font: inherit; color: var(--muted);
+    background: transparent; border: 0; border-radius: 18px;
+    padding: 7px 2px 6px; min-height: 48px; cursor: pointer;
+    display: grid; justify-items: center; gap: 2px;
+    transition: background-color 300ms ease, color 300ms ease, opacity 320ms ease, transform 420ms var(--ease);
+  }
+  [data-phase="director"] .cat:disabled { opacity: 0.35; cursor: default; }
+  .cat[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  .cat svg { width: 22px; height: 22px; display: block; }
+  .cat .label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--ink); }
+  .cat[aria-pressed="true"] .label { color: var(--accent); }
+  .cat .label .patch { width: 6px; height: 6px; }
+  .cat .value { font-size: 11px; line-height: 1.1; white-space: nowrap; }
+
+  /* ---------- Start: powitanie i wybór trybu ---------- */
+  .dock-start {
+    position: absolute; inset: 0; z-index: 2;
+    background: transparent;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
+  }
+  .hello { text-align: center; display: grid; gap: 4px; transition: opacity 280ms ease, transform 420ms var(--ease); }
+  .hello h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+  .hello h1 em { font-style: normal; color: var(--accent); }
+  .hello p { margin: 0; font-size: 15px; color: var(--muted); }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice {
+    font: inherit; color: var(--ink);
+    background: var(--tile-bg);
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 22px;
+    box-shadow: var(--lift);
+    padding: 16px 12px 14px; cursor: pointer;
+    display: grid; justify-items: center; gap: 6px;
+    transition: transform 360ms cubic-bezier(0.4, 0, 1, 1), border-color 300ms ease, box-shadow 300ms ease;
+  }
+  .choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft), var(--lift); }
+  .choice svg { width: 44px; height: 44px; display: block; color: var(--ink); }
+  .choice .name { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .choice .desc { font-size: 12px; line-height: 1.3; color: var(--muted); text-align: center; }
+  .dock-start.leaving .hello { opacity: 0; transform: translateY(-8px); }
+  .dock-start.leaving .choice { transform: translateY(calc(100% + 60px)); }
+
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .director-only, .hello, .tile, .cat, .choice, .chip { transition-duration: 0.01ms !important; }
+  }
+
+  /* ---------- Kreska szkicu sceny ---------- */
+  .ink * { vector-effect: non-scaling-stroke; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; fill: none; }
+  .ink .fig path, .ink .fig circle, .ink .fig ellipse { fill: var(--fig-body); stroke: var(--fig-line); }
+  .ink .glow path, .ink .glow circle, .ink .glow ellipse { fill: var(--glow); stroke: var(--glow); stroke-width: 7; }
+  .ink .thin { stroke-width: 1; opacity: 0.35; }
+  .ink .dash { stroke-dasharray: 4 4; }
+  .ink .grabbed * { stroke: var(--accent); }
+  .ink .zone { fill: none; stroke: var(--accent); stroke-width: 1.2; opacity: 0.45; stroke-dasharray: 2 3; }
+  .ink .zone.near { fill: var(--accent-soft); opacity: 1; stroke-dasharray: none; }
+  .ink .corner { stroke: var(--accent); stroke-width: 2; }
+  .ink .frame { stroke: rgba(255, 255, 255, 0.14); }
+  /* Wycięcie pod ikonami sceny: linie tła nie przechodzą przez aparat ani lampę */
+  .ink .halo { fill: var(--halo, var(--bg)); stroke: none; }
+  .ink .prop { fill: #3A3833; stroke: #8E8A80; }
+  .ink .prop-line { stroke: #8E8A80; stroke-width: 2.5; }
 </style>
 
-<main>
-  <header>
-    <div class="title-row">
-      <h1>Dairecto</h1>
-      <div class="readout" id="readout"></div>
+<div class="screen app" id="app" data-phase="start">
+  <div class="top">
+    <div class="modes director-only" role="group" aria-label="Tryb">
+      <button class="chip" type="button" id="mode-photo" data-mode="photo"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</button>
+      <button class="chip" type="button" id="mode-video" data-mode="video"><span class="patch" style="background:#AF363C"></span>Wideo</button>
     </div>
-    <div class="modes" role="group" aria-label="Tryb">
-      <button class="tile" type="button" id="mode-photo" data-mode="photo">
-        <span class="patch" style="background:#D67E2C"></span>Zdjęcie
+    <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna"><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
+    <button class="chip director-only" type="button" id="copy">Kopiuj</button>
+  </div>
+
+  <div class="stage">
+    <svg id="preview" class="ink" role="img" aria-label="Podgląd kadru z Manikunem" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="readout director-only" id="readout"></div>
+  </div>
+
+  <!-- Dół ekranu: stała wysokość. Na starcie przykryty powitaniem i wyborem trybu. -->
+  <div class="dock">
+    <div class="options" id="panelWrap" role="group" aria-label="Opcje"></div>
+    <nav class="bar" id="bar" aria-label="Kategorie"></nav>
+  <div class="dock-start" id="dockStart">
+    <div class="hello">
+      <h1 id="line1">Cześć, jestem <em>Manikun</em>.</h1>
+      <p id="line2">Co dziś ustawiamy?</p>
+    </div>
+    <div class="choices" role="group" aria-label="Tryb">
+      <button class="choice" type="button" id="pick-photo" data-mode="photo" aria-pressed="false">
+        <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
+          <path d="M6 16h8l3-5h14l3 5h8v22H6z"/>
+          <circle cx="24" cy="26" r="7"/>
+          <circle cx="24" cy="26" r="3"/>
+          <path d="M36 20h3"/>
+        </svg>
+        <span class="name"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</span>
+        <span class="desc">Jeden kadr: poza, światło, tło</span>
       </button>
-      <button class="tile" type="button" id="mode-video" data-mode="video">
-        <span class="patch" style="background:#AF363C"></span>Wideo
+      <button class="choice" type="button" id="pick-video" data-mode="video" aria-pressed="false">
+        <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
+          <path d="M7 20h34v19H7z"/>
+          <path d="M6 13l33-7 1.6 7L7.6 20z"/>
+          <path d="M14 11.4l4 6.6 M22 9.7l4 6.6 M30 8l4 6.6"/>
+          <path d="M14 20l4 6 M22 20l4 6 M30 20l4 6" class="thin"/>
+        </svg>
+        <span class="name"><span class="patch" style="background:#AF363C"></span>Wideo</span>
+        <span class="desc">Ujęcie z ruchem kamery</span>
       </button>
     </div>
-  </header>
+  </div>
 
-  <section class="questions" id="questions" aria-label="Wybory"></section>
+  </div>
+</div>
 
-  <section class="result" aria-label="Gotowy prompt">
-    <div class="q-label">Prompt</div>
-    <p id="prompt"></p>
-    <div class="copy-row">
-      <button id="copy" type="button">Kopiuj</button>
-      <span id="status" role="status"></span>
-    </div>
-  </section>
-</main>
-
+<script src="manikun.js"></script>
 <script>
-  // Szablon: kroki, opcje i frazy. Kolejność kroków = kolejność w prompcie.
-  // "modes" ogranicza krok do wybranych trybów, "fixed" to stała fraza (może zależeć od trybu).
-  const TEMPLATE = {
-    steps: [
-      { id: "shot", label: "Kadr", patch: "#735244", options: [
-        { label: "Cała sylwetka", prompt: "Full-body shot, entire body visible from head to feet" },
-        { label: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
+
+  // ---------- Szablon: kategorie, opcje, frazy promptu ----------
+  const CATEGORIES = [
+    { id: "format", label: "Format", patch: "#E0A32E" },
+    { id: "body", label: "Postać", patch: "#BB5695", options: [
+      { id: "female", name: "Kobieta", short: "Kobieta", prompt: "of a single adult woman" },
+      { id: "male", name: "Mężczyzna", short: "Mężczyz.", prompt: "of a single adult man" }
+    ]},
+    // Ubiór: prompt może zależeć od postaci; sukienka tylko dla kobiety
+    { id: "outfit", label: "Ubiór", patch: "#5E7FA3", options: [
+      { id: "casual", name: "Codzienny", short: "Codzienny", prompt: "wearing plain, neutral-coloured casual clothing" },
+      { id: "elegant", name: "Elegancki", short: "Elegancki", prompt: { male: "wearing a tailored dark suit with a crisp white shirt", female: "wearing an elegant tailored blazer and trousers" } },
+      { id: "sport", name: "Sportowy", short: "Sportowy", prompt: "wearing fitted athletic sportswear and sneakers" },
+      { id: "street", name: "Streetwear", short: "Street", prompt: "wearing an oversized hoodie, loose trousers and sneakers" },
+      { id: "coat", name: "Płaszcz", short: "Płaszcz", prompt: "wearing a long wool coat over a simple outfit" },
+      { id: "dress", name: "Sukienka", short: "Sukienka", prompt: "wearing a simple, elegant midi dress", bodies: ["female"] }
+    ]},
+    { id: "pose", label: "Poza", patch: "#C29682", options: [
+      { id: "standing", name: "Stoi", children: [
+        { id: "stand", name: "Prosto", short: "Stoi", prompt: "standing upright, weight evenly on both feet" },
+        { id: "contra", name: "Kontrapost", short: "Kontrapost", prompt: "standing in a relaxed contrapposto, weight shifted onto one leg, hip slightly out to the side" },
+        { id: "wide", name: "Rozkrok", short: "Rozkrok", prompt: "standing in a wide, stable stance with feet planted firmly apart" },
+        { id: "stride", name: "W pół kroku", short: "Pół kroku", prompt: "caught mid-stride as if walking, one foot in front of the other" },
+        { id: "crouch", name: "Kuca", short: "Kuca", prompt: "crouching low in a deep squat, knees bent, heels close to the hips" }
       ]},
-      { id: "subject", fixed: "of a single adult person in plain, neutral-coloured casual clothing" },
-      { id: "pose", label: "Poza", patch: "#C29682", options: [
-        { label: "Stoi", prompt: "standing upright, weight evenly on both feet, arms relaxed at the sides, facing the camera" },
-        { label: "Siedzi na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" }
+      { id: "sitting", name: "Siedzi", children: [
+        { id: "sit", name: "Na ziemi", short: "Na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
+        { id: "chair", name: "Na krześle", short: "Krzesło", prompt: "sitting upright on a simple wooden chair, feet flat on the floor, hands resting on the thighs, facing the camera" },
+        { id: "stone", name: "Na kamieniu", short: "Kamień", prompt: "sitting on a large rock with knees bent, forearms resting on the knees, back straight, facing the camera" },
+        { id: "cross", name: "Po turecku", short: "Po turecku", prompt: "sitting cross-legged on the ground, back straight, hands resting on the knees, facing the camera" },
+        { id: "kneeUp", name: "Kolano pod brodą", short: "Kolano", prompt: "sitting on the ground with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera" },
+        { id: "lean", name: "Pochylony", short: "Pochylony", prompt: "sitting on a simple wooden chair, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera" }
+      ]}
+    ]},
+    // Ręce tylko przy postawach stojących; siedząc ręce opiera na kolanach lub udach
+    { id: "arms", label: "Ręce", patch: "#B77A5B", options: [
+      { id: "down", name: "Wzdłuż ciała", short: "Luźno", prompt: "arms relaxed at the sides" },
+      { id: "hipOne", name: "Ręka na biodrze", short: "Biodro", prompt: "one hand resting on the hip, the other arm relaxed" },
+      { id: "hips", name: "Na biodrach", short: "Biodra", prompt: "both hands on the hips" },
+      { id: "chin", name: "Dłoń przy brodzie", short: "Broda", prompt: "one hand raised to the chin in a thoughtful gesture" },
+      { id: "shade", name: "Osłania oczy", short: "Osłania", prompt: "one hand raised to the forehead, shading the eyes" }
+    ]},
+    { id: "shot", label: "Kadr", patch: "#735244", options: [
+      { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
+      { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
+    ]},
+    { id: "camera", label: "Kamera", patch: "#627A9D", options: [
+      { id: "L2", name: "Lewo · środek", short: "Lewo", prompt: "straight-on eye-level three-quarter shot from the left, camera at the subject's eye height" },
+      { id: "L1", name: "Lewo · z góry", short: "Lewo góra", prompt: "high-angle three-quarter shot from the left, camera above the subject looking down" },
+      { id: "L3", name: "Lewo · z dołu", short: "Lewo dół", prompt: "low-angle three-quarter shot from the left, camera near the ground looking up at the subject" },
+      { id: "T", name: "Z góry", short: "Z góry", prompt: "high-angle shot from the front, camera above the subject looking down" },
+      { id: "B", name: "Z dołu", short: "Z dołu", prompt: "low-angle shot from the front, camera near the ground looking up at the subject" },
+      { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "straight-on eye-level three-quarter shot from the right, camera at the subject's eye height" },
+      { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "high-angle three-quarter shot from the right, camera above the subject looking down" },
+      { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "low-angle three-quarter shot from the right, camera near the ground looking up at the subject" }
+    ]},
+    { id: "light", label: "Światło", patch: "#576C43", options: [
+      { id: "natural", name: "Naturalne", children: [
+        { id: "nat-front", name: "Z przodu", short: "Naturalne" },
+        { id: "nat-back", name: "Pod światło", short: "Pod światło" }
       ]},
-      { id: "camera", label: "Kamera", patch: "#627A9D", options: [
-        { label: "Z dołu", prompt: "low-angle shot, camera near the ground looking up at the subject" },
-        { label: "Na wysokości oczu", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
+      { id: "artificial", name: "Sztuczne", children: [
+        { id: "art-front", name: "Lampa z przodu", short: "Lampa", prompt: "soft diffused softbox light {from}, gentle shadows" },
+        { id: "art-back", name: "Kontra z tyłu", short: "Kontra", prompt: "strong artificial rim light from a lamp behind the subject {from}, outlining the silhouette, face in soft shadow" }
+      ]}
+    ]},
+    { id: "background", label: "Tło", patch: "#8580B1", options: [
+      { id: "studio", name: "Studio", short: "Studio", prompt: "plain seamless studio backdrop in neutral grey" },
+      { id: "city", name: "Miasto", children: [
+        { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in the background, softly out of focus" },
+        { id: "rooftop", name: "Dach", short: "Dach", prompt: "city rooftop with a skyline in the background, softly out of focus" }
       ]},
-      { id: "light", label: "Światło", patch: "#576C43", options: [
-        { label: "Miękkie", prompt: "soft diffused frontal light, gentle shadows" },
-        { label: "Kontra z tyłu", prompt: "strong rim light from behind outlining the silhouette, face in soft shadow" }
+      { id: "nature", name: "Natura", children: [
+        { id: "mountains", name: "Góry", short: "Góry", prompt: "misty mountain landscape in the background, softly out of focus" },
+        { id: "forest", name: "Las", short: "Las", prompt: "quiet pine forest in the background, softly out of focus" },
+        { id: "beach", name: "Plaża", short: "Plaża", prompt: "calm sandy beach with the sea on the horizon in the background, softly out of focus" },
+        { id: "meadow", name: "Łąka", short: "Łąka", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" }
       ]},
-      { id: "background", label: "Tło", patch: "#8580B1", options: [
-        { label: "Studio", prompt: "plain light-grey seamless studio backdrop" },
-        { label: "Ulica", prompt: "empty city street in daylight, background softly out of focus" }
-      ]},
-      { id: "motion", label: "Ruch kamery", patch: "#0885A1", modes: ["video"], options: [
-        { label: "Obrót wokół", prompt: "camera slowly orbits 360° around the subject, smooth steady motion" },
-        { label: "Najazd", prompt: "slow dolly-in towards the subject, smooth steady motion" }
-      ]},
-      { id: "ending", fixed: {
-        photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
-        video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
-      }}
+      { id: "interior", name: "Wnętrze", children: [
+        { id: "room", name: "Pokój", short: "Pokój", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
+        { id: "cafe", name: "Kawiarnia", short: "Kawiarnia", prompt: "cosy café interior with warm pendant lights in the background, softly out of focus" }
+      ]}
+    ]},
+    { id: "time", label: "Pora dnia", patch: "#D9A441", options: [
+      { id: "day", name: "Dzień", short: "Dzień", prompt: "in daylight" },
+      { id: "golden", name: "Złota godzina", short: "Złota g.", prompt: "at golden hour" },
+      { id: "night", name: "Noc", short: "Noc", prompt: "at night under a dark starry sky" }
+    ]},
+    { id: "motion", label: "Ruch", patch: "#0885A1", modes: ["video"], options: [
+      { id: "orbit", name: "Obrót wokół", short: "Obrót", prompt: "camera slowly orbits 360° around the subject, smooth steady motion" },
+      { id: "dolly", name: "Najazd", short: "Najazd", prompt: "slow dolly-in towards the subject, smooth steady motion" }
+    ]}
+  ];
+
+  const FORMATS = {
+    photo: [
+      { id: "4x5", w: 4, h: 5, name: "4:5 Pion", short: "4:5", prompt: "vertical 4:5 frame" },
+      { id: "2x3", w: 2, h: 3, name: "2:3 Pion", short: "2:3", prompt: "vertical 2:3 frame" },
+      { id: "1x1", w: 1, h: 1, name: "1:1 Kwadrat", short: "1:1", prompt: "square 1:1 frame" },
+      { id: "3x2", w: 3, h: 2, name: "3:2 Poziom", short: "3:2", prompt: "horizontal 3:2 frame" }
     ],
-    readout: {
-      photo: "f/2.8 · 1/125 · ISO 100 · 3:2",
-      video: "00:00:05:00 · 24 fps · 16:9"
-    }
+    video: [
+      { id: "9x16", w: 9, h: 16, name: "9:16 Pion", short: "9:16", prompt: "vertical 9:16 frame" },
+      { id: "1x1", w: 1, h: 1, name: "1:1 Kwadrat", short: "1:1", prompt: "square 1:1 frame" },
+      { id: "16x9", w: 16, h: 9, name: "16:9 Poziom", short: "16:9", prompt: "horizontal 16:9 frame" },
+      { id: "21x9", w: 21, h: 9, name: "21:9 Kino", short: "21:9", prompt: "cinematic 21:9 widescreen frame" }
+    ]
   };
 
-  // Stan sceny: tryb i indeks wybranej opcji dla każdego kroku (domyślnie pierwsza).
-  // Zmiana trybu nie kasuje wyborów, także ruchu kamery.
-  const scene = { mode: "photo" };
-  TEMPLATE.steps.forEach(s => { if (s.options) scene[s.id] = 0; });
+  const ENDING = {
+    photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
+    video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
+  };
+  const READOUT = { photo: "f/2.8 · 1/125 · ISO 100", video: "00:00:05:00 · 24 fps" };
 
-  const activeIn = (step, mode) => !step.modes || step.modes.includes(mode);
+  // ---------- Stan sceny ----------
+  const scene = {
+    mode: "photo",
+    format: { photo: "4x5", video: "9x16" },
+    body: "male", outfit: "casual", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    open: null, sub: null
+  };
 
-  function buildPrompt() {
-    const parts = TEMPLATE.steps
-      .filter(s => activeIn(s, scene.mode))
-      .map(s => {
-        if (s.fixed) return typeof s.fixed === "string" ? s.fixed : s.fixed[scene.mode];
-        return s.options[scene[s.id]].prompt;
-      });
-    // Kadr i osoba łączą się spacją, reszta przecinkami.
-    return parts[0] + " " + parts.slice(1).join(", ") + ".";
+  const activeCats = () => CATEGORIES.filter(c => !c.modes || c.modes.includes(scene.mode));
+  const currentFormat = () => FORMATS[scene.mode].find(x => x.id === scene.format[scene.mode]);
+  const optionsOf = catId => CATEGORIES.find(c => c.id === catId).options;
+  // 8 stref kotwiczenia aparatu i światła: 3 po lewej, 3 po prawej, góra i dół na środku (x, y w ułamkach kadru)
+  const ZONES = {
+    L1: { x: 0.12, y: 0.18, name: "Lewo, góra", from: "from the upper left" },
+    L2: { x: 0.12, y: 0.5, name: "Lewo, środek", from: "from the left" },
+    L3: { x: 0.12, y: 0.82, name: "Lewo, dół", from: "from the lower left" },
+    R1: { x: 0.88, y: 0.18, name: "Prawo, góra", from: "from the upper right" },
+    R2: { x: 0.88, y: 0.5, name: "Prawo, środek", from: "from the right" },
+    R3: { x: 0.88, y: 0.82, name: "Prawo, dół", from: "from the lower right" },
+    T: { x: 0.5, y: 0.08, name: "Góra", from: "from directly above" },
+    B: { x: 0.5, y: 0.92, name: "Dół", from: "from below" }
+  };
+  // Punkt strefy w kadrze W×H, z zapasem od krawędzi
+  const zonePt = (n, W, H, u) => [clamp(W * n[0], u * 9, W - u * 9), clamp(H * n[1], u * 8, H - u * 8)];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function nearestZone(nx, ny, W, H, ids = Object.keys(ZONES)) {
+    let best = null, bd = Infinity;
+    for (const id of ids) {
+      const z = ZONES[id], d = Math.hypot((z.x - nx) * W, (z.y - ny) * H);
+      if (d < bd) { bd = d; best = id; }
+    }
+    return best;
   }
 
-  const questionsEl = document.getElementById("questions");
-  const promptEl = document.getElementById("prompt");
-  const statusEl = document.getElementById("status");
-  const readoutEl = document.getElementById("readout");
-  const stepEls = {};
+  // Opcje mogą mieć warianty (children): kafelek grupy rozwija się do kolejnego poziomu
+  const leavesOf = catId => optionsOf(catId).flatMap(o => o.children || [o]);
+  const optionOf = (catId, id) => leavesOf(catId).find(o => o.id === id);
+  const isBackLight = id => id.endsWith("-back");
+  const isNaturalLight = id => id.startsWith("nat");
+  // Na zewnątrz jest niebo: naturalne światło to słońce albo księżyc. We wnętrzu i studiu to okno.
+  const isOutdoor = bg => !["studio", "room", "cafe"].includes(bg);
+  // Lampa ma sens tylko we wnętrzu, o złotej godzinie i nocą; w pełnym słońcu model i tak jej nie pokaże
+  const lampAllowed = st => !isOutdoor(st.background) || st.time !== "day";
+  // Opis naturalnego światła wynika z pory dnia: [z przodu, pod światło]
+  const NATURAL_LIGHT = {
+    day: ["soft natural sunlight falling on the subject {from}, gentle shadows",
+      "natural backlight from the sun behind the subject {from}, outlining the silhouette, face in soft shadow"],
+    golden: ["warm low golden-hour sunlight falling on the subject {from}, long soft shadows",
+      "warm low golden-hour sun behind the subject {from}, glowing rim of light around the silhouette, face in soft shadow"],
+    night: ["soft cool moonlight falling on the subject {from}, deep gentle shadows",
+      "cool moonlight behind the subject {from}, faint silver rim around the silhouette, face in deep shadow"]
+  };
+  const WINDOW_LIGHT = {
+    day: ["soft natural window light falling on the subject {from}, gentle shadows",
+      "bright window behind the subject {from}, natural backlight outlining the silhouette, face in soft shadow"],
+    golden: ["warm golden-hour light through a window {from}, long soft shadows",
+      "window behind the subject {from} glowing with warm golden-hour light, rim of light around the silhouette, face in soft shadow"],
+    night: ["faint cool moonlight through a window {from}, deep gentle shadows",
+      "moonlit window behind the subject {from}, faint rim of light around the silhouette, face in deep shadow"]
+  };
+  // Strefy, z których dane światło może padać. Słońce, księżyc i okno nie świecą z dołu;
+  // o złotej godzinie słońce stoi nisko, więc zostaje tylko lewo albo prawo.
+  const ALL_ZONES = Object.keys(ZONES);
+  function lightZones(st) {
+    if (!isNaturalLight(st.light)) return ALL_ZONES;
+    if (isOutdoor(st.background) && st.time === "golden") return ["L2", "R2"];
+    return ["L1", "L2", "T", "R2", "R1"];
+  }
+  // Pora dnia nie zmienia studia: tam kategoria jest wyłączona
+  const timeApplies = st => st.background !== "studio";
+  function lightPrompt() {
+    const from = ZONES[scene.lightZone].from;
+    if (!isNaturalLight(scene.light)) return optionOf("light", scene.light).prompt.replace("{from}", from);
+    const set = isOutdoor(scene.background) ? NATURAL_LIGHT[scene.time]
+      : WINDOW_LIGHT[timeApplies(scene) ? scene.time : "day"];
+    return set[isBackLight(scene.light) ? 1 : 0].replace("{from}", from);
+  }
+
+  // W kucaniu luźne ręce opierają się przedramionami o kolana
+  const armsPrompt = () => scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
+
+  const outfitPrompt = () => {
+    const pr = optionOf("outfit", scene.outfit).prompt;
+    return typeof pr === "string" ? pr : pr[scene.body];
+  };
+  // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
+  const fitsBody = (o, st) => !o.bodies || o.bodies.includes(st.body);
+
+  function buildPrompt() {
+    const parts = [
+      optionOf("shot", scene.shot).prompt + " " + optionOf("body", scene.body).prompt + " " + outfitPrompt(),
+      optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : ""),
+      optionOf("camera", scene.camera).prompt,
+      lightPrompt(),
+      optionOf("background", scene.background).prompt + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
+    ];
+    if (scene.mode === "video") parts.push(optionOf("motion", scene.motion).prompt);
+    parts.push(currentFormat().prompt, ENDING[scene.mode]);
+    return parts.join(", ") + ".";
+  }
+
+  // ---------- Manekin ----------
+  // Kąty bezwzględne: 0 = w dół, 90 = w prawo, 180 = w górę.
+  const POSES = {
+    stand: {
+      spine: 180, head: 180,
+      nearUpper: -7, nearFore: -2, farUpper: 7, farFore: 3,
+      nearThigh: -3, nearShin: 1, farThigh: 3, farShin: 0,
+      nearFoot: 62, farFoot: 62
+    },
+    // Ciężar na bliższej nodze, dalsza luźno ugięta, tułów i głowa lekko w przeciwną stronę
+    contra: {
+      spine: 175, head: 185,
+      nearUpper: -9, nearFore: -4, farUpper: 11, farFore: 5,
+      nearThigh: -8, nearShin: 2, farThigh: 13, farShin: -8,
+      nearFoot: 62, farFoot: 76
+    },
+    wide: {
+      spine: 180, head: 180,
+      nearUpper: -10, nearFore: -5, farUpper: 10, farFore: 5,
+      nearThigh: -17, nearShin: -13, farThigh: 17, farShin: 13,
+      nearFoot: 55, farFoot: 70
+    },
+    // Dalsza noga z przodu na pięcie, bliższa z tyłu na palcach; ręce w naturalnym przeciwruchu
+    stride: {
+      spine: 178, head: 180,
+      nearUpper: 5, nearFore: 15, farUpper: -10, farFore: -6,
+      nearThigh: -18, nearShin: -32, farThigh: 22, farShin: 8,
+      nearFoot: 20, farFoot: 75
+    },
+    crouch: {
+      spine: 172, head: 184,
+      nearUpper: -22, nearFore: 6, farUpper: 24, farFore: 8,
+      nearThigh: -114, nearShin: 20, farThigh: 112, farShin: -22,
+      nearThighLen: 0.7, farThighLen: 0.7,
+      nearFoot: 55, farFoot: 60
+    },
+    sit: {
+      spine: 172, head: 178,
+      nearUpper: 50, nearFore: 95, farUpper: 45, farFore: 88,
+      nearThigh: 135, nearShin: 42, farThigh: 138, farShin: 45,
+      nearFoot: 72, farFoot: 72
+    },
+    chair: {
+      spine: 180, head: 180,
+      nearUpper: 10, nearFore: 72, farUpper: 12, farFore: 76,
+      nearThigh: 97, nearShin: -2, farThigh: 100, farShin: 0,
+      nearFoot: 70, farFoot: 70
+    },
+    stone: {
+      spine: 174, head: 178,
+      nearUpper: 45, nearFore: 95, farUpper: 40, farFore: 88,
+      nearThigh: 118, nearShin: 25, farThigh: 121, farShin: 27,
+      nearFoot: 72, farFoot: 72
+    }
+  };
+  // Siedzenie po turecku: uda na boki i skrócone (idą w stronę kamery), podudzia krzyżują się z przodu
+  POSES.cross = {
+    spine: 180, head: 180,
+    nearUpper: -14, nearFore: 20, farUpper: 14, farFore: -18,
+    nearThigh: -112, nearShin: 78, farThigh: 110, farShin: -80,
+    nearFoot: 70, farFoot: -70,
+    nearThighLen: 0.75, farThighLen: 0.75
+  };
+  // Bliższa noga zgięta, kolano pod brodą, ręce obejmują kolano; dalsza wyprostowana na ziemi
+  POSES.kneeUp = {
+    spine: 170, head: 184,
+    nearUpper: 22, nearFore: 72, farUpper: 32, farFore: 80,
+    nearThigh: 150, nearShin: 6, farThigh: 94, farShin: 90,
+    nearFoot: 70, farFoot: 150,
+    nearThighLen: 0.95
+  };
+  // Na krześle, tułów pochylony, łokcie na kolanach, dłonie luźno między kolanami
+  POSES.lean = {
+    spine: 150, head: 194,
+    nearUpper: 12, nearFore: 60, farUpper: 16, farFore: 62,
+    nearThigh: 97, nearShin: -2, farThigh: 100, farShin: 0,
+    nearFoot: 70, farFoot: 70
+  };
+
+  // Układ rąk nakładany na postawę stojącą. Bliższa ręka (lewa na ekranie) jest rysowana przed tułowiem.
+  const STANDING = ["stand", "contra", "wide", "stride", "crouch"];
+  const ARMS = {
+    down: {},
+    hipOne: { nearUpper: -38, nearFore: 48 },
+    hips: { nearUpper: -38, nearFore: 48, farUpper: 36, farFore: -50 },
+    chin: { nearUpper: 28, nearFore: 172, head: 176 },
+    shade: { nearUpper: -150, nearFore: 95, head: 184 }
+  };
+  const armsApply = st => STANDING.includes(st.pose);
+  // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
+  const poseKey = st => armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose;
+  const poseCache = {};
+  function poseOf(key) {
+    if (poseCache[key]) return poseCache[key];
+    const [base, arms] = key.split("+");
+    return (poseCache[key] = arms ? { ...POSES[base], ...ARMS[arms] } : POSES[base]);
+  }
+  const curPose = () => poseOf(poseKey(scene));
+
+  // Rekwizyt, na którym siedzi Manikun
+  const POSE_PROPS = { chair: "chair", stone: "stone", lean: "chair" };
+
+  // Rysuje rekwizyt pod biodrami (hip) w skali s, do linii podłoża G
+  function drawProp(g, kind, hip, s, G) {
+    const [hx, hy] = hip;
+    if (kind === "chair") {
+      const sy = hy + 6 * s;
+      el("rect", { x: f(hx - 26 * s), y: f(sy - 62 * s), width: f(5 * s), height: f(62 * s), rx: f(1.5 * s), class: "prop" }, g);
+      el("path", { d: `M${f(hx - 14 * s)},${f(sy + 4 * s)} L${f(hx - 14 * s)},${f(G)} M${f(hx + 30 * s)},${f(sy + 4 * s)} L${f(hx + 30 * s)},${f(G)} M${f(hx - 24 * s)},${f(sy + 4 * s)} L${f(hx - 24 * s)},${f(G - 2 * s)}`, class: "prop-line" }, g);
+      el("rect", { x: f(hx - 26 * s), y: f(sy), width: f(60 * s), height: f(5 * s), rx: f(1.5 * s), class: "prop" }, g);
+    } else if (kind === "stone") {
+      const top = hy + 5 * s, x0 = hx - 26 * s, x1 = hx + 30 * s;
+      el("path", { d: `M${f(x0)},${f(G)} C${f(x0 - 4 * s)},${f(top + 10 * s)} ${f(hx - 14 * s)},${f(top - 2 * s)} ${f(hx + 2 * s)},${f(top)} C${f(hx + 20 * s)},${f(top + 1 * s)} ${f(x1 + 6 * s)},${f(top + 8 * s)} ${f(x1)},${f(G)} Z`, class: "prop" }, g);
+    }
+  }
+
+  const figCache = {};
+  function buildFigure(poseId, bodyId = "male") {
+    const key = poseId + "/" + bodyId;
+    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId]));
+  }
+
+  // Wzorzec skali: stojący mężczyzna. Każda poza ma ten sam rozmiar ciała, kobieta jest nieco niższa.
+  const REF = buildFigure("stand", "male").box;
+
+  // Materiał Manikuna: drewno albo biały (przełącznik w pasku górnym)
+  let material = MATERIALS[0];
+
+  // Umieszcza manekina w kadrze W×H. Skala zależy tylko od kadru i postaci stojącej.
+  // anchorX: środek pozy bazowej w układzie manekina, żeby gesty nie przesuwały postaci w kadrze.
+  function place(fig, shot, W, H, anchorX) {
+    const b = fig.box;
+    let scale, x, y, groundY;
+    if (shot === "portrait") {
+      scale = (H * 0.78) / (REF.h * 0.42);
+      const headY = H * 0.1 + 16 * scale;
+      y = headY - (fig.head[1] - b.minY) * scale;
+      x = W / 2 - (fig.head[0] - b.minX) * scale;
+      groundY = y + b.h * scale;
+    } else {
+      groundY = H * 0.86;
+      scale = (groundY - H * 0.14) / REF.h;
+      const ax = anchorX === undefined ? (b.minX + b.maxX) / 2 : anchorX;
+      x = W / 2 - (ax - b.minX) * scale;
+      y = groundY - b.h * scale;
+    }
+    const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
+    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]) };
+  }
+
+  function drawFigureAt(parent, pl, cls) {
+    const b = pl.fig.box;
+    const holder = el("svg", {
+      viewBox: `${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}`,
+      x: f(pl.x), y: f(pl.y), width: f(pl.w), height: f(pl.h), overflow: "visible"
+    }, parent);
+    paintFigure(el("g", { class: cls }, holder), pl.fig.shapes, cls === "fig" ? material : null);
+  }
+
+  function arrow(parent, x1, y1, x2, y2, size, cls = "") {
+    el("line", { x1: f(x1), y1: f(y1), x2: f(x2), y2: f(y2), class: cls }, parent);
+    const a = Math.atan2(y2 - y1, x2 - x1);
+    const p = t => [x2 - size * Math.cos(a + t), y2 - size * Math.sin(a + t)];
+    const l = p(0.45), r = p(-0.45);
+    el("path", { d: `M${f(l[0])},${f(l[1])} L${f(x2)},${f(y2)} L${f(r[0])},${f(r[1])}` }, parent);
+  }
+
+  function cameraGlyph(parent, cx, cy, s) {
+    el("rect", { x: f(cx - s * 0.7), y: f(cy - s * 0.45), width: f(s * 1.1), height: f(s * 0.9), rx: f(s * 0.12) }, parent);
+    el("path", { d: `M${f(cx + s * 0.4)},${f(cy - s * 0.25)} L${f(cx + s * 0.8)},${f(cy - s * 0.45)} L${f(cx + s * 0.8)},${f(cy + s * 0.45)} L${f(cx + s * 0.4)},${f(cy + s * 0.25)} Z` }, parent);
+  }
+
+  // Punkty odniesienia sceny: manekin (animowany i bazowy), horyzont, pozycje lampy
+  function anchors(st, W, H) {
+    // Środek wyznacza sama postawa, więc gest rękami nie przesuwa Manikuna w kadrze
+    const bb = buildFigure(st.pose, st.body).box, ax = (bb.minX + bb.maxX) / 2;
+    const baseFig = buildFigure(poseKey(st), st.body);
+    const plBase = place(baseFig, st.shot, W, H, ax);
+    const pl = st.fig ? place(st.fig, st.shot, W, H, ax) : plBase;
+    return { pl, plBase, u: H / 100, cx: pl.x + pl.w / 2 };
+  }
+
+  // ---------- Tła ----------
+  const paint = (tag, attrs, fill, parent, op) =>
+    el(tag, { ...attrs, style: `fill:${fill};stroke:none${op !== undefined ? `;opacity:${op}` : ""}` }, parent);
+  function vGrad(defs, id, stops) {
+    const gr = el("linearGradient", { id, x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
+    stops.forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, gr));
+    return `url(#${id})`;
+  }
+  const peaks = (pts, W, base, H) => "M0," + f(base) + " " + pts.map(([x, h]) => `L${f(x * W)},${f(base - h * H)}`).join(" ") + ` L${f(W)},${f(base)} Z`;
+
+  // Pora dnia na niebie: 0 = dzień (słońce wysoko), 1 = złota godzina (duże, ciepłe słońce nisko), 2 = noc (księżyc i gwiazdy)
+  const TOD = { day: 0, golden: 1, night: 2 };
+  // cel: widoczność słońca/księżyca w stałym miejscu nieba (0, gdy to one są źródłem światła i stoją w strefie światła)
+  const skySide = st => ZONES[st.lightZone].x < 0.3 ? 0.7 : 0.3;
+  function drawSky(g, defs, uid, W, H, hz, u, tod, cel = 1, skyX = 0.3) {
+    const nightW = Math.max(0, Math.min(1, tod - 1)), goldW = Math.max(0, 1 - Math.abs(tod - 1));
+    // Noc: granatowe przyciemnienie nieba, na nim gwiazdy
+    if (nightW > 0) {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, "#0B1026", g, f(0.72 * nightW));
+      for (let k = 0; k < 22; k++) {
+        const x = ((k * 0.618034) % 1) * W, y = ((k * 0.414214 + 0.07) % 1) * hz * 0.85;
+        paint("circle", { cx: f(x), cy: f(y), r: f(u * (k % 3 ? 0.3 : 0.45)) }, "#E9ECF5", g, f(nightW * (k % 4 ? 0.55 : 0.85)));
+      }
+    }
+    if (goldW > 0) paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "gh", [[0, "#6B4A5A"], [1, "#E0955A"]]), g, f(0.55 * goldW));
+    // Słońce: w dzień małe i wysoko, o złotej godzinie duże i nisko nad horyzontem
+    // Księżyc nocą stoi wysoko
+    const t = Math.min(1, tod), sy = Math.max(H * 0.1, H * 0.13 + (hz - H * 0.26) * t);
+    if (cel > 0) drawCelestial(g, defs, uid, W * skyX, sy + (H * 0.14 - sy) * nightW, u, tod, cel);
+  }
+
+  // Słońce (dzień, złota godzina) przenikające się z księżycem (noc) w punkcie x, y
+  function drawCelestial(g, defs, uid, x, y, u, tod, alpha = 1) {
+    const nightW = Math.max(0, Math.min(1, tod - 1)), t = Math.min(1, tod);
+    const sunW = (1 - nightW) * alpha;
+    if (sunW > 0) {
+      const r = u * (3.8 + 2.4 * t), color = t < 0.5 ? "#FFF1C9" : "#FFB866";
+      const gid = uid + "sun";
+      const gr = el("radialGradient", { id: gid }, defs);
+      el("stop", { offset: "0", "stop-color": color, "stop-opacity": "0.5" }, gr);
+      el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
+      paint("circle", { cx: f(x), cy: f(y), r: f(r * 3.2) }, `url(#${gid})`, g, f(sunW));
+      paint("circle", { cx: f(x), cy: f(y), r: f(r) }, color, g, f(sunW * 0.95));
+    }
+    const moonW = nightW * alpha;
+    if (moonW > 0) {
+      const r = u * 3.6;
+      paint("circle", { cx: f(x), cy: f(y), r: f(r * 2.6) }, "#C9D2F0", g, f(moonW * 0.12));
+      paint("circle", { cx: f(x), cy: f(y), r: f(r) }, "#E8E6DA", g, f(moonW * 0.95));
+      paint("circle", { cx: f(x + r * 0.45), cy: f(y - r * 0.25), r: f(r * 0.85) }, "#141A33", g, f(moonW * 0.9));
+    }
+  }
+
+  function drawBackground(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3) {
+    if (kind === "studio") {
+      // Ciemna ściana, jaśniejsza podłoga z miękkim przejściem i plama światła za postacią
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#2F2F36"], [1, "#24242A"]]), g);
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#2A2A30"], [0.25, "#36363D"], [1, "#2B2B31"]]), g);
+      const spot = el("radialGradient", { id: uid + "s" }, defs);
+      el("stop", { offset: "0", "stop-color": "#FFFFFF", "stop-opacity": "0.09" }, spot);
+      el("stop", { offset: "1", "stop-color": "#FFFFFF", "stop-opacity": "0" }, spot);
+      paint("ellipse", { cx: f(W / 2), cy: f(H * 0.45), rx: f(Math.max(W, H) * 0.45), ry: f(H * 0.45) }, `url(#${uid}s)`, g);
+      return;
+    }
+    if (kind === "street") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3A4452"], [1, "#5E6875"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      // Dalszy plan: mgliste bryły miasta
+      const far = [[0, 0.2], [0.08, 0.28], [0.17, 0.16], [0.28, 0.25], [0.4, 0.19], [0.52, 0.27], [0.64, 0.15], [0.75, 0.23], [0.87, 0.18], [1, 0.26]];
+      far.forEach(([x, h], i) => { if (i < far.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((far[i + 1][0] - x) * W + 1), height: f(h * H) }, "#4C535E", g); });
+      // Podłoże: chodniki i jezdnia zbiegająca się do horyzontu
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#34353A"], [1, "#2A2B2F"]]), g);
+      paint("path", { d: `M${f(W * 0.47)},${f(hz)} L${f(W * 0.53)},${f(hz)} L${f(W * 0.98)},${f(H)} L${f(W * 0.02)},${f(H)} Z` }, "#232428", g);
+      for (let k = 1; k <= 4; k++) {
+        const t0 = Math.pow(k / 5, 1.6), t1 = Math.pow((k + 0.45) / 5, 1.6);
+        const y0 = hz + (H - hz) * t0, y1 = hz + (H - hz) * t1, w0 = W * 0.004 * (1 + k * 1.5);
+        paint("rect", { x: f(W / 2 - w0 / 2), y: f(y0), width: f(w0), height: f(y1 - y0) }, "#55565B", g, 0.8);
+      }
+      // Średni plan: kamienice tylko przy krawędziach, z przygaszonymi oknami
+      [[0, 0.24, 0.55, "#383A40"], [0.76, 1, 0.5, "#3D342F"]].forEach(([x0, x1, h, c]) => {
+        const top = hz - h * H, bx = x0 * W, bw = (x1 - x0) * W;
+        paint("rect", { x: f(bx), y: f(top), width: f(bw), height: f(hz - top + (H - hz) * 0.15) }, c, g);
+        for (let r = 0; r < 4; r++) for (let q = 0; q < 2; q++) {
+          paint("rect", { x: f(bx + bw * (0.2 + q * 0.4)), y: f(top + H * (0.05 + r * 0.1)), width: f(bw * 0.2), height: f(H * 0.05) }, "#8A7A58", g, 0.35);
+        }
+      });
+      return;
+    }
+    if (kind === "mountains") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B4759"], [1, "#8290A0"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      paint("path", { d: peaks([[0, 0.12], [0.12, 0.21], [0.26, 0.11], [0.4, 0.24], [0.55, 0.09], [0.68, 0.19], [0.82, 0.1], [0.94, 0.22], [1, 0.15]], W, hz, H) }, "#5C687A", g);
+      paint("path", { d: peaks([[0, 0.07], [0.16, 0.12], [0.32, 0.04], [0.5, 0.09], [0.7, 0.03], [0.86, 0.13], [1, 0.06]], W, hz + H * 0.02, H) }, "#414C5B", g);
+      paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H) }, vGrad(defs, uid + "g", [[0, "#34403A"], [1, "#252C27"]]), g);
+      return;
+    }
+    if (kind === "forest") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#374539"], [1, "#6A7A6C"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      // Dalszy plan: równa linia koron drzew
+      let d = `M0,${f(hz)}`;
+      for (let x = 0; x <= 1.001; x += 0.05) d += ` L${f(x * W)},${f(hz - H * (0.07 + ((x * 37) % 1) * 0.04))} L${f((x + 0.025) * W)},${f(hz - H * 0.03)}`;
+      paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3D4D41", g);
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#2B362D"], [1, "#1F2621"]]), g);
+      // Średni plan: kilka dużych świerków tylko przy krawędziach kadru
+      const tree = (x, h, c) => {
+        const base = Math.min(gy, H * 0.96), w = h * 0.42;
+        paint("rect", { x: f(x - w * 0.05), y: f(base - h * 0.12), width: f(w * 0.1), height: f(h * 0.12) }, "#2B241E", g);
+        [0, 0.28, 0.52].forEach((o, i) => {
+          const tw = w * (1 - i * 0.22), ty = base - h * (0.1 + o), th = h * 0.42;
+          paint("path", { d: `M${f(x)},${f(ty - th)} L${f(x + tw / 2)},${f(ty)} L${f(x - tw / 2)},${f(ty)} Z` }, c, g);
+        });
+      };
+      tree(W * 0.05, H * 0.62, "#26342A"); tree(W * 0.16, H * 0.45, "#2B3A2F");
+      tree(W * 0.95, H * 0.66, "#26342A"); tree(W * 0.84, H * 0.42, "#2B3A2F");
+      return;
+    }
+    // Miękka plama światła (latarnie, lampy w kawiarni)
+    const glowAt = (x, y, r, color, op) => {
+      const gid = uid + "l" + Math.round(x) + "_" + Math.round(y);
+      const gr = el("radialGradient", { id: gid }, defs);
+      el("stop", { offset: "0", "stop-color": color, "stop-opacity": op }, gr);
+      el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
+      paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
+    };
+    if (kind === "rooftop") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B485A"], [1, "#7F8C9B"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      const sk = [[0, 0.08], [0.06, 0.14], [0.13, 0.06], [0.2, 0.18], [0.27, 0.1], [0.35, 0.07], [0.42, 0.15], [0.5, 0.09], [0.58, 0.2], [0.65, 0.08], [0.73, 0.12], [0.8, 0.06], [0.87, 0.16], [0.94, 0.09], [1, 0.11]];
+      sk.forEach(([x, h], i) => { if (i < sk.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((sk[i + 1][0] - x) * W + 1), height: f(h * H + 2) }, "#56606F", g); });
+      // Gzyms dachu i posadzka
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.035) }, "#44464D", g);
+      paint("rect", { x: 0, y: f(hz + H * 0.035), width: f(W), height: f(H) }, vGrad(defs, uid + "g", [[0, "#35363C"], [1, "#2A2B30"]]), g);
+      // Komin i zbiornik przy prawej krawędzi
+      paint("rect", { x: f(W * 0.86), y: f(hz - H * 0.16), width: f(W * 0.12), height: f(H * 0.2) }, "#3A3C43", g);
+      paint("rect", { x: f(W * 0.84), y: f(hz - H * 0.19), width: f(W * 0.16), height: f(H * 0.035) }, "#45474E", g);
+      paint("rect", { x: f(W * 0.02), y: f(hz - H * 0.07), width: f(W * 0.05), height: f(H * 0.1) }, "#3D3F46", g);
+      return;
+    }
+    if (kind === "beach") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#4A5A6E"], [1, "#A5B0B6"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.07) }, vGrad(defs, uid + "s", [[0, "#5C7C88"], [1, "#4A6771"]]), g);
+      paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.004) }, "#8FAAB0", g, 0.5);
+      // Mokry piasek przy wodzie i suchy bliżej
+      paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#6D6452"], [1, "#4E4639"]]), g);
+      paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(hz + H * 0.08)} Q${f(W * 0.5)},${f(hz + H * 0.115)} 0,${f(hz + H * 0.085)} Z` }, "#5E5646", g);
+      return;
+    }
+    if (kind === "meadow") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#435467"], [1, "#94A3A6"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      paint("path", { d: `M0,${f(hz)} C${f(W * 0.2)},${f(hz - H * 0.12)} ${f(W * 0.45)},${f(hz - H * 0.02)} ${f(W * 0.6)},${f(hz - H * 0.08)} C${f(W * 0.75)},${f(hz - H * 0.14)} ${f(W * 0.9)},${f(hz - H * 0.05)} ${f(W)},${f(hz - H * 0.07)} L${f(W)},${f(hz + H * 0.1)} L0,${f(hz + H * 0.1)} Z` }, "#5A7159", g);
+      paint("path", { d: `M0,${f(hz + H * 0.03)} C${f(W * 0.3)},${f(hz - H * 0.04)} ${f(W * 0.6)},${f(hz + H * 0.04)} ${f(W)},${f(hz - H * 0.02)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#465C45"], [1, "#2E3B2E"]]), g);
+      // Kępki trawy tylko przy dolnych rogach
+      [[0.04, 1], [0.1, 0.8], [0.9, 0.85], [0.96, 1]].forEach(([x, k]) => {
+        const bx = x * W, by = H * 0.98, h = H * 0.07 * k;
+        paint("path", { d: `M${f(bx - W * 0.03)},${f(by)} L${f(bx - W * 0.012)},${f(by - h)} L${f(bx)},${f(by - h * 0.3)} L${f(bx + W * 0.01)},${f(by - h * 1.1)} L${f(bx + W * 0.03)},${f(by)} Z` }, "#344534", g);
+      });
+      return;
+    }
+    if (kind === "room") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A3531"], [1, "#2E2A27"]]), g);
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#3C3129"], [1, "#2B231D"]]), g);
+      paint("rect", { x: 0, y: f(fy - H * 0.012), width: f(W), height: f(H * 0.012) }, "#46403A", g);
+      for (let k = 1; k < 4; k++) paint("rect", { x: 0, y: f(fy + (H - fy) * k / 4), width: f(W), height: 1 }, "#FFFFFF", g, 0.05);
+      // Okno przy lewej krawędzi
+      const wx = W * 0.03, wy = H * 0.07, ww = W * 0.22, wh = H * 0.35;
+      paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, "#55606C", g);
+      const px = wx + ww * 0.08, py = wy + wh * 0.06, pw = ww * 0.84, ph = wh * 0.88;
+      paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "o", [[0, "#8093A3"], [1, "#6A7886"]]), g);
+      // Za oknem pora dnia: o złotej godzinie zachodzi słońce, nocą księżyc i gwiazdy
+      const goldW = Math.max(0, 1 - Math.abs(tod - 1)), nightW = Math.max(0, Math.min(1, tod - 1));
+      if (goldW > 0 || nightW > 0) {
+        el("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, el("clipPath", { id: uid + "wc" }, defs));
+        const pane = el("g", { "clip-path": `url(#${uid}wc)` }, g), hy = py + ph * 0.8;
+        if (goldW > 0) {
+          paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "og", [[0, "#7A5566"], [0.6, "#E29A5C"], [1, "#F2B56B"]]), pane, f(goldW));
+          const sr = pw * 0.2, scx = px + pw * 0.62;
+          paint("circle", { cx: f(scx), cy: f(hy), r: f(sr * 2.4) }, "#FFC27A", pane, f(0.25 * goldW));
+          paint("circle", { cx: f(scx), cy: f(hy), r: f(sr) }, "#FFD08A", pane, f(0.95 * goldW));
+        }
+        if (nightW > 0) {
+          paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "on", [[0, "#0E1330"], [1, "#1C2444"]]), pane, f(nightW));
+          [[0.2, 0.15], [0.75, 0.3], [0.35, 0.55], [0.85, 0.62]].forEach(([sx, sy]) => paint("circle", { cx: f(px + pw * sx), cy: f(py + ph * sy), r: f(u * 0.3) }, "#E9ECF5", pane, f(0.8 * nightW)));
+          const mr = pw * 0.12, mx = px + pw * 0.3, my = py + ph * 0.28;
+          paint("circle", { cx: f(mx), cy: f(my), r: f(mr) }, "#E8E6DA", pane, f(0.95 * nightW));
+          paint("circle", { cx: f(mx + mr * 0.45), cy: f(my - mr * 0.25), r: f(mr * 0.85) }, "#141A33", pane, f(0.9 * nightW));
+        }
+        // Linia zabudowy za oknem przykrywa dolną połowę słońca
+        paint("rect", { x: f(px), y: f(hy), width: f(pw), height: f(py + ph - hy) }, "#3E3A40", pane, f(Math.max(goldW, nightW) * 0.95));
+        // Ciepła plama zachodzącego słońca na podłodze
+        if (goldW > 0) {
+          const x0 = wx + ww * 0.15, x1 = wx + ww * 0.95;
+          paint("path", { d: `M${f(x0)},${f(fy)} L${f(x1)},${f(fy)} L${f(x1 + W * 0.28)},${f(H)} L${f(x0 + W * 0.2)},${f(H)} Z` }, "#FFB866", g, f(0.14 * goldW));
+        }
+      }
+      paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, "#55606C", g);
+      paint("rect", { x: f(wx), y: f(wy + wh * 0.48), width: f(ww), height: f(wh * 0.03) }, "#55606C", g);
+      // Sofa przy prawej krawędzi
+      const sx = W * 0.76, sw = W * 0.3, sb = fy + H * 0.02;
+      paint("rect", { x: f(sx), y: f(sb - H * 0.16), width: f(sw), height: f(H * 0.1), rx: f(H * 0.02) }, "#4A4140", g);
+      paint("rect", { x: f(sx - W * 0.02), y: f(sb - H * 0.08), width: f(sw), height: f(H * 0.08), rx: f(H * 0.015) }, "#55494A", g);
+      return;
+    }
+    if (kind === "cafe") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A2E27"], [1, "#2C231E"]]), g);
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#34291F"], [1, "#241C16"]]), g);
+      // Półki z butelkami po prawej
+      [0.28, 0.4].forEach(t => {
+        paint("rect", { x: f(W * 0.8), y: f(H * t), width: f(W * 0.2), height: f(H * 0.008) }, "#5A4636", g);
+        for (let k = 0; k < 4; k++) paint("rect", { x: f(W * (0.82 + k * 0.045)), y: f(H * (t - 0.055)), width: f(W * 0.02), height: f(H * 0.055), rx: f(W * 0.005) }, k % 2 ? "#5E6A58" : "#6E5840", g, 0.8);
+      });
+      // Lada przy lewej krawędzi
+      paint("rect", { x: 0, y: f(fy - H * 0.14), width: f(W * 0.24), height: f(H * 0.16) }, "#4A392C", g);
+      paint("rect", { x: 0, y: f(fy - H * 0.155), width: f(W * 0.26), height: f(H * 0.02) }, "#5C4736", g);
+      // Lampy wiszące przy krawędziach z ciepłą poświatą
+      [W * 0.12, W * 0.3, W * 0.7, W * 0.88].forEach((x, i) => {
+        const y = H * (i % 3 ? 0.2 : 0.14);
+        paint("rect", { x: f(x - 0.5), y: 0, width: 1.2, height: f(y) }, "#6A5A4A", g);
+        glowAt(x, y + H * 0.02, H * 0.13, "#FFC47A", "0.3");
+        paint("path", { d: `M${f(x - W * 0.035)},${f(y + H * 0.025)} L${f(x - W * 0.012)},${f(y)} L${f(x + W * 0.012)},${f(y)} L${f(x + W * 0.035)},${f(y + H * 0.025)} Z` }, "#2A211B", g);
+      });
+    }
+  }
+
+  // Słońce: koło z promieniami
+  function sunGlyph(g, cx, cy, r) {
+    el("circle", { cx: f(cx), cy: f(cy), r: f(r) }, g);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      el("line", { x1: f(cx + Math.cos(a) * r * 1.5), y1: f(cy + Math.sin(a) * r * 1.5), x2: f(cx + Math.cos(a) * r * 2.2), y2: f(cy + Math.sin(a) * r * 2.2) }, g);
+    }
+  }
+  // Lampa: klosz na przewodzie, jak lampa studyjna
+  function lampGlyph(g, cx, cy, r) {
+    el("path", { d: `M${f(cx)},${f(cy - r * 2.3)} L${f(cx)},${f(cy - r * 0.8)}` }, g);
+    el("path", { d: `M${f(cx - r * 0.8)},${f(cy - r * 0.8)} L${f(cx + r * 0.8)},${f(cy - r * 0.8)} L${f(cx + r * 1.5)},${f(cy + r * 0.6)} L${f(cx - r * 1.5)},${f(cy + r * 0.6)} Z` }, g);
+    el("path", { d: `M${f(cx - r * 0.5)},${f(cy + r * 0.6)} A${f(r * 0.5)},${f(r * 0.5)} 0 0 0 ${f(cx + r * 0.5)},${f(cy + r * 0.6)}` }, g);
+  }
+
+  // Źródło światła. kind: 0 = słońce, 1 = lampa (przy zmianie ikony się przenikają).
+  // Pod ikoną jest wycięcie w kolorze tła, więc linie sceny nie przechodzą przez nią.
+  function drawLamp(g, L, u, kind) {
+    const r = u * 2.8 * L.k * (L.grab ? 1.25 : 1), depth = L.behind ? 0.7 : 1;
+    if (L.icon <= 0) return;
+    if (L.icon < 1) g = el("g", { opacity: f(L.icon) }, g);
+    if (L.grab) g = el("g", { class: "grabbed" }, g);
+    el("circle", { cx: f(L.x), cy: f(L.y - r * 0.4), r: f(r * 2.7), class: "halo" }, g);
+    if (kind < 1) sunGlyph(el("g", { opacity: f((1 - kind) * depth) }, g), L.x, L.y, r);
+    if (kind > 0) lampGlyph(el("g", { opacity: f(kind * depth) }, g), L.x, L.y, r);
+  }
+
+  let clipSeq = 0;
+  // Składa szkic sceny. layers: które warstwy narysować (kafelek pokazuje tylko swoją).
+  function renderScene(svg, st, W, H, layers, opts = {}) {
+    svg.replaceChildren();
+    svg.setAttribute("viewBox", `0 0 ${f(W)} ${f(H)}`);
+    const id = "clip" + (++clipSeq);
+    const defs = el("defs", {}, svg);
+    el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, defs));
+    const g = el("g", { "clip-path": `url(#${id})` }, svg);
+
+    const A = anchors(st, W, H);
+    const { pl, u, cx } = A;
+    // Położenie aparatu i lampy: w trakcie animacji lub przeciągania z props, inaczej środek strefy
+    const P = st.props || {};
+    const zc = ZONES[st.camera], zl = ZONES[st.lightZone];
+    const camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
+    const litRaw = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
+    const lightT = P.light ?? (isBackLight(st.light) ? 1 : 0);
+    const kindT = P.kind ?? (isNaturalLight(st.light) ? 0 : 1);
+    // Horyzont lekko idzie za wysokością kamery: z góry widać więcej ziemi, z dołu więcej nieba
+    const camN = P.camY ?? zc.y;
+    const hz = H * (0.55 - (0.5 - camN) * 0.4);
+    const tod = P.tod ?? TOD[st.time];
+    // Słońce lub księżyc w tle stoi po przeciwnej stronie niż lampa, żeby się nie nakładały
+    const skyX = P.skyX ?? skySide(st);
+    // Naturalne światło na zewnątrz: źródłem jest słońce lub księżyc na niebie, bez osobnej ikony.
+    // Stoi w strefie światła, ale zawsze nad horyzontem; o złotej godzinie schodzi nisko.
+    const skyT = layers.has("background") ? (P.sky ?? (isOutdoor(st.background) && isNaturalLight(st.light) ? 1 : 0)) : 0;
+    const goldW = Math.max(0, 1 - Math.abs(tod - 1)), low = hz - H * 0.13;
+    const placeLight = pt => {
+      if (skyT <= 0) return pt;
+      const cy = Math.min(pt[1], low);
+      return [pt[0], pt[1] + (cy + (low - cy) * goldW - pt[1]) * skyT];
+    };
+    const litPt = placeLight(litRaw);
+    // Punkty stref do przeciągania: aparat może stanąć wszędzie, światło tylko tam, skąd naprawdę pada
+    const zonePts = { camera: {}, light: {} };
+    ALL_ZONES.forEach(z => { zonePts.camera[z] = zonePt([ZONES[z].x, ZONES[z].y], W, H, u); });
+    lightZones(st).forEach(z => { zonePts.light[z] = placeLight(zonePts.camera[z]); });
+    const horizonY = camPt[1];
+    const target = [cx, pl.y + pl.h * 0.3];
+    // Na starcie widać tylko Manikuna; tło, kamera, światło i ruch pojawiają się płynnie po wyborze trybu
+    const reveal = st.props && st.props.reveal !== undefined ? st.props.reveal : 1;
+    const layer = () => reveal >= 1 ? g : el("g", { opacity: f(reveal) }, g);
+
+    // Tło: trzy plany z przygaszonymi kolorami; im dalej, tym jaśniej i bardziej mgliście.
+    if (layers.has("background") && reveal > 0) {
+      const gy = st.shot === "full" ? pl.groundY : H * 0.95;
+      if (st.bgTrans) {
+        // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX);
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX);
+      } else {
+        drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX);
+      }
+      // Pora dnia delikatnie zmienia całe tło (bez studia): ciepło o złotej godzinie, ciemny granat nocą
+      if (st.background !== "studio") {
+        const goldW = Math.max(0, 1 - Math.abs(tod - 1)), nightW = Math.max(0, Math.min(1, tod - 1));
+        if (goldW > 0) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:#FF9A4A;stroke:none;opacity:${f(0.12 * goldW)}` }, layer());
+        if (nightW > 0) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:#070B1E;stroke:none;opacity:${f(0.42 * nightW)}` }, layer());
+      }
+      // Rodzaj i kierunek światła zabarwia tło: słońce ociepla, lampa chłodzi, kontra przyciemnia
+      const tint = kindT < 0.5 ? "#FFB45C" : "#7FA6FF";
+      el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:${tint};stroke:none;opacity:0.07` }, layer());
+      if (lightT > 0) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:#000;stroke:none;opacity:${f(0.22 * lightT)}` }, layer());
+    }
+
+    // Słońce lub księżyc jako źródło światła: na niebie, za Manikunem; chwycone lekko rośnie
+    if (skyT > 0 && reveal > 0) {
+      const cg = el("g", { opacity: f(skyT * reveal) }, g);
+      const s = opts.grab === "light" ? 1.25 : 1;
+      drawCelestial(s === 1 ? cg : el("g", { transform: `translate(${f(litPt[0])} ${f(litPt[1])}) scale(${s}) translate(${f(-litPt[0])} ${f(-litPt[1])})` }, cg),
+        defs, id + "c", litPt[0], litPt[1], u, tod);
+    }
+
+    // Podłoże
+    if (st.shot === "full" && layers.has("ground")) {
+      el("line", { x1: 0, y1: f(pl.groundY), x2: f(W), y2: f(pl.groundY), class: "thin" }, g);
+    }
+
+    // Kamera: linia horyzontu i znak aparatu
+    // Kamera: sam znak aparatu na wysokości obiektywu, z wycięciem pod spodem
+    if (layers.has("camera") && reveal > 0) {
+      const s = u * 7, [x, y] = camPt, lg = layer();
+      el("circle", { cx: f(x), cy: f(y), r: f(s * 1.25), class: "halo" }, lg);
+      // Obiektyw zawsze skierowany na Manikuna; po prawej stronie aparat jest odbity, nie odwrócony
+      const a = Math.atan2(target[1] - y, target[0] - x) * 180 / Math.PI, flip = Math.abs(a) > 90 ? -1 : 1;
+      const grab = opts.grab === "camera" ? ` translate(${f(x)} ${f(y)}) scale(1.25) translate(${f(-x)} ${f(-y)})` : "";
+      const cg = el("g", { transform: `rotate(${f(a)} ${f(x)} ${f(y)}) translate(${f(x)} ${f(y)}) scale(1 ${flip}) translate(${f(-x)} ${f(-y)})${grab}`, class: opts.grab === "camera" ? "grabbed" : "" }, lg);
+      cameraGlyph(cg, x + s * 0.15, y, s);
+    }
+
+    // Światło: jedna lampa przelatuje łukiem z przodu (miękkie) za postać (kontra).
+    // Za postacią jest mniejsza i bledsza, rysowana pod Manikunem: stoi głęboko w scenie.
+    // Lampa: z przodu duża z promieniami, za Manikunem mniejsza i bledsza, rysowana pod nim
+    const lamp = layers.has("light") && reveal > 0 ? {
+      x: litPt[0], y: litPt[1], t: lightT, k: 1 - 0.3 * lightT, behind: lightT >= 0.5,
+      rays: Math.max(0, 1 - lightT * 3), glow: Math.max(0, Math.min(1, (lightT - 0.6) / 0.4)),
+      grab: opts.grab === "light", icon: 1 - skyT
+    } : null;
+    if (lamp && lamp.behind) drawLamp(layer(), lamp, u, kindT);
+    if (lamp && lamp.glow > 0) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal) }, g), pl, "glow");
+
+    // Ruch: tylna połowa orbity za postacią
+    const orbit = { cx, cy: pl.y + pl.h * 0.62, rx: Math.max(pl.w * 0.75, W * 0.3), ry: u * 6 };
+    if (layers.has("motion") && reveal > 0 && st.motion === "orbit") {
+      el("path", { d: `M${f(orbit.cx - orbit.rx)},${f(orbit.cy)} A${f(orbit.rx)},${f(orbit.ry)} 0 0 1 ${f(orbit.cx + orbit.rx)},${f(orbit.cy)}`, class: "dash" }, layer());
+    }
+
+    if (POSE_PROPS[st.pose]) drawProp(g, POSE_PROPS[st.pose], A.plBase.hip, A.plBase.scale, A.plBase.groundY);
+    drawFigureAt(g, pl, "fig");
+
+    // Ruch: przednia połowa orbity albo najazd kamery
+    if (layers.has("motion") && reveal > 0) {
+      const lg = layer();
+      if (st.motion === "orbit") {
+        el("path", { d: `M${f(orbit.cx + orbit.rx)},${f(orbit.cy)} A${f(orbit.rx)},${f(orbit.ry)} 0 0 1 ${f(orbit.cx - orbit.rx)},${f(orbit.cy)}`, class: "dash" }, lg);
+        const ax = orbit.cx + orbit.rx * 0.5, ay = orbit.cy + orbit.ry * Math.sqrt(0.75);
+        arrow(lg, ax + u * 4, ay - u * 0.6, ax, ay, u * 3);
+      } else {
+        // Najazd: strzałka od aparatu w stronę Manikuna
+        const dx = target[0] - camPt[0], dy = target[1] - camPt[1], d = Math.hypot(dx, dy) || 1;
+        const a0 = u * 10, a1 = Math.max(a0 + u * 4, Math.min(a0 + u * 16, d - pl.w * 0.35 - u * 3));
+        arrow(lg, camPt[0] + dx / d * a0, camPt[1] + dy / d * a0, camPt[0] + dx / d * a1, camPt[1] + dy / d * a1, u * 3.5, "dash");
+      }
+    }
+
+    // Lampa z przodu: ikona i krótkie promienie w stronę postaci (nie przecinają sceny)
+    if (lamp && !lamp.behind) {
+      const lg = layer();
+      drawLamp(lg, lamp, u, kindT);
+      if (lamp.rays > 0) {
+        const rg = el("g", { opacity: f(lamp.rays) }, lg);
+        const [tx, ty] = target;
+        const a = Math.atan2(ty - lamp.y, tx - lamp.x), r0 = u * (5.5 * lamp.k + 2.5 * skyT), r1 = r0 + u * 4;
+        [-0.28, 0, 0.28].forEach(d => {
+          el("line", { x1: f(lamp.x + Math.cos(a + d) * r0), y1: f(lamp.y + Math.sin(a + d) * r0), x2: f(lamp.x + Math.cos(a + d) * r1), y2: f(lamp.y + Math.sin(a + d) * r1) }, rg);
+        });
+      }
+    }
+
+    // Strefy kotwiczenia widoczne tylko podczas przeciągania
+    if (opts.zones) {
+      const pts = zonePts[opts.grab];
+      for (const id in pts) {
+        const [zx, zy] = pts[id];
+        el("circle", { cx: f(zx), cy: f(zy), r: f(u * (id === opts.zones.near ? 3.2 : 2.2)), class: id === opts.zones.near ? "zone near" : "zone" }, svg);
+      }
+    }
+
+    // Rama kadru
+    el("rect", { x: 0.5, y: 0.5, width: f(W - 1), height: f(H - 1), rx: f(Math.min(W, H) * 0.035), class: "frame" }, svg);
+    if (opts.corners) {
+      const c = u * 5, i = u * 3;
+      [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]].forEach(([x, y, sx, sy]) => {
+        el("path", { d: `M${f(x)},${f(y + sy * c)} L${f(x)},${f(y)} L${f(x + sx * c)},${f(y)}`, class: "corner" }, svg);
+      });
+    }
+    return { camPt, litPt, zonePts, u, W, H, head: A.plBase.head };
+  }
+
+  // ---------- Ikony paska kategorii ----------
+  const CAT_ICONS = {
+    format: svg => el("rect", { x: 6, y: 3, width: 12, height: 18, rx: 1.5 }, svg),
+    shot: svg => el("path", { d: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5" }, svg),
+    camera: svg => { el("rect", { x: 3, y: 7, width: 13, height: 11, rx: 1.5 }, svg); el("path", { d: "M16 10l5-3v11l-5-3z" }, svg); },
+    light: svg => isNaturalLight(scene.light) ? sunGlyph(svg, 12, 12, 4) : lampGlyph(svg, 12, 13, 4.2),
+    time: svg => {
+      if (scene.time === "night") { el("path", { d: "M15 4a8 8 0 1 0 5 13A6.5 6.5 0 0 1 15 4z" }, svg); return; }
+      if (scene.time === "golden") { el("path", { d: "M5 17a7 7 0 0 1 14 0 M2 17h20 M12 5v3 M5.6 9.6l2 2 M18.4 9.6l-2 2" }, svg); return; }
+      sunGlyph(svg, 12, 12, 4);
+    },
+    background: svg => { el("rect", { x: 3, y: 3, width: 18, height: 3, rx: 1.5 }, svg); el("path", { d: "M5 6v11l-2 4 M19 6v11l2 4 M5 17h14" }, svg); },
+    motion: svg => { el("ellipse", { cx: 12, cy: 15, rx: 9, ry: 3.5 }, svg); el("circle", { cx: 12, cy: 5, r: 2 }, svg); el("path", { d: "M12 7v8 M15 19.4l2.4-0.8-1.4-2" }, svg); },
+    body: svg => miniFigure(svg, "stand", scene.body),
+    pose: svg => miniFigure(svg, "sit", scene.body),
+    arms: svg => miniFigure(svg, "stand+hips", scene.body),
+    outfit: svg => outfitGlyph(svg, scene.outfit, 24)
+  };
+
+  // Mały ludzik w ikonie 24×24, dopasowany do pola
+  function miniFigure(svg, poseId, bodyId) {
+    const fig = buildFigure(poseId, bodyId), b = fig.box, s = 22 / Math.max(b.w, b.h);
+    const holder = el("svg", { viewBox: `${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}`, x: f(12 - b.w * s / 2), y: f(23 - b.h * s), width: f(b.w * s), height: f(b.h * s) }, svg);
+    paintFigure(el("g", { class: "fig" }, holder), fig.shapes, material);
+  }
+
+  // ---------- Interfejs ----------
+  const bar = document.getElementById("bar");
+  const panelWrap = document.getElementById("panelWrap");
+  const preview = document.getElementById("preview");
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  function valueShort(cat) {
+    if (cat.id === "format") return currentFormat().short;
+    return optionOf(cat.id, scene[cat.id]).short;
+  }
+
+  // Pasek kategorii: przebudowa tylko przy zmianie listy kategorii, poza tym aktualizacja w miejscu
+  let barKey = "", barItems = [];
+  function renderBar() {
+    const cats = activeCats(), key = cats.map(c => c.id).join();
+    if (key !== barKey) {
+      barKey = key;
+      bar.replaceChildren();
+      barItems = cats.map(cat => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "cat";
+        b.id = "cat-" + cat.id;
+        const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" });
+        const label = document.createElement("span");
+        label.className = "label";
+        const patch = document.createElement("span");
+        patch.className = "patch";
+        patch.style.background = cat.patch;
+        label.append(patch, cat.label);
+        const value = document.createElement("span");
+        value.className = "value";
+        b.append(svg, label, value);
+        b.addEventListener("click", () => { scene.open = scene.open === cat.id && !scene.sub ? null : cat.id; scene.sub = null; render(); });
+        bar.appendChild(b);
+        return { cat, b, svg, value };
+      });
+    }
+    barItems.forEach(({ cat, b, svg, value }) => {
+      b.setAttribute("aria-pressed", String(scene.open === cat.id));
+      // Studio nie ma pory dnia, a siedząc ręce są oparte: te kategorie są przygaszone i nieaktywne
+      const off = (cat.id === "time" && !timeApplies(scene)) || (cat.id === "arms" && !armsApply(scene));
+      b.disabled = off;
+      value.textContent = off ? "—" : valueShort(cat);
+      svg.replaceChildren();
+      CAT_ICONS[cat.id](svg);
+    });
+  }
+
+  // Kafelek opcji. redraw() odświeża rysunek i zaznaczenie bez ponownej animacji wejścia.
+  function tile(id, name, isPressed, onClick, draw) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile";
+    b.id = id;
+    const svg = el("svg", { class: "ink", "aria-hidden": "true" });
+    const n = document.createElement("span");
+    n.className = "name";
+    n.textContent = name;
+    b.append(svg, n);
+    b.addEventListener("click", onClick);
+    panelEl.appendChild(b);
+    const t = {
+      btn: b,
+      redraw() {
+        svg.replaceChildren();
+        draw(svg);
+        b.setAttribute("aria-pressed", String(isPressed()));
+      }
+    };
+    t.redraw();
+    return t;
+  }
+
+  // Warstwy pokazywane na miniaturach danej kategorii
+  const TILE_LAYERS = {
+    shot: ["ground"],
+    camera: ["ground", "camera"],
+    light: ["ground", "light"],
+    background: ["ground", "background"],
+    time: ["ground", "background"],
+    motion: ["ground", "motion"]
+  };
+
+  function makeTiles(catId) {
+    if (catId === "format") {
+      return FORMATS[scene.mode].map(fmt => tile("opt-format-" + fmt.id, fmt.name,
+        () => scene.format[scene.mode] === fmt.id,
+        () => { scene.format[scene.mode] = fmt.id; render(); },
+        svg => {
+          const s = 56 / Math.max(fmt.w, fmt.h), w = fmt.w * s, h = fmt.h * s;
+          svg.setAttribute("viewBox", "0 0 64 64");
+          el("rect", { x: f(32 - w / 2), y: f(32 - h / 2), width: f(w), height: f(h), rx: 2 }, svg);
+        }));
+    }
+    if (scene.sub) {
+      // Poziom wariantów: kafelek powrotu i warianty grupy
+      const grp = optionsOf(catId).find(o => o.id === scene.sub);
+      const list = [tile("opt-back", "Wróć", () => false, () => { scene.sub = null; render(); }, svg => {
+        svg.setAttribute("viewBox", "0 0 64 64");
+        el("path", { d: "M36 20 L24 32 L36 44 M24 32 H46" }, svg);
+      })];
+      list[0].btn.classList.add("back");
+      grp.children.forEach(c => list.push(tile("opt-" + catId + "-" + c.id, c.name,
+        () => scene[catId] === c.id,
+        () => { scene[catId] = c.id; render(); },
+        svg => drawOption(catId, c.id, svg))));
+      return list;
+    }
+    let opts = optionsOf(catId).filter(o => fitsBody(o, scene));
+    if (catId === "light" && !lampAllowed(scene)) opts = opts.filter(o => o.id !== "artificial");
+    // Została jedna grupa: od razu jej warianty, bez rozwijania
+    if (opts.length === 1 && opts[0].children) opts = opts[0].children;
+    return opts.map(o => {
+      if (!o.children) {
+        return tile("opt-" + catId + "-" + o.id, o.name,
+          () => scene[catId] === o.id,
+          () => { scene[catId] = o.id; render(); },
+          svg => drawOption(catId, o.id, svg));
+      }
+      // Kafelek grupy: wygląda jak stos kart i ma znacznik rozwinięcia
+      const inGroup = () => o.children.some(c => c.id === scene[catId]);
+      const t = tile("opt-" + catId + "-" + o.id, o.name, inGroup,
+        () => { if (!inGroup()) scene[catId] = o.children[0].id; scene.sub = o.id; render(); },
+        svg => drawOption(catId, (o.children.find(c => c.id === scene[catId]) || o.children[0]).id, svg));
+      t.btn.classList.add("group");
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.setAttribute("aria-hidden", "true");
+      t.btn.appendChild(badge);
+      return t;
+    });
+  }
+
+  // Proste znaki ubrań w polu 64×64
+  const OUTFIT_GLYPHS = {
+    casual: ["M23 13 L12 18 L7 29 L15 33 L18 28 L18 53 L46 53 L46 28 L49 33 L57 29 L52 18 L41 13 Q32 21 23 13 Z"],
+    elegant: ["M22 11 L11 17 L9 55 L55 55 L53 17 L42 11", "M22 11 L30 32 L32 55 M42 11 L34 32 L32 55", "M32 15 L29.5 19 L32 36 L34.5 19 Z"],
+    sport: ["M24 9 L24 17 Q18 21 18 30 L18 55 L46 55 L46 30 Q46 21 40 17 L40 9 Q32 20 24 9 Z", "M18 40 L46 40"],
+    street: ["M22 17 L12 23 L8 45 L16 47 L18 35 L18 55 L46 55 L46 35 L48 47 L56 45 L52 23 L42 17", "M22 17 Q22 6 32 6 Q42 6 42 17 Q32 24 22 17 Z", "M24 43 L40 43 L42 51 L22 51 Z", "M29 21 L29 27 M35 21 L35 27"],
+    coat: ["M22 9 L12 15 L10 59 L54 59 L52 15 L42 9", "M22 9 L32 25 L42 9", "M32 25 L32 59", "M11 37 L53 37"],
+    dress: ["M26 7 L26 15 L22 29 L13 57 L51 57 L42 29 L38 15 L38 7", "M22 29 L42 29", "M26 15 Q32 19 38 15"]
+  };
+  function outfitGlyph(svg, id, box = 64) {
+    const g = el("g", { transform: `scale(${f(box / 64)})` }, svg);
+    OUTFIT_GLYPHS[id].forEach(d => el("path", { d }, g));
+  }
+
+  // Rysunek na kafelku dla wariantu leafId danej kategorii
+  function drawOption(catId, leafId, svg) {
+    if (catId === "outfit") {
+      svg.setAttribute("viewBox", "0 0 64 64");
+      outfitGlyph(svg, leafId);
+      return;
+    }
+    if (catId === "pose" || catId === "body" || catId === "arms") {
+      // Jedna skala dla wszystkich kafelków z postacią: liczona z każdej pozy, układu rąk i sylwetki
+      const boxes = [];
+      Object.keys(POSES).forEach(pk => Object.keys(ARMS).forEach(ak => Object.keys(BODIES).forEach(bk =>
+        boxes.push(buildFigure(poseKey({ pose: pk, arms: ak }), bk).box))));
+      const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
+      const poseId = catId === "pose" ? leafId : scene.pose;
+      const key = poseKey({ pose: poseId, arms: catId === "arms" ? leafId : scene.arms });
+      const fig = buildFigure(key, catId === "body" ? leafId : scene.body), b = fig.box;
+      const x = b.minX - (side - b.w) / 2, y = b.maxY + 6 - side;
+      svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
+      el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
+      if (POSE_PROPS[poseId]) drawProp(svg, POSE_PROPS[poseId], [0, 0], 1, b.maxY);
+      paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+      return;
+    }
+    renderScene(svg, { ...scene, [catId]: leafId }, 100, 100, new Set(TILE_LAYERS[catId]));
+  }
+
+  // Rząd kafelków opcji. Ta sama animacja dla każdej kategorii: stary rząd chowa się w dół,
+  // nowy wysuwa się spod spodu, kafelek po kafelku. Obszar ma stałą wysokość, kadr stoi w miejscu.
+  const PANEL_MS = 420, OUT_MS = 280, STEP_MS = 40;
+  let panelCat = null, panelEl = null, panelTiles = [];
+
+  function syncPanel() {
+    const want = scene.open ? scene.open + (scene.sub ? "/" + scene.sub : "") : null;
+    if (want === panelCat) { panelTiles.forEach(t => t.redraw()); return; }
+    panelCat = want;
+    const fast = reduceMotion.matches;
+
+    const old = panelEl, oldTiles = panelTiles;
+    if (old) {
+      if (fast) old.remove();
+      else {
+        oldTiles.forEach((t, i) => { t.btn.style.transitionDelay = (i * 25) + "ms"; t.btn.classList.add("out"); });
+        setTimeout(() => old.remove(), OUT_MS + oldTiles.length * 25 + 60);
+      }
+    }
+    panelEl = null;
+    panelTiles = [];
+    if (!want) return;
+
+    panelEl = document.createElement("div");
+    panelEl.className = "panel";
+    panelWrap.appendChild(panelEl);
+    panelTiles = makeTiles(scene.open);
+    if (fast) return;
+
+    panelTiles.forEach(t => { t.btn.style.transition = "none"; t.btn.classList.add("below"); });
+    panelEl.offsetWidth; // zatwierdź pozycję pod spodem przed animacją
+    const start = old ? 140 : 0;
+    panelTiles.forEach((t, i) => {
+      t.btn.style.transition = "";
+      t.btn.style.transitionDelay = (start + i * STEP_MS) + "ms";
+    });
+    requestAnimationFrame(() => panelTiles.forEach(t => t.btn.classList.remove("below")));
+    const tiles = panelTiles;
+    setTimeout(() => tiles.forEach(t => { t.btn.style.transitionDelay = ""; }), start + PANEL_MS + tiles.length * STEP_MS);
+  }
+
+  // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
+  let shown = null;                          // widoczna poza i proporcje
+  let figAnim = null;                        // kolejka klatek kluczowych Manikuna
+  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, skyX: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
+  const propAnim = {};
+  const PROP_MS = 1200;
+  let loopFrame = null, lastScene = null;
+  // Przejście tła: te same czasy i krzywe co przy zmianie rzędu kafelków (wyjście 280 ms, wejście 420 ms po 140 ms)
+  let bgTrans = null;
+  const easeOut = t => 1 - Math.pow(1 - t, 5);   // ≈ cubic-bezier(0.22, 1, 0.36, 1)
+  const easeIn = t => t * t;                      // ≈ cubic-bezier(0.4, 0, 1, 1)
+
+  const targetProps = () => ({
+    camX: ZONES[scene.camera].x, camY: ZONES[scene.camera].y,
+    litX: ZONES[scene.lightZone].x, litY: ZONES[scene.lightZone].y,
+    light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1,
+    tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0,
+    skyX: skySide(scene)
+  });
+  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX"];
+  const baseShown = () => ({ pose: curPose(), rig: BODIES[scene.body] });
+  const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
+
+  function tick(now) {
+    loopFrame = null;
+    const dt = lastTick ? Math.min(64, now - lastTick) : 16;
+    lastTick = now;
+    let active = false;
+    if (figAnim) {
+      const fr = figAnim.frames[figAnim.k];
+      const t = Math.min(1, (now - figAnim.start) / fr.dur);
+      shown = { pose: blendPose(figAnim.from.pose, fr.pose, t), rig: blendRig(figAnim.from.rig, BODIES[scene.body], t) };
+      if (t >= 1) {
+        figAnim.k++;
+        if (figAnim.k >= figAnim.frames.length) { figAnim = null; shown = { pose: fr.pose, rig: BODIES[scene.body] }; }
+        else { figAnim.from = shown; figAnim.start = now; }
+      }
+      if (figAnim) active = true;
+    }
+    for (const key in propAnim) {
+      const a = propAnim[key], t = Math.min(1, (now - a.start) / a.dur);
+      props[key] = a.from + (a.to - a.from) * easeInOut(t);
+      if (t >= 1) delete propAnim[key]; else active = true;
+    }
+    if (bgTrans) {
+      const e = now - bgTrans.start;
+      bgTrans.oldOff = easeIn(Math.min(1, e / OUT_MS));
+      bgTrans.newOff = 1 - easeOut(Math.max(0, Math.min(1, (e - 140) / PANEL_MS)));
+      if (e >= 140 + PANEL_MS) bgTrans = null; else active = true;
+    }
+    if (gaze && followGaze(now, dt)) active = true;
+    renderPreview();
+    if (active) ensureLoop(); else lastTick = 0;
+  }
+
+  // Fokus na aparacie lub świetle: głowa płynnie, z lekkim opóźnieniem, śledzi obiekt, dopóki się rusza.
+  // Po zatrzymaniu Manikun chwilę na niego patrzy i wraca do swojej pozy.
+  let gaze = null, lastTick = 0;
+  const GAZE_LAG = 160, GAZE_HOLD = 700;
+  function startGaze(what, hold = false) {
+    if (!gaze) gaze = { turn: 0, lean: 0 };
+    Object.assign(gaze, { what, hold, release: 0 });
+    figAnim = null;
+    ensureLoop();
+  }
+  // Głowa nie ma twarzy, więc kierunek spojrzenia czyta się z boku owalu zwróconego do obiektu.
+  // Obiekt z boku na wysokości oczu: głowa prosto. Wyżej: przechyla się do tyłu (broda w górę), niżej: do przodu.
+  // Tuż nad głową przechył zanika, żeby głowa nie przeskakiwała między stronami.
+  const headTurn = d => clamp(Math.sign(d) * (Math.abs(d) - 90) * 0.5 * Math.min(1, Math.abs(d) / 45), -34, 34);
+  function followGaze(now, dt) {
+    const G = previewGeom;
+    if (!G) return true;
+    const d = diffFromUp(angleTo(G.head, gaze.what === "camera" ? G.camPt : G.litPt));
+    const k = 1 - Math.exp(-dt / GAZE_LAG);
+    gaze.turn += (headTurn(d) - gaze.turn) * k;
+    gaze.lean += (clamp(d * 0.05, -6, 6) - gaze.lean) * k;
+    shown = { pose: variant({}, { head: gaze.turn, spine: gaze.lean }), rig: BODIES[scene.body] };
+    const keys = gaze.what === "camera" ? ["camX", "camY"] : ["litX", "litY"];
+    if (gaze.hold || keys.some(key => propAnim[key])) gaze.release = 0;
+    else if (!gaze.release) gaze.release = now + GAZE_HOLD;
+    if (gaze.release && now >= gaze.release) {
+      gaze = null;
+      playFrames([back(900)]);
+    }
+    return true;
+  }
+
+  function playFrames(frames) {
+    gaze = null;
+    if (reduceMotion.matches) { figAnim = null; shown = { pose: frames[frames.length - 1].pose, rig: BODIES[scene.body] }; ensureLoop(); return; }
+    figAnim = { frames, k: 0, from: shown, start: performance.now() };
+    ensureLoop();
+  }
+
+  function renderPreview() {
+    const fmt = currentFormat();
+    const H = 300, W = H * fmt.w / fmt.h;
+    const layers = ["ground", "camera", "light", "background"];
+    if (scene.mode === "video") layers.push("motion");
+    const st = { ...scene, props: { ...props } };
+    if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
+    if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
+      st.fig = computeFigure(shown.pose, shown.rig);
+    }
+    const grabbed = drag && drag.grabbed ? drag.what : null;
+    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null });
+    const ro = document.getElementById("readout");
+    ro.replaceChildren();
+    if (scene.mode === "video") { const d = document.createElement("span"); d.className = "rec"; ro.appendChild(d); }
+    ro.append(grabbed
+      ? (grabbed === "camera" ? "Kamera" : "Światło") + " → " + ZONES[drag.near].name
+      : READOUT[scene.mode] + " · " + fmt.short);
+  }
+
+  // Poza bazowa z nałożonymi zmianami: abs podmienia kąty, rel je dodaje
+  const variant = (abs = {}, rel = {}) => {
+    const p = { ...curPose(), ...abs };
+    for (const key in rel) p[key] += rel[key];
+    return p;
+  };
+
+  // Kierunek od głowy do obiektu jako kąt manekina (180 = w górę)
+  const angleTo = (from, to) => Math.atan2(to[0] - from[0], to[1] - from[1]) * 180 / Math.PI;
+  const diffFromUp = a => ((a - 180 + 540) % 360) - 180;
+
+  // Reakcje: kilka wariantów każdej, losowane bez powtórzenia poprzedniego
+  const lastVariant = {};
+  function pick(kind, list) {
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === lastVariant[kind]) i = (i + 1) % list.length;
+    lastVariant[kind] = i;
+    return list[i]();
+  }
+  const back = dur => ({ pose: curPose(), dur });
+
+  // Reakcje na zmiany ustawień: tylko głowa i lekkie pochylenie tułowia, ręce zostają w pozie
+  const REACTIONS = {
+    // Więcej miejsca: spokojnie się rozgląda
+    bigger: () => pick("bigger", [
+      () => [{ pose: variant({}, { head: 16, spine: 2 }), dur: 700 }, { pose: variant({}, { head: -16, spine: -2 }), dur: 1000 }, back(900)],
+      () => [{ pose: variant({}, { head: -14, spine: -2 }), dur: 750 }, { pose: variant({}, { head: 12, spine: 1.5 }), dur: 1100 }, back(950)],
+      () => [{ pose: variant({}, { head: 10, spine: 1 }), dur: 800 }, { pose: variant({}, { head: 12, spine: 1 }), dur: 500 }, { pose: variant({}, { head: -18, spine: -2 }), dur: 1100 }, back(950)]
+    ]),
+    // Mniej miejsca: wzdryga się, jakby kadr miał go zgnieść, i powoli się uspokaja
+    smaller: () => pick("smaller", [
+      () => [{ pose: variant({}, { head: 14, spine: 3 }), dur: 380 }, { pose: variant({}, { head: 18, spine: 3 }), dur: 800 }, back(1100)],
+      () => [{ pose: variant({}, { head: -14, spine: -4 }), dur: 400 }, { pose: variant({}, { head: -18, spine: -4 }), dur: 750 }, back(1100)],
+      () => [{ pose: variant({}, { head: 10, spine: 2 }), dur: 260 }, { pose: variant({}, { head: -10, spine: -2 }), dur: 320 }, { pose: variant({}, { head: 6, spine: 1 }), dur: 420 }, back(900)]
+    ])
+  };
+
+  // Czy kadr zrobił się większy czy mniejszy względem Manikuna
+  const frameRoom = st => {
+    const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
+    return (fmt.w / fmt.h) * (st.shot === "portrait" ? 0.35 : 1);
+  };
+
+  function sceneChanged() {
+    const prev = lastScene;
+    lastScene = { ...scene, format: { ...scene.format } };
+    const tp = targetProps();
+    if (!prev || !shown || reduceMotion.matches) {
+      figAnim = null;
+      shown = baseShown();
+      PROP_KEYS.forEach(k => { props[k] = tp[k]; });
+      props.reveal = phase === "start" ? 0 : 1;
+      for (const k in propAnim) delete propAnim[k];
+      ensureLoop();
+      return;
+    }
+    // Kamera i lampa przesuwają się płynnie do nowego miejsca
+    PROP_KEYS.forEach(k => {
+      if (props[k] !== tp[k] && (!propAnim[k] || propAnim[k].to !== tp[k])) {
+        propAnim[k] = { from: props[k], to: tp[k], start: performance.now(), dur: PROP_MS };
+      }
+    });
+    if (poseKey(prev) !== poseKey(scene) || prev.body !== scene.body) playFrames([{ pose: curPose(), dur: 950 }]);
+    else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
+    else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
+    else if (prev.camera !== scene.camera) startGaze("camera");
+    else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) startGaze("light");
+    if (prev.background !== scene.background && !reduceMotion.matches) {
+      bgTrans = { old: prev.background, start: performance.now() };
+      // Nowe miejsce: Manikun się rozgląda
+      if (!figAnim && !gaze) playFrames(REACTIONS.bigger());
+    }
+    ensureLoop();
+  }
 
   function render() {
     document.body.dataset.mode = scene.mode;
-    document.querySelectorAll(".modes .tile").forEach(btn => {
-      btn.setAttribute("aria-pressed", String(btn.dataset.mode === scene.mode));
-    });
-    TEMPLATE.steps.filter(s => s.options).forEach(s => {
-      stepEls[s.id].hidden = !activeIn(s, scene.mode);
-    });
-    questionsEl.querySelectorAll("button").forEach(btn => {
-      btn.setAttribute("aria-pressed", String(scene[btn.dataset.step] === Number(btn.dataset.index)));
-    });
-    readoutEl.replaceChildren();
-    if (scene.mode === "video") {
-      const dot = document.createElement("span");
-      dot.className = "rec";
-      readoutEl.appendChild(dot);
-    }
-    readoutEl.append(TEMPLATE.readout[scene.mode]);
-    promptEl.textContent = buildPrompt();
-    statusEl.textContent = "";
+    document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
+    if (phase === "director" && scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
+    // Ubiór, który nie pasuje do postaci, wraca do codziennego
+    if (!fitsBody(optionOf("outfit", scene.outfit), scene)) scene.outfit = "casual";
+    // Lampa w pełnym słońcu na zewnątrz nie ma sensu: przechodzimy na naturalne w tym samym kierunku
+    if (!lampAllowed(scene) && !isNaturalLight(scene.light)) scene.light = scene.light.replace("art-", "nat-");
+    // Strefa, z której to światło nie może padać: przeskakuje do najbliższej dozwolonej
+    const okZones = lightZones(scene);
+    if (!okZones.includes(scene.lightZone)) scene.lightZone = nearestZone(ZONES[scene.lightZone].x, ZONES[scene.lightZone].y, 1, 1, okZones);
+    renderBar();
+    if (phase === "director") syncPanel();
+    sceneChanged();
   }
 
-  TEMPLATE.steps.filter(s => s.options).forEach(step => {
-    const q = document.createElement("div");
-    q.className = "q";
-    const label = document.createElement("div");
-    label.className = "q-label";
-    label.id = "q-" + step.id;
-    const patch = document.createElement("span");
-    patch.className = "patch";
-    patch.style.background = step.patch;
-    label.append(patch, step.label);
-    const opts = document.createElement("div");
-    opts.className = "options";
-    opts.setAttribute("role", "group");
-    opts.setAttribute("aria-labelledby", label.id);
-    step.options.forEach((opt, i) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "tile";
-      btn.id = "opt-" + step.id + "-" + i;
-      btn.dataset.step = step.id;
-      btn.dataset.index = i;
-      btn.textContent = opt.label;
-      btn.addEventListener("click", () => { scene[step.id] = i; render(); });
-      opts.appendChild(btn);
-    });
-    q.append(label, opts);
-    questionsEl.appendChild(q);
-    stepEls[step.id] = q;
-  });
+  document.querySelectorAll(".modes .chip").forEach(b => b.addEventListener("click", () => {
+    if (scene.mode === b.dataset.mode) return;
+    scene.mode = b.dataset.mode;
+    // Format ma inne opcje w każdym trybie: panel formatu buduje się od nowa
+    if (panelCat === "format") panelCat = "__rebuild";
+    render();
+  }));
 
-  document.querySelectorAll(".modes .tile").forEach(btn => {
-    btn.addEventListener("click", () => { scene.mode = btn.dataset.mode; render(); });
-  });
-
-  document.getElementById("copy").addEventListener("click", () => {
+  // Kopiowanie bez pokazywania tekstu promptu
+  const copyBtn = document.getElementById("copy");
+  let copyTimer;
+  function copyStatus(text) {
+    copyBtn.textContent = text;
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => { copyBtn.textContent = "Kopiuj"; }, 2000);
+  }
+  function hiddenCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+    copyStatus(ok ? "Skopiowano" : "Nie udało się");
+  }
+  copyBtn.addEventListener("click", () => {
     const text = buildPrompt();
-    const selectFallback = () => {
-      const range = document.createRange();
-      range.selectNodeContents(promptEl);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      statusEl.textContent = "Zaznaczono, skopiuj ręcznie";
-    };
     try {
-      navigator.clipboard.writeText(text)
-        .then(() => { statusEl.textContent = "Skopiowano"; })
-        .catch(selectFallback);
+      navigator.clipboard.writeText(text).then(() => copyStatus("Skopiowano")).catch(() => hiddenCopy(text));
     } catch (e) {
-      selectFallback();
+      hiddenCopy(text);
     }
   });
 
+  // ---------- Start: Manikun wita się w kadrze, potem kadr zostaje, a dół zamienia się w opcje ----------
+  const appEl = document.getElementById("app");
+  const dock = document.getElementById("dockStart");
+  let phase = "start", idleTimer = null;
+  const MP = MASCOT_POSES;
+
+  const greet = () => playFrames([
+    { pose: MP.waveA, dur: 900 }, { pose: MP.waveB, dur: 480 }, { pose: MP.waveA, dur: 480 },
+    { pose: MP.waveB, dur: 480 }, { pose: MP.waveA, dur: 480 }, { pose: MP.hip, dur: 1100 }
+  ]);
+  const admire = () => playFrames([
+    { pose: MP.lookHand, dur: 850 }, { pose: MP.lookHand2, dur: 650 }, { pose: MP.lookHand, dur: 600 },
+    { pose: MP.lookArm, dur: 900 }, { pose: phase === "start" ? MP.hip : curPose(), dur: 950 }
+  ]);
+  // Na starcie, gdy nic się nie dzieje, co kilka sekund spokojnie przechyla głowę
+  function startIdle() {
+    clearTimeout(idleTimer);
+    if (reduceMotion.matches || phase !== "start") return;
+    idleTimer = setTimeout(() => {
+      if (phase === "start" && !figAnim) playFrames([{ pose: MP.hipTilt, dur: 1300 }, { pose: MP.hip, dur: 1400 }]);
+      startIdle();
+    }, 5500);
+  }
+
+  // Przełącznik materiału: drewno ↔ biały, Manikun się sobie przygląda
+  function paintSwatch() {
+    document.getElementById("swatch").style.background = swatchCss(material);
+    document.getElementById("material-name").textContent = material.name;
+  }
+  document.getElementById("material").addEventListener("click", () => {
+    material = MATERIALS[(MATERIALS.indexOf(material) + 1) % MATERIALS.length];
+    paintSwatch();
+    render();
+    admire();
+  });
+  paintSwatch();
+
+  preview.addEventListener("click", () => { if (phase === "start") greet(); });
+
+  // Przytrzymaj aparat albo lampę ok. 0,35 s, przeciągnij i puść: obiekt kotwiczy się w najbliższej z 8 stref
+  let drag = null, previewGeom = null;
+  const GRAB_MS = 350;
+  function toSvg(e) {
+    const pt = preview.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(preview.getScreenCTM().inverse());
+  }
+  preview.addEventListener("pointerdown", e => {
+    if (phase !== "director" || !previewGeom) return;
+    const p = toSvg(e), G = previewGeom, r = G.u * 10;
+    const near = pt => Math.hypot(pt[0] - p.x, pt[1] - p.y) < r;
+    const what = near(G.camPt) ? "camera" : near(G.litPt) ? "light" : null;
+    if (!what) return;
+    preview.setPointerCapture(e.pointerId);
+    drag = { what, sx: e.clientX, sy: e.clientY, grabbed: false, near: what === "camera" ? scene.camera : scene.lightZone };
+    drag.timer = setTimeout(() => {
+      if (!drag) return;
+      drag.grabbed = true;
+      // Manikun wodzi wzrokiem za trzymanym obiektem
+      startGaze(drag.what, true);
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+      ensureLoop();
+    }, GRAB_MS);
+  });
+  preview.addEventListener("pointermove", e => {
+    if (!drag) return;
+    if (!drag.grabbed) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 10) { clearTimeout(drag.timer); drag = null; }
+      return;
+    }
+    const p = toSvg(e), G = previewGeom;
+    const nx = clamp(p.x / G.W, 0, 1), ny = clamp(p.y / G.H, 0, 1);
+    const kx = drag.what === "camera" ? "camX" : "litX", ky = drag.what === "camera" ? "camY" : "litY";
+    delete propAnim[kx]; delete propAnim[ky];
+    props[kx] = nx; props[ky] = ny;
+    const pts = G.zonePts[drag.what];
+    drag.near = Object.keys(pts).reduce((a, b) => Math.hypot(pts[a][0] - p.x, pts[a][1] - p.y) <= Math.hypot(pts[b][0] - p.x, pts[b][1] - p.y) ? a : b);
+    ensureLoop();
+  });
+  function endDrag() {
+    if (!drag) return;
+    clearTimeout(drag.timer);
+    const d = drag;
+    drag = null;
+    if (!d.grabbed) return;
+    if (gaze) gaze.hold = false;
+    const key = d.what === "camera" ? "camera" : "lightZone";
+    if (scene[key] !== d.near) {
+      scene[key] = d.near;
+      render();
+    } else {
+      // Ta sama strefa: obiekt wraca na jej środek, Manikun odprowadza go wzrokiem i wraca do pozy
+      const tp = targetProps(), now = performance.now();
+      (d.what === "camera" ? ["camX", "camY"] : ["litX", "litY"]).forEach(k => { propAnim[k] = { from: props[k], to: tp[k], start: now, dur: 500 }; });
+      ensureLoop();
+    }
+  }
+  preview.addEventListener("pointerup", endDrag);
+  preview.addEventListener("pointercancel", endDrag);
+
+  const COPY = {
+    photo: ["Zdjęcie. Świetnie.", "Ustawiamy jeden kadr."],
+    video: ["Wideo. Kamera w ruch.", "Ustawiamy ujęcie z ruchem."]
+  };
+  document.querySelectorAll(".choice").forEach(btn => btn.addEventListener("click", () => {
+    if (phase !== "start") return;
+    const mode = btn.dataset.mode;
+    document.querySelectorAll(".choice").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    document.getElementById("line1").textContent = COPY[mode][0];
+    document.getElementById("line2").textContent = COPY[mode][1];
+    clearTimeout(idleTimer);
+    scene.mode = mode;
+    lastScene = { ...scene, format: { ...scene.format } }; // zmiana trybu na starcie to nie reakcja na kadr
+    render();
+    playFrames([{ pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 800 }, { pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 250 }]);
+    setTimeout(enterDirector, reduceMotion.matches ? 0 : 1000);
+  }));
+
+  // Kadr zostaje nieruchomo. Kafelki trybu chowają się w dół, a spod spodu wysuwają się
+  // ikony kategorii i kafelki formatu. Scena pojawia się wokół Manikuna, a on staje do kadru.
+  function enterDirector() {
+    const fast = reduceMotion.matches;
+    const choices = [...dock.querySelectorAll(".choice")].sort(a => a.getAttribute("aria-pressed") === "true" ? 1 : -1);
+    choices.forEach((c, i) => { c.style.transitionDelay = (i * 70) + "ms"; });
+    dock.classList.add("leaving");
+
+    propAnim.reveal = { from: props.reveal, to: 1, start: performance.now(), dur: 1100 };
+    playFrames([{ pose: curPose(), dur: 1000 }]);
+
+    setTimeout(() => {
+      dock.hidden = true;
+      barItems.forEach((it, i) => { it.b.style.transitionDelay = (i * STEP_MS) + "ms"; });
+      phase = "director";
+      appEl.dataset.phase = "director";
+      scene.open = "format";
+      render();
+    }, fast ? 0 : 480);
+    setTimeout(() => barItems.forEach(it => { it.b.style.transitionDelay = ""; }), fast ? 0 : 1400);
+  }
+
   render();
+  greet();
+  startIdle();
 </script>
