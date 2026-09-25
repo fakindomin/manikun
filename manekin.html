@@ -1285,12 +1285,16 @@
     figAnim = null;
     ensureLoop();
   }
+  // Głowa nie ma twarzy, więc kierunek spojrzenia czyta się z boku owalu zwróconego do obiektu.
+  // Obiekt z boku na wysokości oczu: głowa prosto. Wyżej: przechyla się do tyłu (broda w górę), niżej: do przodu.
+  // Tuż nad głową przechył zanika, żeby głowa nie przeskakiwała między stronami.
+  const headTurn = d => clamp(Math.sign(d) * (Math.abs(d) - 90) * 0.5 * Math.min(1, Math.abs(d) / 45), -34, 34);
   function followGaze(now, dt) {
     const G = previewGeom;
     if (!G) return true;
     const d = diffFromUp(angleTo(G.head, gaze.what === "camera" ? G.camPt : G.litPt));
     const k = 1 - Math.exp(-dt / GAZE_LAG);
-    gaze.turn += (clamp(d * 0.35, -38, 38) - gaze.turn) * k;
+    gaze.turn += (headTurn(d) - gaze.turn) * k;
     gaze.lean += (clamp(d * 0.05, -6, 6) - gaze.lean) * k;
     shown = { pose: variant({}, { head: gaze.turn, spine: gaze.lean }), rig: BODIES[scene.body] };
     const keys = gaze.what === "camera" ? ["camX", "camY"] : ["litX", "litY"];
