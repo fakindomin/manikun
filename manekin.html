@@ -1245,6 +1245,8 @@
 
   function tick(now) {
     loopFrame = null;
+    const dt = lastTick ? Math.min(64, now - lastTick) : 16;
+    lastTick = now;
     let active = false;
     if (figAnim) {
       const fr = figAnim.frames[figAnim.k];
@@ -1268,11 +1270,41 @@
       bgTrans.newOff = 1 - easeOut(Math.max(0, Math.min(1, (e - 140) / PANEL_MS)));
       if (e >= 140 + PANEL_MS) bgTrans = null; else active = true;
     }
+    if (gaze && followGaze(now, dt)) active = true;
     renderPreview();
-    if (active) ensureLoop();
+    if (active) ensureLoop(); else lastTick = 0;
+  }
+
+  // Fokus na aparacie lub świetle: głowa płynnie, z lekkim opóźnieniem, śledzi obiekt, dopóki się rusza.
+  // Po zatrzymaniu Manikun chwilę na niego patrzy i wraca do swojej pozy.
+  let gaze = null, lastTick = 0;
+  const GAZE_LAG = 160, GAZE_HOLD = 700;
+  function startGaze(what, hold = false) {
+    if (!gaze) gaze = { turn: 0, lean: 0 };
+    Object.assign(gaze, { what, hold, release: 0 });
+    figAnim = null;
+    ensureLoop();
+  }
+  function followGaze(now, dt) {
+    const G = previewGeom;
+    if (!G) return true;
+    const d = diffFromUp(angleTo(G.head, gaze.what === "camera" ? G.camPt : G.litPt));
+    const k = 1 - Math.exp(-dt / GAZE_LAG);
+    gaze.turn += (clamp(d * 0.35, -38, 38) - gaze.turn) * k;
+    gaze.lean += (clamp(d * 0.05, -6, 6) - gaze.lean) * k;
+    shown = { pose: variant({}, { head: gaze.turn, spine: gaze.lean }), rig: BODIES[scene.body] };
+    const keys = gaze.what === "camera" ? ["camX", "camY"] : ["litX", "litY"];
+    if (gaze.hold || keys.some(key => propAnim[key])) gaze.release = 0;
+    else if (!gaze.release) gaze.release = now + GAZE_HOLD;
+    if (gaze.release && now >= gaze.release) {
+      gaze = null;
+      playFrames([back(900)]);
+    }
+    return true;
   }
 
   function playFrames(frames) {
+    gaze = null;
     if (reduceMotion.matches) { figAnim = null; shown = { pose: frames[frames.length - 1].pose, rig: BODIES[scene.body] }; ensureLoop(); return; }
     figAnim = { frames, k: 0, from: shown, start: performance.now() };
     ensureLoop();
@@ -1305,15 +1337,6 @@
     return p;
   };
 
-  // Położenie aparatu i lampy dla danego ustawienia sceny
-  function objectPos(st, what) {
-    const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
-    const H = 300, W = H * fmt.w / fmt.h, A = anchors(st, W, H), u = H / 100;
-    if (what === "head") return A.plBase.head;
-    const z = ZONES[what === "camera" ? st.camera : st.lightZone];
-    return zonePt([z.x, z.y], W, H, u);
-  }
-
   // Kierunek od głowy do obiektu jako kąt manekina (180 = w górę)
   const angleTo = (from, to) => Math.atan2(to[0] - from[0], to[1] - from[1]) * 180 / Math.PI;
   const diffFromUp = a => ((a - 180 + 540) % 360) - 180;
@@ -1341,23 +1364,7 @@
       () => [{ pose: variant({}, { head: 14, spine: 3 }), dur: 380 }, { pose: variant({}, { head: 18, spine: 3 }), dur: 800 }, back(1100)],
       () => [{ pose: variant({}, { head: -14, spine: -4 }), dur: 400 }, { pose: variant({}, { head: -18, spine: -4 }), dur: 750 }, back(1100)],
       () => [{ pose: variant({}, { head: 10, spine: 2 }), dur: 260 }, { pose: variant({}, { head: -10, spine: -2 }), dur: 320 }, { pose: variant({}, { head: 6, spine: 1 }), dur: 420 }, back(900)]
-    ]),
-    // Odprowadza wzrokiem obiekt: najpierw tam, gdzie był, potem za nim w nowe miejsce
-    look: (target, prev) => {
-      const head = objectPos(scene, "head");
-      const aim = pos => {
-        const d = diffFromUp(angleTo(head, pos));
-        return { turn: clamp(d * 0.35, -38, 38), lean: clamp(d * 0.05, -6, 6) };
-      };
-      const was = aim(objectPos(prev, target)), now = aim(objectPos(scene, target));
-      const follow = PROP_MS;
-      return pick("look-" + target, [
-        () => [{ pose: variant({}, { head: was.turn, spine: was.lean }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant({}, { head: now.turn * 1.1, spine: now.lean }), dur: 600 }, back(950)],
-        () => [{ pose: variant({}, { head: was.turn * 0.8, spine: was.lean * 1.5 }), dur: 550 }, { pose: variant({}, { head: now.turn, spine: now.lean * 1.5 }), dur: follow }, { pose: variant({}, { head: now.turn, spine: now.lean * 1.5 }), dur: 700 }, back(1000)],
-        // Spojrzenie, szybki powrót i drugie spojrzenie, jakby chciał się upewnić
-        () => [{ pose: variant({}, { head: was.turn, spine: was.lean }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant({}, { head: now.turn * 0.3 }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: 500 }, back(950)]
-      ]);
-    }
+    ])
   };
 
   // Czy kadr zrobił się większy czy mniejszy względem Manikuna
@@ -1388,12 +1395,12 @@
     if (prev.pose !== scene.pose || prev.body !== scene.body) playFrames([{ pose: POSES[scene.pose], dur: 950 }]);
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
-    else if (prev.camera !== scene.camera) playFrames(REACTIONS.look("camera", prev));
-    else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) playFrames(REACTIONS.look("light", prev));
+    else if (prev.camera !== scene.camera) startGaze("camera");
+    else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) startGaze("light");
     if (prev.background !== scene.background && !reduceMotion.matches) {
       bgTrans = { old: prev.background, start: performance.now() };
       // Nowe miejsce: Manikun się rozgląda
-      if (!figAnim) playFrames(REACTIONS.bigger());
+      if (!figAnim && !gaze) playFrames(REACTIONS.bigger());
     }
     ensureLoop();
   }
@@ -1507,6 +1514,8 @@
     drag.timer = setTimeout(() => {
       if (!drag) return;
       drag.grabbed = true;
+      // Manikun wodzi wzrokiem za trzymanym obiektem
+      startGaze(drag.what, true);
       if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
       ensureLoop();
     }, GRAB_MS);
@@ -1524,10 +1533,6 @@
     props[kx] = nx; props[ky] = ny;
     const pts = G.zonePts[drag.what];
     drag.near = Object.keys(pts).reduce((a, b) => Math.hypot(pts[a][0] - p.x, pts[a][1] - p.y) <= Math.hypot(pts[b][0] - p.x, pts[b][1] - p.y) ? a : b);
-    // Manikun wodzi wzrokiem za trzymanym obiektem
-    const d = diffFromUp(angleTo(G.head, [p.x, p.y]));
-    figAnim = null;
-    shown = { pose: variant({}, { head: clamp(d * 0.35, -38, 38), spine: clamp(d * 0.05, -6, 6) }), rig: BODIES[scene.body] };
     ensureLoop();
   });
   function endDrag() {
@@ -1536,15 +1541,16 @@
     const d = drag;
     drag = null;
     if (!d.grabbed) return;
+    if (gaze) gaze.hold = false;
     const key = d.what === "camera" ? "camera" : "lightZone";
     if (scene[key] !== d.near) {
       scene[key] = d.near;
       render();
     } else {
-      // Ta sama strefa: obiekt wraca na jej środek, Manikun do swojej pozy
+      // Ta sama strefa: obiekt wraca na jej środek, Manikun odprowadza go wzrokiem i wraca do pozy
       const tp = targetProps(), now = performance.now();
       (d.what === "camera" ? ["camX", "camY"] : ["litX", "litY"]).forEach(k => { propAnim[k] = { from: props[k], to: tp[k], start: now, dur: 500 }; });
-      playFrames([{ pose: POSES[scene.pose], dur: 800 }]);
+      ensureLoop();
     }
   }
   preview.addEventListener("pointerup", endDrag);
