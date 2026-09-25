@@ -338,9 +338,21 @@
     ]},
     { id: "background", label: "Tło", patch: "#8580B1", options: [
       { id: "studio", name: "Studio", short: "Studio", prompt: "plain seamless studio backdrop in neutral grey" },
-      { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in daylight, background softly out of focus" },
-      { id: "mountains", name: "Góry", short: "Góry", prompt: "misty mountain landscape in the background, softly out of focus" },
-      { id: "forest", name: "Las", short: "Las", prompt: "quiet pine forest in the background, softly out of focus" }
+      { id: "city", name: "Miasto", children: [
+        { id: "street", name: "Ulica · dzień", short: "Ulica", prompt: "empty city street in daylight, background softly out of focus" },
+        { id: "street-night", name: "Ulica · noc", short: "Noc", prompt: "empty city street at night with warm window lights and street lamps in the background, softly out of focus" },
+        { id: "rooftop", name: "Dach", short: "Dach", prompt: "city rooftop with a skyline in the background, softly out of focus" }
+      ]},
+      { id: "nature", name: "Natura", children: [
+        { id: "mountains", name: "Góry", short: "Góry", prompt: "misty mountain landscape in the background, softly out of focus" },
+        { id: "forest", name: "Las", short: "Las", prompt: "quiet pine forest in the background, softly out of focus" },
+        { id: "beach", name: "Plaża", short: "Plaża", prompt: "calm sandy beach with the sea on the horizon in the background, softly out of focus" },
+        { id: "meadow", name: "Łąka", short: "Łąka", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" }
+      ]},
+      { id: "interior", name: "Wnętrze", children: [
+        { id: "room", name: "Pokój", short: "Pokój", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
+        { id: "cafe", name: "Kawiarnia", short: "Kawiarnia", prompt: "cosy café interior with warm pendant lights in the background, softly out of focus" }
+      ]}
     ]},
     { id: "motion", label: "Ruch", patch: "#0885A1", modes: ["video"], options: [
       { id: "orbit", name: "Obrót wokół", short: "Obrót", prompt: "camera slowly orbits 360° around the subject, smooth steady motion" },
@@ -601,6 +613,106 @@
       };
       tree(W * 0.05, H * 0.62, "#26342A"); tree(W * 0.16, H * 0.45, "#2B3A2F");
       tree(W * 0.95, H * 0.66, "#26342A"); tree(W * 0.84, H * 0.42, "#2B3A2F");
+      return;
+    }
+    // Miękka plama światła (latarnie, lampy w kawiarni)
+    const glowAt = (x, y, r, color, op) => {
+      const gid = uid + "l" + Math.round(x) + "_" + Math.round(y);
+      const gr = el("radialGradient", { id: gid }, defs);
+      el("stop", { offset: "0", "stop-color": color, "stop-opacity": op }, gr);
+      el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
+      paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
+    };
+    if (kind === "street-night") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#12151F"], [1, "#252C3C"]]), g);
+      const far = [[0, 0.22], [0.1, 0.3], [0.2, 0.17], [0.31, 0.27], [0.43, 0.2], [0.55, 0.29], [0.66, 0.16], [0.77, 0.25], [0.88, 0.19], [1, 0.27]];
+      far.forEach(([x, h], i) => {
+        if (i === far.length - 1) return;
+        const bx = x * W, bw = (far[i + 1][0] - x) * W, top = hz - h * H;
+        paint("rect", { x: f(bx), y: f(top), width: f(bw + 1), height: f(h * H) }, "#1D2230", g);
+        for (let k = 0; k < 3; k++) paint("rect", { x: f(bx + bw * (0.2 + 0.25 * ((i + k) % 3))), y: f(top + h * H * (0.2 + 0.25 * k)), width: f(W * 0.012), height: f(H * 0.012) }, "#E0B060", g, 0.55);
+      });
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#1E1F24"], [1, "#16171A"]]), g);
+      paint("path", { d: `M${f(W * 0.47)},${f(hz)} L${f(W * 0.53)},${f(hz)} L${f(W * 0.98)},${f(H)} L${f(W * 0.02)},${f(H)} Z` }, "#141517", g);
+      // Latarnie przy krawędziach kadru
+      [W * 0.06, W * 0.94].forEach(x => {
+        const top = hz - H * 0.3, base = Math.min(gy, H * 0.96);
+        paint("rect", { x: f(x - W * 0.006), y: f(top), width: f(W * 0.012), height: f(base - top) }, "#2B2E36", g);
+        paint("rect", { x: f(x - W * 0.03), y: f(top - H * 0.012), width: f(W * 0.06), height: f(H * 0.018) }, "#3A3D45", g);
+        glowAt(x, top + H * 0.01, H * 0.16, "#FFD08A", "0.32");
+      });
+      return;
+    }
+    if (kind === "rooftop") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B485A"], [1, "#7F8C9B"]]), g);
+      const sk = [[0, 0.08], [0.06, 0.14], [0.13, 0.06], [0.2, 0.18], [0.27, 0.1], [0.35, 0.07], [0.42, 0.15], [0.5, 0.09], [0.58, 0.2], [0.65, 0.08], [0.73, 0.12], [0.8, 0.06], [0.87, 0.16], [0.94, 0.09], [1, 0.11]];
+      sk.forEach(([x, h], i) => { if (i < sk.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((sk[i + 1][0] - x) * W + 1), height: f(h * H + 2) }, "#56606F", g); });
+      // Gzyms dachu i posadzka
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.035) }, "#44464D", g);
+      paint("rect", { x: 0, y: f(hz + H * 0.035), width: f(W), height: f(H) }, vGrad(defs, uid + "g", [[0, "#35363C"], [1, "#2A2B30"]]), g);
+      // Komin i zbiornik przy prawej krawędzi
+      paint("rect", { x: f(W * 0.86), y: f(hz - H * 0.16), width: f(W * 0.12), height: f(H * 0.2) }, "#3A3C43", g);
+      paint("rect", { x: f(W * 0.84), y: f(hz - H * 0.19), width: f(W * 0.16), height: f(H * 0.035) }, "#45474E", g);
+      paint("rect", { x: f(W * 0.02), y: f(hz - H * 0.07), width: f(W * 0.05), height: f(H * 0.1) }, "#3D3F46", g);
+      return;
+    }
+    if (kind === "beach") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#4A5A6E"], [1, "#A5B0B6"]]), g);
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.07) }, vGrad(defs, uid + "s", [[0, "#5C7C88"], [1, "#4A6771"]]), g);
+      paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.004) }, "#8FAAB0", g, 0.5);
+      // Mokry piasek przy wodzie i suchy bliżej
+      paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#6D6452"], [1, "#4E4639"]]), g);
+      paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(hz + H * 0.08)} Q${f(W * 0.5)},${f(hz + H * 0.115)} 0,${f(hz + H * 0.085)} Z` }, "#5E5646", g);
+      return;
+    }
+    if (kind === "meadow") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#435467"], [1, "#94A3A6"]]), g);
+      paint("path", { d: `M0,${f(hz)} C${f(W * 0.2)},${f(hz - H * 0.12)} ${f(W * 0.45)},${f(hz - H * 0.02)} ${f(W * 0.6)},${f(hz - H * 0.08)} C${f(W * 0.75)},${f(hz - H * 0.14)} ${f(W * 0.9)},${f(hz - H * 0.05)} ${f(W)},${f(hz - H * 0.07)} L${f(W)},${f(hz + H * 0.1)} L0,${f(hz + H * 0.1)} Z` }, "#5A7159", g);
+      paint("path", { d: `M0,${f(hz + H * 0.03)} C${f(W * 0.3)},${f(hz - H * 0.04)} ${f(W * 0.6)},${f(hz + H * 0.04)} ${f(W)},${f(hz - H * 0.02)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#465C45"], [1, "#2E3B2E"]]), g);
+      // Kępki trawy tylko przy dolnych rogach
+      [[0.04, 1], [0.1, 0.8], [0.9, 0.85], [0.96, 1]].forEach(([x, k]) => {
+        const bx = x * W, by = H * 0.98, h = H * 0.07 * k;
+        paint("path", { d: `M${f(bx - W * 0.03)},${f(by)} L${f(bx - W * 0.012)},${f(by - h)} L${f(bx)},${f(by - h * 0.3)} L${f(bx + W * 0.01)},${f(by - h * 1.1)} L${f(bx + W * 0.03)},${f(by)} Z` }, "#344534", g);
+      });
+      return;
+    }
+    if (kind === "room") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A3531"], [1, "#2E2A27"]]), g);
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#3C3129"], [1, "#2B231D"]]), g);
+      paint("rect", { x: 0, y: f(fy - H * 0.012), width: f(W), height: f(H * 0.012) }, "#46403A", g);
+      for (let k = 1; k < 4; k++) paint("rect", { x: 0, y: f(fy + (H - fy) * k / 4), width: f(W), height: 1 }, "#FFFFFF", g, 0.05);
+      // Okno przy lewej krawędzi
+      const wx = W * 0.03, wy = H * 0.14, ww = W * 0.22, wh = H * 0.36;
+      paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, "#55606C", g);
+      paint("rect", { x: f(wx + ww * 0.08), y: f(wy + wh * 0.06), width: f(ww * 0.84), height: f(wh * 0.88) }, vGrad(defs, uid + "o", [[0, "#8093A3"], [1, "#6A7886"]]), g);
+      paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, "#55606C", g);
+      paint("rect", { x: f(wx), y: f(wy + wh * 0.48), width: f(ww), height: f(wh * 0.03) }, "#55606C", g);
+      // Sofa przy prawej krawędzi
+      const sx = W * 0.76, sw = W * 0.3, sb = fy + H * 0.02;
+      paint("rect", { x: f(sx), y: f(sb - H * 0.16), width: f(sw), height: f(H * 0.1), rx: f(H * 0.02) }, "#4A4140", g);
+      paint("rect", { x: f(sx - W * 0.02), y: f(sb - H * 0.08), width: f(sw), height: f(H * 0.08), rx: f(H * 0.015) }, "#55494A", g);
+      return;
+    }
+    if (kind === "cafe") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A2E27"], [1, "#2C231E"]]), g);
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#34291F"], [1, "#241C16"]]), g);
+      // Półki z butelkami po prawej
+      [0.28, 0.4].forEach(t => {
+        paint("rect", { x: f(W * 0.8), y: f(H * t), width: f(W * 0.2), height: f(H * 0.008) }, "#5A4636", g);
+        for (let k = 0; k < 4; k++) paint("rect", { x: f(W * (0.82 + k * 0.045)), y: f(H * (t - 0.055)), width: f(W * 0.02), height: f(H * 0.055), rx: f(W * 0.005) }, k % 2 ? "#5E6A58" : "#6E5840", g, 0.8);
+      });
+      // Lada przy lewej krawędzi
+      paint("rect", { x: 0, y: f(fy - H * 0.14), width: f(W * 0.24), height: f(H * 0.16) }, "#4A392C", g);
+      paint("rect", { x: 0, y: f(fy - H * 0.155), width: f(W * 0.26), height: f(H * 0.02) }, "#5C4736", g);
+      // Lampy wiszące przy krawędziach z ciepłą poświatą
+      [W * 0.12, W * 0.3, W * 0.7, W * 0.88].forEach((x, i) => {
+        const y = H * (i % 3 ? 0.2 : 0.14);
+        paint("rect", { x: f(x - 0.5), y: 0, width: 1.2, height: f(y) }, "#6A5A4A", g);
+        glowAt(x, y + H * 0.02, H * 0.13, "#FFC47A", "0.3");
+        paint("path", { d: `M${f(x - W * 0.035)},${f(y + H * 0.025)} L${f(x - W * 0.012)},${f(y)} L${f(x + W * 0.012)},${f(y)} L${f(x + W * 0.035)},${f(y + H * 0.025)} Z` }, "#2A211B", g);
+      });
     }
   }
 
