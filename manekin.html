@@ -755,9 +755,36 @@
       paint("rect", { x: 0, y: f(fy - H * 0.012), width: f(W), height: f(H * 0.012) }, "#46403A", g);
       for (let k = 1; k < 4; k++) paint("rect", { x: 0, y: f(fy + (H - fy) * k / 4), width: f(W), height: 1 }, "#FFFFFF", g, 0.05);
       // Okno przy lewej krawędzi
-      const wx = W * 0.03, wy = H * 0.14, ww = W * 0.22, wh = H * 0.36;
+      const wx = W * 0.03, wy = H * 0.07, ww = W * 0.22, wh = H * 0.35;
       paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, "#55606C", g);
-      paint("rect", { x: f(wx + ww * 0.08), y: f(wy + wh * 0.06), width: f(ww * 0.84), height: f(wh * 0.88) }, vGrad(defs, uid + "o", [[0, "#8093A3"], [1, "#6A7886"]]), g);
+      const px = wx + ww * 0.08, py = wy + wh * 0.06, pw = ww * 0.84, ph = wh * 0.88;
+      paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "o", [[0, "#8093A3"], [1, "#6A7886"]]), g);
+      // Za oknem pora dnia: o złotej godzinie zachodzi słońce, nocą księżyc i gwiazdy
+      const goldW = Math.max(0, 1 - Math.abs(tod - 1)), nightW = Math.max(0, Math.min(1, tod - 1));
+      if (goldW > 0 || nightW > 0) {
+        el("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, el("clipPath", { id: uid + "wc" }, defs));
+        const pane = el("g", { "clip-path": `url(#${uid}wc)` }, g), hy = py + ph * 0.8;
+        if (goldW > 0) {
+          paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "og", [[0, "#7A5566"], [0.6, "#E29A5C"], [1, "#F2B56B"]]), pane, f(goldW));
+          const sr = pw * 0.2, scx = px + pw * 0.62;
+          paint("circle", { cx: f(scx), cy: f(hy), r: f(sr * 2.4) }, "#FFC27A", pane, f(0.25 * goldW));
+          paint("circle", { cx: f(scx), cy: f(hy), r: f(sr) }, "#FFD08A", pane, f(0.95 * goldW));
+        }
+        if (nightW > 0) {
+          paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "on", [[0, "#0E1330"], [1, "#1C2444"]]), pane, f(nightW));
+          [[0.2, 0.15], [0.75, 0.3], [0.35, 0.55], [0.85, 0.62]].forEach(([sx, sy]) => paint("circle", { cx: f(px + pw * sx), cy: f(py + ph * sy), r: f(u * 0.3) }, "#E9ECF5", pane, f(0.8 * nightW)));
+          const mr = pw * 0.12, mx = px + pw * 0.3, my = py + ph * 0.28;
+          paint("circle", { cx: f(mx), cy: f(my), r: f(mr) }, "#E8E6DA", pane, f(0.95 * nightW));
+          paint("circle", { cx: f(mx + mr * 0.45), cy: f(my - mr * 0.25), r: f(mr * 0.85) }, "#141A33", pane, f(0.9 * nightW));
+        }
+        // Linia zabudowy za oknem przykrywa dolną połowę słońca
+        paint("rect", { x: f(px), y: f(hy), width: f(pw), height: f(py + ph - hy) }, "#3E3A40", pane, f(Math.max(goldW, nightW) * 0.95));
+        // Ciepła plama zachodzącego słońca na podłodze
+        if (goldW > 0) {
+          const x0 = wx + ww * 0.15, x1 = wx + ww * 0.95;
+          paint("path", { d: `M${f(x0)},${f(fy)} L${f(x1)},${f(fy)} L${f(x1 + W * 0.28)},${f(H)} L${f(x0 + W * 0.2)},${f(H)} Z` }, "#FFB866", g, f(0.14 * goldW));
+        }
+      }
       paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, "#55606C", g);
       paint("rect", { x: f(wx), y: f(wy + wh * 0.48), width: f(ww), height: f(wh * 0.03) }, "#55606C", g);
       // Sofa przy prawej krawędzi
