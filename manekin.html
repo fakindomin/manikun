@@ -52,14 +52,16 @@
   .director-only { transition: opacity 420ms ease; }
   [data-phase="start"] .director-only { opacity: 0; pointer-events: none; }
 
-  /* Start: powitanie i kafelki trybu na dole ekranu */
+  /* Start: powitanie i kafelki trybu przykrywają dół ekranu, dopóki nie wybierzesz trybu */
   .dock-start {
-    flex: none; overflow: hidden; display: flex; flex-direction: column; gap: 12px;
-    transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    position: absolute; inset: 0; z-index: 2;
+    background: var(--bg);
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 12px;
   }
-  .hello, .choice { transition: opacity 320ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1), background-color 340ms ease, color 340ms ease, border-color 340ms ease; }
+  .hello { transition: opacity 280ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .choice { transition: transform 360ms cubic-bezier(0.4, 0, 1, 1), background-color 340ms ease, color 340ms ease, border-color 340ms ease; }
   .dock-start.leaving .hello { opacity: 0; transform: translateY(-8px); }
-  .dock-start.leaving .choice { opacity: 0; transform: translateY(26px) scale(0.95); }
+  .dock-start.leaving .choice { transform: translateY(calc(100% + 60px)); }
   [data-phase="start"] #preview { cursor: pointer; }
   .hello { text-align: center; display: grid; gap: 2px; }
   .hello h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
@@ -103,47 +105,40 @@
   }
   .rec { width: 7px; height: 7px; border-radius: 50%; background: #AF363C; }
 
-  /* Panel opcji: wysuwa się spod paska kategorii (rośnie od dołu, jak kroki ankiety) */
-  .panel-wrap {
-    flex: none;
-    overflow: hidden;
-    height: 0px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
+  /* Dół ekranu ma stałą wysokość: kadr nad nim nigdy się nie przesuwa ani nie skaluje */
+  .dock { flex: none; position: relative; display: flex; flex-direction: column; gap: 10px; }
+  .options { position: relative; height: 112px; overflow: hidden; }
+  /* Rząd kafelków. Przy zmianie kategorii stary rząd chowa się w dół, nowy wysuwa się spod spodu. */
   .panel {
-    flex: none;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(92px, 116px);
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 108px;
+    display: flex; gap: 8px;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
   }
+  .panel::-webkit-scrollbar { display: none; }
+  /* Każdy kafelek ma ten sam rozmiar, niezależnie od kategorii */
   .tile {
+    flex: none; box-sizing: border-box;
+    width: 96px; height: 108px;
     font: inherit; color: var(--ink);
     background: var(--tile); border: 1px solid var(--tile-line); border-radius: 6px;
-    padding: 8px 6px; cursor: pointer;
-    display: grid; justify-items: center; align-content: start; gap: 4px;
-    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease,
+    padding: 7px 6px; cursor: pointer;
+    display: grid; grid-template-rows: 60px auto; justify-items: center; align-content: start; gap: 4px;
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
       background-color 340ms ease, color 340ms ease, border-color 340ms ease;
   }
-  /* Kafelki wyjeżdżają spod klikniętej kategorii, po kolei co 40 ms */
-  .tile.enter { opacity: 0; transform: translate(var(--dx, 0px), 22px) scale(0.94); }
-  .tile.leave { opacity: 0; transform: translateY(12px) scale(0.97); transition-duration: 180ms; pointer-events: none; }
+  .tile.below { transform: translateY(calc(100% + 12px)); }
+  .tile.out { transform: translateY(calc(100% + 12px)); transition: transform 280ms cubic-bezier(0.4, 0, 1, 1); pointer-events: none; }
   .tile[aria-pressed="true"] { background: var(--selected); border-color: var(--selected); color: var(--on-selected); }
-  .tile svg { display: block; height: 64px; width: 64px; }
-  .tile .name { font-weight: 700; font-size: 12px; line-height: 1.2; text-align: center; }
-
-  /* Pasek kategorii: na starcie zwinięty, wjeżdża od dołu po wyborze trybu */
-  .bar-wrap {
-    flex: none; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
-    transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  .tile svg { display: block; height: 60px; width: 60px; }
+  .tile .name {
+    font-weight: 700; font-size: 12px; line-height: 1.2; text-align: center;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  [data-phase="start"] .bar-wrap, [data-phase="start"] .panel-wrap { height: 0px; }
-  .cat.enter { opacity: 0; transform: translateY(18px); }
+
+  /* Pasek kategorii: na starcie ikony czekają pod spodem, po wyborze trybu wysuwają się po kolei */
+  [data-phase="start"] .cat { opacity: 0; transform: translateY(24px); }
   .bar {
     flex: none;
     display: grid;
@@ -170,7 +165,7 @@
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .director-only, .dock-start, .hello, .bar-wrap, .panel-wrap, .tile, .cat, .choice { transition-duration: 0.01ms !important; }
+    .director-only, .hello, .tile, .cat, .choice { transition-duration: 0.01ms !important; }
   }
 
   /* Kreska: jedna grubość wszędzie */
@@ -196,7 +191,10 @@
     <div class="readout director-only" id="readout"></div>
   </div>
 
-  <!-- Start: powitanie i wybór trybu. Po wyborze zwija się, a na jego miejsce wjeżdżają kafelki opcji. -->
+  <!-- Dół ekranu: stała wysokość. Na starcie przykryty powitaniem i wyborem trybu. -->
+  <div class="dock">
+    <div class="options" id="panelWrap" role="group" aria-label="Opcje"></div>
+    <nav class="bar" id="bar" aria-label="Kategorie"></nav>
   <div class="dock-start" id="dockStart">
     <div class="hello">
       <h1 id="line1">Cześć, jestem Manikun.</h1>
@@ -226,8 +224,7 @@
     </div>
   </div>
 
-  <div class="panel-wrap" id="panelWrap"><div class="panel" id="panel" role="group" aria-label="Opcje"></div></div>
-  <div class="bar-wrap" id="barWrap"><nav class="bar" id="bar" aria-label="Kategorie"></nav></div>
+  </div>
 </div>
 
 <script src="manikun.js"></script>
@@ -250,7 +247,7 @@
     ]},
     { id: "camera", label: "Kamera", patch: "#627A9D", options: [
       { id: "low", name: "Z dołu", short: "Z dołu", prompt: "low-angle shot, camera near the ground looking up at the subject" },
-      { id: "eye", name: "Na wysokości oczu", short: "Oczy", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
+      { id: "eye", name: "Poziom oczu", short: "Oczy", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
       { id: "soft", name: "Miękkie", short: "Miękkie", prompt: "soft diffused frontal light, gentle shadows" },
@@ -555,7 +552,6 @@
 
   // ---------- Interfejs ----------
   const bar = document.getElementById("bar");
-  const panel = document.getElementById("panel");
   const panelWrap = document.getElementById("panelWrap");
   const preview = document.getElementById("preview");
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -613,7 +609,7 @@
     n.textContent = name;
     b.append(svg, n);
     b.addEventListener("click", onClick);
-    panel.appendChild(b);
+    panelEl.appendChild(b);
     const t = {
       btn: b,
       redraw() {
@@ -668,52 +664,45 @@
       svg => renderScene(svg, { ...scene, [catId]: o.id }, 100, 100, new Set(TILE_LAYERS[catId]))));
   }
 
-  // Panel: wysuwa się spod paska, kafelki wyjeżdżają spod klikniętej kategorii.
-  // Zmiana kategorii: stare kafelki opadają i gasną, nowe wjeżdżają po kolei.
-  const PANEL_MS = 420, STEP_MS = 40;
-  let panelCat = null, panelTiles = [], panelTimer = null;
-
-  function showPanel(catId) {
-    panel.replaceChildren();
-    panelTiles = makeTiles(catId);
-    panelWrap.style.height = panel.offsetHeight + "px";
-    if (reduceMotion.matches) return;
-    const catBtn = document.getElementById("cat-" + catId);
-    const r0 = catBtn ? catBtn.getBoundingClientRect() : null;
-    const from = r0 ? r0.left + r0.width / 2 : null;
-    panelTiles.forEach(t => {
-      const r = t.btn.getBoundingClientRect();
-      t.btn.style.setProperty("--dx", (from === null ? 0 : (from - (r.left + r.width / 2)) * 0.55) + "px");
-      t.btn.style.transition = "none";
-      t.btn.classList.add("enter");
-    });
-    panel.offsetWidth; // zatwierdź stan początkowy przed animacją
-    panelTiles.forEach((t, i) => {
-      t.btn.style.transition = "";
-      t.btn.style.transitionDelay = (i * STEP_MS) + "ms";
-    });
-    requestAnimationFrame(() => panelTiles.forEach(t => t.btn.classList.remove("enter")));
-    const tiles = panelTiles;
-    setTimeout(() => tiles.forEach(t => { t.btn.style.transitionDelay = ""; }), PANEL_MS + tiles.length * STEP_MS);
-  }
+  // Rząd kafelków opcji. Ta sama animacja dla każdej kategorii: stary rząd chowa się w dół,
+  // nowy wysuwa się spod spodu, kafelek po kafelku. Obszar ma stałą wysokość, kadr stoi w miejscu.
+  const PANEL_MS = 420, OUT_MS = 280, STEP_MS = 40;
+  let panelCat = null, panelEl = null, panelTiles = [];
 
   function syncPanel() {
     const want = scene.open;
     if (want === panelCat) { panelTiles.forEach(t => t.redraw()); return; }
-    clearTimeout(panelTimer);
-    const hadTiles = panelCat && panelTiles.length;
     panelCat = want;
-    if (!want) {
-      panelWrap.style.height = "0px";
-      panelTimer = setTimeout(() => { if (!panelCat) { panel.replaceChildren(); panelTiles = []; } }, PANEL_MS);
-      return;
+    const fast = reduceMotion.matches;
+
+    const old = panelEl, oldTiles = panelTiles;
+    if (old) {
+      if (fast) old.remove();
+      else {
+        oldTiles.forEach((t, i) => { t.btn.style.transitionDelay = (i * 25) + "ms"; t.btn.classList.add("out"); });
+        setTimeout(() => old.remove(), OUT_MS + oldTiles.length * 25 + 60);
+      }
     }
-    if (hadTiles && !reduceMotion.matches) {
-      panelTiles.forEach((t, i) => { t.btn.style.transitionDelay = (i * 25) + "ms"; t.btn.classList.add("leave"); });
-      panelTimer = setTimeout(() => showPanel(want), 200);
-    } else {
-      showPanel(want);
-    }
+    panelEl = null;
+    panelTiles = [];
+    if (!want) return;
+
+    panelEl = document.createElement("div");
+    panelEl.className = "panel";
+    panelWrap.appendChild(panelEl);
+    panelTiles = makeTiles(want);
+    if (fast) return;
+
+    panelTiles.forEach(t => { t.btn.style.transition = "none"; t.btn.classList.add("below"); });
+    panelEl.offsetWidth; // zatwierdź pozycję pod spodem przed animacją
+    const start = old ? 140 : 0;
+    panelTiles.forEach((t, i) => {
+      t.btn.style.transition = "";
+      t.btn.style.transitionDelay = (start + i * STEP_MS) + "ms";
+    });
+    requestAnimationFrame(() => panelTiles.forEach(t => t.btn.classList.remove("below")));
+    const tiles = panelTiles;
+    setTimeout(() => tiles.forEach(t => { t.btn.style.transitionDelay = ""; }), start + PANEL_MS + tiles.length * STEP_MS);
   }
 
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
@@ -876,11 +865,9 @@
   function render() {
     document.body.dataset.mode = scene.mode;
     document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
-    if (phase === "director") {
-      if (scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
-      renderBar();
-      syncPanel();
-    }
+    if (phase === "director" && scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
+    renderBar();
+    if (phase === "director") syncPanel();
     sceneChanged();
   }
 
@@ -924,7 +911,6 @@
   // ---------- Start: Manikun wita się w kadrze, potem kadr zostaje, a dół zamienia się w opcje ----------
   const appEl = document.getElementById("app");
   const dock = document.getElementById("dockStart");
-  const barWrap = document.getElementById("barWrap");
   let phase = "start", idleTimer = null;
   const MP = MASCOT_POSES;
 
@@ -979,42 +965,26 @@
     setTimeout(enterDirector, reduceMotion.matches ? 0 : 1000);
   }));
 
-  // Kadr zostaje. Kafelki trybu opadają i gasną, dół się zwija, a spod niego wjeżdża pasek
-  // kategorii i panel opcji. Scena (tło, kamera, światło) pojawia się, Manikun staje do kadru.
+  // Kadr zostaje nieruchomo. Kafelki trybu chowają się w dół, a spod spodu wysuwają się
+  // ikony kategorii i kafelki formatu. Scena pojawia się wokół Manikuna, a on staje do kadru.
   function enterDirector() {
     const fast = reduceMotion.matches;
-    barWrap.style.height = "0px";
-    panelWrap.style.height = "0px";
-    dock.style.height = dock.offsetHeight + "px";
-    phase = "director";
-    appEl.dataset.phase = "director";
-    renderBar();
-
     const choices = [...dock.querySelectorAll(".choice")].sort(a => a.getAttribute("aria-pressed") === "true" ? 1 : -1);
     choices.forEach((c, i) => { c.style.transitionDelay = (i * 70) + "ms"; });
     dock.classList.add("leaving");
-
-    const cats = barItems.map(it => it.b);
-    cats.forEach(c => { c.style.transition = "none"; c.classList.add("enter"); });
-    bar.offsetWidth;
-    cats.forEach((c, i) => { c.style.transition = ""; c.style.transitionDelay = (i * STEP_MS) + "ms"; });
 
     propAnim.reveal = { from: props.reveal, to: 1, start: performance.now(), dur: 1100 };
     playFrames([{ pose: POSES[scene.pose], dur: 1000 }]);
 
     setTimeout(() => {
-      dock.style.height = "0px";
-      barWrap.style.height = bar.offsetHeight + "px";
-      requestAnimationFrame(() => cats.forEach(c => c.classList.remove("enter")));
-    }, fast ? 0 : 260);
-    setTimeout(() => {
+      dock.hidden = true;
+      barItems.forEach((it, i) => { it.b.style.transitionDelay = (i * STEP_MS) + "ms"; });
+      phase = "director";
+      appEl.dataset.phase = "director";
       scene.open = "format";
       render();
-    }, fast ? 0 : 520);
-    setTimeout(() => {
-      dock.hidden = true;
-      cats.forEach(c => { c.style.transitionDelay = ""; });
-    }, fast ? 0 : 900);
+    }, fast ? 0 : 480);
+    setTimeout(() => barItems.forEach(it => { it.b.style.transitionDelay = ""; }), fast ? 0 : 1400);
   }
 
   render();
