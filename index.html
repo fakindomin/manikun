@@ -726,7 +726,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -923,7 +923,7 @@
     const lk = scene.look, parts = [];
     const hc = lk.hairColor === "auto" ? "" : lookOpt("hairColor", lk.hairColor).word + " ";
     // Fryzura zawsze w prompcie (bez niej modele i tak dorysowują włosy); przy "Mojej twarzy" tylko wybrana ręcznie
-    if (!scene.face || lk.hairPicked) parts.push(lookOpt("hair", lk.hair).prompt(hc));
+    if (!withPhoto || lk.hairPicked) parts.push(lookOpt("hair", lk.hair).prompt(hc));
     const bc = lk.beardColor === "auto" ? "" : lookOpt("beardColor", lk.beardColor).word + " ";
     if (scene.body === "male" && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt(bc));
     if (lk.lips !== "none") parts.push(lookOpt("lips", lk.lips).prompt);
@@ -934,7 +934,7 @@
 
   // Moja twarz: generator bierze twarz z dołączonego zdjęcia, reszta sceny zostaje z kafelków
   const bodyPrompt = () => {
-    if (!scene.face) return optionOf("body", scene.body).prompt;
+    if (!withPhoto) return optionOf("body", scene.body).prompt;
     const [who, pro] = scene.body === "female" ? ["woman", "her"] : ["man", "his"];
     // Wybrana fryzura zastępuje tę ze zdjęcia
     const keep = !scene.look.hairPicked ? "face, facial features, skin tone and hairstyle" : "face, facial features and skin tone";
@@ -951,7 +951,21 @@
   const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject))
     && (!o.noDrone || st.camera !== "D") && (!o.outdoor || isOutdoor(st.background));
 
-  function buildPrompt() {
+  // Własne zdjęcie twarzy: wybór tylko na czas kopiowania (panel "Kopiuj"), nie jest częścią sceny
+  let withPhoto = false;
+  // Osobny, wyraźny akapit na początku promptu, gdy użytkownik dołącza zdjęcie twarzy
+  const photoBlock = () => {
+    const drawn = styleOf(scene) && !styleOf(scene).photo;
+    return "IMPORTANT – FACE REFERENCE: use the attached photo as the face reference. The face in the generated image must resemble the person in the photo as closely as possible: the same face shape, eyes, eyebrows, nose, mouth, skin tone and age. "
+      + (drawn ? "Keep the person clearly recognisable while drawing them in the chosen style. " : "Do not change, idealise or beautify the face. ")
+      + (scene.look.hairPicked ? "Use the photo only for the face; take everything else, including the hairstyle, from the description below.\n\n"
+        : "Use the photo only for the face and hair; take everything else from the description below.\n\n");
+  };
+  function buildPrompt(photo = false) {
+    withPhoto = photo && scene.subject === "person";
+    try { return (withPhoto ? photoBlock() : "") + buildPromptBody(); } finally { withPhoto = false; }
+  }
+  function buildPromptBody() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
     const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
     const parts = scene.subject === "object" ? [
@@ -2032,7 +2046,6 @@
 
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
-    if (cat.id === "body" && scene.face) return "Moja twarz";
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "look") {
@@ -2848,10 +2861,10 @@
   function syncSheet() {
     const person = scene.subject === "person";
     faceSwitch.hidden = !person;
-    faceSwitch.setAttribute("aria-checked", String(person && scene.face));
-    faceGuide.hidden = !(person && scene.face);
-    sheetNote.hidden = person && scene.face;
-    if (person && scene.face) drawGuidePhoto();
+    faceSwitch.setAttribute("aria-checked", String(person && sheetPhoto));
+    faceGuide.hidden = !(person && sheetPhoto);
+    sheetNote.hidden = person && sheetPhoto;
+    if (person && sheetPhoto) drawGuidePhoto();
   }
   // Przykładowe zdjęcie: głowa i ramiona Manikuna na wprost, na jasnym tle, z owalem pokazującym, gdzie ma być twarz
   function drawGuidePhoto() {
@@ -2862,20 +2875,22 @@
     Object.assign(scene, saved);
     el("ellipse", { cx: f(g.head[0]), cy: f(g.head[1]), rx: 27, ry: 33, style: "fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:4 3" }, svg);
   }
+  // Przy każdym otwarciu panelu wybór zdjęcia startuje wyłączony
+  let sheetPhoto = false;
   function setSheet(open) {
-    if (open) syncSheet();
+    if (open) { sheetPhoto = false; syncSheet(); }
     document.body.classList.toggle("sheet-open", open);
     sheetEl.setAttribute("aria-hidden", String(!open));
     sheetCopy.textContent = "Kopiuj prompt";
   }
   copyBtn.addEventListener("click", () => setSheet(true));
   document.getElementById("sheetScrim").addEventListener("click", () => setSheet(false));
-  faceSwitch.addEventListener("click", () => { scene.face = !scene.face; render(); syncSheet(); });
+  faceSwitch.addEventListener("click", () => { sheetPhoto = !sheetPhoto; syncSheet(); });
   sheetCopy.addEventListener("click", () => {
-    const text = buildPrompt();
+    const text = buildPrompt(sheetPhoto);
     const done = ok => {
       sheetCopy.textContent = ok ? "Skopiowano ✓" : "Nie udało się skopiować";
-      if (ok && scene.face && scene.subject === "person") showToast("Teraz wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
+      if (ok && sheetPhoto && scene.subject === "person") showToast("Teraz wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
       if (ok) setTimeout(() => setSheet(false), 1100);
     };
     try {
