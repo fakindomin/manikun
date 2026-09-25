@@ -112,7 +112,7 @@
   .panel {
     position: absolute; left: 0; right: 0; bottom: 0;
     height: 108px;
-    display: flex; gap: 8px;
+    display: flex; gap: 8px; align-items: flex-end;
     overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none;
   }
@@ -120,18 +120,28 @@
   /* Każdy kafelek ma ten sam rozmiar, niezależnie od kategorii */
   .tile {
     flex: none; box-sizing: border-box;
-    width: 96px; height: 108px;
+    width: 96px; height: 104px;
     font: inherit; color: var(--ink);
     background: var(--tile); border: 1px solid var(--tile-line); border-radius: 6px;
     padding: 7px 6px; cursor: pointer;
-    display: grid; grid-template-rows: 60px auto; justify-items: center; align-content: start; gap: 4px;
+    display: grid; grid-template-rows: 58px auto; justify-items: center; align-content: start; gap: 4px;
+    position: relative;
+    --halo: var(--tile);
     transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
       background-color 340ms ease, color 340ms ease, border-color 340ms ease;
   }
   .tile.below { transform: translateY(calc(100% + 12px)); }
   .tile.out { transform: translateY(calc(100% + 12px)); transition: transform 280ms cubic-bezier(0.4, 0, 1, 1); pointer-events: none; }
-  .tile[aria-pressed="true"] { background: var(--selected); border-color: var(--selected); color: var(--on-selected); }
-  .tile svg { display: block; height: 60px; width: 60px; }
+  .tile[aria-pressed="true"] { background: var(--selected); border-color: var(--selected); color: var(--on-selected); --halo: var(--selected); }
+  /* Kafelek z wariantami: druga karta pod spodem i znacznik rozwinięcia */
+  .tile.group { margin-right: 4px; box-shadow: 4px -4px 0 -1px var(--tile), 4px -4px 0 0 var(--tile-line); }
+  .tile .badge {
+    position: absolute; top: 6px; right: 7px; width: 6px; height: 6px;
+    border-top: 1.5px solid currentColor; border-right: 1.5px solid currentColor;
+    transform: rotate(45deg); opacity: 0.8;
+  }
+  .tile.back { background: transparent; border-style: dashed; }
+  .tile svg { display: block; height: 58px; width: 58px; }
   .tile .name {
     font-weight: 700; font-size: 12px; line-height: 1.2; text-align: center;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -174,6 +184,10 @@
   .ink .glow path, .ink .glow circle, .ink .glow ellipse { fill: var(--glow); stroke: var(--glow); stroke-width: 7; }
   .ink .thin { stroke-width: 1; opacity: 0.5; }
   .ink .dash { stroke-dasharray: 4 4; }
+  /* Wycięcie pod ikonami sceny: linie tła nie przechodzą przez aparat ani lampę */
+  .ink .halo { fill: var(--halo, var(--bg)); stroke: none; }
+  .ink .prop { fill: #CFCBC3; stroke: var(--fig-line); }
+  .ink .prop-line { stroke: var(--fig-line); stroke-width: 2.5; }
 </style>
 
 <div class="screen app" id="app" data-phase="start">
@@ -239,7 +253,11 @@
     ]},
     { id: "pose", label: "Poza", patch: "#C29682", options: [
       { id: "stand", name: "Stoi", short: "Stoi", prompt: "standing upright, weight evenly on both feet, arms relaxed at the sides, facing the camera" },
-      { id: "sit", name: "Siedzi na ziemi", short: "Siedzi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" }
+      { id: "sitting", name: "Siedzi", children: [
+        { id: "sit", name: "Na ziemi", short: "Na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
+        { id: "chair", name: "Na krześle", short: "Krzesło", prompt: "sitting upright on a simple wooden chair, feet flat on the floor, hands resting on the thighs, facing the camera" },
+        { id: "stone", name: "Na kamieniu", short: "Kamień", prompt: "sitting on a large rock with knees bent, forearms resting on the knees, back straight, facing the camera" }
+      ]}
     ]},
     { id: "shot", label: "Kadr", patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
@@ -250,8 +268,14 @@
       { id: "eye", name: "Poziom oczu", short: "Oczy", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
-      { id: "soft", name: "Miękkie", short: "Miękkie", prompt: "soft diffused frontal light, gentle shadows" },
-      { id: "rim", name: "Kontra z tyłu", short: "Kontra", prompt: "strong rim light from behind outlining the silhouette, face in soft shadow" }
+      { id: "natural", name: "Naturalne", children: [
+        { id: "nat-front", name: "Słońce z przodu", short: "Słońce", prompt: "soft natural daylight falling on the subject from the front, gentle shadows" },
+        { id: "nat-back", name: "Pod słońce", short: "Pod słońce", prompt: "natural backlight from the sun behind the subject outlining the silhouette, face in soft shadow" }
+      ]},
+      { id: "artificial", name: "Sztuczne", children: [
+        { id: "art-front", name: "Lampa z przodu", short: "Lampa", prompt: "soft diffused studio light from a softbox in front of the subject, gentle shadows" },
+        { id: "art-back", name: "Kontra z tyłu", short: "Kontra", prompt: "strong artificial rim light from a lamp behind the subject outlining the silhouette, face in soft shadow" }
+      ]}
     ]},
     { id: "background", label: "Tło", patch: "#8580B1", options: [
       { id: "studio", name: "Studio", short: "Studio", prompt: "plain light-grey seamless studio backdrop" },
@@ -288,14 +312,18 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", pose: "stand", shot: "full", camera: "eye", light: "soft", background: "studio", motion: "orbit",
-    open: null
+    body: "male", pose: "stand", shot: "full", camera: "eye", light: "art-front", background: "studio", motion: "orbit",
+    open: null, sub: null
   };
 
   const activeCats = () => CATEGORIES.filter(c => !c.modes || c.modes.includes(scene.mode));
   const currentFormat = () => FORMATS[scene.mode].find(x => x.id === scene.format[scene.mode]);
   const optionsOf = catId => CATEGORIES.find(c => c.id === catId).options;
-  const optionOf = (catId, id) => optionsOf(catId).find(o => o.id === id);
+  // Opcje mogą mieć warianty (children): kafelek grupy rozwija się do kolejnego poziomu
+  const leavesOf = catId => optionsOf(catId).flatMap(o => o.children || [o]);
+  const optionOf = (catId, id) => leavesOf(catId).find(o => o.id === id);
+  const isBackLight = id => id.endsWith("-back");
+  const isNaturalLight = id => id.startsWith("nat");
 
   function buildPrompt() {
     const parts = [
@@ -324,8 +352,36 @@
       nearUpper: 50, nearFore: 95, farUpper: 45, farFore: 88,
       nearThigh: 135, nearShin: 42, farThigh: 138, farShin: 45,
       nearFoot: 72, farFoot: 72
+    },
+    chair: {
+      spine: 180, head: 180,
+      nearUpper: 10, nearFore: 72, farUpper: 12, farFore: 76,
+      nearThigh: 97, nearShin: -2, farThigh: 100, farShin: 0,
+      nearFoot: 70, farFoot: 70
+    },
+    stone: {
+      spine: 174, head: 178,
+      nearUpper: 45, nearFore: 95, farUpper: 40, farFore: 88,
+      nearThigh: 118, nearShin: 25, farThigh: 121, farShin: 27,
+      nearFoot: 72, farFoot: 72
     }
   };
+  // Rekwizyt, na którym siedzi Manikun
+  const POSE_PROPS = { chair: "chair", stone: "stone" };
+
+  // Rysuje rekwizyt pod biodrami (hip) w skali s, do linii podłoża G
+  function drawProp(g, kind, hip, s, G) {
+    const [hx, hy] = hip;
+    if (kind === "chair") {
+      const sy = hy + 6 * s;
+      el("rect", { x: f(hx - 26 * s), y: f(sy - 62 * s), width: f(5 * s), height: f(62 * s), rx: f(1.5 * s), class: "prop" }, g);
+      el("path", { d: `M${f(hx - 14 * s)},${f(sy + 4 * s)} L${f(hx - 14 * s)},${f(G)} M${f(hx + 30 * s)},${f(sy + 4 * s)} L${f(hx + 30 * s)},${f(G)} M${f(hx - 24 * s)},${f(sy + 4 * s)} L${f(hx - 24 * s)},${f(G - 2 * s)}`, class: "prop-line" }, g);
+      el("rect", { x: f(hx - 26 * s), y: f(sy), width: f(60 * s), height: f(5 * s), rx: f(1.5 * s), class: "prop" }, g);
+    } else if (kind === "stone") {
+      const top = hy + 5 * s, x0 = hx - 26 * s, x1 = hx + 30 * s;
+      el("path", { d: `M${f(x0)},${f(G)} C${f(x0 - 4 * s)},${f(top + 10 * s)} ${f(hx - 14 * s)},${f(top - 2 * s)} ${f(hx + 2 * s)},${f(top)} C${f(hx + 20 * s)},${f(top + 1 * s)} ${f(x1 + 6 * s)},${f(top + 8 * s)} ${f(x1)},${f(G)} Z`, class: "prop" }, g);
+    }
+  }
 
   const figCache = {};
   function buildFigure(poseId, bodyId = "male") {
@@ -358,7 +414,7 @@
       y = groundY - b.h * scale;
     }
     const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
-    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head) };
+    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]) };
   }
 
   function drawFigureAt(parent, pl, cls) {
@@ -409,23 +465,34 @@
     const y = A.front[1] + (A.back[1] - A.front[1]) * t - Math.sin(Math.PI * t) * A.u * 8;
     const k = 1 - 0.35 * t;
     return {
-      x, y, t, behind: t >= 0.5, w: A.bw * k, h: A.bh * k,
+      x, y, t, k, behind: t >= 0.5, w: A.bw * k, h: A.bh * k,
       rays: Math.max(0, 1 - t * 3),
       glow: Math.max(0, Math.min(1, (t - 0.6) / 0.4))
     };
   }
 
-  function drawLamp(g, L, u) {
-    if (L.t < 0.5) {
-      el("rect", { x: f(L.x - L.w / 2), y: f(L.y - L.h / 2), width: f(L.w), height: f(L.h), rx: f(u), opacity: f(1 - L.t * 2) }, g);
-    } else {
-      const rr = u * 2.6, sg = el("g", { opacity: f((L.t - 0.5) * 2 * 0.75) }, g);
-      el("circle", { cx: f(L.x), cy: f(L.y), r: f(rr) }, sg);
-      for (let k = 0; k < 8; k++) {
-        const a = k * Math.PI / 4;
-        el("line", { x1: f(L.x + Math.cos(a) * rr * 1.5), y1: f(L.y + Math.sin(a) * rr * 1.5), x2: f(L.x + Math.cos(a) * rr * 2.2), y2: f(L.y + Math.sin(a) * rr * 2.2) }, sg);
-      }
+  // Słońce: koło z promieniami
+  function sunGlyph(g, cx, cy, r) {
+    el("circle", { cx: f(cx), cy: f(cy), r: f(r) }, g);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      el("line", { x1: f(cx + Math.cos(a) * r * 1.5), y1: f(cy + Math.sin(a) * r * 1.5), x2: f(cx + Math.cos(a) * r * 2.2), y2: f(cy + Math.sin(a) * r * 2.2) }, g);
     }
+  }
+  // Lampa: klosz na przewodzie, jak lampa studyjna
+  function lampGlyph(g, cx, cy, r) {
+    el("path", { d: `M${f(cx)},${f(cy - r * 2.3)} L${f(cx)},${f(cy - r * 0.8)}` }, g);
+    el("path", { d: `M${f(cx - r * 0.8)},${f(cy - r * 0.8)} L${f(cx + r * 0.8)},${f(cy - r * 0.8)} L${f(cx + r * 1.5)},${f(cy + r * 0.6)} L${f(cx - r * 1.5)},${f(cy + r * 0.6)} Z` }, g);
+    el("path", { d: `M${f(cx - r * 0.5)},${f(cy + r * 0.6)} A${f(r * 0.5)},${f(r * 0.5)} 0 0 0 ${f(cx + r * 0.5)},${f(cy + r * 0.6)}` }, g);
+  }
+
+  // Źródło światła. kind: 0 = słońce, 1 = lampa (przy zmianie ikony się przenikają).
+  // Pod ikoną jest wycięcie w kolorze tła, więc linie sceny nie przechodzą przez nią.
+  function drawLamp(g, L, u, kind) {
+    const r = u * 2.8 * L.k, depth = L.behind ? 0.75 : 1;
+    el("circle", { cx: f(L.x), cy: f(L.y - r * 0.4), r: f(r * 2.7), class: "halo" }, g);
+    if (kind < 1) sunGlyph(el("g", { opacity: f((1 - kind) * depth) }, g), L.x, L.y, r);
+    if (kind > 0) lampGlyph(el("g", { opacity: f(kind * depth) }, g), L.x, L.y, r);
   }
 
   let clipSeq = 0;
@@ -441,7 +508,8 @@
     const { pl, u, cx } = A;
     // Stan pośredni kamery i światła (0..1) podczas animacji, inaczej wartość z wyboru
     const camT = st.props ? st.props.cam : (st.camera === "eye" ? 1 : 0);
-    const lightT = st.props ? st.props.light : (st.light === "rim" ? 1 : 0);
+    const lightT = st.props ? st.props.light : (isBackLight(st.light) ? 1 : 0);
+    const kindT = st.props && st.props.kind !== undefined ? st.props.kind : (isNaturalLight(st.light) ? 0 : 1);
     const horizonY = A.lowY + (A.eyeY - A.lowY) * camT;
     // Na starcie widać tylko Manikuna; tło, kamera, światło i ruch pojawiają się płynnie po wyborze trybu
     const reveal = st.props && st.props.reveal !== undefined ? st.props.reveal : 1;
@@ -474,16 +542,17 @@
     }
 
     // Kamera: linia horyzontu i znak aparatu
+    // Kamera: sam znak aparatu na wysokości obiektywu, z wycięciem pod spodem
     if (layers.has("camera") && reveal > 0) {
       const s = u * 7, lg = layer();
+      el("rect", { x: f(A.camX - s * 1.05), y: f(horizonY - s * 0.8), width: f(s * 2.2), height: f(s * 1.6), rx: f(s * 0.3), class: "halo" }, lg);
       cameraGlyph(lg, A.camX, horizonY, s);
-      el("line", { x1: f(W * 0.06 + s * 1.7), y1: f(horizonY), x2: f(W), y2: f(horizonY), class: "dash" }, lg);
     }
 
     // Światło: jedna lampa przelatuje łukiem z przodu (miękkie) za postać (kontra).
     // Za postacią jest mniejsza i bledsza, rysowana pod Manikunem: stoi głęboko w scenie.
     const lamp = layers.has("light") && reveal > 0 ? lampAt(A, lightT) : null;
-    if (lamp && lamp.behind) drawLamp(layer(), lamp, u);
+    if (lamp && lamp.behind) drawLamp(layer(), lamp, u, kindT);
     if (lamp && lamp.glow > 0) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal) }, g), pl, "glow");
 
     // Ruch: tylna połowa orbity za postacią
@@ -492,6 +561,7 @@
       el("path", { d: `M${f(orbit.cx - orbit.rx)},${f(orbit.cy)} A${f(orbit.rx)},${f(orbit.ry)} 0 0 1 ${f(orbit.cx + orbit.rx)},${f(orbit.cy)}`, class: "dash" }, layer());
     }
 
+    if (POSE_PROPS[st.pose]) drawProp(g, POSE_PROPS[st.pose], A.plBase.hip, A.plBase.scale, A.plBase.groundY);
     drawFigureAt(g, pl, "fig");
 
     // Ruch: przednia połowa orbity albo najazd kamery
@@ -508,15 +578,16 @@
       }
     }
 
-    // Lampa z przodu: panel i promienie w stronę postaci
+    // Lampa z przodu: ikona i krótkie promienie w stronę postaci (nie przecinają sceny)
     if (lamp && !lamp.behind) {
-      drawLamp(layer(), lamp, u);
+      const lg = layer();
+      drawLamp(lg, lamp, u, kindT);
       if (lamp.rays > 0) {
-        const rg = el("g", { opacity: f(lamp.rays * reveal) }, g);
-        const tx = cx + pl.w * 0.1, ty = pl.y + pl.h * 0.35;
-        [-1, 0, 1].forEach(k => {
-          const sx = lamp.x + k * lamp.w * 0.3, sy = lamp.y + lamp.h / 2 + u * 2;
-          arrow(rg, sx, sy, sx + (tx - sx) * 0.55, sy + (ty - sy) * 0.55, u * 2.5);
+        const rg = el("g", { opacity: f(lamp.rays) }, lg);
+        const tx = cx, ty = pl.y + pl.h * 0.3;
+        const a = Math.atan2(ty - lamp.y, tx - lamp.x), r0 = u * 5.5 * lamp.k, r1 = r0 + u * 4;
+        [-0.28, 0, 0.28].forEach(d => {
+          el("line", { x1: f(lamp.x + Math.cos(a + d) * r0), y1: f(lamp.y + Math.sin(a + d) * r0), x2: f(lamp.x + Math.cos(a + d) * r1), y2: f(lamp.y + Math.sin(a + d) * r1) }, rg);
         });
       }
     }
@@ -536,7 +607,7 @@
     format: svg => el("rect", { x: 6, y: 3, width: 12, height: 18, rx: 1.5 }, svg),
     shot: svg => el("path", { d: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5" }, svg),
     camera: svg => { el("rect", { x: 3, y: 7, width: 13, height: 11, rx: 1.5 }, svg); el("path", { d: "M16 10l5-3v11l-5-3z" }, svg); },
-    light: svg => { el("circle", { cx: 12, cy: 12, r: 4 }, svg); el("path", { d: "M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M4.9 19.1l2.1-2.1 M17 7l2.1-2.1" }, svg); },
+    light: svg => isNaturalLight(scene.light) ? sunGlyph(svg, 12, 12, 4) : lampGlyph(svg, 12, 13, 4.2),
     background: svg => { el("rect", { x: 3, y: 3, width: 18, height: 3, rx: 1.5 }, svg); el("path", { d: "M5 6v11l-2 4 M19 6v11l2 4 M5 17h14" }, svg); },
     motion: svg => { el("ellipse", { cx: 12, cy: 15, rx: 9, ry: 3.5 }, svg); el("circle", { cx: 12, cy: 5, r: 2 }, svg); el("path", { d: "M12 7v8 M15 19.4l2.4-0.8-1.4-2" }, svg); },
     body: svg => miniFigure(svg, "stand", scene.body),
@@ -584,7 +655,7 @@
         const value = document.createElement("span");
         value.className = "value";
         b.append(svg, label, value);
-        b.addEventListener("click", () => { scene.open = scene.open === cat.id ? null : cat.id; render(); });
+        b.addEventListener("click", () => { scene.open = scene.open === cat.id && !scene.sub ? null : cat.id; scene.sub = null; render(); });
         bar.appendChild(b);
         return { cat, b, svg, value };
       });
@@ -642,26 +713,57 @@
           el("rect", { x: f(32 - w / 2), y: f(32 - h / 2), width: f(w), height: f(h), rx: 2 }, svg);
         }));
     }
+    if (scene.sub) {
+      // Poziom wariantów: kafelek powrotu i warianty grupy
+      const grp = optionsOf(catId).find(o => o.id === scene.sub);
+      const list = [tile("opt-back", "Wróć", () => false, () => { scene.sub = null; render(); }, svg => {
+        svg.setAttribute("viewBox", "0 0 64 64");
+        el("path", { d: "M36 20 L24 32 L36 44 M24 32 H46" }, svg);
+      })];
+      list[0].btn.classList.add("back");
+      grp.children.forEach(c => list.push(tile("opt-" + catId + "-" + c.id, c.name,
+        () => scene[catId] === c.id,
+        () => { scene[catId] = c.id; render(); },
+        svg => drawOption(catId, c.id, svg))));
+      return list;
+    }
+    return optionsOf(catId).map(o => {
+      if (!o.children) {
+        return tile("opt-" + catId + "-" + o.id, o.name,
+          () => scene[catId] === o.id,
+          () => { scene[catId] = o.id; render(); },
+          svg => drawOption(catId, o.id, svg));
+      }
+      // Kafelek grupy: wygląda jak stos kart i ma znacznik rozwinięcia
+      const inGroup = () => o.children.some(c => c.id === scene[catId]);
+      const t = tile("opt-" + catId + "-" + o.id, o.name, inGroup,
+        () => { if (!inGroup()) scene[catId] = o.children[0].id; scene.sub = o.id; render(); },
+        svg => drawOption(catId, (o.children.find(c => c.id === scene[catId]) || o.children[0]).id, svg));
+      t.btn.classList.add("group");
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.setAttribute("aria-hidden", "true");
+      t.btn.appendChild(badge);
+      return t;
+    });
+  }
+
+  // Rysunek na kafelku dla wariantu leafId danej kategorii
+  function drawOption(catId, leafId, svg) {
     if (catId === "pose" || catId === "body") {
       const boxes = [];
       Object.keys(POSES).forEach(pk => Object.keys(BODIES).forEach(bk => boxes.push(buildFigure(pk, bk).box)));
       const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
-      return optionsOf(catId).map(o => tile("opt-" + catId + "-" + o.id, o.name,
-        () => scene[catId] === o.id,
-        () => { scene[catId] = o.id; render(); },
-        svg => {
-          const fig = catId === "pose" ? buildFigure(o.id, scene.body) : buildFigure(scene.pose, o.id), b = fig.box;
-          const x = b.minX - (side - b.w) / 2, y = b.maxY + 6 - side;
-          svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
-          el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
-          paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
-        }));
+      const poseId = catId === "pose" ? leafId : scene.pose;
+      const fig = catId === "pose" ? buildFigure(leafId, scene.body) : buildFigure(scene.pose, leafId), b = fig.box;
+      const x = b.minX - (side - b.w) / 2, y = b.maxY + 6 - side;
+      svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
+      el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
+      if (POSE_PROPS[poseId]) drawProp(svg, POSE_PROPS[poseId], [0, 0], 1, b.maxY);
+      paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+      return;
     }
-    // Pozostałe kategorie: miniatura sceny z nałożoną tylko tą jedną opcją
-    return optionsOf(catId).map(o => tile("opt-" + catId + "-" + o.id, o.name,
-      () => scene[catId] === o.id,
-      () => { scene[catId] = o.id; render(); },
-      svg => renderScene(svg, { ...scene, [catId]: o.id }, 100, 100, new Set(TILE_LAYERS[catId]))));
+    renderScene(svg, { ...scene, [catId]: leafId }, 100, 100, new Set(TILE_LAYERS[catId]));
   }
 
   // Rząd kafelków opcji. Ta sama animacja dla każdej kategorii: stary rząd chowa się w dół,
@@ -670,7 +772,7 @@
   let panelCat = null, panelEl = null, panelTiles = [];
 
   function syncPanel() {
-    const want = scene.open;
+    const want = scene.open ? scene.open + (scene.sub ? "/" + scene.sub : "") : null;
     if (want === panelCat) { panelTiles.forEach(t => t.redraw()); return; }
     panelCat = want;
     const fast = reduceMotion.matches;
@@ -690,7 +792,7 @@
     panelEl = document.createElement("div");
     panelEl.className = "panel";
     panelWrap.appendChild(panelEl);
-    panelTiles = makeTiles(want);
+    panelTiles = makeTiles(scene.open);
     if (fast) return;
 
     panelTiles.forEach(t => { t.btn.style.transition = "none"; t.btn.classList.add("below"); });
@@ -708,12 +810,12 @@
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
   let figAnim = null;                        // kolejka klatek kluczowych Manikuna
-  const props = { cam: null, light: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
+  const props = { cam: null, light: null, kind: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
   const propAnim = {};
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
 
-  const targetProps = () => ({ cam: scene.camera === "eye" ? 1 : 0, light: scene.light === "rim" ? 1 : 0 });
+  const targetProps = () => ({ cam: scene.camera === "eye" ? 1 : 0, light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1 });
   const baseShown = () => ({ pose: POSES[scene.pose], rig: BODIES[scene.body] });
   const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
 
@@ -751,7 +853,7 @@
     const H = 300, W = H * fmt.w / fmt.h;
     const layers = ["ground", "camera", "light", "background"];
     if (scene.mode === "video") layers.push("motion");
-    const st = { ...scene, props: { cam: props.cam, light: props.light, reveal: props.reveal } };
+    const st = { ...scene, props: { cam: props.cam, light: props.light, kind: props.kind, reveal: props.reveal } };
     if (shown && (figAnim || shown.pose !== POSES[scene.pose] || shown.rig !== BODIES[scene.body])) {
       st.fig = computeFigure(shown.pose, shown.rig);
     }
@@ -775,7 +877,7 @@
     const H = 300, W = H * fmt.w / fmt.h, A = anchors(st, W, H);
     if (what === "head") return A.plBase.head;
     if (what === "camera") return [A.camX, st.camera === "eye" ? A.eyeY : A.lowY];
-    const L = lampAt(A, st.light === "rim" ? 1 : 0);
+    const L = lampAt(A, isBackLight(st.light) ? 1 : 0);
     return [L.x, L.y];
   }
 
@@ -843,13 +945,14 @@
       shown = baseShown();
       props.cam = tp.cam;
       props.light = tp.light;
+      props.kind = tp.kind;
       props.reveal = phase === "start" ? 0 : 1;
       for (const k in propAnim) delete propAnim[k];
       ensureLoop();
       return;
     }
     // Kamera i lampa przesuwają się płynnie do nowego miejsca
-    ["cam", "light"].forEach(k => {
+    ["cam", "light", "kind"].forEach(k => {
       if (props[k] !== tp[k] && (!propAnim[k] || propAnim[k].to !== tp[k])) {
         propAnim[k] = { from: props[k], to: tp[k], start: performance.now(), dur: PROP_MS };
       }
