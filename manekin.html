@@ -101,7 +101,7 @@
     color: rgba(244, 244, 245, 0.78);
     --halo: var(--stage);
   }
-  #preview { flex: 1; min-height: 0; width: 100%; display: block; }
+  #preview { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   [data-phase="start"] #preview { cursor: pointer; }
   .readout {
     font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.02em;
@@ -232,6 +232,9 @@
   .ink .glow path, .ink .glow circle, .ink .glow ellipse { fill: var(--glow); stroke: var(--glow); stroke-width: 7; }
   .ink .thin { stroke-width: 1; opacity: 0.35; }
   .ink .dash { stroke-dasharray: 4 4; }
+  .ink .grabbed * { stroke: var(--accent); }
+  .ink .zone { fill: none; stroke: var(--accent); stroke-width: 1.2; opacity: 0.45; stroke-dasharray: 2 3; }
+  .ink .zone.near { fill: var(--accent-soft); opacity: 1; stroke-dasharray: none; }
   .ink .corner { stroke: var(--accent); stroke-width: 2; }
   .ink .frame { stroke: rgba(255, 255, 255, 0.14); }
   /* Wycięcie pod ikonami sceny: linie tła nie przechodzą przez aparat ani lampę */
@@ -314,17 +317,23 @@
       { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
     ]},
     { id: "camera", label: "Kamera", patch: "#627A9D", options: [
-      { id: "low", name: "Z dołu", short: "Z dołu", prompt: "low-angle shot, camera near the ground looking up at the subject" },
-      { id: "eye", name: "Poziom oczu", short: "Oczy", prompt: "eye-level shot, camera at the subject's eye height, straight-on" }
+      { id: "L2", name: "Lewo · środek", short: "Lewo", prompt: "straight-on eye-level three-quarter shot from the left, camera at the subject's eye height" },
+      { id: "L1", name: "Lewo · z góry", short: "Lewo góra", prompt: "high-angle three-quarter shot from the left, camera above the subject looking down" },
+      { id: "L3", name: "Lewo · z dołu", short: "Lewo dół", prompt: "low-angle three-quarter shot from the left, camera near the ground looking up at the subject" },
+      { id: "T", name: "Z góry", short: "Z góry", prompt: "high-angle shot from the front, camera above the subject looking down" },
+      { id: "B", name: "Z dołu", short: "Z dołu", prompt: "low-angle shot from the front, camera near the ground looking up at the subject" },
+      { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "straight-on eye-level three-quarter shot from the right, camera at the subject's eye height" },
+      { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "high-angle three-quarter shot from the right, camera above the subject looking down" },
+      { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "low-angle three-quarter shot from the right, camera near the ground looking up at the subject" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
       { id: "natural", name: "Naturalne", children: [
-        { id: "nat-front", name: "Słońce z przodu", short: "Słońce", prompt: "soft natural daylight falling on the subject from the front, gentle shadows" },
-        { id: "nat-back", name: "Pod słońce", short: "Pod słońce", prompt: "natural backlight from the sun behind the subject outlining the silhouette, face in soft shadow" }
+        { id: "nat-front", name: "Słońce z przodu", short: "Słońce", prompt: "soft natural daylight falling on the subject {from}, gentle shadows" },
+        { id: "nat-back", name: "Pod słońce", short: "Pod słońce", prompt: "natural backlight from the sun behind the subject {from}, outlining the silhouette, face in soft shadow" }
       ]},
       { id: "artificial", name: "Sztuczne", children: [
-        { id: "art-front", name: "Lampa z przodu", short: "Lampa", prompt: "soft diffused studio light from a softbox in front of the subject, gentle shadows" },
-        { id: "art-back", name: "Kontra z tyłu", short: "Kontra", prompt: "strong artificial rim light from a lamp behind the subject outlining the silhouette, face in soft shadow" }
+        { id: "art-front", name: "Lampa z przodu", short: "Lampa", prompt: "soft diffused softbox studio light {from}, gentle shadows" },
+        { id: "art-back", name: "Kontra z tyłu", short: "Kontra", prompt: "strong artificial rim light from a lamp behind the subject {from}, outlining the silhouette, face in soft shadow" }
       ]}
     ]},
     { id: "background", label: "Tło", patch: "#8580B1", options: [
@@ -362,13 +371,36 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", pose: "stand", shot: "full", camera: "eye", light: "art-front", background: "studio", motion: "orbit",
+    body: "male", pose: "stand", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", motion: "orbit",
     open: null, sub: null
   };
 
   const activeCats = () => CATEGORIES.filter(c => !c.modes || c.modes.includes(scene.mode));
   const currentFormat = () => FORMATS[scene.mode].find(x => x.id === scene.format[scene.mode]);
   const optionsOf = catId => CATEGORIES.find(c => c.id === catId).options;
+  // 8 stref kotwiczenia aparatu i światła: 3 po lewej, 3 po prawej, góra i dół na środku (x, y w ułamkach kadru)
+  const ZONES = {
+    L1: { x: 0.12, y: 0.18, name: "Lewo, góra", from: "from the upper left" },
+    L2: { x: 0.12, y: 0.5, name: "Lewo, środek", from: "from the left" },
+    L3: { x: 0.12, y: 0.82, name: "Lewo, dół", from: "from the lower left" },
+    R1: { x: 0.88, y: 0.18, name: "Prawo, góra", from: "from the upper right" },
+    R2: { x: 0.88, y: 0.5, name: "Prawo, środek", from: "from the right" },
+    R3: { x: 0.88, y: 0.82, name: "Prawo, dół", from: "from the lower right" },
+    T: { x: 0.5, y: 0.08, name: "Góra", from: "from directly above" },
+    B: { x: 0.5, y: 0.92, name: "Dół", from: "from below" }
+  };
+  // Punkt strefy w kadrze W×H, z zapasem od krawędzi
+  const zonePt = (n, W, H, u) => [clamp(W * n[0], u * 9, W - u * 9), clamp(H * n[1], u * 8, H - u * 8)];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function nearestZone(nx, ny, W, H) {
+    let best = null, bd = Infinity;
+    for (const id in ZONES) {
+      const z = ZONES[id], d = Math.hypot((z.x - nx) * W, (z.y - ny) * H);
+      if (d < bd) { bd = d; best = id; }
+    }
+    return best;
+  }
+
   // Opcje mogą mieć warianty (children): kafelek grupy rozwija się do kolejnego poziomu
   const leavesOf = catId => optionsOf(catId).flatMap(o => o.children || [o]);
   const optionOf = (catId, id) => leavesOf(catId).find(o => o.id === id);
@@ -380,7 +412,7 @@
       optionOf("shot", scene.shot).prompt + " " + optionOf("body", scene.body).prompt,
       optionOf("pose", scene.pose).prompt,
       optionOf("camera", scene.camera).prompt,
-      optionOf("light", scene.light).prompt,
+      optionOf("light", scene.light).prompt.replace("{from}", ZONES[scene.lightZone].from),
       optionOf("background", scene.background).prompt
     ];
     if (scene.mode === "video") parts.push(optionOf("motion", scene.motion).prompt);
@@ -494,31 +526,7 @@
     const baseFig = buildFigure(st.pose, st.body), bb = baseFig.box, ax = (bb.minX + bb.maxX) / 2;
     const plBase = place(baseFig, st.shot, W, H, ax);
     const pl = st.fig ? place(st.fig, st.shot, W, H, ax) : plBase;
-    const u = H / 100;
-    const bw = Math.max(W * 0.14, u * 12), bh = u * 7;
-    // Kontra stoi za Manikunem z boku sylwetki, z zapasem od konturu
-    const back = st.shot === "portrait"
-      ? [W - u * 9, u * 9]
-      : [Math.min(W - u * 7, plBase.x + plBase.w + u * 9), Math.max(u * 7, plBase.y - u * 2)];
-    return {
-      pl, plBase, u, cx: pl.x + pl.w / 2, bw, bh, back,
-      front: [W * 0.94 - bw / 2, H * 0.08 + bh / 2],
-      lowY: Math.min(plBase.groundY - plBase.h * 0.04, H * 0.93),
-      eyeY: plBase.head[1],
-      camX: W * 0.06 + u * 7 * 0.7
-    };
-  }
-
-  // Lampa w stanie t: 0 = miękkie z przodu, 1 = kontra z tyłu. Leci łukiem i maleje w głąb.
-  function lampAt(A, t) {
-    const x = A.front[0] + (A.back[0] - A.front[0]) * t;
-    const y = A.front[1] + (A.back[1] - A.front[1]) * t - Math.sin(Math.PI * t) * A.u * 8;
-    const k = 1 - 0.35 * t;
-    return {
-      x, y, t, k, behind: t >= 0.5, w: A.bw * k, h: A.bh * k,
-      rays: Math.max(0, 1 - t * 3),
-      glow: Math.max(0, Math.min(1, (t - 0.6) / 0.4))
-    };
+    return { pl, plBase, u: H / 100, cx: pl.x + pl.w / 2 };
   }
 
   // Słońce: koło z promieniami
@@ -539,7 +547,8 @@
   // Źródło światła. kind: 0 = słońce, 1 = lampa (przy zmianie ikony się przenikają).
   // Pod ikoną jest wycięcie w kolorze tła, więc linie sceny nie przechodzą przez nią.
   function drawLamp(g, L, u, kind) {
-    const r = u * 2.8 * L.k, depth = L.behind ? 0.75 : 1;
+    const r = u * 2.8 * L.k * (L.grab ? 1.25 : 1), depth = L.behind ? 0.7 : 1;
+    if (L.grab) g = el("g", { class: "grabbed" }, g);
     el("circle", { cx: f(L.x), cy: f(L.y - r * 0.4), r: f(r * 2.7), class: "halo" }, g);
     if (kind < 1) sunGlyph(el("g", { opacity: f((1 - kind) * depth) }, g), L.x, L.y, r);
     if (kind > 0) lampGlyph(el("g", { opacity: f(kind * depth) }, g), L.x, L.y, r);
@@ -556,11 +565,15 @@
 
     const A = anchors(st, W, H);
     const { pl, u, cx } = A;
-    // Stan pośredni kamery i światła (0..1) podczas animacji, inaczej wartość z wyboru
-    const camT = st.props ? st.props.cam : (st.camera === "eye" ? 1 : 0);
-    const lightT = st.props ? st.props.light : (isBackLight(st.light) ? 1 : 0);
-    const kindT = st.props && st.props.kind !== undefined ? st.props.kind : (isNaturalLight(st.light) ? 0 : 1);
-    const horizonY = A.lowY + (A.eyeY - A.lowY) * camT;
+    // Położenie aparatu i lampy: w trakcie animacji lub przeciągania z props, inaczej środek strefy
+    const P = st.props || {};
+    const zc = ZONES[st.camera], zl = ZONES[st.lightZone];
+    const camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
+    const litPt = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
+    const lightT = P.light ?? (isBackLight(st.light) ? 1 : 0);
+    const kindT = P.kind ?? (isNaturalLight(st.light) ? 0 : 1);
+    const horizonY = camPt[1];
+    const target = [cx, pl.y + pl.h * 0.3];
     // Na starcie widać tylko Manikuna; tło, kamera, światło i ruch pojawiają się płynnie po wyborze trybu
     const reveal = st.props && st.props.reveal !== undefined ? st.props.reveal : 1;
     const layer = () => reveal >= 1 ? g : el("g", { opacity: f(reveal) }, g);
@@ -594,14 +607,23 @@
     // Kamera: linia horyzontu i znak aparatu
     // Kamera: sam znak aparatu na wysokości obiektywu, z wycięciem pod spodem
     if (layers.has("camera") && reveal > 0) {
-      const s = u * 7, lg = layer();
-      el("rect", { x: f(A.camX - s * 1.05), y: f(horizonY - s * 0.8), width: f(s * 2.2), height: f(s * 1.6), rx: f(s * 0.3), class: "halo" }, lg);
-      cameraGlyph(lg, A.camX, horizonY, s);
+      const s = u * 7, [x, y] = camPt, lg = layer();
+      el("circle", { cx: f(x), cy: f(y), r: f(s * 1.25), class: "halo" }, lg);
+      // Obiektyw zawsze skierowany na Manikuna; po prawej stronie aparat jest odbity, nie odwrócony
+      const a = Math.atan2(target[1] - y, target[0] - x) * 180 / Math.PI, flip = Math.abs(a) > 90 ? -1 : 1;
+      const grab = opts.grab === "camera" ? ` translate(${f(x)} ${f(y)}) scale(1.25) translate(${f(-x)} ${f(-y)})` : "";
+      const cg = el("g", { transform: `rotate(${f(a)} ${f(x)} ${f(y)}) translate(${f(x)} ${f(y)}) scale(1 ${flip}) translate(${f(-x)} ${f(-y)})${grab}`, class: opts.grab === "camera" ? "grabbed" : "" }, lg);
+      cameraGlyph(cg, x + s * 0.15, y, s);
     }
 
     // Światło: jedna lampa przelatuje łukiem z przodu (miękkie) za postać (kontra).
     // Za postacią jest mniejsza i bledsza, rysowana pod Manikunem: stoi głęboko w scenie.
-    const lamp = layers.has("light") && reveal > 0 ? lampAt(A, lightT) : null;
+    // Lampa: z przodu duża z promieniami, za Manikunem mniejsza i bledsza, rysowana pod nim
+    const lamp = layers.has("light") && reveal > 0 ? {
+      x: litPt[0], y: litPt[1], t: lightT, k: 1 - 0.3 * lightT, behind: lightT >= 0.5,
+      rays: Math.max(0, 1 - lightT * 3), glow: Math.max(0, Math.min(1, (lightT - 0.6) / 0.4)),
+      grab: opts.grab === "light"
+    } : null;
     if (lamp && lamp.behind) drawLamp(layer(), lamp, u, kindT);
     if (lamp && lamp.glow > 0) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal) }, g), pl, "glow");
 
@@ -634,11 +656,19 @@
       drawLamp(lg, lamp, u, kindT);
       if (lamp.rays > 0) {
         const rg = el("g", { opacity: f(lamp.rays) }, lg);
-        const tx = cx, ty = pl.y + pl.h * 0.3;
+        const [tx, ty] = target;
         const a = Math.atan2(ty - lamp.y, tx - lamp.x), r0 = u * 5.5 * lamp.k, r1 = r0 + u * 4;
         [-0.28, 0, 0.28].forEach(d => {
           el("line", { x1: f(lamp.x + Math.cos(a + d) * r0), y1: f(lamp.y + Math.sin(a + d) * r0), x2: f(lamp.x + Math.cos(a + d) * r1), y2: f(lamp.y + Math.sin(a + d) * r1) }, rg);
         });
+      }
+    }
+
+    // Strefy kotwiczenia widoczne tylko podczas przeciągania
+    if (opts.zones) {
+      for (const id in ZONES) {
+        const [zx, zy] = zonePt([ZONES[id].x, ZONES[id].y], W, H, u);
+        el("circle", { cx: f(zx), cy: f(zy), r: f(u * (id === opts.zones.near ? 3.2 : 2.2)), class: id === opts.zones.near ? "zone near" : "zone" }, svg);
       }
     }
 
@@ -650,6 +680,7 @@
         el("path", { d: `M${f(x)},${f(y + sy * c)} L${f(x)},${f(y)} L${f(x + sx * c)},${f(y)}`, class: "corner" }, svg);
       });
     }
+    return { camPt, litPt, u, W, H, head: A.plBase.head };
   }
 
   // ---------- Ikony paska kategorii ----------
@@ -676,7 +707,6 @@
   const panelWrap = document.getElementById("panelWrap");
   const preview = document.getElementById("preview");
   const lerp = (a, b, t) => a + (b - a) * t;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
@@ -860,12 +890,17 @@
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
   let figAnim = null;                        // kolejka klatek kluczowych Manikuna
-  const props = { cam: null, light: null, kind: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
+  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
   const propAnim = {};
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
 
-  const targetProps = () => ({ cam: scene.camera === "eye" ? 1 : 0, light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1 });
+  const targetProps = () => ({
+    camX: ZONES[scene.camera].x, camY: ZONES[scene.camera].y,
+    litX: ZONES[scene.lightZone].x, litY: ZONES[scene.lightZone].y,
+    light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1
+  });
+  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind"];
   const baseShown = () => ({ pose: POSES[scene.pose], rig: BODIES[scene.body] });
   const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
 
@@ -903,15 +938,18 @@
     const H = 300, W = H * fmt.w / fmt.h;
     const layers = ["ground", "camera", "light", "background"];
     if (scene.mode === "video") layers.push("motion");
-    const st = { ...scene, props: { cam: props.cam, light: props.light, kind: props.kind, reveal: props.reveal } };
+    const st = { ...scene, props: { ...props } };
     if (shown && (figAnim || shown.pose !== POSES[scene.pose] || shown.rig !== BODIES[scene.body])) {
       st.fig = computeFigure(shown.pose, shown.rig);
     }
-    renderScene(preview, st, W, H, new Set(layers), { corners: true });
+    const grabbed = drag && drag.grabbed ? drag.what : null;
+    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null });
     const ro = document.getElementById("readout");
     ro.replaceChildren();
     if (scene.mode === "video") { const d = document.createElement("span"); d.className = "rec"; ro.appendChild(d); }
-    ro.append(READOUT[scene.mode] + " · " + fmt.short);
+    ro.append(grabbed
+      ? (grabbed === "camera" ? "Kamera" : "Światło") + " → " + ZONES[drag.near].name
+      : READOUT[scene.mode] + " · " + fmt.short);
   }
 
   // Poza bazowa z nałożonymi zmianami: abs podmienia kąty, rel je dodaje
@@ -924,11 +962,10 @@
   // Położenie aparatu i lampy dla danego ustawienia sceny
   function objectPos(st, what) {
     const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
-    const H = 300, W = H * fmt.w / fmt.h, A = anchors(st, W, H);
+    const H = 300, W = H * fmt.w / fmt.h, A = anchors(st, W, H), u = H / 100;
     if (what === "head") return A.plBase.head;
-    if (what === "camera") return [A.camX, st.camera === "eye" ? A.eyeY : A.lowY];
-    const L = lampAt(A, isBackLight(st.light) ? 1 : 0);
-    return [L.x, L.y];
+    const z = ZONES[what === "camera" ? st.camera : st.lightZone];
+    return zonePt([z.x, z.y], W, H, u);
   }
 
   // Kierunek od głowy do obiektu jako kąt manekina (180 = w górę)
@@ -993,16 +1030,14 @@
     if (!prev || !shown || reduceMotion.matches) {
       figAnim = null;
       shown = baseShown();
-      props.cam = tp.cam;
-      props.light = tp.light;
-      props.kind = tp.kind;
+      PROP_KEYS.forEach(k => { props[k] = tp[k]; });
       props.reveal = phase === "start" ? 0 : 1;
       for (const k in propAnim) delete propAnim[k];
       ensureLoop();
       return;
     }
     // Kamera i lampa przesuwają się płynnie do nowego miejsca
-    ["cam", "light", "kind"].forEach(k => {
+    PROP_KEYS.forEach(k => {
       if (props[k] !== tp[k] && (!propAnim[k] || propAnim[k].to !== tp[k])) {
         propAnim[k] = { from: props[k], to: tp[k], start: performance.now(), dur: PROP_MS };
       }
@@ -1011,7 +1046,7 @@
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
     else if (prev.camera !== scene.camera) playFrames(REACTIONS.look("camera", prev));
-    else if (prev.light !== scene.light) playFrames(REACTIONS.look("light", prev));
+    else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) playFrames(REACTIONS.look("light", prev));
     ensureLoop();
   }
 
@@ -1099,6 +1134,67 @@
   paintSwatch();
 
   preview.addEventListener("click", () => { if (phase === "start") greet(); });
+
+  // Przytrzymaj aparat albo lampę ok. 0,35 s, przeciągnij i puść: obiekt kotwiczy się w najbliższej z 8 stref
+  let drag = null, previewGeom = null;
+  const GRAB_MS = 350;
+  function toSvg(e) {
+    const pt = preview.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(preview.getScreenCTM().inverse());
+  }
+  preview.addEventListener("pointerdown", e => {
+    if (phase !== "director" || !previewGeom) return;
+    const p = toSvg(e), G = previewGeom, r = G.u * 10;
+    const near = pt => Math.hypot(pt[0] - p.x, pt[1] - p.y) < r;
+    const what = near(G.camPt) ? "camera" : near(G.litPt) ? "light" : null;
+    if (!what) return;
+    preview.setPointerCapture(e.pointerId);
+    drag = { what, sx: e.clientX, sy: e.clientY, grabbed: false, near: what === "camera" ? scene.camera : scene.lightZone };
+    drag.timer = setTimeout(() => {
+      if (!drag) return;
+      drag.grabbed = true;
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+      ensureLoop();
+    }, GRAB_MS);
+  });
+  preview.addEventListener("pointermove", e => {
+    if (!drag) return;
+    if (!drag.grabbed) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 10) { clearTimeout(drag.timer); drag = null; }
+      return;
+    }
+    const p = toSvg(e), G = previewGeom;
+    const nx = clamp(p.x / G.W, 0, 1), ny = clamp(p.y / G.H, 0, 1);
+    const kx = drag.what === "camera" ? "camX" : "litX", ky = drag.what === "camera" ? "camY" : "litY";
+    delete propAnim[kx]; delete propAnim[ky];
+    props[kx] = nx; props[ky] = ny;
+    drag.near = nearestZone(nx, ny, G.W, G.H);
+    // Manikun wodzi wzrokiem za trzymanym obiektem
+    const d = diffFromUp(angleTo(G.head, [p.x, p.y]));
+    figAnim = null;
+    shown = { pose: variant({}, { head: clamp(d * 0.35, -38, 38), spine: clamp(d * 0.05, -6, 6) }), rig: BODIES[scene.body] };
+    ensureLoop();
+  });
+  function endDrag() {
+    if (!drag) return;
+    clearTimeout(drag.timer);
+    const d = drag;
+    drag = null;
+    if (!d.grabbed) return;
+    const key = d.what === "camera" ? "camera" : "lightZone";
+    if (scene[key] !== d.near) {
+      scene[key] = d.near;
+      render();
+    } else {
+      // Ta sama strefa: obiekt wraca na jej środek, Manikun do swojej pozy
+      const tp = targetProps(), now = performance.now();
+      (d.what === "camera" ? ["camX", "camY"] : ["litX", "litY"]).forEach(k => { propAnim[k] = { from: props[k], to: tp[k], start: now, dur: 500 }; });
+      playFrames([{ pose: POSES[scene.pose], dur: 800 }]);
+    }
+  }
+  preview.addEventListener("pointerup", endDrag);
+  preview.addEventListener("pointercancel", endDrag);
 
   const COPY = {
     photo: ["Zdjęcie. Świetnie.", "Ustawiamy jeden kadr."],
