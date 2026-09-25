@@ -199,8 +199,9 @@ function computeFigure(pose, RIG, cloth = null) {
     if (look.beard && look.beard !== "none") {
       const low = look.beard === "full" ? -0.3 : -0.42;
       const pts = arc(-8, -150, 14, a => E(a, look.beard === "full" ? 1.06 : 1.02)).concat([L(-0.55, -0.5), L(-0.1, low - 0.05), L(0.35, low), L(0.8, low + 0.12)]);
-      if (look.beard === "stubble") shapes.push({ t: "deco", d: poly(pts), style: `fill:${look.hairColor};stroke:none;opacity:0.38` });
-      else clothPoly(pts, look.hairColor);
+      const bc = look.beardColor || look.hairColor;
+      if (look.beard === "stubble") shapes.push({ t: "deco", d: poly(pts), style: `fill:${bc};stroke:none;opacity:0.38` });
+      else clothPoly(pts, bc);
     }
     // Szminka: usta po stronie twarzy
     if (look.lips) {

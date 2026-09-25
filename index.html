@@ -388,14 +388,16 @@
       { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" }
     ]},
     { id: "camera", label: "Kamera", patch: "#627A9D", options: [
-      { id: "L2", name: "Lewo · środek", short: "Lewo", prompt: "straight-on eye-level three-quarter shot from the left, camera at the subject's eye height" },
-      { id: "L1", name: "Lewo · z góry", short: "Lewo góra", prompt: "high-angle three-quarter shot from the left, camera above the subject looking down" },
-      { id: "L3", name: "Lewo · z dołu", short: "Lewo dół", prompt: "low-angle three-quarter shot from the left, camera near the ground looking up at the subject" },
-      { id: "T", name: "Z góry", short: "Z góry", prompt: "high-angle shot from the front, camera above the subject looking down" },
-      { id: "B", name: "Z dołu", short: "Z dołu", prompt: "low-angle shot from the front, camera near the ground looking up at the subject" },
-      { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "straight-on eye-level three-quarter shot from the right, camera at the subject's eye height" },
-      { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "high-angle three-quarter shot from the right, camera above the subject looking down" },
-      { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "low-angle three-quarter shot from the right, camera near the ground looking up at the subject" }
+      // Opis kamery trafia na początek promptu: kąt, wysokość i kierunek patrzenia obiektywu
+      { id: "L2", name: "Lewo · środek", short: "Lewo", prompt: "Eye-level three-quarter view from the left: the camera stands to the subject's left at eye height, pointing straight at the subject with no tilt" },
+      { id: "L1", name: "Lewo · z góry", short: "Lewo góra", prompt: "High-angle three-quarter view from the left: the camera is raised above and to the left of the subject, tilted down, looking down at the subject" },
+      { id: "L3", name: "Lewo · z dołu", short: "Lewo dół", prompt: "Low-angle three-quarter view from the left: the camera is placed low near the ground to the left of the subject, tilted up, looking up at the subject" },
+      { id: "T", name: "Z góry", short: "Z góry", prompt: "High-angle front view: the camera is raised well above head height directly in front of the subject, tilted steeply down, looking down at the subject" },
+      { id: "B", name: "Z dołu", short: "Z dołu", prompt: "Low-angle front view, worm's-eye perspective: the camera sits on the ground directly in front of the subject, tilted up, looking up at the subject so they appear tall" },
+      { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "Eye-level three-quarter view from the right: the camera stands to the subject's right at eye height, pointing straight at the subject with no tilt" },
+      { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "High-angle three-quarter view from the right: the camera is raised above and to the right of the subject, tilted down, looking down at the subject" },
+      { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "Low-angle three-quarter view from the right: the camera is placed low near the ground to the right of the subject, tilted up, looking up at the subject" },
+      { id: "D", name: "Z drona", short: "Dron", prompt: "Aerial drone shot: the camera is a drone hovering high above the subject, looking steeply down at them from above, with the surroundings visible around the subject" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
       { id: "natural", name: "Naturalne", children: [
@@ -460,7 +462,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", face: false, look: { hair: "none", hairColor: "auto", beard: "none", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    body: "male", face: false, look: { hair: "none", hairColor: "auto", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -478,6 +480,9 @@
     T: { x: 0.5, y: 0.08, name: "Góra", from: "from directly above" },
     B: { x: 0.5, y: 0.92, name: "Dół", from: "from below" }
   };
+  // Dron: nad środkiem kadru; wybierany kafelkiem, nie jest strefą przeciągania
+  const DRONE = { x: 0.5, y: 0.07, name: "Dron", from: "from high above" };
+  const camZone = id => id === "D" ? DRONE : ZONES[id];
   // Punkt strefy w kadrze W×H, z zapasem od krawędzi
   const zonePt = (n, W, H, u) => [clamp(W * n[0], u * 9, W - u * 9), clamp(H * n[1], u * 8, H - u * 8)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -589,9 +594,9 @@
     ],
     beard: [
       { id: "none", name: "Gładko", prompt: null },
-      { id: "stubble", name: "Kilkudniowy", prompt: "light stubble" },
-      { id: "short", name: "Krótka broda", prompt: "a short neat beard" },
-      { id: "full", name: "Pełna broda", prompt: "a full beard" }
+      { id: "stubble", name: "Kilkudniowy", prompt: c => `light ${c}stubble` },
+      { id: "short", name: "Krótka broda", prompt: c => `a short neat ${c}beard` },
+      { id: "full", name: "Pełna broda", prompt: c => `a full ${c}beard` }
     ],
     lips: [
       { id: "none", name: "Naturalne", prompt: null },
@@ -615,13 +620,16 @@
       { id: "clear", name: "Przezroczyste", hex: "#D9DDE0", word: "clear-framed" }
     ]
   };
+  // Zarost ma własny kolor, niezależny od włosów (ta sama paleta)
+  LOOK.beardColor = LOOK.hairColor;
   const lookOpt = (key, id) => LOOK[key].find(o => o.id === id);
   const DEFAULT_HAIR = "#3B2A20";
   // Wygląd do narysowania na głowie Manikuna
   function lookDraw(lk = scene.look, body = scene.body) {
     const hairColor = lk.hairColor === "auto" ? DEFAULT_HAIR : lookOpt("hairColor", lk.hairColor).hex;
+    const beardColor = lk.beardColor === "auto" ? DEFAULT_HAIR : lookOpt("beardColor", lk.beardColor).hex;
     return {
-      hair: lk.hair === "none" || lk.hair === "bald" ? null : lk.hair, hairColor,
+      hair: lk.hair === "none" || lk.hair === "bald" ? null : lk.hair, hairColor, beardColor,
       beard: body === "male" ? lk.beard : "none",
       lips: lk.lips === "none" ? null : lookOpt("lips", lk.lips).hex,
       glasses: lk.glasses, glassesColor: lookOpt("glassesColor", lk.glassesColor).hex
@@ -632,7 +640,8 @@
     const lk = scene.look, parts = [];
     const hc = lk.hairColor === "auto" ? "" : lookOpt("hairColor", lk.hairColor).word + " ";
     if (lk.hair !== "none") parts.push(lookOpt("hair", lk.hair).prompt(hc));
-    if (scene.body === "male" && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt);
+    const bc = lk.beardColor === "auto" ? "" : lookOpt("beardColor", lk.beardColor).word + " ";
+    if (scene.body === "male" && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt(bc));
     if (lk.lips !== "none") parts.push(lookOpt("lips", lk.lips).prompt);
     if (lk.glasses !== "none") parts.push(lookOpt("glasses", lk.glasses).prompt(lookOpt("glassesColor", lk.glassesColor).word + " "));
     if (!parts.length) return "";
@@ -655,16 +664,16 @@
   const fitsBody = (o, st) => !o.bodies || o.bodies.includes(st.body);
 
   function buildPrompt() {
+    // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
     const parts = [
       optionOf("shot", scene.shot).prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt(),
       optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : ""),
-      optionOf("camera", scene.camera).prompt,
       lightPrompt(),
       optionOf("background", scene.background).prompt + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
     if (scene.mode === "video") parts.push(optionOf("motion", scene.motion).prompt);
-    parts.push(currentFormat().prompt, ENDING[scene.mode]);
-    return parts.join(", ") + ".";
+    parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", ENDING[scene.mode]);
+    return optionOf("camera", scene.camera).prompt + ". " + parts.join(", ") + ".";
   }
 
   // ---------- Manekin ----------
@@ -859,6 +868,17 @@
     const p = t => [x2 - size * Math.cos(a + t), y2 - size * Math.sin(a + t)];
     const l = p(0.45), r = p(-0.45);
     el("path", { d: `M${f(l[0])},${f(l[1])} L${f(x2)},${f(y2)} L${f(r[0])},${f(r[1])}` }, parent);
+  }
+
+  // Dron: korpus, cztery ramiona z wirnikami i mała kamera pod spodem
+  function droneGlyph(parent, cx, cy, s) {
+    const a = s * 0.62, rr = s * 0.3;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([dx, dy]) => {
+      el("line", { x1: f(cx), y1: f(cy), x2: f(cx + dx * a), y2: f(cy + dy * a * 0.55) }, parent);
+      el("ellipse", { cx: f(cx + dx * a), cy: f(cy + dy * a * 0.55), rx: f(rr), ry: f(rr * 0.32) }, parent);
+    });
+    el("rect", { x: f(cx - s * 0.26), y: f(cy - s * 0.16), width: f(s * 0.52), height: f(s * 0.32), rx: f(s * 0.08) }, parent);
+    el("circle", { cx: f(cx), cy: f(cy + s * 0.3), r: f(s * 0.11) }, parent);
   }
 
   function cameraGlyph(parent, cx, cy, s) {
@@ -1146,7 +1166,7 @@
     const { pl, u, cx } = A;
     // Położenie aparatu i lampy: w trakcie animacji lub przeciągania z props, inaczej środek strefy
     const P = st.props || {};
-    const zc = ZONES[st.camera], zl = ZONES[st.lightZone];
+    const zc = camZone(st.camera), zl = ZONES[st.lightZone];
     const camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
     const litRaw = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
     const lightT = P.light ?? (isBackLight(st.light) ? 1 : 0);
@@ -1212,18 +1232,6 @@
       el("line", { x1: 0, y1: f(pl.groundY), x2: f(W), y2: f(pl.groundY), class: "thin" }, g);
     }
 
-    // Kamera: linia horyzontu i znak aparatu
-    // Kamera: sam znak aparatu na wysokości obiektywu, z wycięciem pod spodem
-    if (layers.has("camera") && reveal > 0) {
-      const s = u * 7, [x, y] = camPt, lg = layer();
-      el("circle", { cx: f(x), cy: f(y), r: f(s * 1.25), class: "halo" }, lg);
-      // Obiektyw zawsze skierowany na Manikuna; po prawej stronie aparat jest odbity, nie odwrócony
-      const a = Math.atan2(target[1] - y, target[0] - x) * 180 / Math.PI, flip = Math.abs(a) > 90 ? -1 : 1;
-      const grab = opts.grab === "camera" ? ` translate(${f(x)} ${f(y)}) scale(1.25) translate(${f(-x)} ${f(-y)})` : "";
-      const cg = el("g", { transform: `rotate(${f(a)} ${f(x)} ${f(y)}) translate(${f(x)} ${f(y)}) scale(1 ${flip}) translate(${f(-x)} ${f(-y)})${grab}`, class: opts.grab === "camera" ? "grabbed" : "" }, lg);
-      cameraGlyph(cg, x + s * 0.15, y, s);
-    }
-
     // Światło: jedna lampa przelatuje łukiem z przodu (miękkie) za postać (kontra).
     // Za postacią jest mniejsza i bledsza, rysowana pod Manikunem: stoi głęboko w scenie.
     // Lampa: z przodu duża z promieniami, za Manikunem mniejsza i bledsza, rysowana pod nim
@@ -1271,6 +1279,18 @@
           el("line", { x1: f(lamp.x + Math.cos(a + d) * r0), y1: f(lamp.y + Math.sin(a + d) * r0), x2: f(lamp.x + Math.cos(a + d) * r1), y2: f(lamp.y + Math.sin(a + d) * r1) }, rg);
         });
       }
+    }
+
+    // Kamera na pierwszym planie (nad Manikunem i lampą), żeby łatwo ją chwycić; znak aparatu albo drona
+    if (layers.has("camera") && reveal > 0) {
+      const s = u * 7, [x, y] = camPt, lg = layer();
+      el("circle", { cx: f(x), cy: f(y), r: f(s * 1.25), class: "halo" }, lg);
+      // Obiektyw zawsze skierowany na Manikuna; po prawej stronie aparat jest odbity, nie odwrócony
+      const a = Math.atan2(target[1] - y, target[0] - x) * 180 / Math.PI, flip = Math.abs(a) > 90 ? -1 : 1;
+      const grab = opts.grab === "camera" ? ` translate(${f(x)} ${f(y)}) scale(1.25) translate(${f(-x)} ${f(-y)})` : "";
+      const cg = el("g", { transform: `rotate(${f(a)} ${f(x)} ${f(y)}) translate(${f(x)} ${f(y)}) scale(1 ${flip}) translate(${f(-x)} ${f(-y)})${grab}`, class: opts.grab === "camera" ? "grabbed" : "" }, lg);
+      if (st.camera === "D") droneGlyph(lg, x, y, s * (opts.grab === "camera" ? 1.25 : 1));
+      else cameraGlyph(cg, x + s * 0.15, y, s);
     }
 
     // Strefy kotwiczenia widoczne tylko podczas przeciągania
@@ -1333,6 +1353,8 @@
       const lk = scene.look;
       if (lk.hair !== "none") return lookOpt("hair", lk.hair).name;
       if (lk.glasses !== "none") return lookOpt("glasses", lk.glasses).name;
+      if (scene.body === "male" && lk.beard !== "none") return lookOpt("beard", lk.beard).name;
+      if (lk.lips !== "none") return "Usta: " + lookOpt("lips", lk.lips).name;
       return "Bez zmian";
     }
     return optionOf(cat.id, scene[cat.id]).short;
@@ -1492,7 +1514,9 @@
     if (sub === "hairColor") return [backTile("hair")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.hairColor].map(o => tile("opt-hairColor-" + o.id, o.name,
       () => lk.hairColor === o.id, () => set({ hairColor: o.id }), svg => headTile(svg, with_({ hairColor: o.id })))));
     if (sub === "beard") return [backTile(null)].concat(LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
-      () => set({ beard: o.id }), svg => headTile(svg, with_({ beard: o.id })))));
+      () => set({ beard: o.id }, o.id === "none" ? undefined : "beardColor"), svg => headTile(svg, with_({ beard: o.id })))));
+    if (sub === "beardColor") return [backTile("beard")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.beardColor].map(o => tile("opt-beardColor-" + o.id, o.name,
+      () => lk.beardColor === o.id, () => set({ beardColor: o.id }), svg => headTile(svg, with_({ beardColor: o.id })))));
     if (sub === "lips") return [backTile(null)].concat(LOOK.lips.map(o => tile("opt-lips-" + o.id, o.name, () => lk.lips === o.id,
       () => set({ lips: o.id }), svg => headTile(svg, with_({ lips: o.id })))));
     if (sub === "glasses") return [backTile(null)].concat(LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
@@ -1667,7 +1691,7 @@
   const easeIn = t => t * t;                      // ≈ cubic-bezier(0.4, 0, 1, 1)
 
   const targetProps = () => ({
-    camX: ZONES[scene.camera].x, camY: ZONES[scene.camera].y,
+    camX: camZone(scene.camera).x, camY: camZone(scene.camera).y,
     litX: ZONES[scene.lightZone].x, litY: ZONES[scene.lightZone].y,
     light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1,
     tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0,
@@ -1764,7 +1788,7 @@
     ro.replaceChildren();
     if (scene.mode === "video") { const d = document.createElement("span"); d.className = "rec"; ro.appendChild(d); }
     ro.append(grabbed
-      ? (grabbed === "camera" ? "Kamera" : "Światło") + " → " + ZONES[drag.near].name
+      ? (grabbed === "camera" ? "Kamera" : "Światło") + " → " + camZone(drag.near).name
       : READOUT[scene.mode] + " · " + fmt.short);
   }
 
