@@ -307,12 +307,12 @@
     ]},
     // Ubiór: prompt może zależeć od postaci; sukienka tylko dla kobiety
     { id: "outfit", label: "Ubiór", patch: "#5E7FA3", options: [
-      { id: "casual", name: "Codzienny", short: "Codzienny", prompt: "wearing plain, neutral-coloured casual clothing" },
-      { id: "elegant", name: "Elegancki", short: "Elegancki", prompt: { male: "wearing a tailored dark suit with a crisp white shirt", female: "wearing an elegant tailored blazer and trousers" } },
-      { id: "sport", name: "Sportowy", short: "Sportowy", prompt: "wearing fitted athletic sportswear and sneakers" },
-      { id: "street", name: "Streetwear", short: "Street", prompt: "wearing an oversized hoodie, loose trousers and sneakers" },
-      { id: "coat", name: "Płaszcz", short: "Płaszcz", prompt: "wearing a long wool coat over a simple outfit" },
-      { id: "dress", name: "Sukienka", short: "Sukienka", prompt: "wearing a simple, elegant midi dress", bodies: ["female"] }
+      { id: "casual", name: "Codzienny", short: "Codzienny" },
+      { id: "elegant", name: "Elegancki", short: "Elegancki" },
+      { id: "sport", name: "Sportowy", short: "Sportowy" },
+      { id: "street", name: "Streetwear", short: "Street" },
+      { id: "coat", name: "Płaszcz", short: "Płaszcz" },
+      { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"] }
     ]},
     { id: "pose", label: "Poza", patch: "#C29682", options: [
       { id: "standing", name: "Stoi", children: [
@@ -416,7 +416,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", outfit: "casual", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    body: "male", outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -493,9 +493,36 @@
   // W kucaniu luźne ręce opierają się przedramionami o kolana
   const armsPrompt = () => scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
 
+  // Kolory ubrania: "auto" to kolory domyślne danego ubioru
+  const COLORS = [
+    { id: "black", name: "Czarny", hex: "#2B2C30", word: "black" },
+    { id: "white", name: "Biały", hex: "#E6E3DC", word: "white" },
+    { id: "grey", name: "Szary", hex: "#8A8F96", word: "grey" },
+    { id: "navy", name: "Granat", hex: "#34425C", word: "navy blue" },
+    { id: "denim", name: "Dżins", hex: "#4A6285", word: "denim blue" },
+    { id: "beige", name: "Beż", hex: "#C8B79A", word: "beige" },
+    { id: "brown", name: "Brąz", hex: "#7A5C44", word: "brown" },
+    { id: "olive", name: "Oliwka", hex: "#6B7348", word: "olive green" },
+    { id: "burgundy", name: "Bordo", hex: "#7E3B45", word: "burgundy" },
+    { id: "red", name: "Czerwony", hex: "#A8433C", word: "red" }
+  ];
+  const colorOf = id => COLORS.find(c => c.id === id);
+  // Opis ubioru w prompcie z kolorami góry (t) i dołu (b); bez wybranego koloru zostaje opis domyślny
+  const OUTFIT_PROMPTS = {
+    casual: (t, b) => !t && !b ? "wearing plain, neutral-coloured casual clothing" : `wearing a plain ${t || "neutral-coloured"} t-shirt and ${b || "dark"} jeans`,
+    elegant: (t, b, body) => {
+      if (!t && !b) return body === "female" ? "wearing an elegant tailored blazer and trousers" : "wearing a tailored dark suit with a crisp white shirt";
+      return `wearing an elegant tailored ${t || "dark"} blazer, ${b || "dark"} tailored trousers and a crisp white shirt` + (body === "female" ? "" : " with a tie");
+    },
+    sport: (t, b) => !t && !b ? "wearing fitted athletic sportswear and sneakers" : `wearing fitted athletic sportswear: a ${t || "neutral"} tank top, ${b || "dark"} joggers and sneakers`,
+    street: (t, b) => `wearing an oversized ${t ? t + " " : ""}hoodie, loose ${b ? b + " " : ""}trousers and sneakers`,
+    coat: (t, b) => `wearing a long ${t ? t + " " : ""}wool coat over a simple outfit` + (b ? ` with ${b} trousers` : ""),
+    dress: t => `wearing a simple, elegant ${t ? t + " " : ""}midi dress`
+  };
+  const hasBottom = outfitId => outfitId !== "dress";
   const outfitPrompt = () => {
-    const pr = optionOf("outfit", scene.outfit).prompt;
-    return typeof pr === "string" ? pr : pr[scene.body];
+    const w = id => id === "auto" ? null : colorOf(id).word;
+    return OUTFIT_PROMPTS[scene.outfit](w(scene.topColor), hasBottom(scene.outfit) ? w(scene.bottomColor) : null, scene.body);
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
   const fitsBody = (o, st) => !o.bodies || o.bodies.includes(st.body);
@@ -642,14 +669,22 @@
     coat: { top: "#7A6450", sleeve: "long", topLen: "hip", pants: "#3C3F45", skirt: "#7A6450", skirtLen: 0.25 },
     dress: { top: "#8E5A5E", sleeve: "short", skirt: "#8E5A5E", skirtLen: 0.35 }
   };
-  function clothOf(outfitId, bodyId) {
+  // Ubranko z kolorami wybranymi przez użytkownika: góra (z połami płaszcza lub spódnicą sukienki) i dół
+  function clothOf(outfitId, bodyId, topId = scene.topColor, bottomId = scene.bottomColor) {
     const o = outfitId === "dress" && bodyId !== "female" ? "casual" : outfitId;
-    const c = CLOTHES[o];
-    return c && c.top === undefined ? c[bodyId] : c;
+    let c = CLOTHES[o];
+    if (c && c.top === undefined) c = c[bodyId];
+    c = { ...c };
+    if (topId !== "auto") {
+      if (c.skirt) c.skirt = colorOf(topId).hex;
+      c.top = colorOf(topId).hex;
+    }
+    if (bottomId !== "auto" && c.pants) c.pants = colorOf(bottomId).hex;
+    return c;
   }
 
   function buildFigure(poseId, bodyId = "male", outfitId = null) {
-    const key = poseId + "/" + bodyId + "/" + outfitId;
+    const key = [poseId, bodyId, outfitId, outfitId && scene.topColor, outfitId && scene.bottomColor].join("/");
     return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], outfitId ? clothOf(outfitId, bodyId) : null));
   }
 
@@ -1240,7 +1275,42 @@
     motion: ["ground", "motion"]
   };
 
+  // Kafelki kolorów ubrania: "Domyślny" i próbki z palety
+  function colorTiles(key) {
+    const list = [tile("opt-back", "Wróć", () => false, () => { scene.sub = null; render(); }, svg => {
+      svg.setAttribute("viewBox", "0 0 64 64");
+      el("path", { d: "M36 20 L24 32 L36 44 M24 32 H46" }, svg);
+    })];
+    list[0].btn.classList.add("back");
+    list.push(tile("opt-" + key + "-auto", "Domyślny", () => scene[key] === "auto", () => { scene[key] = "auto"; render(); }, svg => {
+      svg.setAttribute("viewBox", "0 0 64 64");
+      const c = clothOf(scene.outfit, scene.body, "auto", "auto");
+      swatch(svg, key === "topColor" ? c.top : c.pants || c.top, true);
+    }));
+    COLORS.forEach(col => list.push(tile("opt-" + key + "-" + col.id, col.name, () => scene[key] === col.id,
+      () => { scene[key] = col.id; render(); }, svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, col.hex); })));
+    return list;
+  }
+  function swatch(svg, hex, dashed = false) {
+    el("circle", { cx: 32, cy: 32, r: 20, style: `fill:${hex};stroke:rgba(255,255,255,0.25)` + (dashed ? ";stroke-dasharray:3 3" : "") }, svg);
+  }
+  // Kafelek grupy otwierający wybór koloru góry lub dołu
+  function colorGroupTile(key, name) {
+    const t = tile("opt-outfit-" + key, name, () => false, () => { scene.sub = key; render(); }, svg => {
+      svg.setAttribute("viewBox", "0 0 64 64");
+      const c = clothOf(scene.outfit, scene.body);
+      swatch(svg, key === "topColor" ? c.top : c.pants);
+    });
+    t.btn.classList.add("group");
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.setAttribute("aria-hidden", "true");
+    t.btn.appendChild(badge);
+    return t;
+  }
+
   function makeTiles(catId) {
+    if (catId === "outfit" && (scene.sub === "topColor" || scene.sub === "bottomColor")) return colorTiles(scene.sub);
     if (catId === "format") {
       return FORMATS[scene.mode].map(fmt => tile("opt-format-" + fmt.id, fmt.name,
         () => scene.format[scene.mode] === fmt.id,
@@ -1264,6 +1334,13 @@
         () => { scene[catId] = c.id; render(); },
         svg => drawOption(catId, c.id, svg))));
       return list;
+    }
+    if (catId === "outfit") {
+      // Najpierw kolory bieżącego ubioru, potem same ubiory
+      const extra = [colorGroupTile("topColor", scene.outfit === "dress" ? "Kolor sukienki" : "Kolor góry")];
+      if (hasBottom(scene.outfit)) extra.push(colorGroupTile("bottomColor", "Kolor dołu"));
+      return extra.concat(optionsOf(catId).filter(o => fitsBody(o, scene)).map(o => tile("opt-outfit-" + o.id, o.name,
+        () => scene.outfit === o.id, () => { scene.outfit = o.id; render(); }, svg => drawOption("outfit", o.id, svg))));
     }
     let opts = optionsOf(catId).filter(o => fitsBody(o, scene));
     if (catId === "light" && !lampAllowed(scene)) opts = opts.filter(o => o.id !== "artificial");
@@ -1336,7 +1413,8 @@
   let panelCat = null, panelEl = null, panelTiles = [];
 
   function syncPanel() {
-    const want = scene.open ? scene.open + (scene.sub ? "/" + scene.sub : "") : null;
+    // Sukienka nie ma koloru dołu: przy zmianie na nią i z niej rząd kafelków ubioru się przebudowuje
+    const want = scene.open ? scene.open + (scene.sub ? "/" + scene.sub : "") + (scene.open === "outfit" && !hasBottom(scene.outfit) ? "#dress" : "") : null;
     if (want === panelCat) { panelTiles.forEach(t => t.redraw()); return; }
     panelCat = want;
     const fast = reduceMotion.matches;
@@ -1550,7 +1628,7 @@
     if (poseKey(prev) !== poseKey(scene) || prev.body !== scene.body) playFrames([{ pose: curPose(), dur: 950 }]);
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
-    else if (prev.outfit !== scene.outfit) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
+    else if (prev.outfit !== scene.outfit || prev.topColor !== scene.topColor || prev.bottomColor !== scene.bottomColor) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
     else if (prev.camera !== scene.camera) startGaze("camera");
     else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) startGaze("light");
     if (prev.background !== scene.background && !reduceMotion.matches) {

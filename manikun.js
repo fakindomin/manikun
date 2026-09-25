@@ -22,6 +22,18 @@ function capsule(A, B, rA, rB) {
   return `M${f(p1[0])},${f(p1[1])} L${f(p2[0])},${f(p2[1])} A${rB},${rB} 0 0 0 ${f(p3[0])},${f(p3[1])} L${f(p4[0])},${f(p4[1])} A${rA},${rA} 0 0 0 ${f(p1[0])},${f(p1[1])} Z`;
 }
 const poly = pts => "M" + pts.map(p => f(p[0]) + "," + f(p[1])).join(" L") + " Z";
+// Otoczka wypukła punktów (łańcuch monotoniczny)
+function hull(points) {
+  const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = list => {
+    const h = [];
+    list.forEach(q => { while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], q) <= 0) h.pop(); h.push(q); });
+    h.pop();
+    return h;
+  };
+  return half(p).concat(half(p.slice().reverse()));
+}
 
 // Proporcje ciała. Strona bliższa widzowi jest szersza: widok 3/4.
 const BODIES = {
@@ -130,20 +142,16 @@ function computeFigure(pose, RIG, cloth = null) {
   push(cap(Ct, N1, 3.5, 3.5));
   push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: RIG.headRx, ry: RIG.headRy, rot: 180 - pose.head, head: true }, [Hc, RIG.headRy + 1]);
   leg("near");
-  // Spódnica sukienki albo poły płaszcza: od bioder do kolan i trochę niżej, idą za udami.
-  // Na stojąco jeden trapez; gdy uda są uniesione (siedzenie, kucanie), materiał układa się osobno na każdym udzie.
+  // Spódnica sukienki albo poły płaszcza: jedna tkanina rozpięta od bioder do obu kolan i trochę niżej.
+  // To otoczka wypukła bioder i brzegów przy kolanach, więc w każdej pozie zakrywa uda bez prześwitów.
   if (cloth && cloth.skirt) {
-    const hemAt = side => { const { K, A } = knees[side]; return lerpP(K, A, cloth.skirtLen || 0.2); };
-    const upright = ["near", "far"].every(side => {
-      const { H, K } = knees[side];
-      return (K[1] - H[1]) > Math.abs(K[0] - H[0]) * 1.2;
+    const ring = (c, rr) => Array.from({ length: 12 }, (_, k) => [c[0] + Math.cos(k * Math.PI / 6) * rr, c[1] + Math.sin(k * Math.PI / 6) * rr]);
+    const pts = [add(pt, r, -ptn - 2), add(pt, r, ptf + 2), add(pb, r, pbf + 3), add(pb, r, -pbn - 3)];
+    ["near", "far"].forEach(side => {
+      const { H, K, A } = knees[side];
+      pts.push(...ring(H, 9), ...ring(lerpP(K, A, cloth.skirtLen || 0.2), 8.5), ...ring(K, 8.5));
     });
-    if (upright) {
-      clothPoly([add(pt, r, -ptn - 2), add(pt, r, ptf + 2), add(pb, r, pbf + 4), add(hemAt("far"), r, 8), add(hemAt("near"), r, -8), add(pb, r, -pbn - 4)], cloth.skirt);
-    } else {
-      clothPoly([add(pt, r, -ptn - 2), add(pt, r, ptf + 2), add(pb, r, pbf + 3), add(pb, r, -pbn - 3)], cloth.skirt);
-      ["far", "near"].forEach(side => wear(cap(knees[side].H, hemAt(side), 9.5, 8.5), cloth.skirt));
-    }
+    clothPoly(hull(pts), cloth.skirt);
   }
   arm("near");
 
@@ -187,7 +195,9 @@ function paintFigure(g, shapes, m) {
     if (s.cloth) {
       // Materiał ubranka: kolor z lekkim cieniowaniem, bez słojów
       const id = pre + "t" + (++n);
-      const [a, b] = s.t === "cap" ? [s.A, s.B] : s.t === "poly" ? [s.q[0], s.q[1]] : [[0, 0], [0, 0]];
+      // Bryły materiału cieniowane od lewej do prawej krawędzi, rękawy i nogawki w poprzek
+      const xs = s.t === "poly" ? s.q.map(q => q[0]) : [0], my0 = s.t === "poly" ? s.q.reduce((acc, q) => acc + q[1], 0) / s.q.length : 0;
+      const [a, b] = s.t === "cap" ? [s.A, s.B] : [[Math.min(...xs), my0], [Math.max(...xs), my0]];
       let x1 = a[0], y1 = a[1], x2 = b[0], y2 = b[1];
       if (s.t === "cap") {
         const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, rr = Math.max(s.rA, s.rB);
