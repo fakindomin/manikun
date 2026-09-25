@@ -357,6 +357,8 @@
   // ---------- Szablon: kategorie, opcje, frazy promptu ----------
   const SELFIE_PROMPT = "Selfie taken from the smartphone's own point of view: the picture is captured by the front camera of a phone the subject holds at arm's length slightly above eye level, so the phone itself is not visible in the frame; the subject looks straight into the lens, close personal perspective with a slight wide-angle look";
   const CATEGORIES = [
+    // Gotowe schematy: zestawy ustawień do szybkiego startu (osobne dla postaci i obiektu), kafelki buduje presetTiles()
+    { id: "preset", label: "Gotowe", patch: "#C9A24A", options: [] },
     { id: "format", label: "Format", patch: "#E0A32E" },
     // Obiekt: przedmiot, podstawa i kolor; reszta (kamera, światło, tło, pora dnia) wspólna z postacią
     { id: "item", label: "Obiekt", subjects: ["object"], patch: "#6E8B4A", options: [
@@ -1823,6 +1825,7 @@
     pose: svg => miniFigure(svg, "sit", scene.body, scene.outfit),
     arms: svg => miniFigure(svg, "stand+hips", scene.body, scene.outfit),
     outfit: svg => outfitGlyph(svg, scene.outfit, 24),
+    preset: svg => el("path", { d: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" }, svg),
     item: svg => drawItem(svg, el("defs", {}, svg), scene.item, 12, 23, 0.21, itemHex()),
     base: svg => { el("path", { d: "M3 13h18 M6 13v8 M18 13v8" }, svg); el("path", { d: "M10 13V8h4v5", class: "thin" }, svg); },
     itemColor: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${itemHex()};stroke:rgba(255,255,255,0.3)` }, svg); },
@@ -1845,6 +1848,7 @@
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
     if (cat.id === "body" && scene.face) return "Moja twarz";
+    if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "look") {
       const lk = scene.look;
@@ -1861,6 +1865,113 @@
   // Pasek kategorii: przebudowa tylko przy zmianie listy kategorii, poza tym aktualizacja w miejscu
   let barKey = "", barItems = [];
   // Układ domyślny: ostatni przycisk paska. Pierwsze stuknięcie pyta, drugie wraca do ekranu startowego.
+  // ---------- Gotowe schematy ----------
+  const LOOK0 = { hair: "none", hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" };
+  const PRESETS = {
+    person: [
+      { id: "business", name: "Portret biznesowy", set: { outfit: "elegant", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "portrait", camera: "L2",
+        light: "art-front", lightZone: "L1", background: "studio", bgv: { studio: "grey" }, look: { ...LOOK0, hair: "short", glasses: "rect" } } },
+      { id: "street", name: "Moda uliczna nocą", set: { outfit: "street", pose: "contra", arms: "hipOne", shot: "full", camera: "L3",
+        light: "art-back", lightZone: "R1", background: "street", bgv: { street: "neon" }, time: "night", look: { ...LOOK0, hair: "medium", expr: "neutral", glasses: "sun" } } },
+      { id: "beach", name: "Plaża o zachodzie", set: { outfit: "casual", topColor: "white", bottomColor: "beige", pose: "stride", arms: "down", shot: "full", camera: "R2",
+        light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, time: "golden", look: { ...LOOK0, hair: "wavy", expr: "joy" } } },
+      { id: "mountains", name: "Górska wyprawa", set: { outfit: "sport", pose: "wide", arms: "shade", shot: "full", camera: "D",
+        light: "nat-front", lightZone: "L1", background: "mountains", bgv: { mountains: "lake" }, bgx: { mountains: ["fog"] }, time: "day", look: { ...LOOK0, hair: "short" } } },
+      { id: "cafe", name: "Selfie w kawiarni", set: { outfit: "casual", pose: "stand", arms: "down", shot: "portrait", camera: "SR",
+        light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "cafe" }, time: "day", look: { ...LOOK0, hair: "long", expr: "joy" } } },
+      { id: "forest", name: "Spacer po lesie", set: { outfit: "coat", pose: "stride", arms: "down", shot: "full", camera: "L2",
+        light: "nat-front", lightZone: "R1", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "day", look: { ...LOOK0 } } },
+      { id: "window", name: "Zamyślenie przy oknie", set: { outfit: "casual", pose: "stand", arms: "chin", shot: "portrait", camera: "R2",
+        light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "golden", look: { ...LOOK0, expr: "thought", hair: "short" } } },
+      { id: "athlete", name: "Sportowiec na dachu", set: { outfit: "sport", pose: "crouch", arms: "down", shot: "full", camera: "B",
+        light: "art-back", lightZone: "R1", background: "rooftop", bgv: { rooftop: "towers" }, time: "night", look: { ...LOOK0, expr: "anger", hair: "buzz" } } }
+    ],
+    object: [
+      { id: "perfume", name: "Kosmetyk na cokole", set: { item: "serum", base: "pedestal", itemColor: "beige", camera: "L2", light: "art-back", lightZone: "R1", background: "studio", bgv: { studio: "black" } } },
+      { id: "coffee", name: "Kawa o poranku", set: { item: "mug", base: "table", itemColor: "auto", camera: "L1", light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "golden" } },
+      { id: "sneaker", name: "But w locie", set: { item: "sneaker", base: "float", itemColor: "red", camera: "B", light: "art-front", lightZone: "R1", background: "studio", bgv: { studio: "color" } } },
+      { id: "watch", name: "Zegarek nad wodą", set: { item: "watch", base: "water", itemColor: "brown", camera: "L3", light: "nat-back", lightZone: "R2", background: "lake", bgv: { lake: "calm" }, bgx: { lake: ["fog"] }, time: "golden" } },
+      { id: "dessert", name: "Deser w piekarni", set: { item: "food", base: "table", itemColor: "white", camera: "T", light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "bakery" } } },
+      { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "rocks" }, time: "golden" } }
+    ]
+  };
+  let lastPreset = null;
+  function applyPreset(pr) {
+    const set = pr.set;
+    Object.assign(scene, { ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
+    lastPreset = pr.id;
+    render();
+  }
+  function presetTiles() {
+    return PRESETS[scene.subject].map(pr => tile("opt-preset-" + pr.id, pr.name, () => lastPreset === pr.id, () => applyPreset(pr), svg => {
+      // Na czas rysowania miniatury scena przyjmuje ustawienia gotowca (wygląd i kolory ubrania czytane są ze sceny)
+      const st = { ...scene, ...pr.set, bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, bgx: { ...(pr.set.bgx || {}) } };
+      const saved = { ...scene };
+      Object.assign(scene, st);
+      renderScene(svg, st, 100, 100, new Set(["ground", "background", "camera", "light"]));
+      Object.assign(scene, saved);
+    }));
+  }
+
+  // ---------- Losowo: cała scena losowana w granicach reguł aplikacji ----------
+  const anyOf = list => list[Math.floor(Math.random() * list.length)];
+  function randomize() {
+    const fit = o => fitsBody(o, scene);
+    scene.format[scene.mode] = anyOf(FORMATS[scene.mode]).id;
+    scene.background = anyOf(leavesOf("background")).id;
+    const vars = BG_VARIANTS[scene.background];
+    scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars.filter(v => !v.extra)).id };
+    scene.bgx = { ...scene.bgx, [scene.background]: vars.some(v => v.extra) && Math.random() < 0.25 ? ["fog"] : [] };
+    scene.time = anyOf(optionsOf("time")).id;
+    scene.light = anyOf(leavesOf("light")).id;
+    if (scene.subject === "object") {
+      scene.item = anyOf(optionsOf("item")).id;
+      scene.base = anyOf(optionsOf("base")).id;
+      scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
+    } else {
+      scene.body = anyOf(optionsOf("body")).id;
+      scene.outfit = anyOf(optionsOf("outfit").filter(fit)).id;
+      scene.topColor = Math.random() < 0.5 ? "auto" : anyOf(COLORS).id;
+      scene.bottomColor = Math.random() < 0.5 ? "auto" : anyOf(COLORS).id;
+      const male = scene.body === "male";
+      scene.look = {
+        hair: anyOf(LOOK.hair).id, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
+        expr: anyOf(LOOK.expr).id,
+        beard: male && Math.random() < 0.5 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.beardColor).id,
+        lips: !male && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
+        glasses: Math.random() < 0.3 ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id
+      };
+      scene.pose = anyOf(leavesOf("pose")).id;
+      scene.arms = anyOf(optionsOf("arms")).id;
+      scene.shot = anyOf(["full", "full", "portrait", "face"]);
+    }
+    scene.camera = anyOf(leavesOf("camera").filter(fit)).id;
+    if (scene.camera === "D") scene.shot = "full";
+    if (scene.mode === "video") scene.motion = anyOf(optionsOf("motion")).id;
+    // Kierunek światła z dozwolonych stref (render dopilnuje reguł lampy i pory dnia)
+    scene.lightZone = anyOf(lightZones(scene));
+    lastPreset = null;
+    render();
+  }
+  function diceButton() {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cat reset";
+    b.id = "cat-random";
+    const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" }, b);
+    el("rect", { x: 4, y: 4, width: 16, height: 16, rx: 3.5 }, svg);
+    [[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.1, style: "fill:currentColor" }, svg));
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = "Losuj";
+    const value = document.createElement("span");
+    value.className = "value";
+    value.textContent = "ustawienia";
+    b.append(label, value);
+    b.addEventListener("click", () => { svg.animate([{ transform: "rotate(0)" }, { transform: "rotate(360deg)" }], { duration: 500, easing: "ease-out" }); randomize(); });
+    return b;
+  }
+
   function resetButton() {
     const b = document.createElement("button");
     b.type = "button";
@@ -1913,6 +2024,7 @@
         bar.appendChild(b);
         return { cat, b, svg, value };
       });
+      bar.appendChild(diceButton());
       bar.appendChild(resetButton());
     }
     barItems.forEach(({ cat, b, svg, value }) => {
@@ -2088,6 +2200,7 @@
   }
 
   function makeTiles(catId) {
+    if (catId === "preset") return presetTiles();
     if (catId === "look") return lookTiles();
     if (catId === "background" && scene.sub && scene.sub.startsWith("v:")) return variantTiles(scene.sub.slice(2));
     if (catId === "itemColor") {
@@ -2681,7 +2794,7 @@
       barItems.forEach((it, i) => { it.b.style.transitionDelay = (i * STEP_MS) + "ms"; });
       phase = "director";
       appEl.dataset.phase = "director";
-      scene.open = "format";
+      scene.open = "preset";
       render();
     }, fast ? 0 : 480);
     setTimeout(() => barItems.forEach(it => { it.b.style.transitionDelay = ""; }), fast ? 0 : 1400);
