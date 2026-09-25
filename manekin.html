@@ -186,6 +186,7 @@
     display: grid; justify-items: center; gap: 2px;
     transition: background-color 300ms ease, color 300ms ease, opacity 320ms ease, transform 420ms var(--ease);
   }
+  [data-phase="director"] .cat:disabled { opacity: 0.35; cursor: default; }
   .cat[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
   .cat svg { width: 22px; height: 22px; display: block; }
   .cat .label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--ink); }
@@ -410,9 +411,9 @@
   // Punkt strefy w kadrze W×H, z zapasem od krawędzi
   const zonePt = (n, W, H, u) => [clamp(W * n[0], u * 9, W - u * 9), clamp(H * n[1], u * 8, H - u * 8)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  function nearestZone(nx, ny, W, H) {
+  function nearestZone(nx, ny, W, H, ids = Object.keys(ZONES)) {
     let best = null, bd = Infinity;
-    for (const id in ZONES) {
+    for (const id of ids) {
       const z = ZONES[id], d = Math.hypot((z.x - nx) * W, (z.y - ny) * H);
       if (d < bd) { bd = d; best = id; }
     }
@@ -440,14 +441,26 @@
   const WINDOW_LIGHT = {
     day: ["soft natural window light falling on the subject {from}, gentle shadows",
       "bright window behind the subject {from}, natural backlight outlining the silhouette, face in soft shadow"],
+    golden: ["warm golden-hour light through a window {from}, long soft shadows",
+      "window behind the subject {from} glowing with warm golden-hour light, rim of light around the silhouette, face in soft shadow"],
     night: ["faint cool moonlight through a window {from}, deep gentle shadows",
       "moonlit window behind the subject {from}, faint rim of light around the silhouette, face in deep shadow"]
   };
+  // Strefy, z których dane światło może padać. Słońce, księżyc i okno nie świecą z dołu;
+  // o złotej godzinie słońce stoi nisko, więc zostaje tylko lewo albo prawo.
+  const ALL_ZONES = Object.keys(ZONES);
+  function lightZones(st) {
+    if (!isNaturalLight(st.light)) return ALL_ZONES;
+    if (isOutdoor(st.background) && st.time === "golden") return ["L2", "R2"];
+    return ["L1", "L2", "T", "R2", "R1"];
+  }
+  // Pora dnia nie zmienia studia: tam kategoria jest wyłączona
+  const timeApplies = st => st.background !== "studio";
   function lightPrompt() {
     const from = ZONES[scene.lightZone].from;
     if (!isNaturalLight(scene.light)) return optionOf("light", scene.light).prompt.replace("{from}", from);
     const set = isOutdoor(scene.background) ? NATURAL_LIGHT[scene.time]
-      : WINDOW_LIGHT[scene.background !== "studio" && scene.time === "night" ? "night" : "day"];
+      : WINDOW_LIGHT[timeApplies(scene) ? scene.time : "day"];
     return set[isBackLight(scene.light) ? 1 : 0].replace("{from}", from);
   }
 
@@ -586,7 +599,8 @@
   // Pora dnia na niebie: 0 = dzień (słońce wysoko), 1 = złota godzina (duże, ciepłe słońce nisko), 2 = noc (księżyc i gwiazdy)
   const TOD = { day: 0, golden: 1, night: 2 };
   // cel: widoczność słońca/księżyca w stałym miejscu nieba (0, gdy to one są źródłem światła i stoją w strefie światła)
-  function drawSky(g, defs, uid, W, H, hz, u, tod, cel = 1) {
+  const skySide = st => ZONES[st.lightZone].x < 0.3 ? 0.7 : 0.3;
+  function drawSky(g, defs, uid, W, H, hz, u, tod, cel = 1, skyX = 0.3) {
     const nightW = Math.max(0, Math.min(1, tod - 1)), goldW = Math.max(0, 1 - Math.abs(tod - 1));
     // Noc: granatowe przyciemnienie nieba, na nim gwiazdy
     if (nightW > 0) {
@@ -600,7 +614,7 @@
     // Słońce: w dzień małe i wysoko, o złotej godzinie duże i nisko nad horyzontem
     // Księżyc nocą stoi wysoko
     const t = Math.min(1, tod), sy = Math.max(H * 0.1, H * 0.13 + (hz - H * 0.26) * t);
-    if (cel > 0) drawCelestial(g, defs, uid, W * 0.3, sy + (H * 0.14 - sy) * nightW, u, tod, cel);
+    if (cel > 0) drawCelestial(g, defs, uid, W * skyX, sy + (H * 0.14 - sy) * nightW, u, tod, cel);
   }
 
   // Słońce (dzień, złota godzina) przenikające się z księżycem (noc) w punkcie x, y
@@ -625,7 +639,7 @@
     }
   }
 
-  function drawBackground(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1) {
+  function drawBackground(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3) {
     if (kind === "studio") {
       // Ciemna ściana, jaśniejsza podłoga z miękkim przejściem i plama światła za postacią
       paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#2F2F36"], [1, "#24242A"]]), g);
@@ -639,7 +653,7 @@
     }
     if (kind === "street") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3A4452"], [1, "#5E6875"]]), g);
-      drawSky(g, defs, uid, W, H, hz, u, tod, cel);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
       // Dalszy plan: mgliste bryły miasta
       const far = [[0, 0.2], [0.08, 0.28], [0.17, 0.16], [0.28, 0.25], [0.4, 0.19], [0.52, 0.27], [0.64, 0.15], [0.75, 0.23], [0.87, 0.18], [1, 0.26]];
       far.forEach(([x, h], i) => { if (i < far.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((far[i + 1][0] - x) * W + 1), height: f(h * H) }, "#4C535E", g); });
@@ -663,7 +677,7 @@
     }
     if (kind === "mountains") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B4759"], [1, "#8290A0"]]), g);
-      drawSky(g, defs, uid, W, H, hz, u, tod, cel);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
       paint("path", { d: peaks([[0, 0.12], [0.12, 0.21], [0.26, 0.11], [0.4, 0.24], [0.55, 0.09], [0.68, 0.19], [0.82, 0.1], [0.94, 0.22], [1, 0.15]], W, hz, H) }, "#5C687A", g);
       paint("path", { d: peaks([[0, 0.07], [0.16, 0.12], [0.32, 0.04], [0.5, 0.09], [0.7, 0.03], [0.86, 0.13], [1, 0.06]], W, hz + H * 0.02, H) }, "#414C5B", g);
       paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H) }, vGrad(defs, uid + "g", [[0, "#34403A"], [1, "#252C27"]]), g);
@@ -671,7 +685,7 @@
     }
     if (kind === "forest") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#374539"], [1, "#6A7A6C"]]), g);
-      drawSky(g, defs, uid, W, H, hz, u, tod, cel);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
       // Dalszy plan: równa linia koron drzew
       let d = `M0,${f(hz)}`;
       for (let x = 0; x <= 1.001; x += 0.05) d += ` L${f(x * W)},${f(hz - H * (0.07 + ((x * 37) % 1) * 0.04))} L${f((x + 0.025) * W)},${f(hz - H * 0.03)}`;
@@ -700,7 +714,7 @@
     };
     if (kind === "rooftop") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B485A"], [1, "#7F8C9B"]]), g);
-      drawSky(g, defs, uid, W, H, hz, u, tod, cel);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
       const sk = [[0, 0.08], [0.06, 0.14], [0.13, 0.06], [0.2, 0.18], [0.27, 0.1], [0.35, 0.07], [0.42, 0.15], [0.5, 0.09], [0.58, 0.2], [0.65, 0.08], [0.73, 0.12], [0.8, 0.06], [0.87, 0.16], [0.94, 0.09], [1, 0.11]];
       sk.forEach(([x, h], i) => { if (i < sk.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((sk[i + 1][0] - x) * W + 1), height: f(h * H + 2) }, "#56606F", g); });
       // Gzyms dachu i posadzka
@@ -714,7 +728,7 @@
     }
     if (kind === "beach") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#4A5A6E"], [1, "#A5B0B6"]]), g);
-      drawSky(g, defs, uid, W, H, hz, u, tod, cel);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
       paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.07) }, vGrad(defs, uid + "s", [[0, "#5C7C88"], [1, "#4A6771"]]), g);
       paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.004) }, "#8FAAB0", g, 0.5);
       // Mokry piasek przy wodzie i suchy bliżej
@@ -724,7 +738,7 @@
     }
     if (kind === "meadow") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#435467"], [1, "#94A3A6"]]), g);
-      drawSky(g, defs, uid, W, H, hz, u, tod, cel);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
       paint("path", { d: `M0,${f(hz)} C${f(W * 0.2)},${f(hz - H * 0.12)} ${f(W * 0.45)},${f(hz - H * 0.02)} ${f(W * 0.6)},${f(hz - H * 0.08)} C${f(W * 0.75)},${f(hz - H * 0.14)} ${f(W * 0.9)},${f(hz - H * 0.05)} ${f(W)},${f(hz - H * 0.07)} L${f(W)},${f(hz + H * 0.1)} L0,${f(hz + H * 0.1)} Z` }, "#5A7159", g);
       paint("path", { d: `M0,${f(hz + H * 0.03)} C${f(W * 0.3)},${f(hz - H * 0.04)} ${f(W * 0.6)},${f(hz + H * 0.04)} ${f(W)},${f(hz - H * 0.02)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#465C45"], [1, "#2E3B2E"]]), g);
       // Kępki trawy tylko przy dolnych rogach
@@ -817,21 +831,29 @@
     const P = st.props || {};
     const zc = ZONES[st.camera], zl = ZONES[st.lightZone];
     const camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
-    let litPt = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
+    const litRaw = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
     const lightT = P.light ?? (isBackLight(st.light) ? 1 : 0);
     const kindT = P.kind ?? (isNaturalLight(st.light) ? 0 : 1);
     // Horyzont lekko idzie za wysokością kamery: z góry widać więcej ziemi, z dołu więcej nieba
     const camN = P.camY ?? zc.y;
     const hz = H * (0.55 - (0.5 - camN) * 0.4);
     const tod = P.tod ?? TOD[st.time];
+    // Słońce lub księżyc w tle stoi po przeciwnej stronie niż lampa, żeby się nie nakładały
+    const skyX = P.skyX ?? skySide(st);
     // Naturalne światło na zewnątrz: źródłem jest słońce lub księżyc na niebie, bez osobnej ikony.
     // Stoi w strefie światła, ale zawsze nad horyzontem; o złotej godzinie schodzi nisko.
     const skyT = layers.has("background") ? (P.sky ?? (isOutdoor(st.background) && isNaturalLight(st.light) ? 1 : 0)) : 0;
-    if (skyT > 0) {
-      const goldW = Math.max(0, 1 - Math.abs(tod - 1)), low = hz - H * 0.13;
-      const cy = Math.min(litPt[1], low);
-      litPt = [litPt[0], litPt[1] + (cy + (low - cy) * goldW - litPt[1]) * skyT];
-    }
+    const goldW = Math.max(0, 1 - Math.abs(tod - 1)), low = hz - H * 0.13;
+    const placeLight = pt => {
+      if (skyT <= 0) return pt;
+      const cy = Math.min(pt[1], low);
+      return [pt[0], pt[1] + (cy + (low - cy) * goldW - pt[1]) * skyT];
+    };
+    const litPt = placeLight(litRaw);
+    // Punkty stref do przeciągania: aparat może stanąć wszędzie, światło tylko tam, skąd naprawdę pada
+    const zonePts = { camera: {}, light: {} };
+    ALL_ZONES.forEach(z => { zonePts.camera[z] = zonePt([ZONES[z].x, ZONES[z].y], W, H, u); });
+    lightZones(st).forEach(z => { zonePts.light[z] = placeLight(zonePts.camera[z]); });
     const horizonY = camPt[1];
     const target = [cx, pl.y + pl.h * 0.3];
     // Na starcie widać tylko Manikuna; tło, kamera, światło i ruch pojawiają się płynnie po wyborze trybu
@@ -843,10 +865,10 @@
       const gy = st.shot === "full" ? pl.groundY : H * 0.95;
       if (st.bgTrans) {
         // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT);
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT);
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX);
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX);
       } else {
-        drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT);
+        drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX);
       }
       // Pora dnia delikatnie zmienia całe tło (bez studia): ciepło o złotej godzinie, ciemny granat nocą
       if (st.background !== "studio") {
@@ -913,9 +935,10 @@
         const ax = orbit.cx + orbit.rx * 0.5, ay = orbit.cy + orbit.ry * Math.sqrt(0.75);
         arrow(lg, ax + u * 4, ay - u * 0.6, ax, ay, u * 3);
       } else {
-        const s = u * 7, camX = W * 0.14, camY = H * 0.82;
-        cameraGlyph(lg, camX, camY, s);
-        arrow(lg, camX + s, camY - s * 0.6, cx - pl.w * 0.15, pl.y + pl.h * 0.45, u * 3.5, "dash");
+        // Najazd: strzałka od aparatu w stronę Manikuna
+        const dx = target[0] - camPt[0], dy = target[1] - camPt[1], d = Math.hypot(dx, dy) || 1;
+        const a0 = u * 10, a1 = Math.max(a0 + u * 4, Math.min(a0 + u * 16, d - pl.w * 0.35 - u * 3));
+        arrow(lg, camPt[0] + dx / d * a0, camPt[1] + dy / d * a0, camPt[0] + dx / d * a1, camPt[1] + dy / d * a1, u * 3.5, "dash");
       }
     }
 
@@ -935,8 +958,9 @@
 
     // Strefy kotwiczenia widoczne tylko podczas przeciągania
     if (opts.zones) {
-      for (const id in ZONES) {
-        const [zx, zy] = zonePt([ZONES[id].x, ZONES[id].y], W, H, u);
+      const pts = zonePts[opts.grab];
+      for (const id in pts) {
+        const [zx, zy] = pts[id];
         el("circle", { cx: f(zx), cy: f(zy), r: f(u * (id === opts.zones.near ? 3.2 : 2.2)), class: id === opts.zones.near ? "zone near" : "zone" }, svg);
       }
     }
@@ -949,7 +973,7 @@
         el("path", { d: `M${f(x)},${f(y + sy * c)} L${f(x)},${f(y)} L${f(x + sx * c)},${f(y)}`, class: "corner" }, svg);
       });
     }
-    return { camPt, litPt, u, W, H, head: A.plBase.head };
+    return { camPt, litPt, zonePts, u, W, H, head: A.plBase.head };
   }
 
   // ---------- Ikony paska kategorii ----------
@@ -1016,7 +1040,10 @@
     }
     barItems.forEach(({ cat, b, svg, value }) => {
       b.setAttribute("aria-pressed", String(scene.open === cat.id));
-      value.textContent = valueShort(cat);
+      // Studio nie ma pory dnia: kategoria jest przygaszona i nieaktywna
+      const off = cat.id === "time" && !timeApplies(scene);
+      b.disabled = off;
+      value.textContent = off ? "—" : valueShort(cat);
       svg.replaceChildren();
       CAT_ICONS[cat.id](svg);
     });
@@ -1169,7 +1196,7 @@
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
   let figAnim = null;                        // kolejka klatek kluczowych Manikuna
-  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
+  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, skyX: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
   const propAnim = {};
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
@@ -1182,9 +1209,10 @@
     camX: ZONES[scene.camera].x, camY: ZONES[scene.camera].y,
     litX: ZONES[scene.lightZone].x, litY: ZONES[scene.lightZone].y,
     light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1,
-    tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0
+    tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0,
+    skyX: skySide(scene)
   });
-  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky"];
+  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX"];
   const baseShown = () => ({ pose: POSES[scene.pose], rig: BODIES[scene.body] });
   const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
 
@@ -1352,6 +1380,9 @@
     if (phase === "director" && scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
     // Lampa w pełnym słońcu na zewnątrz nie ma sensu: przechodzimy na naturalne w tym samym kierunku
     if (!lampAllowed(scene) && !isNaturalLight(scene.light)) scene.light = scene.light.replace("art-", "nat-");
+    // Strefa, z której to światło nie może padać: przeskakuje do najbliższej dozwolonej
+    const okZones = lightZones(scene);
+    if (!okZones.includes(scene.lightZone)) scene.lightZone = nearestZone(ZONES[scene.lightZone].x, ZONES[scene.lightZone].y, 1, 1, okZones);
     renderBar();
     if (phase === "director") syncPanel();
     sceneChanged();
@@ -1467,7 +1498,8 @@
     const kx = drag.what === "camera" ? "camX" : "litX", ky = drag.what === "camera" ? "camY" : "litY";
     delete propAnim[kx]; delete propAnim[ky];
     props[kx] = nx; props[ky] = ny;
-    drag.near = nearestZone(nx, ny, G.W, G.H);
+    const pts = G.zonePts[drag.what];
+    drag.near = Object.keys(pts).reduce((a, b) => Math.hypot(pts[a][0] - p.x, pts[a][1] - p.y) <= Math.hypot(pts[b][0] - p.x, pts[b][1] - p.y) ? a : b);
     // Manikun wodzi wzrokiem za trzymanym obiektem
     const d = diffFromUp(angleTo(G.head, [p.x, p.y]));
     figAnim = null;
