@@ -99,7 +99,7 @@
     padding: 14px 14px 10px;
     box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     color: rgba(244, 244, 245, 0.78);
-    --halo: var(--stage);
+    --halo: rgba(14, 14, 17, 0.62);
   }
   #preview { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   [data-phase="start"] #preview { cursor: pointer; }
@@ -337,8 +337,10 @@
       ]}
     ]},
     { id: "background", label: "Tło", patch: "#8580B1", options: [
-      { id: "studio", name: "Studio", short: "Studio", prompt: "plain light-grey seamless studio backdrop" },
-      { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in daylight, background softly out of focus" }
+      { id: "studio", name: "Studio", short: "Studio", prompt: "plain seamless studio backdrop in neutral grey" },
+      { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in daylight, background softly out of focus" },
+      { id: "mountains", name: "Góry", short: "Góry", prompt: "misty mountain landscape in the background, softly out of focus" },
+      { id: "forest", name: "Las", short: "Las", prompt: "quiet pine forest in the background, softly out of focus" }
     ]},
     { id: "motion", label: "Ruch", patch: "#0885A1", modes: ["video"], options: [
       { id: "orbit", name: "Obrót wokół", short: "Obrót", prompt: "camera slowly orbits 360° around the subject, smooth steady motion" },
@@ -529,6 +531,79 @@
     return { pl, plBase, u: H / 100, cx: pl.x + pl.w / 2 };
   }
 
+  // ---------- Tła ----------
+  const paint = (tag, attrs, fill, parent, op) =>
+    el(tag, { ...attrs, style: `fill:${fill};stroke:none${op !== undefined ? `;opacity:${op}` : ""}` }, parent);
+  function vGrad(defs, id, stops) {
+    const gr = el("linearGradient", { id, x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
+    stops.forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, gr));
+    return `url(#${id})`;
+  }
+  const peaks = (pts, W, base, H) => "M0," + f(base) + " " + pts.map(([x, h]) => `L${f(x * W)},${f(base - h * H)}`).join(" ") + ` L${f(W)},${f(base)} Z`;
+
+  function drawBackground(g, defs, uid, kind, W, H, hz, gy, u) {
+    if (kind === "studio") {
+      // Ciemna ściana, jaśniejsza podłoga z miękkim przejściem i plama światła za postacią
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#2F2F36"], [1, "#24242A"]]), g);
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#2A2A30"], [0.25, "#36363D"], [1, "#2B2B31"]]), g);
+      const spot = el("radialGradient", { id: uid + "s" }, defs);
+      el("stop", { offset: "0", "stop-color": "#FFFFFF", "stop-opacity": "0.09" }, spot);
+      el("stop", { offset: "1", "stop-color": "#FFFFFF", "stop-opacity": "0" }, spot);
+      paint("ellipse", { cx: f(W / 2), cy: f(H * 0.45), rx: f(Math.max(W, H) * 0.45), ry: f(H * 0.45) }, `url(#${uid}s)`, g);
+      return;
+    }
+    if (kind === "street") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3A4452"], [1, "#5E6875"]]), g);
+      // Dalszy plan: mgliste bryły miasta
+      const far = [[0, 0.2], [0.08, 0.28], [0.17, 0.16], [0.28, 0.25], [0.4, 0.19], [0.52, 0.27], [0.64, 0.15], [0.75, 0.23], [0.87, 0.18], [1, 0.26]];
+      far.forEach(([x, h], i) => { if (i < far.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((far[i + 1][0] - x) * W + 1), height: f(h * H) }, "#4C535E", g); });
+      // Podłoże: chodniki i jezdnia zbiegająca się do horyzontu
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#34353A"], [1, "#2A2B2F"]]), g);
+      paint("path", { d: `M${f(W * 0.47)},${f(hz)} L${f(W * 0.53)},${f(hz)} L${f(W * 0.98)},${f(H)} L${f(W * 0.02)},${f(H)} Z` }, "#232428", g);
+      for (let k = 1; k <= 4; k++) {
+        const t0 = Math.pow(k / 5, 1.6), t1 = Math.pow((k + 0.45) / 5, 1.6);
+        const y0 = hz + (H - hz) * t0, y1 = hz + (H - hz) * t1, w0 = W * 0.004 * (1 + k * 1.5);
+        paint("rect", { x: f(W / 2 - w0 / 2), y: f(y0), width: f(w0), height: f(y1 - y0) }, "#55565B", g, 0.8);
+      }
+      // Średni plan: kamienice tylko przy krawędziach, z przygaszonymi oknami
+      [[0, 0.24, 0.55, "#383A40"], [0.76, 1, 0.5, "#3D342F"]].forEach(([x0, x1, h, c]) => {
+        const top = hz - h * H, bx = x0 * W, bw = (x1 - x0) * W;
+        paint("rect", { x: f(bx), y: f(top), width: f(bw), height: f(hz - top + (H - hz) * 0.15) }, c, g);
+        for (let r = 0; r < 4; r++) for (let q = 0; q < 2; q++) {
+          paint("rect", { x: f(bx + bw * (0.2 + q * 0.4)), y: f(top + H * (0.05 + r * 0.1)), width: f(bw * 0.2), height: f(H * 0.05) }, "#8A7A58", g, 0.35);
+        }
+      });
+      return;
+    }
+    if (kind === "mountains") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B4759"], [1, "#8290A0"]]), g);
+      paint("path", { d: peaks([[0, 0.12], [0.12, 0.21], [0.26, 0.11], [0.4, 0.24], [0.55, 0.09], [0.68, 0.19], [0.82, 0.1], [0.94, 0.22], [1, 0.15]], W, hz, H) }, "#5C687A", g);
+      paint("path", { d: peaks([[0, 0.07], [0.16, 0.12], [0.32, 0.04], [0.5, 0.09], [0.7, 0.03], [0.86, 0.13], [1, 0.06]], W, hz + H * 0.02, H) }, "#414C5B", g);
+      paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H) }, vGrad(defs, uid + "g", [[0, "#34403A"], [1, "#252C27"]]), g);
+      return;
+    }
+    if (kind === "forest") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#374539"], [1, "#6A7A6C"]]), g);
+      // Dalszy plan: równa linia koron drzew
+      let d = `M0,${f(hz)}`;
+      for (let x = 0; x <= 1.001; x += 0.05) d += ` L${f(x * W)},${f(hz - H * (0.07 + ((x * 37) % 1) * 0.04))} L${f((x + 0.025) * W)},${f(hz - H * 0.03)}`;
+      paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3D4D41", g);
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#2B362D"], [1, "#1F2621"]]), g);
+      // Średni plan: kilka dużych świerków tylko przy krawędziach kadru
+      const tree = (x, h, c) => {
+        const base = Math.min(gy, H * 0.96), w = h * 0.42;
+        paint("rect", { x: f(x - w * 0.05), y: f(base - h * 0.12), width: f(w * 0.1), height: f(h * 0.12) }, "#2B241E", g);
+        [0, 0.28, 0.52].forEach((o, i) => {
+          const tw = w * (1 - i * 0.22), ty = base - h * (0.1 + o), th = h * 0.42;
+          paint("path", { d: `M${f(x)},${f(ty - th)} L${f(x + tw / 2)},${f(ty)} L${f(x - tw / 2)},${f(ty)} Z` }, c, g);
+        });
+      };
+      tree(W * 0.05, H * 0.62, "#26342A"); tree(W * 0.16, H * 0.45, "#2B3A2F");
+      tree(W * 0.95, H * 0.66, "#26342A"); tree(W * 0.84, H * 0.42, "#2B3A2F");
+    }
+  }
+
   // Słońce: koło z promieniami
   function sunGlyph(g, cx, cy, r) {
     el("circle", { cx: f(cx), cy: f(cy), r: f(r) }, g);
@@ -560,7 +635,8 @@
     svg.replaceChildren();
     svg.setAttribute("viewBox", `0 0 ${f(W)} ${f(H)}`);
     const id = "clip" + (++clipSeq);
-    el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, el("defs", {}, svg)));
+    const defs = el("defs", {}, svg);
+    el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, defs));
     const g = el("g", { "clip-path": `url(#${id})` }, svg);
 
     const A = anchors(st, W, H);
@@ -578,25 +654,17 @@
     const reveal = st.props && st.props.reveal !== undefined ? st.props.reveal : 1;
     const layer = () => reveal >= 1 ? g : el("g", { opacity: f(reveal) }, g);
 
-    // Tło
+    // Tło: trzy plany z przygaszonymi kolorami; im dalej, tym jaśniej i bardziej mgliście.
+    // Horyzont lekko idzie za wysokością kamery: z góry widać więcej ziemi, z dołu więcej nieba.
     if (layers.has("background") && reveal > 0) {
-      const lg = layer();
-      if (st.background === "studio") {
-        const gy = Math.min(pl.groundY, H * 0.9);
-        el("rect", { x: f(W * 0.08), y: f(H * 0.03), width: f(W * 0.84), height: f(u * 3), rx: f(u * 1.5), class: "thin" }, lg);
-        el("path", { d: `M${f(W * 0.11)},${f(H * 0.06)} L${f(W * 0.11)},${f(gy)} L${f(W * 0.01)},${f(H)}`, class: "thin" }, lg);
-        el("path", { d: `M${f(W * 0.89)},${f(H * 0.06)} L${f(W * 0.89)},${f(gy)} L${f(W * 0.99)},${f(H)}`, class: "thin" }, lg);
-      } else {
-        const vp = [W / 2, Math.max(H * 0.3, Math.min(horizonY, H * 0.9))];
-        const toward = (A, xs) => { const t = (xs - A[0]) / (vp[0] - A[0]); return [xs, A[1] + (vp[1] - A[1]) * t]; };
-        el("path", { d: `M${f(W * 0.04)},${f(H)} L${f(vp[0])},${f(vp[1])} L${f(W * 0.96)},${f(H)}`, class: "thin" }, lg);
-        [[0, W * 0.3], [W, W * 0.7]].forEach(([edge, xs]) => {
-          const top = toward([edge, H * 0.02], xs), bot = toward([edge, H * 0.96], xs);
-          el("path", { d: `M${f(edge)},${f(H * 0.02)} L${f(top[0])},${f(top[1])} L${f(bot[0])},${f(bot[1])} L${f(edge)},${f(H * 0.96)}`, class: "thin" }, lg);
-          const mid = toward([edge, H * 0.4], xs);
-          el("line", { x1: f(edge), y1: f(H * 0.4), x2: f(mid[0]), y2: f(mid[1]), class: "thin" }, lg);
-        });
-      }
+      const camN = P.camY ?? zc.y;
+      const hz = H * (0.55 - (0.5 - camN) * 0.4);
+      const gy = st.shot === "full" ? pl.groundY : H * 0.95;
+      drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u);
+      // Rodzaj i kierunek światła zabarwia tło: słońce ociepla, lampa chłodzi, kontra przyciemnia
+      const tint = kindT < 0.5 ? "#FFB45C" : "#7FA6FF";
+      el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:${tint};stroke:none;opacity:0.07` }, layer());
+      if (lightT > 0) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:#000;stroke:none;opacity:${f(0.22 * lightT)}` }, layer());
     }
 
     // Podłoże
