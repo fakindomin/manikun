@@ -1482,7 +1482,9 @@
   };
   // Twarz: grupy Włosy, Zarost (mężczyzna), Usta, Okulary; fryzura i okulary prowadzą dalej do kolorów
   function lookTiles() {
-    const lk = scene.look, with_ = patch => ({ ...lk, ...patch });
+    // Zawsze bieżący wygląd: panel nie jest przebudowywany po każdym wyborze, tylko odświeżany
+    const lk = new Proxy({}, { get: (_, k) => scene.look[k] });
+    const with_ = patch => ({ ...scene.look, ...patch });
     const set = (patch, next) => { scene.look = with_(patch); if (next !== undefined) scene.sub = next; render(); };
     const sub = scene.sub;
     if (sub === "hair") return [backTile(null)].concat(LOOK.hair.map(o => tile("opt-hair-" + o.id, o.name, () => lk.hair === o.id,
@@ -1501,7 +1503,7 @@
     // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
     const SAMPLE = { hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
     return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => lk[k] !== "none",
-      () => { scene.sub = k; render(); }, svg => headTile(svg, lk[k] !== "none" ? lk : with_(SAMPLE[k])))));
+      () => { scene.sub = k; render(); }, svg => headTile(svg, lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
   }
 
   function makeTiles(catId) {
