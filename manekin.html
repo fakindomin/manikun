@@ -660,7 +660,13 @@
       const camN = P.camY ?? zc.y;
       const hz = H * (0.55 - (0.5 - camN) * 0.4);
       const gy = st.shot === "full" ? pl.groundY : H * 0.95;
-      drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u);
+      if (st.bgTrans) {
+        // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u);
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u);
+      } else {
+        drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u);
+      }
       // Rodzaj i kierunek światła zabarwia tło: słońce ociepla, lampa chłodzi, kontra przyciemnia
       const tint = kindT < 0.5 ? "#FFB45C" : "#7FA6FF";
       el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:${tint};stroke:none;opacity:0.07` }, layer());
@@ -962,6 +968,10 @@
   const propAnim = {};
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
+  // Przejście tła: te same czasy i krzywe co przy zmianie rzędu kafelków (wyjście 280 ms, wejście 420 ms po 140 ms)
+  let bgTrans = null;
+  const easeOut = t => 1 - Math.pow(1 - t, 5);   // ≈ cubic-bezier(0.22, 1, 0.36, 1)
+  const easeIn = t => t * t;                      // ≈ cubic-bezier(0.4, 0, 1, 1)
 
   const targetProps = () => ({
     camX: ZONES[scene.camera].x, camY: ZONES[scene.camera].y,
@@ -991,6 +1001,12 @@
       props[key] = a.from + (a.to - a.from) * easeInOut(t);
       if (t >= 1) delete propAnim[key]; else active = true;
     }
+    if (bgTrans) {
+      const e = now - bgTrans.start;
+      bgTrans.oldOff = easeIn(Math.min(1, e / OUT_MS));
+      bgTrans.newOff = 1 - easeOut(Math.max(0, Math.min(1, (e - 140) / PANEL_MS)));
+      if (e >= 140 + PANEL_MS) bgTrans = null; else active = true;
+    }
     renderPreview();
     if (active) ensureLoop();
   }
@@ -1007,6 +1023,7 @@
     const layers = ["ground", "camera", "light", "background"];
     if (scene.mode === "video") layers.push("motion");
     const st = { ...scene, props: { ...props } };
+    if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
     if (shown && (figAnim || shown.pose !== POSES[scene.pose] || shown.rig !== BODIES[scene.body])) {
       st.fig = computeFigure(shown.pose, shown.rig);
     }
@@ -1115,6 +1132,11 @@
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
     else if (prev.camera !== scene.camera) playFrames(REACTIONS.look("camera", prev));
     else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) playFrames(REACTIONS.look("light", prev));
+    if (prev.background !== scene.background && !reduceMotion.matches) {
+      bgTrans = { old: prev.background, start: performance.now() };
+      // Nowe miejsce: Manikun się rozgląda
+      if (!figAnim) playFrames(REACTIONS.bigger());
+    }
     ensureLoop();
   }
 
