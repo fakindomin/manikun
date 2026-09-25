@@ -610,7 +610,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "none", hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -729,7 +729,6 @@
   // Wygląd twarzy: tylko proste, dobrze znane modelom elementy
   const LOOK = {
     hair: [
-      { id: "none", name: "Bez zmian", prompt: null },
       { id: "short", name: "Krótkie", prompt: c => `short ${c}hair` },
       { id: "buzz", name: "Na jeża", prompt: c => `a short ${c}buzz cut` },
       { id: "medium", name: "Do ramion", prompt: c => `shoulder-length ${c}hair` },
@@ -790,12 +789,14 @@
   LOOK.beardColor = LOOK.hairColor;
   const lookOpt = (key, id) => LOOK[key].find(o => o.id === id);
   const DEFAULT_HAIR = "#3B2A20";
+  // Domyślna fryzura zależy od postaci; zmienia się razem z nią, póki nie wybrano fryzury ręcznie
+  const DEFAULT_HAIR_OF = { male: "short", female: "medium" };
   // Wygląd do narysowania na głowie Manikuna
   function lookDraw(lk = scene.look, body = scene.body) {
     const hairColor = lk.hairColor === "auto" ? DEFAULT_HAIR : lookOpt("hairColor", lk.hairColor).hex;
     const beardColor = lk.beardColor === "auto" ? DEFAULT_HAIR : lookOpt("beardColor", lk.beardColor).hex;
     return {
-      hair: lk.hair === "none" || lk.hair === "bald" ? null : lk.hair, hairColor, beardColor,
+      hair: lk.hair === "bald" ? null : lk.hair, hairColor, beardColor,
       beard: body === "male" ? lk.beard : "none",
       lips: lk.lips === "none" ? null : lookOpt("lips", lk.lips).hex,
       glasses: lk.glasses, glassesColor: lookOpt("glassesColor", lk.glassesColor).hex
@@ -805,7 +806,8 @@
   function lookPrompt() {
     const lk = scene.look, parts = [];
     const hc = lk.hairColor === "auto" ? "" : lookOpt("hairColor", lk.hairColor).word + " ";
-    if (lk.hair !== "none") parts.push(lookOpt("hair", lk.hair).prompt(hc));
+    // Fryzura zawsze w prompcie (bez niej modele i tak dorysowują włosy); przy "Mojej twarzy" tylko wybrana ręcznie
+    if (!scene.face || lk.hairPicked) parts.push(lookOpt("hair", lk.hair).prompt(hc));
     const bc = lk.beardColor === "auto" ? "" : lookOpt("beardColor", lk.beardColor).word + " ";
     if (scene.body === "male" && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt(bc));
     if (lk.lips !== "none") parts.push(lookOpt("lips", lk.lips).prompt);
@@ -819,7 +821,7 @@
     if (!scene.face) return optionOf("body", scene.body).prompt;
     const [who, pro] = scene.body === "female" ? ["woman", "her"] : ["man", "his"];
     // Wybrana fryzura zastępuje tę ze zdjęcia
-    const keep = scene.look.hair === "none" ? "face, facial features, skin tone and hairstyle" : "face, facial features and skin tone";
+    const keep = !scene.look.hairPicked ? "face, facial features, skin tone and hairstyle" : "face, facial features and skin tone";
     // W stylach rysowanych twarz ma być rozpoznawalna, a nie skopiowana jak na zdjęciu
     if (styleOf(scene) && !styleOf(scene).photo) return `of the ${who} from the attached reference photo, drawn in this style while keeping ${pro} ${keep} clearly recognisable,`;
     return `of the ${who} from the attached reference photo, keeping ${pro} ${keep} exactly the same,`;
@@ -1920,11 +1922,10 @@
     if (cat.id === "look") {
       const lk = scene.look;
       if (lk.expr !== "neutral") return lookOpt("expr", lk.expr).name;
-      if (lk.hair !== "none") return lookOpt("hair", lk.hair).name;
       if (lk.glasses !== "none") return lookOpt("glasses", lk.glasses).name;
       if (scene.body === "male" && lk.beard !== "none") return lookOpt("beard", lk.beard).name;
       if (lk.lips !== "none") return "Usta: " + lookOpt("lips", lk.lips).name;
-      return "Bez zmian";
+      return lookOpt("hair", lk.hair).name;
     }
     return optionOf(cat.id, scene[cat.id]).short;
   }
@@ -1933,7 +1934,7 @@
   let barKey = "", barItems = [];
   // Układ domyślny: ostatni przycisk paska. Pierwsze stuknięcie pyta, drugie wraca do ekranu startowego.
   // ---------- Gotowe schematy ----------
-  const LOOK0 = { hair: "none", hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" };
+  const LOOK0 = { hair: null, hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" };
   const PRESETS = {
     person: [
       { id: "business", name: "Portret biznesowy", set: { outfit: "elegant", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "portrait", camera: "L2",
@@ -1964,7 +1965,9 @@
   };
   let lastPreset = null;
   function applyPreset(pr) {
-    const set = pr.set;
+    const set = { ...pr.set };
+    // Gotowiec bez fryzury dostaje domyślną dla postaci
+    if (set.look) set.look = { ...set.look, hair: set.look.hair || DEFAULT_HAIR_OF[scene.body], hairPicked: !!set.look.hair };
     Object.assign(scene, { ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
     lastPreset = pr.id;
     render();
@@ -1972,7 +1975,7 @@
   function presetTiles() {
     return PRESETS[scene.subject].map(pr => tile("opt-preset-" + pr.id, pr.name, () => lastPreset === pr.id, () => applyPreset(pr), svg => {
       // Na czas rysowania miniatury scena przyjmuje ustawienia gotowca (wygląd i kolory ubrania czytane są ze sceny)
-      const st = { ...scene, ...pr.set, bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, bgx: { ...(pr.set.bgx || {}) } };
+      const st = { ...scene, ...pr.set, ...(pr.set.look ? { look: { ...pr.set.look, hair: pr.set.look.hair || DEFAULT_HAIR_OF[scene.body] } } : {}), bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, bgx: { ...(pr.set.bgx || {}) } };
       const saved = { ...scene };
       Object.assign(scene, st);
       renderScene(svg, st, 100, 100, new Set(["ground", "background", "camera", "light"]));
@@ -2002,7 +2005,7 @@
       scene.bottomColor = Math.random() < 0.5 ? "auto" : anyOf(COLORS).id;
       const male = scene.body === "male";
       scene.look = {
-        hair: anyOf(LOOK.hair).id, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
+        hair: anyOf(LOOK.hair).id, hairPicked: true, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
         expr: anyOf(LOOK.expr).id,
         beard: male && Math.random() < 0.5 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.beardColor).id,
         lips: !male && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
@@ -2221,7 +2224,7 @@
     const set = (patch, next) => { scene.look = with_(patch); if (next !== undefined) scene.sub = next; render(); };
     const sub = scene.sub;
     if (sub === "hair") return [backTile(null)].concat(LOOK.hair.map(o => tile("opt-hair-" + o.id, o.name, () => lk.hair === o.id,
-      () => set({ hair: o.id }, o.id === "none" || o.noColor ? undefined : "hairColor"), svg => headTile(svg, with_({ hair: o.id })))));
+      () => set({ hair: o.id, hairPicked: true }, o.noColor ? undefined : "hairColor"), svg => headTile(svg, with_({ hair: o.id })))));
     if (sub === "hairColor") return [backTile("hair")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.hairColor].map(o => tile("opt-hairColor-" + o.id, o.name,
       () => lk.hairColor === o.id, () => set({ hairColor: o.id }), svg => headTile(svg, with_({ hairColor: o.id })))));
     if (sub === "beard") return [backTile(null)].concat(LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
@@ -2239,8 +2242,9 @@
     const groups = [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
     // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
     const SAMPLE = { expr: { expr: "neutral" }, hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
-    return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => k === "expr" ? lk.expr !== "neutral" : lk[k] !== "none",
-      () => { scene.sub = k; render(); }, svg => headTile(svg, lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
+    const chosen = k => k === "expr" ? lk.expr !== "neutral" : k === "hair" ? lk.hairPicked : lk[k] !== "none";
+    return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => chosen(k),
+      () => { scene.sub = k; render(); }, svg => headTile(svg, k === "hair" || lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
   }
 
   // Wybór opcji z listy; tło od razu otwiera swoje warianty (opcjonalne, można wrócić strzałką)
@@ -2282,7 +2286,11 @@
     if (catId === "body") {
       // Postać i przełącznik "Moja twarz" (włącz/wyłącz, niezależnie od sylwetki)
       const list = optionsOf("body").map(o => tile("opt-body-" + o.id, o.name, () => scene.body === o.id,
-        () => { scene.body = o.id; render(); }, svg => drawOption("body", o.id, svg)));
+        () => {
+          // Fryzura domyślna idzie za postacią (krótkie u mężczyzny, do ramion u kobiety)
+          if (!scene.look.hairPicked) scene.look = { ...scene.look, hair: DEFAULT_HAIR_OF[o.id] };
+          scene.body = o.id; render();
+        }, svg => drawOption("body", o.id, svg)));
       list.push(tile("opt-body-face", "Moja twarz", () => scene.face, () => { scene.face = !scene.face; render(); }, faceGlyph));
       return list;
     }
@@ -2372,7 +2380,11 @@
       const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
       const poseId = catId === "pose" ? leafId : scene.pose;
       const key = poseKey({ pose: poseId, arms: catId === "arms" ? leafId : scene.arms });
+      // Kafelek postaci pokazuje jej domyślną fryzurę, póki fryzura nie jest wybrana ręcznie
+      const savedLook = scene.look;
+      if (catId === "body" && !scene.look.hairPicked) scene.look = { ...scene.look, hair: DEFAULT_HAIR_OF[leafId] };
       const fig = buildFigure(key, catId === "body" ? leafId : scene.body, scene.outfit), b = fig.box;
+      scene.look = savedLook;
       const x = b.minX - (side - b.w) / 2, y = b.maxY + 6 - side;
       svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
       el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
