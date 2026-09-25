@@ -4,13 +4,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#09090B">
 <title>Manikun – wirtualny reżyser ujęć</title>
-<meta name="description" content="Ustaw scenę na drewnianym manekinie: pozę, ubiór, kamerę, światło i tło. Manikun zamieni ją w gotowy prompt do generatora zdjęć i wideo AI.">
+<meta name="description" content="Ustaw scenę na drewnianym manekinie: pozę, ubiór, kamerę, światło i tło. Manikun zamieni ją w gotowy prompt do generatora zdjęć i wideo AI. Ponad miliard kombinacji ujęć.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://manikun.vercel.app/">
 <meta property="og:site_name" content="Manikun">
 <meta property="og:locale" content="pl_PL">
 <meta property="og:title" content="Manikun – wirtualny reżyser ujęć">
-<meta property="og:description" content="Ustaw scenę na drewnianym manekinie: pozę, ubiór, kamerę, światło i tło. Manikun zamieni ją w gotowy prompt do generatora zdjęć i wideo AI.">
+<meta property="og:description" content="Ustaw scenę na drewnianym manekinie: pozę, ubiór, kamerę, światło i tło. Manikun zamieni ją w gotowy prompt do generatora zdjęć i wideo AI. Ponad miliard kombinacji ujęć.">
 <meta property="og:image" content="https://manikun.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -82,9 +82,10 @@
   /* Elementy reżysera ukryte na starcie, pojawiają się po wyborze trybu */
   .director-only { transition: opacity 420ms ease; }
   [data-phase="start"] .director-only { opacity: 0; pointer-events: none; }
+  [data-phase="director"] .combos { opacity: 0; pointer-events: none; }
 
   /* ---------- Pasek górny: pigułki ---------- */
-  .top { display: flex; align-items: center; gap: 8px; }
+  .top { display: flex; align-items: center; gap: 8px; position: relative; }
   .modes {
     display: flex; gap: 2px; margin-right: auto;
     background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px;
@@ -231,6 +232,14 @@
     display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
   }
   .hello { text-align: center; display: grid; gap: 4px; transition: opacity 280ms ease, transform 420ms var(--ease); }
+  /* Znaczek nad powitaniem: skala możliwości (ostrożnie liczone: kilkadziesiąt miliardów samych zdjęć postaci) */
+  /* Na starcie w pustym miejscu górnego paska po lewej; w reżyserze znika, tam są przełączniki trybu */
+  .combos {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%); transition: opacity 420ms ease;
+    max-width: calc(100% - 128px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+  }
   .hello h1 { margin: 0; font-size: clamp(20px, 6.4vw, 26px); white-space: nowrap; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
   .hello h1 em { font-style: normal; color: var(--accent); }
   .hello p { margin: 0 auto; max-width: 34ch; font-size: 14px; line-height: 1.35; color: var(--muted); text-wrap: balance; }
@@ -291,6 +300,7 @@
 
 <div class="screen app" id="app" data-phase="start">
   <div class="top">
+    <span class="combos" id="combos">Ponad miliard ujęć</span>
     <div class="modes director-only" role="group" aria-label="Tryb">
       <button class="chip" type="button" id="mode-photo" data-mode="photo"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</button>
       <button class="chip" type="button" id="mode-video" data-mode="video"><span class="patch" style="background:#AF363C"></span>Wideo</button>
