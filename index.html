@@ -180,7 +180,12 @@
     border-top: 1.5px solid currentColor; border-right: 1.5px solid currentColor;
     transform: rotate(45deg); opacity: 0.7;
   }
-  .tile.back { background: transparent; border-style: dashed; border-color: var(--line-strong); box-shadow: none; }
+  /* Strzałka powrotu przypięta do lewej krawędzi: kafelki przewijają się pod nią */
+  .tile.back {
+    position: sticky; left: 0; z-index: 2;
+    background: var(--bg); border-style: dashed; border-color: var(--line-strong);
+    box-shadow: 10px 0 14px -4px var(--bg);
+  }
 
   /* ---------- Pasek kategorii: pływający dok ---------- */
   [data-phase="start"] .cat { opacity: 0; transform: translateY(24px); }
@@ -351,6 +356,8 @@
       { id: "coat", name: "Płaszcz", short: "Płaszcz" },
       { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"] }
     ]},
+    // Twarz: włosy, zarost, usta i okulary. Opcje są w LOOK niżej, kafelki buduje lookTiles()
+    { id: "look", label: "Twarz", patch: "#C9A24A", options: [] },
     { id: "pose", label: "Poza", patch: "#C29682", options: [
       { id: "standing", name: "Stoi", children: [
         { id: "stand", name: "Prosto", short: "Stoi", prompt: "standing upright, weight evenly on both feet" },
@@ -453,7 +460,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", face: false, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    body: "male", face: false, look: { hair: "none", hairColor: "auto", beard: "none", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -557,11 +564,88 @@
     dress: t => `wearing a simple, elegant ${t ? t + " " : ""}midi dress`
   };
   const hasBottom = outfitId => outfitId !== "dress";
+  // Wygląd twarzy: tylko proste, dobrze znane modelom elementy
+  const LOOK = {
+    hair: [
+      { id: "none", name: "Bez zmian", prompt: null },
+      { id: "short", name: "Krótkie", prompt: c => `short ${c}hair` },
+      { id: "buzz", name: "Na jeża", prompt: c => `a short ${c}buzz cut` },
+      { id: "medium", name: "Do ramion", prompt: c => `shoulder-length ${c}hair` },
+      { id: "long", name: "Długie proste", prompt: c => `long straight ${c}hair` },
+      { id: "wavy", name: "Długie falowane", prompt: c => `long wavy ${c}hair` },
+      { id: "curly", name: "Kręcone", prompt: c => `curly ${c}hair` },
+      { id: "ponytail", name: "Kucyk", prompt: c => `${c}hair tied back in a ponytail` },
+      { id: "bun", name: "Kok", prompt: c => `${c}hair in a neat bun` },
+      { id: "bald", name: "Łysy", prompt: () => "a clean-shaven bald head", noColor: true }
+    ],
+    hairColor: [
+      { id: "black", name: "Czarne", hex: "#1E1A18", word: "black" },
+      { id: "darkbrown", name: "Ciemny brąz", hex: "#3B2A20", word: "dark brown" },
+      { id: "brown", name: "Brązowe", hex: "#6B4A32", word: "brown" },
+      { id: "auburn", name: "Rude", hex: "#8A3B22", word: "auburn" },
+      { id: "blonde", name: "Blond", hex: "#C9A45C", word: "blonde" },
+      { id: "platinum", name: "Platyna", hex: "#E3D8B8", word: "platinum blonde" },
+      { id: "grey", name: "Siwe", hex: "#A7A5A0", word: "grey" }
+    ],
+    beard: [
+      { id: "none", name: "Gładko", prompt: null },
+      { id: "stubble", name: "Kilkudniowy", prompt: "light stubble" },
+      { id: "short", name: "Krótka broda", prompt: "a short neat beard" },
+      { id: "full", name: "Pełna broda", prompt: "a full beard" }
+    ],
+    lips: [
+      { id: "none", name: "Naturalne", prompt: null },
+      { id: "nude", name: "Nude", hex: "#C08A78", prompt: "nude lipstick" },
+      { id: "pink", name: "Różowe", hex: "#D0708A", prompt: "soft pink lipstick" },
+      { id: "red", name: "Czerwone", hex: "#B3262E", prompt: "classic red lipstick" },
+      { id: "berry", name: "Bordowe", hex: "#6E2233", prompt: "deep berry lipstick" }
+    ],
+    glasses: [
+      { id: "none", name: "Bez okularów", prompt: null },
+      { id: "round", name: "Okrągłe", prompt: c => `round ${c}eyeglasses` },
+      { id: "rect", name: "Prostokątne", prompt: c => `rectangular ${c}eyeglasses` },
+      { id: "sun", name: "Słoneczne", prompt: c => `${c}sunglasses` },
+      { id: "aviator", name: "Pilotki", prompt: c => `${c}aviator sunglasses` }
+    ],
+    glassesColor: [
+      { id: "black", name: "Czarne", hex: "#1D1D20", word: "black-framed" },
+      { id: "gold", name: "Złote", hex: "#C9A24A", word: "gold-framed" },
+      { id: "silver", name: "Srebrne", hex: "#BFC3C8", word: "silver-framed" },
+      { id: "tortoise", name: "Szylkret", hex: "#6B4226", word: "tortoiseshell" },
+      { id: "clear", name: "Przezroczyste", hex: "#D9DDE0", word: "clear-framed" }
+    ]
+  };
+  const lookOpt = (key, id) => LOOK[key].find(o => o.id === id);
+  const DEFAULT_HAIR = "#3B2A20";
+  // Wygląd do narysowania na głowie Manikuna
+  function lookDraw(lk = scene.look, body = scene.body) {
+    const hairColor = lk.hairColor === "auto" ? DEFAULT_HAIR : lookOpt("hairColor", lk.hairColor).hex;
+    return {
+      hair: lk.hair === "none" || lk.hair === "bald" ? null : lk.hair, hairColor,
+      beard: body === "male" ? lk.beard : "none",
+      lips: lk.lips === "none" ? null : lookOpt("lips", lk.lips).hex,
+      glasses: lk.glasses, glassesColor: lookOpt("glassesColor", lk.glassesColor).hex
+    };
+  }
+  // Opis wyglądu do promptu: ", with short dark brown hair, a short neat beard and round black-framed eyeglasses"
+  function lookPrompt() {
+    const lk = scene.look, parts = [];
+    const hc = lk.hairColor === "auto" ? "" : lookOpt("hairColor", lk.hairColor).word + " ";
+    if (lk.hair !== "none") parts.push(lookOpt("hair", lk.hair).prompt(hc));
+    if (scene.body === "male" && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt);
+    if (lk.lips !== "none") parts.push(lookOpt("lips", lk.lips).prompt);
+    if (lk.glasses !== "none") parts.push(lookOpt("glasses", lk.glasses).prompt(lookOpt("glassesColor", lk.glassesColor).word + " "));
+    if (!parts.length) return "";
+    return ", with " + (parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0]);
+  }
+
   // Moja twarz: generator bierze twarz z dołączonego zdjęcia, reszta sceny zostaje z kafelków
   const bodyPrompt = () => {
     if (!scene.face) return optionOf("body", scene.body).prompt;
     const [who, pro] = scene.body === "female" ? ["woman", "her"] : ["man", "his"];
-    return `of the ${who} from the attached reference photo, keeping ${pro} face, facial features, skin tone and hairstyle exactly the same,`;
+    // Wybrana fryzura zastępuje tę ze zdjęcia
+    const keep = scene.look.hair === "none" ? "face, facial features, skin tone and hairstyle" : "face, facial features and skin tone";
+    return `of the ${who} from the attached reference photo, keeping ${pro} ${keep} exactly the same,`;
   };
   const outfitPrompt = () => {
     const w = id => id === "auto" ? null : colorOf(id).word;
@@ -572,7 +656,7 @@
 
   function buildPrompt() {
     const parts = [
-      optionOf("shot", scene.shot).prompt + " " + bodyPrompt() + " " + outfitPrompt(),
+      optionOf("shot", scene.shot).prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt(),
       optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : ""),
       optionOf("camera", scene.camera).prompt,
       lightPrompt(),
@@ -723,11 +807,12 @@
       c.top = colorOf(topId).hex;
     }
     if (bottomId !== "auto" && c.pants) c.pants = colorOf(bottomId).hex;
+    c.look = lookDraw(scene.look, bodyId);
     return c;
   }
 
   function buildFigure(poseId, bodyId = "male", outfitId = null) {
-    const key = [poseId, bodyId, outfitId, outfitId && scene.topColor, outfitId && scene.bottomColor].join("/");
+    const key = [poseId, bodyId, outfitId, outfitId && scene.topColor, outfitId && scene.bottomColor, outfitId && JSON.stringify(scene.look)].join("/");
     return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], outfitId ? clothOf(outfitId, bodyId) : null));
   }
 
@@ -1224,7 +1309,8 @@
     body: svg => miniFigure(svg, "stand", scene.body, scene.outfit),
     pose: svg => miniFigure(svg, "sit", scene.body, scene.outfit),
     arms: svg => miniFigure(svg, "stand+hips", scene.body, scene.outfit),
-    outfit: svg => outfitGlyph(svg, scene.outfit, 24)
+    outfit: svg => outfitGlyph(svg, scene.outfit, 24),
+    look: svg => { el("circle", { cx: 12, cy: 12, r: 7 }, svg); el("path", { d: "M5.5 10 Q7 4 12 4.5 Q17 4 18.5 10 Q14 7.5 5.5 10 Z" }, svg); el("path", { d: "M8 12.5 h3 M13 12.5 h3", class: "thin" }, svg); }
   };
 
   // Mały ludzik w ikonie 24×24, dopasowany do pola
@@ -1243,6 +1329,12 @@
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
     if (cat.id === "body" && scene.face) return "Moja twarz";
+    if (cat.id === "look") {
+      const lk = scene.look;
+      if (lk.hair !== "none") return lookOpt("hair", lk.hair).name;
+      if (lk.glasses !== "none") return lookOpt("glasses", lk.glasses).name;
+      return "Bez zmian";
+    }
     return optionOf(cat.id, scene[cat.id]).short;
   }
 
@@ -1362,7 +1454,58 @@
     el("path", { d: "M44 16 L48 16 L48 20", class: "thin" }, svg);
   }
 
+  // Głowa Manikuna z danym wyglądem, powiększona na kafelek
+  function headTile(svg, lk) {
+    const saved = scene.look;
+    scene.look = lk;
+    const fig = computeFigure(POSES.stand, BODIES[scene.body], clothOf(scene.outfit, scene.body));
+    scene.look = saved;
+    const [hx, hy] = fig.head, r = 30;
+    svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r + 2)} ${f(r * 2)} ${f(r * 2)}`);
+    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+  }
+  const backTile = to => {
+    const t = tile("opt-back", "Wróć", () => false, () => { scene.sub = to; render(); }, svg => {
+      svg.setAttribute("viewBox", "0 0 64 64");
+      el("path", { d: "M36 20 L24 32 L36 44 M24 32 H46" }, svg);
+    });
+    t.btn.classList.add("back");
+    return t;
+  };
+  const groupMark = t => {
+    t.btn.classList.add("group");
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.setAttribute("aria-hidden", "true");
+    t.btn.appendChild(badge);
+    return t;
+  };
+  // Twarz: grupy Włosy, Zarost (mężczyzna), Usta, Okulary; fryzura i okulary prowadzą dalej do kolorów
+  function lookTiles() {
+    const lk = scene.look, with_ = patch => ({ ...lk, ...patch });
+    const set = (patch, next) => { scene.look = with_(patch); if (next !== undefined) scene.sub = next; render(); };
+    const sub = scene.sub;
+    if (sub === "hair") return [backTile(null)].concat(LOOK.hair.map(o => tile("opt-hair-" + o.id, o.name, () => lk.hair === o.id,
+      () => set({ hair: o.id }, o.id === "none" || o.noColor ? undefined : "hairColor"), svg => headTile(svg, with_({ hair: o.id })))));
+    if (sub === "hairColor") return [backTile("hair")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.hairColor].map(o => tile("opt-hairColor-" + o.id, o.name,
+      () => lk.hairColor === o.id, () => set({ hairColor: o.id }), svg => headTile(svg, with_({ hairColor: o.id })))));
+    if (sub === "beard") return [backTile(null)].concat(LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
+      () => set({ beard: o.id }), svg => headTile(svg, with_({ beard: o.id })))));
+    if (sub === "lips") return [backTile(null)].concat(LOOK.lips.map(o => tile("opt-lips-" + o.id, o.name, () => lk.lips === o.id,
+      () => set({ lips: o.id }), svg => headTile(svg, with_({ lips: o.id })))));
+    if (sub === "glasses") return [backTile(null)].concat(LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
+      () => set({ glasses: o.id }, o.id === "none" ? undefined : "glassesColor"), svg => headTile(svg, with_({ glasses: o.id === "none" ? "none" : o.id })))));
+    if (sub === "glassesColor") return [backTile("glasses")].concat(LOOK.glassesColor.map(o => tile("opt-glassesColor-" + o.id, o.name,
+      () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), svg => headTile(svg, with_({ glassesColor: o.id })))));
+    const groups = [["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
+    // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
+    const SAMPLE = { hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
+    return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => lk[k] !== "none",
+      () => { scene.sub = k; render(); }, svg => headTile(svg, lk[k] !== "none" ? lk : with_(SAMPLE[k])))));
+  }
+
   function makeTiles(catId) {
+    if (catId === "look") return lookTiles();
     if (catId === "body") {
       // Postać i przełącznik "Moja twarz" (włącz/wyłącz, niezależnie od sylwetki)
       const list = optionsOf("body").map(o => tile("opt-body-" + o.id, o.name, () => scene.body === o.id,
@@ -1688,7 +1831,7 @@
     if (poseKey(prev) !== poseKey(scene) || prev.body !== scene.body) playFrames([{ pose: curPose(), dur: 950 }]);
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
-    else if (prev.outfit !== scene.outfit || prev.topColor !== scene.topColor || prev.bottomColor !== scene.bottomColor) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
+    else if (prev.outfit !== scene.outfit || prev.topColor !== scene.topColor || prev.bottomColor !== scene.bottomColor || prev.look !== scene.look) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
     else if (prev.camera !== scene.camera) startGaze("camera");
     else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) startGaze("light");
     if (prev.background !== scene.background && !reduceMotion.matches) {
