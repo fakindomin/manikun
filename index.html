@@ -630,9 +630,27 @@
   }
 
   const figCache = {};
-  function buildFigure(poseId, bodyId = "male") {
-    const key = poseId + "/" + bodyId;
-    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId]));
+  // Ubranko na Manikunie dla każdego ubioru: kolory przygaszone, jak reszta sceny
+  const CLOTHES = {
+    casual: { top: "#7D8A96", sleeve: "short", pants: "#3F4B5E" },
+    elegant: {
+      male: { top: "#2F3440", sleeve: "long", topLen: "hip", pants: "#2F3440", collar: "#E9E6DF", tie: "#7A3E3E" },
+      female: { top: "#3A3F4B", sleeve: "long", topLen: "hip", pants: "#3A3F4B", collar: "#E9E6DF" }
+    },
+    sport: { top: "#5E7F8F", sleeve: "none", pants: "#33373E" },
+    street: { top: "#8A7A66", sleeve: "long", topLen: "hip", loose: true, hood: true, pants: "#4A4F57" },
+    coat: { top: "#7A6450", sleeve: "long", topLen: "hip", pants: "#3C3F45", skirt: "#7A6450", skirtLen: 0.25 },
+    dress: { top: "#8E5A5E", sleeve: "short", skirt: "#8E5A5E", skirtLen: 0.35 }
+  };
+  function clothOf(outfitId, bodyId) {
+    const o = outfitId === "dress" && bodyId !== "female" ? "casual" : outfitId;
+    const c = CLOTHES[o];
+    return c && c.top === undefined ? c[bodyId] : c;
+  }
+
+  function buildFigure(poseId, bodyId = "male", outfitId = null) {
+    const key = poseId + "/" + bodyId + "/" + outfitId;
+    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], outfitId ? clothOf(outfitId, bodyId) : null));
   }
 
   // Wzorzec skali: stojący mężczyzna. Każda poza ma ten sam rozmiar ciała, kobieta jest nieco niższa.
@@ -689,7 +707,7 @@
   function anchors(st, W, H) {
     // Środek wyznacza sama postawa, więc gest rękami nie przesuwa Manikuna w kadrze
     const bb = buildFigure(st.pose, st.body).box, ax = (bb.minX + bb.maxX) / 2;
-    const baseFig = buildFigure(poseKey(st), st.body);
+    const baseFig = buildFigure(poseKey(st), st.body, st.outfit);
     const plBase = place(baseFig, st.shot, W, H, ax);
     const pl = st.fig ? place(st.fig, st.shot, W, H, ax) : plBase;
     return { pl, plBase, u: H / 100, cx: pl.x + pl.w / 2 };
@@ -1125,15 +1143,15 @@
     },
     background: svg => { el("rect", { x: 3, y: 3, width: 18, height: 3, rx: 1.5 }, svg); el("path", { d: "M5 6v11l-2 4 M19 6v11l2 4 M5 17h14" }, svg); },
     motion: svg => { el("ellipse", { cx: 12, cy: 15, rx: 9, ry: 3.5 }, svg); el("circle", { cx: 12, cy: 5, r: 2 }, svg); el("path", { d: "M12 7v8 M15 19.4l2.4-0.8-1.4-2" }, svg); },
-    body: svg => miniFigure(svg, "stand", scene.body),
-    pose: svg => miniFigure(svg, "sit", scene.body),
-    arms: svg => miniFigure(svg, "stand+hips", scene.body),
+    body: svg => miniFigure(svg, "stand", scene.body, scene.outfit),
+    pose: svg => miniFigure(svg, "sit", scene.body, scene.outfit),
+    arms: svg => miniFigure(svg, "stand+hips", scene.body, scene.outfit),
     outfit: svg => outfitGlyph(svg, scene.outfit, 24)
   };
 
   // Mały ludzik w ikonie 24×24, dopasowany do pola
-  function miniFigure(svg, poseId, bodyId) {
-    const fig = buildFigure(poseId, bodyId), b = fig.box, s = 22 / Math.max(b.w, b.h);
+  function miniFigure(svg, poseId, bodyId, outfitId = null) {
+    const fig = buildFigure(poseId, bodyId, outfitId), b = fig.box, s = 22 / Math.max(b.w, b.h);
     const holder = el("svg", { viewBox: `${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}`, x: f(12 - b.w * s / 2), y: f(23 - b.h * s), width: f(b.w * s), height: f(b.h * s) }, svg);
     paintFigure(el("g", { class: "fig" }, holder), fig.shapes, material);
   }
@@ -1301,7 +1319,7 @@
       const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
       const poseId = catId === "pose" ? leafId : scene.pose;
       const key = poseKey({ pose: poseId, arms: catId === "arms" ? leafId : scene.arms });
-      const fig = buildFigure(key, catId === "body" ? leafId : scene.body), b = fig.box;
+      const fig = buildFigure(key, catId === "body" ? leafId : scene.body, scene.outfit), b = fig.box;
       const x = b.minX - (side - b.w) / 2, y = b.maxY + 6 - side;
       svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
       el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
@@ -1455,7 +1473,7 @@
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
     if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
-      st.fig = computeFigure(shown.pose, shown.rig);
+      st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.outfit, scene.body));
     }
     const grabbed = drag && drag.grabbed ? drag.what : null;
     previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null });
@@ -1532,6 +1550,7 @@
     if (poseKey(prev) !== poseKey(scene) || prev.body !== scene.body) playFrames([{ pose: curPose(), dur: 950 }]);
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
+    else if (prev.outfit !== scene.outfit) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
     else if (prev.camera !== scene.camera) startGaze("camera");
     else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) startGaze("light");
     if (prev.background !== scene.background && !reduceMotion.matches) {

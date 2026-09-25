@@ -41,7 +41,11 @@ const BODIES = {
 
 // Liczy kształty manekina z kątów stawów (pose) i proporcji (RIG).
 // Kąty bezwzględne: 0 = w dół, 90 = w prawo, 180 = w górę.
-function computeFigure(pose, RIG) {
+// cloth (opcjonalnie): ubranko przypięte do tych samych stawów, więc porusza się razem z pozą.
+//   top: kolor góry, sleeve: "long" | "short" | "none", topLen: "waist" | "hip", loose: luźniejszy krój,
+//   pants: kolor spodni, shorts: krótkie nogawki, skirt: kolor spódnicy/poły, skirtLen: ułamek podudzia,
+//   collar: kolor koszuli w dekolcie, tie: kolor krawata, hood: kaptur
+function computeFigure(pose, RIG, cloth = null) {
   const P = [0, 0], u = dir(pose.spine), r = [-u[1], u[0]];
   const shapes = [], pts = [];
   const push = (s, ...ps) => { shapes.push(s); pts.push(...ps); };
@@ -51,6 +55,11 @@ function computeFigure(pose, RIG) {
   const shoulder = side => add(add(Ct, u, -6), r, side === "near" ? -RIG.shoulderNear : RIG.shoulderFar);
   const hip = side => add(P, r, side === "near" ? -RIG.hipNear : RIG.hipFar);
 
+  const lerpP = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const wear = (shape, color) => { shape.cloth = color; shapes.push(shape); };
+  const clothPoly = (pts, color) => wear({ t: "poly", q: pts, d: poly(pts) }, color);
+  const loose = cloth && cloth.loose ? 1.2 : 1;
+
   function arm(side) {
     const S = shoulder(side);
     const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
@@ -58,21 +67,38 @@ function computeFigure(pose, RIG) {
     const Hc = add(W, dir(pose[side + "Fore"]), 7);
     push(cap(S, E, 5, 4), [S, 6], [E, 5]);
     push(cap(E, W, 4, 3), [W, 4]);
-    push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] }, [Hc, 9]);
     push({ t: "circle", cx: E[0], cy: E[1], r: 3.5 });
     push({ t: "circle", cx: S[0], cy: S[1], r: 5.5 });
+    // Rękaw na ramieniu, dłoń zostaje drewniana i wychodzi spod mankietu
+    if (cloth && cloth.top && cloth.sleeve === "long") {
+      wear(cap(S, E, 6.6 * loose, 5.6 * loose), cloth.top);
+      wear(cap(E, lerpP(E, W, 0.92), 5.6 * loose, 4.6 * loose), cloth.top);
+    } else if (cloth && cloth.top && cloth.sleeve === "short") {
+      wear(cap(S, lerpP(S, E, 0.45), 6.8, 6.2), cloth.top);
+    }
+    push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] }, [Hc, 9]);
   }
+  const knees = {};
   function leg(side) {
     const H = hip(side);
     // ThighLen < 1: udo skierowane do kamery wygląda na krótsze (skrót perspektywiczny)
     const K = add(H, dir(pose[side + "Thigh"]), RIG.thigh * (pose[side + "ThighLen"] ?? 1));
     const A = add(K, dir(pose[side + "Shin"]), RIG.shin);
     const T = add(A, dir(pose[side + "Foot"]), RIG.foot);
+    knees[side] = { H, K, A };
     push(cap(H, K, 7, 5), [H, 8], [K, 6]);
     push(cap(K, A, 5, 3.5), [A, 5]);
-    push(cap(A, T, 4.5, 2.5), [T, 4]);
     push({ t: "circle", cx: A[0], cy: A[1], r: 3 });
     push({ t: "circle", cx: K[0], cy: K[1], r: 4.5 });
+    // Nogawki: długie do kostki albo krótkie do połowy uda; stopa wychodzi spod nogawki
+    if (cloth && cloth.pants) {
+      if (cloth.shorts) wear(cap(H, lerpP(H, K, 0.6), 8.6, 7.6), cloth.pants);
+      else {
+        wear(cap(H, K, 8.4 * loose, 6.6 * loose), cloth.pants);
+        wear(cap(K, lerpP(K, A, 0.94), 6.6 * loose, 5.2 * loose), cloth.pants);
+      }
+    }
+    push(cap(A, T, 4.5, 2.5), [T, 4]);
   }
 
   leg("far");
@@ -83,12 +109,42 @@ function computeFigure(pose, RIG) {
   // Rogi brył w kolejności: górny bliższy, górny dalszy, dolny dalszy, dolny bliższy
   push(quad([add(pt, r, -ptn), add(pt, r, ptf), add(pb, r, pbf), add(pb, r, -pbn)]), [add(pb, r, -pbn), 1], [add(pb, r, pbf), 1]);
   push(quad([add(Ct, r, -ctn), add(Ct, r, ctf), add(Cb, r, cbf), add(Cb, r, -cbn)]), [add(Ct, r, -ctn), 1], [add(Ct, r, ctf), 1]);
+  if (cloth) {
+    // Spodnie na miednicy, potem góra: dopasowana do talii albo dłuższa, do bioder
+    if (cloth.pants) clothPoly([add(pt, r, -ptn - 1.5), add(pt, r, ptf + 1.5), add(pb, r, pbf + 1.5), add(pb, r, -pbn - 1.5)], cloth.pants);
+    if (cloth.top) {
+      const e = 1.5 * loose, low = cloth.topLen === "hip" ? add(pb, u, -1) : add(P, u, RIG.pelvisUp * 0.4);
+      const [lw, rw] = cloth.topLen === "hip" ? [pbn + 2.5, pbf + 2.5] : [ptn + 1.5, ptf + 1.5];
+      clothPoly([add(Ct, r, -ctn - e), add(Ct, r, ctf + e), add(Cb, r, cbf + e), add(low, r, rw), add(low, r, -lw), add(Cb, r, -cbn - e)], cloth.top);
+      // Dekolt z koszulą i krawat (elegancki)
+      const mid = add(Ct, r, -(ctn - ctf) / 2);
+      if (cloth.collar) clothPoly([add(mid, r, -5), add(mid, r, 5), add(mid, u, -17)], cloth.collar);
+      if (cloth.tie) clothPoly([add(add(mid, u, -2), r, -1.4), add(add(mid, u, -2), r, 1.4), add(add(mid, u, -20), r, 2.2), add(mid, u, -23), add(add(mid, u, -20), r, -2.2)], cloth.tie);
+      // Kaptur zsunięty na plecy: zgrubienie wokół szyi
+      if (cloth.hood) wear({ t: "ellipse", cx: add(Ct, u, 2)[0], cy: add(Ct, u, 2)[1], rx: ctn * 0.75, ry: 5, rot: 180 - pose.spine }, cloth.top);
+    }
+  }
   const hd = dir(pose.head);
   const N1 = add(Ct, hd, RIG.neck);
   const Hc = add(N1, hd, RIG.headRy - 1);
   push(cap(Ct, N1, 3.5, 3.5));
   push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: RIG.headRx, ry: RIG.headRy, rot: 180 - pose.head, head: true }, [Hc, RIG.headRy + 1]);
   leg("near");
+  // Spódnica sukienki albo poły płaszcza: od bioder do kolan i trochę niżej, idą za udami.
+  // Na stojąco jeden trapez; gdy uda są uniesione (siedzenie, kucanie), materiał układa się osobno na każdym udzie.
+  if (cloth && cloth.skirt) {
+    const hemAt = side => { const { K, A } = knees[side]; return lerpP(K, A, cloth.skirtLen || 0.2); };
+    const upright = ["near", "far"].every(side => {
+      const { H, K } = knees[side];
+      return (K[1] - H[1]) > Math.abs(K[0] - H[0]) * 1.2;
+    });
+    if (upright) {
+      clothPoly([add(pt, r, -ptn - 2), add(pt, r, ptf + 2), add(pb, r, pbf + 4), add(hemAt("far"), r, 8), add(hemAt("near"), r, -8), add(pb, r, -pbn - 4)], cloth.skirt);
+    } else {
+      clothPoly([add(pt, r, -ptn - 2), add(pt, r, ptf + 2), add(pb, r, pbf + 3), add(pb, r, -pbn - 3)], cloth.skirt);
+      ["far", "near"].forEach(side => wear(cap(knees[side].H, hemAt(side), 9.5, 8.5), cloth.skirt));
+    }
+  }
   arm("near");
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -128,6 +184,24 @@ function paintFigure(g, shapes, m) {
   let n = 0;
 
   shapes.forEach((s, idx) => {
+    if (s.cloth) {
+      // Materiał ubranka: kolor z lekkim cieniowaniem, bez słojów
+      const id = pre + "t" + (++n);
+      const [a, b] = s.t === "cap" ? [s.A, s.B] : s.t === "poly" ? [s.q[0], s.q[1]] : [[0, 0], [0, 0]];
+      let x1 = a[0], y1 = a[1], x2 = b[0], y2 = b[1];
+      if (s.t === "cap") {
+        const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, rr = Math.max(s.rA, s.rB);
+        const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+        x1 = mx - dy / len * rr; y1 = my + dx / len * rr; x2 = mx + dy / len * rr; y2 = my - dx / len * rr;
+      }
+      if (s.t === "ellipse") shape("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` }, shadeHex(s.cloth, -0.12));
+      else {
+        const lg = el("linearGradient", { id, gradientUnits: "userSpaceOnUse", x1: f(x1), y1: f(y1), x2: f(x2), y2: f(y2) }, defs);
+        stops(lg, [[0, shadeHex(s.cloth, -0.22)], [0.35, shadeHex(s.cloth, 0.12)], [0.65, s.cloth], [1, shadeHex(s.cloth, -0.25)]]);
+        shape("path", { d: s.d }, `url(#${id})`);
+      }
+      return;
+    }
     if (s.t === "cap") {
       // Cieniowanie w poprzek: walec zamiast płaskiego paska
       const id = pre + "c" + (++n);
@@ -187,6 +261,12 @@ function paintFigure(g, shapes, m) {
       }
     }
   });
+}
+
+// Rozjaśnia (k > 0) albo przyciemnia (k < 0) kolor #RRGGBB
+function shadeHex(hex, k) {
+  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255];
+  return "#" + c.map(v => Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k)).toString(16).padStart(2, "0")).join("");
 }
 
 // Próbka materiału do przycisku przełącznika
