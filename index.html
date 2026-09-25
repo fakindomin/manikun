@@ -98,10 +98,15 @@
     transition: transform 420ms var(--ease);
   }
   body[data-mode="video"] .modes .thumb { transform: translateX(100%); }
-  /* Na szerszych ekranach suwak dokładnie na środku paska */
-  @media (min-width: 440px) { .modes { position: absolute; left: 50%; transform: translateX(-50%); } .top .home { margin-left: auto; } }
+  /* Suwak zawsze dokładnie na środku paska, logo kopiowania samotnie przy prawej krawędzi */
+  .modes { position: absolute; left: 50%; transform: translateX(-50%); }
+  .top .copy-logo { margin-left: auto; }
+  /* Wąskie telefony: suwak bez kropek i ciaśniej, żeby nie wjeżdżał na przycisk domu */
+  @media (max-width: 419px) { .top .modes .chip { padding: 7px 8px; font-size: 12px; } .top .modes .chip .patch { display: none; } }
+  /* Bardzo wąskie (<375 px): środek nie zmieści się obok menu i domu, suwak wypełnia wolne miejsce między nimi a logo */
+  @media (max-width: 374px) { .modes { position: relative; left: auto; transform: none; margin: 0 auto; } .top { gap: 6px; } .top .copy-logo { width: 40px; height: 40px; } }
   .modes .chip { position: relative; z-index: 1; justify-content: center; }
-  .menu-btn { padding: 7px; }
+  .chip.menu-btn { padding: 6px 8px; }
   .menu-btn svg { width: 20px; height: 20px; display: block; }
   /* Panel kopiowania wysuwany od dołu */
   .sheet-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, 0.55); opacity: 0; pointer-events: none; transition: opacity 280ms ease; }
@@ -375,9 +380,13 @@
 <div class="screen app" id="app" data-phase="start">
   <div class="top">
     <span class="combos" id="combos">Ponad miliard ujęć</span>
-    <!-- Menu (na razie same zapowiedzi), suwak trybu na środku -->
+    <!-- Lewa strona: menu (na razie same zapowiedzi) i dom; suwak trybu dokładnie na środku; logo-kopiowanie samo po prawej -->
     <button class="chip menu-btn director-only" type="button" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <!-- Powrót do ekranu startowego: pierwsze stuknięcie pyta, drugie wraca -->
+    <button class="chip home director-only" type="button" id="home" aria-label="Wróć do strony głównej">
+      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/></svg>
     </button>
     <div class="modes director-only" role="group" aria-label="Tryb">
       <span class="thumb" aria-hidden="true"></span>
@@ -386,10 +395,6 @@
     </div>
     <!-- Przełącznik materiału (drewno / biały) jest ukryty, ale działa: wystarczy usunąć atrybut hidden -->
     <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna" hidden><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
-    <!-- Powrót do ekranu startowego: pierwsze stuknięcie pyta, drugie wraca -->
-    <button class="chip home director-only" type="button" id="home" aria-label="Wróć do strony głównej">
-      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/></svg>
-    </button>
     <!-- Kopiowanie promptu: logo Manikuna (głowa na kwadracie w kolorze akcentu), większe niż reszta przycisków -->
     <button class="copy-logo director-only" type="button" id="copy" aria-label="Kopiuj prompt" title="Kopiuj prompt">
       <svg viewBox="0 0 120 120" aria-hidden="true">
