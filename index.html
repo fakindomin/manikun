@@ -102,6 +102,40 @@
   .modes .chip { position: relative; z-index: 1; justify-content: center; }
   .menu-btn { padding: 7px; }
   .menu-btn svg { width: 20px; height: 20px; display: block; }
+  /* Panel kopiowania wysuwany od dołu */
+  .sheet-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, 0.55); opacity: 0; pointer-events: none; transition: opacity 280ms ease; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; box-sizing: border-box; max-height: 88dvh; overflow-y: auto;
+    width: min(640px, 100%); margin: 0 auto; padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+    background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0;
+    transform: translateY(105%); transition: transform 420ms var(--ease); display: flex; flex-direction: column; gap: 12px;
+  }
+  body.sheet-open .sheet { transform: none; }
+  body.sheet-open .sheet-scrim { opacity: 1; pointer-events: auto; }
+  .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
+  .sheet h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+  .switch-row {
+    font: inherit; color: var(--ink); text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px;
+  }
+  .switch-text { display: grid; gap: 2px; flex: 1; }
+  .switch-text b { font-size: 14px; }
+  .switch-text small { font-size: 12px; color: var(--muted); }
+  .switch { width: 44px; height: 26px; border-radius: 13px; background: var(--line-strong); position: relative; flex: none; transition: background-color 280ms ease; }
+  .switch span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); transition: transform 280ms var(--ease); }
+  .switch-row[aria-checked="true"] .switch { background: var(--accent); }
+  .switch-row[aria-checked="true"] .switch span { transform: translateX(18px); background: var(--on-accent); }
+  .guide-row { display: flex; gap: 12px; align-items: center; }
+  .guide-photo { width: 112px; height: 140px; flex: none; border-radius: 14px; }
+  .guide-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--ink); }
+  .guide-list li::before { content: "✓"; color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .guide-steps { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .sheet-note { margin: 0; font-size: 13px; color: var(--muted); }
+  .sheet-copy {
+    font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; border: 0; border-radius: 16px; padding: 14px;
+    background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px var(--accent-soft);
+  }
+
   /* Menu wysuwane z lewej */
   .menu-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: opacity 280ms ease; }
   .menu {
@@ -362,6 +396,35 @@
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Pomoc<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.5"/></svg>O Manikunie<span class="soon">Wkrótce</span></button>
   </nav>
+  <!-- Panel kopiowania: opcja własnego zdjęcia, instrukcja z przykładem i przycisk kopiowania -->
+  <div class="sheet-scrim" id="sheetScrim"></div>
+  <section class="sheet" id="copySheet" aria-label="Kopiuj prompt" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <h2>Kopiuj prompt</h2>
+    <button class="switch-row" type="button" id="faceSwitch" role="switch" aria-checked="false">
+      <span class="switch-text"><b>Dołączę własne zdjęcie twarzy</b><small>Generator weźmie twarz z Twojego zdjęcia, a resztę z kreatora</small></span>
+      <span class="switch" aria-hidden="true"><span></span></span>
+    </button>
+    <div class="face-guide" id="faceGuide" hidden>
+      <div class="guide-row">
+        <svg id="guidePhoto" class="ink guide-photo" aria-label="Przykład dobrego zdjęcia: twarz na wprost, głowa i ramiona w kadrze"></svg>
+        <ul class="guide-list">
+          <li>Twarz na wprost, wzrok w obiektyw</li>
+          <li>Głowa i ramiona w kadrze, twarz duża</li>
+          <li>Równe, dzienne światło, bez ostrych cieni</li>
+          <li>Jedna osoba, bez okularów przeciwsłonecznych i czapki</li>
+          <li>Spokojna mina lub lekki uśmiech, bez filtrów</li>
+        </ul>
+      </div>
+      <ol class="guide-steps">
+        <li>Skopiuj prompt przyciskiem poniżej.</li>
+        <li>Otwórz generator, np. ChatGPT, Gemini, Midjourney lub Higgsfield.</li>
+        <li>Wklej prompt i dołącz swoje zdjęcie twarzy, potem wyślij.</li>
+      </ol>
+    </div>
+    <p class="sheet-note" id="sheetNote">Wklej prompt w generatorze obrazów lub wideo.</p>
+    <button class="sheet-copy" type="button" id="sheetCopy">Kopiuj prompt</button>
+  </section>
 
   <div class="stage">
     <svg id="preview" class="ink" role="img" aria-label="Podgląd kadru z Manikunem" preserveAspectRatio="xMidYMid meet"></svg>
@@ -2344,7 +2407,6 @@
           if (!scene.look.hairPicked) scene.look = { ...scene.look, hair: DEFAULT_HAIR_OF[o.id] };
           scene.body = o.id; render();
         }, svg => drawOption("body", o.id, svg)));
-      list.push(tile("opt-body-face", "Moja twarz", () => scene.face, () => { scene.face = !scene.face; render(); }, faceGlyph));
       return list;
     }
     if (catId === "outfit" && (scene.sub === "topColor" || scene.sub === "bottomColor")) return colorTiles(scene.sub);
@@ -2723,6 +2785,18 @@
     clearTimeout(copyTimer);
     copyTimer = setTimeout(() => { copyBtn.textContent = "Kopiuj"; }, 2000);
   }
+  function hiddenCopyOk(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  }
   function hiddenCopy(text) {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -2768,13 +2842,46 @@
     location.reload();
   });
 
-  copyBtn.addEventListener("click", () => {
+  // "Kopiuj" otwiera panel kopiowania; samo kopiowanie jest pod dużym przyciskiem w panelu
+  const sheetEl = document.getElementById("copySheet"), faceSwitch = document.getElementById("faceSwitch");
+  const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetNote = document.getElementById("sheetNote");
+  function syncSheet() {
+    const person = scene.subject === "person";
+    faceSwitch.hidden = !person;
+    faceSwitch.setAttribute("aria-checked", String(person && scene.face));
+    faceGuide.hidden = !(person && scene.face);
+    sheetNote.hidden = person && scene.face;
+    if (person && scene.face) drawGuidePhoto();
+  }
+  // Przykładowe zdjęcie: głowa i ramiona Manikuna na wprost, na jasnym tle, z owalem pokazującym, gdzie ma być twarz
+  function drawGuidePhoto() {
+    const svg = document.getElementById("guidePhoto");
+    const saved = { ...scene };
+    Object.assign(scene, { shot: "face", camera: "L2", background: "studio", bgv: { studio: "white" }, style: "real", look: { ...scene.look, expr: "neutral", glasses: "none" } });
+    const g = renderScene(svg, { ...scene, props: null }, 80, 100, new Set(["background"]));
+    Object.assign(scene, saved);
+    el("ellipse", { cx: f(g.head[0]), cy: f(g.head[1]), rx: 27, ry: 33, style: "fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:4 3" }, svg);
+  }
+  function setSheet(open) {
+    if (open) syncSheet();
+    document.body.classList.toggle("sheet-open", open);
+    sheetEl.setAttribute("aria-hidden", String(!open));
+    sheetCopy.textContent = "Kopiuj prompt";
+  }
+  copyBtn.addEventListener("click", () => setSheet(true));
+  document.getElementById("sheetScrim").addEventListener("click", () => setSheet(false));
+  faceSwitch.addEventListener("click", () => { scene.face = !scene.face; render(); syncSheet(); });
+  sheetCopy.addEventListener("click", () => {
     const text = buildPrompt();
-    if (scene.face) showToast("Wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
+    const done = ok => {
+      sheetCopy.textContent = ok ? "Skopiowano ✓" : "Nie udało się skopiować";
+      if (ok && scene.face && scene.subject === "person") showToast("Teraz wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
+      if (ok) setTimeout(() => setSheet(false), 1100);
+    };
     try {
-      navigator.clipboard.writeText(text).then(() => copyStatus("Skopiowano")).catch(() => hiddenCopy(text));
+      navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(hiddenCopyOk(text)));
     } catch (e) {
-      hiddenCopy(text);
+      done(hiddenCopyOk(text));
     }
   });
 
