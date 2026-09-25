@@ -36,9 +36,12 @@
     padding: 0 16px;
     overflow: hidden;
   }
-  .app {
+  /* Dwa ekrany jeden nad drugim: start i reżyser. Przejście jak w ankiecie Inna Opcja. */
+  [hidden] { display: none !important; }
+  .viewport { position: relative; height: 100%; }
+  .screen {
+    position: absolute; top: 0; bottom: 0; left: 0; right: 0;
     box-sizing: border-box;
-    height: 100%;
     max-width: 640px;
     margin: 0 auto;
     display: flex;
@@ -46,6 +49,29 @@
     gap: 10px;
     padding-block: 10px;
   }
+  .page-slide { transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease; }
+  .page-slide.entering { transform: translateY(48px); opacity: 0; }
+  .page-slide.exiting { transform: translateY(calc(-1 * var(--exit, 120px))); }
+
+  /* Ekran startowy */
+  .start-top { display: flex; justify-content: flex-end; }
+  .start-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #mani { flex: 1 1 0; min-height: 0; width: 100%; display: block; cursor: pointer; }
+  .hello { text-align: center; display: grid; gap: 2px; }
+  .hello h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+  .hello p { margin: 0; font-size: 15px; color: var(--muted); }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 8px; }
+  .choice {
+    font: inherit; color: var(--ink);
+    background: var(--tile); border: 1px solid var(--tile-line); border-radius: 8px;
+    padding: 16px 10px 14px; cursor: pointer;
+    display: grid; justify-items: center; gap: 6px;
+    transition: background-color 340ms ease, color 340ms ease, border-color 340ms ease;
+  }
+  .choice[aria-pressed="true"] { background: var(--selected); border-color: var(--selected); color: var(--on-selected); }
+  .choice svg { width: 52px; height: 52px; display: block; }
+  .choice .name { display: flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 700; }
+  .choice .desc { font-size: 12px; line-height: 1.3; opacity: 0.8; text-align: center; }
 
   /* Pasek górny */
   .top { display: flex; align-items: center; gap: 10px; }
@@ -74,8 +100,18 @@
   }
   .rec { width: 7px; height: 7px; border-radius: 50%; background: #AF363C; }
 
-  /* Panel opcji */
+  /* Panel opcji: wysuwa się spod paska kategorii (rośnie od dołu, jak kroki ankiety) */
+  .panel-wrap {
+    flex: none;
+    overflow: hidden;
+    height: 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
   .panel {
+    flex: none;
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(92px, 116px);
@@ -88,7 +124,12 @@
     background: var(--tile); border: 1px solid var(--tile-line); border-radius: 6px;
     padding: 8px 6px; cursor: pointer;
     display: grid; justify-items: center; align-content: start; gap: 4px;
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease,
+      background-color 340ms ease, color 340ms ease, border-color 340ms ease;
   }
+  /* Kafelki wyjeżdżają spod klikniętej kategorii, po kolei co 40 ms */
+  .tile.enter { opacity: 0; transform: translate(var(--dx, 0px), 22px) scale(0.94); }
+  .tile.leave { opacity: 0; transform: translateY(12px) scale(0.97); transition-duration: 180ms; pointer-events: none; }
   .tile[aria-pressed="true"] { background: var(--selected); border-color: var(--selected); color: var(--on-selected); }
   .tile svg { display: block; height: 64px; width: 64px; }
   .tile .name { font-weight: 700; font-size: 12px; line-height: 1.2; text-align: center; }
@@ -108,6 +149,7 @@
     background: transparent; border: 0; border-radius: 6px;
     padding: 6px 2px; min-height: 48px; cursor: pointer;
     display: grid; justify-items: center; gap: 2px;
+    transition: background-color 340ms ease, color 340ms ease;
   }
   .cat[aria-pressed="true"] { background: var(--selected); color: var(--on-selected); }
   .cat svg { width: 24px; height: 24px; display: block; }
@@ -117,6 +159,10 @@
 
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+  @media (prefers-reduced-motion: reduce) {
+    .page-slide, .panel-wrap, .tile, .cat, .choice { transition-duration: 0.01ms !important; }
+  }
+
   /* Kreska: jedna grubość wszędzie */
   .ink * { vector-effect: non-scaling-stroke; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; fill: none; }
   .ink .fig path, .ink .fig circle, .ink .fig ellipse { fill: var(--fig-body); stroke: var(--fig-line); }
@@ -125,7 +171,45 @@
   .ink .dash { stroke-dasharray: 4 4; }
 </style>
 
-<div class="app">
+<div class="viewport">
+<section class="screen start page-slide" id="start">
+  <div class="start-top">
+    <button type="button" class="chip mat" id="start-material" aria-label="Zmień materiał Manikuna">
+      <span class="swatch" id="start-swatch"></span><span id="start-material-name">Drewno</span>
+    </button>
+  </div>
+  <div class="start-stage">
+    <svg id="mani" class="ink" role="img" aria-label="Manikun" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="hello">
+      <h1 id="line1">Cześć, jestem Manikun.</h1>
+      <p id="line2">Co dziś ustawiamy?</p>
+    </div>
+  </div>
+  <div class="choices" role="group" aria-label="Tryb">
+    <button class="choice" type="button" id="pick-photo" data-mode="photo" aria-pressed="false">
+      <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
+        <path d="M6 16h8l3-5h14l3 5h8v22H6z"/>
+        <circle cx="24" cy="26" r="7"/>
+        <circle cx="24" cy="26" r="3"/>
+        <path d="M36 20h3"/>
+      </svg>
+      <span class="name"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</span>
+      <span class="desc">Jeden kadr: poza, światło, tło</span>
+    </button>
+    <button class="choice" type="button" id="pick-video" data-mode="video" aria-pressed="false">
+      <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
+        <path d="M7 20h34v19H7z"/>
+        <path d="M6 13l33-7 1.6 7L7.6 20z"/>
+        <path d="M14 11.4l4 6.6 M22 9.7l4 6.6 M30 8l4 6.6"/>
+        <path d="M14 20l4 6 M22 20l4 6 M30 20l4 6" class="thin"/>
+      </svg>
+      <span class="name"><span class="patch" style="background:#AF363C"></span>Wideo</span>
+      <span class="desc">Ujęcie z ruchem kamery</span>
+    </button>
+  </div>
+</section>
+
+<div class="screen app page-slide" id="app" hidden>
   <div class="top">
     <div class="modes" role="group" aria-label="Tryb">
       <button class="chip" type="button" id="mode-photo" data-mode="photo"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</button>
@@ -140,8 +224,9 @@
     <div class="readout" id="readout"></div>
   </div>
 
-  <div class="panel" id="panel" role="group" aria-label="Opcje"></div>
+  <div class="panel-wrap" id="panelWrap"><div class="panel" id="panel" role="group" aria-label="Opcje"></div></div>
   <nav class="bar" id="bar" aria-label="Kategorie"></nav>
+</div>
 </div>
 
 <script src="manikun.js"></script>
@@ -300,6 +385,51 @@
     el("path", { d: `M${f(cx + s * 0.4)},${f(cy - s * 0.25)} L${f(cx + s * 0.8)},${f(cy - s * 0.45)} L${f(cx + s * 0.8)},${f(cy + s * 0.45)} L${f(cx + s * 0.4)},${f(cy + s * 0.25)} Z` }, parent);
   }
 
+  // Punkty odniesienia sceny: manekin (animowany i bazowy), horyzont, pozycje lampy
+  function anchors(st, W, H) {
+    const baseFig = buildFigure(st.pose, st.body), bb = baseFig.box, ax = (bb.minX + bb.maxX) / 2;
+    const plBase = place(baseFig, st.shot, W, H, ax);
+    const pl = st.fig ? place(st.fig, st.shot, W, H, ax) : plBase;
+    const u = H / 100;
+    const bw = Math.max(W * 0.14, u * 12), bh = u * 7;
+    // Kontra stoi za Manikunem z boku sylwetki, z zapasem od konturu
+    const back = st.shot === "portrait"
+      ? [W - u * 9, u * 9]
+      : [Math.min(W - u * 7, plBase.x + plBase.w + u * 9), Math.max(u * 7, plBase.y - u * 2)];
+    return {
+      pl, plBase, u, cx: pl.x + pl.w / 2, bw, bh, back,
+      front: [W * 0.94 - bw / 2, H * 0.08 + bh / 2],
+      lowY: Math.min(plBase.groundY - plBase.h * 0.04, H * 0.93),
+      eyeY: plBase.head[1],
+      camX: W * 0.06 + u * 7 * 0.7
+    };
+  }
+
+  // Lampa w stanie t: 0 = miękkie z przodu, 1 = kontra z tyłu. Leci łukiem i maleje w głąb.
+  function lampAt(A, t) {
+    const x = A.front[0] + (A.back[0] - A.front[0]) * t;
+    const y = A.front[1] + (A.back[1] - A.front[1]) * t - Math.sin(Math.PI * t) * A.u * 8;
+    const k = 1 - 0.35 * t;
+    return {
+      x, y, t, behind: t >= 0.5, w: A.bw * k, h: A.bh * k,
+      rays: Math.max(0, 1 - t * 3),
+      glow: Math.max(0, Math.min(1, (t - 0.6) / 0.4))
+    };
+  }
+
+  function drawLamp(g, L, u) {
+    if (L.t < 0.5) {
+      el("rect", { x: f(L.x - L.w / 2), y: f(L.y - L.h / 2), width: f(L.w), height: f(L.h), rx: f(u), opacity: f(1 - L.t * 2) }, g);
+    } else {
+      const rr = u * 2.6, sg = el("g", { opacity: f((L.t - 0.5) * 2 * 0.75) }, g);
+      el("circle", { cx: f(L.x), cy: f(L.y), r: f(rr) }, sg);
+      for (let k = 0; k < 8; k++) {
+        const a = k * Math.PI / 4;
+        el("line", { x1: f(L.x + Math.cos(a) * rr * 1.5), y1: f(L.y + Math.sin(a) * rr * 1.5), x2: f(L.x + Math.cos(a) * rr * 2.2), y2: f(L.y + Math.sin(a) * rr * 2.2) }, sg);
+      }
+    }
+  }
+
   let clipSeq = 0;
   // Składa szkic sceny. layers: które warstwy narysować (kafelek pokazuje tylko swoją).
   function renderScene(svg, st, W, H, layers, opts = {}) {
@@ -309,11 +439,12 @@
     el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, el("defs", {}, svg)));
     const g = el("g", { "clip-path": `url(#${id})` }, svg);
 
-    const base = buildFigure(st.pose, st.body).box;
-    const pl = place(st.fig || buildFigure(st.pose, st.body), st.shot, W, H, (base.minX + base.maxX) / 2);
-    const cx = pl.x + pl.w / 2;
-    const horizonY = st.camera === "eye" ? pl.head[1] : Math.min(pl.groundY - pl.h * 0.04, H * 0.93);
-    const u = H / 100;
+    const A = anchors(st, W, H);
+    const { pl, u, cx } = A;
+    // Stan pośredni kamery i światła (0..1) podczas animacji, inaczej wartość z wyboru
+    const camT = st.props ? st.props.cam : (st.camera === "eye" ? 1 : 0);
+    const lightT = st.props ? st.props.light : (st.light === "rim" ? 1 : 0);
+    const horizonY = A.lowY + (A.eyeY - A.lowY) * camT;
 
     // Tło
     if (layers.has("background")) {
@@ -343,20 +474,15 @@
     // Kamera: linia horyzontu i znak aparatu
     if (layers.has("camera")) {
       const s = u * 7;
-      cameraGlyph(g, W * 0.06 + s * 0.7, horizonY, s);
+      cameraGlyph(g, A.camX, horizonY, s);
       el("line", { x1: f(W * 0.06 + s * 1.7), y1: f(horizonY), x2: f(W), y2: f(horizonY), class: "dash" }, g);
     }
 
-    // Kontra: źródło za postacią i poświata wokół konturu
-    if (layers.has("light") && st.light === "rim") {
-      const sx = cx + pl.w * 0.28, sy = pl.y + pl.h * 0.08, rr = u * 3.5;
-      el("circle", { cx: f(sx), cy: f(sy), r: f(rr) }, g);
-      for (let k = 0; k < 8; k++) {
-        const a = k * Math.PI / 4;
-        el("line", { x1: f(sx + Math.cos(a) * rr * 1.5), y1: f(sy + Math.sin(a) * rr * 1.5), x2: f(sx + Math.cos(a) * rr * 2.3), y2: f(sy + Math.sin(a) * rr * 2.3) }, g);
-      }
-      drawFigureAt(g, pl, "glow");
-    }
+    // Światło: jedna lampa przelatuje łukiem z przodu (miękkie) za postać (kontra).
+    // Za postacią jest mniejsza i bledsza, rysowana pod Manikunem: stoi głęboko w scenie.
+    const lamp = layers.has("light") ? lampAt(A, lightT) : null;
+    if (lamp && lamp.behind) drawLamp(g, lamp, u);
+    if (lamp && lamp.glow > 0) drawFigureAt(el("g", { opacity: f(lamp.glow) }, g), pl, "glow");
 
     // Ruch: tylna połowa orbity za postacią
     const orbit = { cx, cy: pl.y + pl.h * 0.62, rx: Math.max(pl.w * 0.75, W * 0.3), ry: u * 6 };
@@ -379,15 +505,17 @@
       }
     }
 
-    // Miękkie światło: panel z przodu i promienie w stronę postaci
-    if (layers.has("light") && st.light === "soft") {
-      const bw = Math.max(W * 0.14, u * 12), bh = u * 7, bx = W * 0.94 - bw, by = H * 0.08;
-      el("rect", { x: f(bx), y: f(by), width: f(bw), height: f(bh), rx: f(u) }, g);
-      const tx = cx + pl.w * 0.1, ty = pl.y + pl.h * 0.35;
-      [-1, 0, 1].forEach(k => {
-        const sx = bx + bw * 0.5 + k * bw * 0.3, sy = by + bh + u * 2;
-        arrow(g, sx, sy, sx + (tx - sx) * 0.55, sy + (ty - sy) * 0.55, u * 2.5);
-      });
+    // Lampa z przodu: panel i promienie w stronę postaci
+    if (lamp && !lamp.behind) {
+      drawLamp(g, lamp, u);
+      if (lamp.rays > 0) {
+        const rg = el("g", { opacity: f(lamp.rays) }, g);
+        const tx = cx + pl.w * 0.1, ty = pl.y + pl.h * 0.35;
+        [-1, 0, 1].forEach(k => {
+          const sx = lamp.x + k * lamp.w * 0.3, sy = lamp.y + lamp.h / 2 + u * 2;
+          arrow(rg, sx, sy, sx + (tx - sx) * 0.55, sy + (ty - sy) * 0.55, u * 2.5);
+        });
+      }
     }
 
     // Rama kadru
@@ -422,53 +550,74 @@
   // ---------- Interfejs ----------
   const bar = document.getElementById("bar");
   const panel = document.getElementById("panel");
+  const panelWrap = document.getElementById("panelWrap");
   const preview = document.getElementById("preview");
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
     return optionOf(cat.id, scene[cat.id]).short;
   }
 
+  // Pasek kategorii: przebudowa tylko przy zmianie listy kategorii, poza tym aktualizacja w miejscu
+  let barKey = "", barItems = [];
   function renderBar() {
-    const cats = activeCats();
-    bar.replaceChildren();
-    cats.forEach(cat => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "cat";
-      b.id = "cat-" + cat.id;
+    const cats = activeCats(), key = cats.map(c => c.id).join();
+    if (key !== barKey) {
+      barKey = key;
+      bar.replaceChildren();
+      barItems = cats.map(cat => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "cat";
+        b.id = "cat-" + cat.id;
+        const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" });
+        const label = document.createElement("span");
+        label.className = "label";
+        const patch = document.createElement("span");
+        patch.className = "patch";
+        patch.style.background = cat.patch;
+        label.append(patch, cat.label);
+        const value = document.createElement("span");
+        value.className = "value";
+        b.append(svg, label, value);
+        b.addEventListener("click", () => { scene.open = scene.open === cat.id ? null : cat.id; render(); });
+        bar.appendChild(b);
+        return { cat, b, svg, value };
+      });
+    }
+    barItems.forEach(({ cat, b, svg, value }) => {
       b.setAttribute("aria-pressed", String(scene.open === cat.id));
-      const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" });
-      CAT_ICONS[cat.id](svg);
-      const label = document.createElement("span");
-      label.className = "label";
-      const patch = document.createElement("span");
-      patch.className = "patch";
-      patch.style.background = cat.patch;
-      label.append(patch, cat.label);
-      const value = document.createElement("span");
-      value.className = "value";
       value.textContent = valueShort(cat);
-      b.append(svg, label, value);
-      b.addEventListener("click", () => { scene.open = scene.open === cat.id ? null : cat.id; render(); });
-      bar.appendChild(b);
+      svg.replaceChildren();
+      CAT_ICONS[cat.id](svg);
     });
   }
 
-  function tile(id, name, pressed, onClick, draw) {
+  // Kafelek opcji. redraw() odświeża rysunek i zaznaczenie bez ponownej animacji wejścia.
+  function tile(id, name, isPressed, onClick, draw) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "tile";
     b.id = id;
-    b.setAttribute("aria-pressed", String(pressed));
     const svg = el("svg", { class: "ink", "aria-hidden": "true" });
-    draw(svg);
     const n = document.createElement("span");
     n.className = "name";
     n.textContent = name;
     b.append(svg, n);
     b.addEventListener("click", onClick);
     panel.appendChild(b);
+    const t = {
+      btn: b,
+      redraw() {
+        svg.replaceChildren();
+        draw(svg);
+        b.setAttribute("aria-pressed", String(isPressed()));
+      }
+    };
+    t.redraw();
+    return t;
   }
 
   // Warstwy pokazywane na miniaturach danej kategorii
@@ -480,28 +629,23 @@
     motion: ["ground", "motion"]
   };
 
-  function renderPanel() {
-    panel.replaceChildren();
-    panel.hidden = !scene.open;
-    if (!scene.open) return;
-    const catId = scene.open;
-
+  function makeTiles(catId) {
     if (catId === "format") {
-      FORMATS[scene.mode].forEach(fmt => tile("opt-format-" + fmt.id, fmt.name, scene.format[scene.mode] === fmt.id,
+      return FORMATS[scene.mode].map(fmt => tile("opt-format-" + fmt.id, fmt.name,
+        () => scene.format[scene.mode] === fmt.id,
         () => { scene.format[scene.mode] = fmt.id; render(); },
         svg => {
           const s = 56 / Math.max(fmt.w, fmt.h), w = fmt.w * s, h = fmt.h * s;
           svg.setAttribute("viewBox", "0 0 64 64");
           el("rect", { x: f(32 - w / 2), y: f(32 - h / 2), width: f(w), height: f(h), rx: 2 }, svg);
         }));
-      return;
     }
-
     if (catId === "pose" || catId === "body") {
       const boxes = [];
       Object.keys(POSES).forEach(pk => Object.keys(BODIES).forEach(bk => boxes.push(buildFigure(pk, bk).box)));
       const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
-      optionsOf(catId).forEach(o => tile("opt-" + catId + "-" + o.id, o.name, scene[catId] === o.id,
+      return optionsOf(catId).map(o => tile("opt-" + catId + "-" + o.id, o.name,
+        () => scene[catId] === o.id,
         () => { scene[catId] = o.id; render(); },
         svg => {
           const fig = catId === "pose" ? buildFigure(o.id, scene.body) : buildFigure(scene.pose, o.id), b = fig.box;
@@ -510,102 +654,138 @@
           el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
           paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
         }));
-      return;
     }
-
-    // Pozostałe kategorie: miniatura sceny z nałożoną tylko tą jedną opcją.
-    optionsOf(catId).forEach(o => tile("opt-" + catId + "-" + o.id, o.name, scene[catId] === o.id,
+    // Pozostałe kategorie: miniatura sceny z nałożoną tylko tą jedną opcją
+    return optionsOf(catId).map(o => tile("opt-" + catId + "-" + o.id, o.name,
+      () => scene[catId] === o.id,
       () => { scene[catId] = o.id; render(); },
       svg => renderScene(svg, { ...scene, [catId]: o.id }, 100, 100, new Set(TILE_LAYERS[catId]))));
   }
 
-  function renderPreview(fig) {
+  // Panel: wysuwa się spod paska, kafelki wyjeżdżają spod klikniętej kategorii.
+  // Zmiana kategorii: stare kafelki opadają i gasną, nowe wjeżdżają po kolei.
+  const PANEL_MS = 420, STEP_MS = 40;
+  let panelCat = null, panelTiles = [], panelTimer = null;
+
+  function showPanel(catId) {
+    panel.replaceChildren();
+    panelTiles = makeTiles(catId);
+    panelWrap.style.height = panel.offsetHeight + "px";
+    if (reduceMotion.matches) return;
+    const catBtn = document.getElementById("cat-" + catId);
+    const r0 = catBtn ? catBtn.getBoundingClientRect() : null;
+    const from = r0 ? r0.left + r0.width / 2 : null;
+    panelTiles.forEach(t => {
+      const r = t.btn.getBoundingClientRect();
+      t.btn.style.setProperty("--dx", (from === null ? 0 : (from - (r.left + r.width / 2)) * 0.55) + "px");
+      t.btn.style.transition = "none";
+      t.btn.classList.add("enter");
+    });
+    panel.offsetWidth; // zatwierdź stan początkowy przed animacją
+    panelTiles.forEach((t, i) => {
+      t.btn.style.transition = "";
+      t.btn.style.transitionDelay = (i * STEP_MS) + "ms";
+    });
+    requestAnimationFrame(() => panelTiles.forEach(t => t.btn.classList.remove("enter")));
+    const tiles = panelTiles;
+    setTimeout(() => tiles.forEach(t => { t.btn.style.transitionDelay = ""; }), PANEL_MS + tiles.length * STEP_MS);
+  }
+
+  function syncPanel() {
+    const want = scene.open;
+    if (want === panelCat) { panelTiles.forEach(t => t.redraw()); return; }
+    clearTimeout(panelTimer);
+    const hadTiles = panelCat && panelTiles.length;
+    panelCat = want;
+    if (!want) {
+      panelWrap.style.height = "0px";
+      panelTimer = setTimeout(() => { if (!panelCat) { panel.replaceChildren(); panelTiles = []; } }, PANEL_MS);
+      return;
+    }
+    if (hadTiles && !reduceMotion.matches) {
+      panelTiles.forEach((t, i) => { t.btn.style.transitionDelay = (i * 25) + "ms"; t.btn.classList.add("leave"); });
+      panelTimer = setTimeout(() => showPanel(want), 200);
+    } else {
+      showPanel(want);
+    }
+  }
+
+  // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
+  let shown = null;                          // widoczna poza i proporcje
+  let figAnim = null;                        // kolejka klatek kluczowych Manikuna
+  const props = { cam: null, light: null };  // widoczny stan kamery i lampy (0..1)
+  const propAnim = {};
+  const PROP_MS = 1200;
+  let loopFrame = null, lastScene = null;
+
+  const targetProps = () => ({ cam: scene.camera === "eye" ? 1 : 0, light: scene.light === "rim" ? 1 : 0 });
+  const baseShown = () => ({ pose: POSES[scene.pose], rig: BODIES[scene.body] });
+  const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
+
+  function tick(now) {
+    loopFrame = null;
+    let active = false;
+    if (figAnim) {
+      const fr = figAnim.frames[figAnim.k];
+      const t = Math.min(1, (now - figAnim.start) / fr.dur);
+      shown = { pose: blendPose(figAnim.from.pose, fr.pose, t), rig: blendRig(figAnim.from.rig, BODIES[scene.body], t) };
+      if (t >= 1) {
+        figAnim.k++;
+        if (figAnim.k >= figAnim.frames.length) { figAnim = null; shown = baseShown(); }
+        else { figAnim.from = shown; figAnim.start = now; }
+      }
+      if (figAnim) active = true;
+    }
+    for (const key in propAnim) {
+      const a = propAnim[key], t = Math.min(1, (now - a.start) / a.dur);
+      props[key] = a.from + (a.to - a.from) * easeInOut(t);
+      if (t >= 1) delete propAnim[key]; else active = true;
+    }
+    renderPreview();
+    if (active) ensureLoop();
+  }
+
+  function playFrames(frames) {
+    if (reduceMotion.matches) { figAnim = null; shown = baseShown(); ensureLoop(); return; }
+    figAnim = { frames, k: 0, from: shown, start: performance.now() };
+    ensureLoop();
+  }
+
+  function renderPreview() {
     const fmt = currentFormat();
     const H = 300, W = H * fmt.w / fmt.h;
     const layers = ["ground", "camera", "light", "background"];
     if (scene.mode === "video") layers.push("motion");
-    renderScene(preview, fig ? { ...scene, fig } : scene, W, H, new Set(layers), { corners: true });
+    const st = { ...scene, props: { cam: props.cam, light: props.light } };
+    if (shown && (figAnim || shown.pose !== POSES[scene.pose] || shown.rig !== BODIES[scene.body])) {
+      st.fig = computeFigure(shown.pose, shown.rig);
+    }
+    renderScene(preview, st, W, H, new Set(layers), { corners: true });
     const ro = document.getElementById("readout");
     ro.replaceChildren();
     if (scene.mode === "video") { const d = document.createElement("span"); d.className = "rec"; ro.appendChild(d); }
     ro.append(READOUT[scene.mode] + " · " + fmt.short);
   }
 
-  function render() {
-    document.body.dataset.mode = scene.mode;
-    document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
-    if (scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
-    renderBar();
-    renderPanel();
-    animateFigure();
-  }
-
-  // ---------- Animacja: pozy, sylwetka i reakcje Manikuna ----------
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const lerpObj = (a, b, t) => {
-    const o = {};
-    for (const k in b) o[k] = Array.isArray(b[k]) ? b[k].map((v, i) => lerp(a[k][i], v, t)) : lerp(a[k], b[k], t);
-    return o;
-  };
-  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let shown = null, animFrame = null, runId = 0;
-
-  // Odtwarza klatki kluczowe [{ pose, dur }] od aktualnie widocznej pozy.
-  function playFrames(frames) {
-    const id = ++runId;
-    cancelAnimationFrame(animFrame);
-    const rig = BODIES[scene.body];
-    let k = 0;
-    const next = () => {
-      if (id !== runId) return;
-      if (k >= frames.length) {
-        animFrame = null;
-        shown = { pose: POSES[scene.pose], rig: BODIES[scene.body] };
-        renderPreview();
-        return;
-      }
-      const { pose, dur } = frames[k++];
-      const from = shown, start = performance.now();
-      const step = now => {
-        if (id !== runId) return;
-        const t = Math.min(1, (now - start) / dur), e = ease(t);
-        shown = { pose: lerpObj(from.pose, pose, e), rig: lerpObj(from.rig, rig, e) };
-        renderPreview(computeFigure(shown.pose, shown.rig));
-        if (t < 1) animFrame = requestAnimationFrame(step); else next();
-      };
-      animFrame = requestAnimationFrame(step);
-    };
-    next();
-  }
-
-  // Poza bazowa z nałożonymi zmianami: abs podmienia kąty, rel je dodaje.
+  // Poza bazowa z nałożonymi zmianami: abs podmienia kąty, rel je dodaje
   const variant = (abs = {}, rel = {}) => {
     const p = { ...POSES[scene.pose], ...abs };
     for (const key in rel) p[key] += rel[key];
     return p;
   };
 
-  // Położenie obiektów sceny w podglądzie (te same wzory co w renderScene)
-  function sceneGeometry() {
-    const fmt = currentFormat(), H = 300, W = H * fmt.w / fmt.h, u = H / 100;
-    const fig = buildFigure(scene.pose, scene.body), b = fig.box;
-    const pl = place(fig, scene.shot, W, H, (b.minX + b.maxX) / 2);
-    const cx = pl.x + pl.w / 2;
-    const horizonY = scene.camera === "eye" ? pl.head[1] : Math.min(pl.groundY - pl.h * 0.04, H * 0.93);
-    const s = u * 7, bw = Math.max(W * 0.14, u * 12), bh = u * 7;
-    return {
-      head: pl.head,
-      camera: [W * 0.06 + s * 0.7, horizonY],
-      light: scene.light === "soft" ? [W * 0.94 - bw / 2, H * 0.08 + bh / 2] : [cx + pl.w * 0.28, pl.y + pl.h * 0.08]
-    };
+  // Położenie aparatu i lampy dla danego ustawienia sceny
+  function objectPos(st, what) {
+    const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
+    const H = 300, W = H * fmt.w / fmt.h, A = anchors(st, W, H);
+    if (what === "head") return A.plBase.head;
+    if (what === "camera") return [A.camX, st.camera === "eye" ? A.eyeY : A.lowY];
+    const L = lampAt(A, st.light === "rim" ? 1 : 0);
+    return [L.x, L.y];
   }
 
   // Kierunek od głowy do obiektu jako kąt manekina (180 = w górę)
-  function angleTo(from, to) {
-    return Math.atan2(to[0] - from[0], to[1] - from[1]) * 180 / Math.PI;
-  }
+  const angleTo = (from, to) => Math.atan2(to[0] - from[0], to[1] - from[1]) * 180 / Math.PI;
   const diffFromUp = a => ((a - 180 + 540) % 360) - 180;
 
   // Reakcje: kilka wariantów każdej, losowane bez powtórzenia poprzedniego
@@ -619,68 +799,89 @@
   const back = dur => ({ pose: POSES[scene.pose], dur });
 
   const REACTIONS = {
-    // Więcej miejsca: rozgląda się
+    // Więcej miejsca: spokojnie się rozgląda
     bigger: () => pick("bigger", [
-      () => [{ pose: variant({}, { head: 16, spine: 2 }), dur: 380 }, { pose: variant({}, { head: -16, spine: -2 }), dur: 520 }, back(450)],
-      () => [{ pose: variant({ farUpper: 150, farFore: 262 }, { head: 12 }), dur: 420 }, { pose: variant({ farUpper: 150, farFore: 262 }, { head: -14 }), dur: 600 }, back(480)],
-      () => [{ pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: -6 }), dur: 450 }, { pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: 6 }), dur: 350 }, back(500)]
+      () => [{ pose: variant({}, { head: 16, spine: 2 }), dur: 700 }, { pose: variant({}, { head: -16, spine: -2 }), dur: 1000 }, back(900)],
+      () => [{ pose: variant({ farUpper: 150, farFore: 262 }, { head: 12 }), dur: 800 }, { pose: variant({ farUpper: 150, farFore: 262 }, { head: -14 }), dur: 1100 }, back(950)],
+      () => [{ pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: -6 }), dur: 850 }, { pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: 6 }), dur: 700 }, back(950)]
     ]),
-    // Mniej miejsca: przestrasza się, że kadr go zgniecie
+    // Mniej miejsca: wzdryga się, jakby kadr miał go zgnieść, i powoli się uspokaja
     smaller: () => pick("smaller", [
-      () => [{ pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 8, spine: 3 }), dur: 170 }, { pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 12, spine: 3 }), dur: 450 }, back(600)],
-      () => [{ pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -4, head: -6 }), dur: 180 }, { pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -5, head: -10 }), dur: 420 }, back(600)],
-      () => [{ pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 22, spine: 4 }), dur: 160 }, { pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 26, spine: 4 }), dur: 480 }, back(600)]
+      () => [{ pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 8, spine: 3 }), dur: 380 }, { pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 12, spine: 3 }), dur: 800 }, back(1100)],
+      () => [{ pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -4, head: -6 }), dur: 400 }, { pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -5, head: -10 }), dur: 750 }, back(1100)],
+      () => [{ pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 22, spine: 4 }), dur: 360 }, { pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 26, spine: 4 }), dur: 850 }, back(1100)]
     ]),
-    // Patrzy na obiekt, który się przesunął, potem wraca do swojej pozy
-    look: target => {
-      const g = sceneGeometry();
-      const a = angleTo(g.head, g[target]);
-      const turn = clamp(diffFromUp(a) * 0.35, -38, 38), lean = clamp(diffFromUp(a) * 0.05, -6, 6);
-      const onRight = g[target][0] > g.head[0];
-      const armUp = onRight ? { farUpper: a, farFore: a } : { nearUpper: a, nearFore: a };
-      const shade = onRight ? { farUpper: 150, farFore: 262 } : { nearUpper: -150, nearFore: -262 };
+    // Odprowadza wzrokiem obiekt: najpierw tam, gdzie był, potem za nim w nowe miejsce
+    look: (target, prev) => {
+      const head = objectPos(scene, "head");
+      const aim = pos => {
+        const a = angleTo(head, pos), d = diffFromUp(a);
+        return { a, turn: clamp(d * 0.35, -38, 38), lean: clamp(d * 0.05, -6, 6), onRight: pos[0] > head[0] };
+      };
+      const was = aim(objectPos(prev, target)), now = aim(objectPos(scene, target));
+      const arm = o => o.onRight ? { farUpper: o.a, farFore: o.a } : { nearUpper: o.a, nearFore: o.a };
+      const shade = o => o.onRight ? { farUpper: 150, farFore: 262 } : { nearUpper: -150, nearFore: -262 };
+      const follow = PROP_MS;
       return pick("look-" + target, [
-        () => [{ pose: variant({}, { head: turn, spine: lean }), dur: 420 }, { pose: variant({}, { head: turn * 1.1, spine: lean }), dur: 550 }, back(500)],
-        () => [{ pose: variant(armUp, { head: turn, spine: lean }), dur: 450 }, { pose: variant(armUp, { head: turn, spine: lean }), dur: 500 }, back(520)],
-        () => [{ pose: variant(target === "light" ? shade : {}, { head: turn * 0.8, spine: lean * 1.5 }), dur: 450 }, { pose: variant(target === "light" ? shade : {}, { head: turn, spine: lean * 1.5 }), dur: 550 }, back(520)]
+        () => [{ pose: variant({}, { head: was.turn, spine: was.lean }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant({}, { head: now.turn * 1.1, spine: now.lean }), dur: 600 }, back(950)],
+        () => [{ pose: variant(arm(was), { head: was.turn, spine: was.lean }), dur: 550 }, { pose: variant(arm(now), { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant(arm(now), { head: now.turn, spine: now.lean }), dur: 500 }, back(1000)],
+        () => {
+          const hand = o => target === "light" ? shade(o) : {};
+          return [{ pose: variant(hand(was), { head: was.turn * 0.8, spine: was.lean * 1.5 }), dur: 550 }, { pose: variant(hand(now), { head: now.turn, spine: now.lean * 1.5 }), dur: follow }, { pose: variant(hand(now), { head: now.turn, spine: now.lean * 1.5 }), dur: 550 }, back(1000)];
+        }
       ]);
     }
   };
 
-  // Ocena, czy kadr zrobił się większy czy mniejszy względem Manikuna
+  // Czy kadr zrobił się większy czy mniejszy względem Manikuna
   const frameRoom = st => {
     const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
     return (fmt.w / fmt.h) * (st.shot === "portrait" ? 0.35 : 1);
   };
-  let lastScene = null;
 
-  function animateFigure() {
+  function sceneChanged() {
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
-    const target = { pose: POSES[scene.pose], rig: BODIES[scene.body] };
-    if (!shown || !prev || reduceMotion.matches) {
-      cancelAnimationFrame(animFrame);
-      runId++;
-      animFrame = null;
-      shown = target;
-      renderPreview();
+    const tp = targetProps();
+    if (!prev || !shown || reduceMotion.matches) {
+      figAnim = null;
+      shown = baseShown();
+      props.cam = tp.cam;
+      props.light = tp.light;
+      for (const k in propAnim) delete propAnim[k];
+      ensureLoop();
       return;
     }
-    if (prev.pose !== scene.pose || prev.body !== scene.body) {
-      playFrames([{ pose: POSES[scene.pose], dur: 550 }]);
-      return;
-    }
-    const roomBefore = frameRoom(prev), roomAfter = frameRoom(scene);
-    if (roomAfter > roomBefore + 1e-6) return playFrames(REACTIONS.bigger());
-    if (roomAfter < roomBefore - 1e-6) return playFrames(REACTIONS.smaller());
-    if (prev.camera !== scene.camera) return playFrames(REACTIONS.look("camera"));
-    if (prev.light !== scene.light) return playFrames(REACTIONS.look("light"));
-    // Bez zmiany dla Manikuna: odśwież podgląd, jeśli nic nie jest w trakcie animacji
-    if (!animFrame) renderPreview();
+    // Kamera i lampa przesuwają się płynnie do nowego miejsca
+    ["cam", "light"].forEach(k => {
+      if (props[k] !== tp[k] && (!propAnim[k] || propAnim[k].to !== tp[k])) {
+        propAnim[k] = { from: props[k], to: tp[k], start: performance.now(), dur: PROP_MS };
+      }
+    });
+    if (prev.pose !== scene.pose || prev.body !== scene.body) playFrames([{ pose: POSES[scene.pose], dur: 950 }]);
+    else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
+    else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
+    else if (prev.camera !== scene.camera) playFrames(REACTIONS.look("camera", prev));
+    else if (prev.light !== scene.light) playFrames(REACTIONS.look("light", prev));
+    ensureLoop();
   }
 
+  function render() {
+    document.body.dataset.mode = scene.mode;
+    document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
+    if (scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
+    renderBar();
+    syncPanel();
+    sceneChanged();
+  }
 
-  document.querySelectorAll(".modes .chip").forEach(b => b.addEventListener("click", () => { scene.mode = b.dataset.mode; render(); }));
+  document.querySelectorAll(".modes .chip").forEach(b => b.addEventListener("click", () => {
+    if (scene.mode === b.dataset.mode) return;
+    scene.mode = b.dataset.mode;
+    // Format ma inne opcje w każdym trybie: panel formatu buduje się od nowa
+    if (panelCat === "format") panelCat = "__rebuild";
+    render();
+  }));
 
   // Kopiowanie bez pokazywania tekstu promptu
   const copyBtn = document.getElementById("copy");
@@ -711,17 +912,57 @@
     }
   });
 
-  // Przełącznik materiału: drewno ↔ biały
+  // ---------- Ekran startowy i przejście do reżysera ----------
+  const startEl = document.getElementById("start");
+  const appEl = document.getElementById("app");
+  const mascot = createMascot(document.getElementById("mani"), () => material);
+  let inDirector = false;
+
+  // Przełącznik materiału (na starcie i w reżyserze): drewno ↔ biały
   function paintSwatch() {
-    document.getElementById("swatch").style.background = swatchCss(material);
-    document.getElementById("material-name").textContent = material.name;
+    ["swatch", "start-swatch"].forEach(id => { document.getElementById(id).style.background = swatchCss(material); });
+    ["material-name", "start-material-name"].forEach(id => { document.getElementById(id).textContent = material.name; });
   }
-  document.getElementById("material").addEventListener("click", () => {
+  function nextMaterial() {
     material = MATERIALS[(MATERIALS.indexOf(material) + 1) % MATERIALS.length];
     paintSwatch();
-    render();
-  });
+  }
+  document.getElementById("material").addEventListener("click", () => { nextMaterial(); render(); });
+  document.getElementById("start-material").addEventListener("click", () => { nextMaterial(); mascot.draw(); mascot.admire(); });
   paintSwatch();
 
-  render();
+  const COPY = {
+    photo: ["Zdjęcie. Świetnie.", "Ustawiamy jeden kadr."],
+    video: ["Wideo. Kamera w ruch.", "Ustawiamy ujęcie z ruchem."]
+  };
+  document.querySelectorAll(".choice").forEach(btn => btn.addEventListener("click", () => {
+    if (inDirector) return;
+    inDirector = true;
+    const mode = btn.dataset.mode;
+    document.querySelectorAll(".choice").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    document.getElementById("line1").textContent = COPY[mode][0];
+    document.getElementById("line2").textContent = COPY[mode][1];
+    scene.mode = mode;
+    mascot.point(mode);
+    setTimeout(enterDirector, reduceMotion.matches ? 0 : 900);
+  }));
+
+  // Start odjeżdża w górę, reżyser wjeżdża z dołu. Wejście startuje, zanim wyjście się skończy.
+  function enterDirector() {
+    const dist = Math.ceil(startEl.getBoundingClientRect().bottom) + 24;
+    startEl.style.setProperty("--exit", dist + "px");
+    startEl.classList.add("exiting");
+    setTimeout(() => {
+      appEl.hidden = false;
+      appEl.classList.add("entering");
+      render();
+      appEl.offsetWidth;
+      requestAnimationFrame(() => appEl.classList.remove("entering"));
+      setTimeout(() => { startEl.hidden = true; mascot.stop(); }, 420);
+    }, reduceMotion.matches ? 0 : 260);
+  }
+
+  document.getElementById("mani").addEventListener("click", mascot.greet);
+  mascot.draw();
+  mascot.greet();
 </script>

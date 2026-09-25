@@ -195,3 +195,121 @@ function swatchCss(m) {
   }
   return `radial-gradient(circle at 38% 32%, ${m.light}, ${m.mid} 55%, ${m.dark})`;
 }
+
+// ---------- Ruch: płynne przejścia z opóźnieniem części ciała ----------
+// Głowa rusza pierwsza, potem tułów i nogi, na końcu ręce: ruch się "przelewa", nie jest sztywny.
+const easeInOut = t => 0.5 - Math.cos(Math.PI * t) / 2;
+const STAGGER = {
+  head: 0, spine: 0.04,
+  nearThigh: 0.06, farThigh: 0.06, nearShin: 0.1, farShin: 0.1, nearFoot: 0.12, farFoot: 0.12,
+  nearUpper: 0.1, farUpper: 0.1, nearFore: 0.2, farFore: 0.2
+};
+const STAGGER_MAX = 0.2;
+function blendPose(a, b, t) {
+  const o = {};
+  for (const k in b) {
+    const d = STAGGER[k] || 0;
+    const lt = Math.min(1, Math.max(0, (t - d) / (1 - STAGGER_MAX)));
+    o[k] = a[k] + (b[k] - a[k]) * easeInOut(lt);
+  }
+  return o;
+}
+function blendRig(a, b, t) {
+  const e = easeInOut(t), o = {};
+  for (const k in b) o[k] = Array.isArray(b[k]) ? b[k].map((v, i) => a[k][i] + (v - a[k][i]) * e) : a[k] + (b[k] - a[k]) * e;
+  return o;
+}
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// ---------- Maskotka: Manikun na ekranie startowym ----------
+const MASCOT_BASE = {
+  spine: 180, head: 180,
+  nearUpper: -7, nearFore: -2, farUpper: 7, farFore: 3,
+  nearThigh: -3, nearShin: 1, farThigh: 3, farShin: 0,
+  nearFoot: 62, farFoot: 62
+};
+const HIP_REST = { spine: 177, nearUpper: -38, nearFore: 48, farUpper: 9, farFore: 4, nearThigh: -7, nearShin: 2, farThigh: 7, farShin: -3, farFoot: 70 };
+const MASCOT_POSES = {
+  stand: MASCOT_BASE,
+  waveA: { ...MASCOT_BASE, head: 176, farUpper: 140, farFore: 160, nearUpper: -5 },
+  waveB: { ...MASCOT_BASE, head: 176, farUpper: 140, farFore: 200, nearUpper: -5 },
+  // Ręka na biodrze i ciężar na jednej nodze, jak drewniany model
+  hip: { ...MASCOT_BASE, ...HIP_REST, head: 184 },
+  hipTilt: { ...MASCOT_BASE, ...HIP_REST, head: 173 },
+  // Wskazuje na wybrany kafelek
+  pointLeft: { ...MASCOT_BASE, head: 188, nearUpper: -58, nearFore: -62, farUpper: 10, farFore: 5 },
+  pointRight: { ...MASCOT_BASE, head: 172, farUpper: 58, farFore: 62, nearUpper: -10, nearFore: -5 },
+  // Przygląda się swojej dłoni i ramieniu po zmianie materiału
+  lookHand: { ...MASCOT_BASE, spine: 178, head: 160, farUpper: 28, farFore: 158, nearUpper: -8, nearFore: -3 },
+  lookHand2: { ...MASCOT_BASE, spine: 178, head: 156, farUpper: 34, farFore: 192, nearUpper: -8, nearFore: -3 },
+  lookArm: { ...MASCOT_BASE, spine: 181, head: 198, nearUpper: -52, nearFore: -30, farUpper: 9, farFore: 4 }
+};
+
+// Rysuje Manikuna w podanym <svg> i odtwarza jego sekwencje póz.
+function createMascot(svg, getMaterial) {
+  const RIG = BODIES.male;
+  const W = 300, H = 300, GROUND = 280, SCALE = 1.05;
+  const HIP_Y = GROUND - (RIG.shin + RIG.thigh + 5) * SCALE;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  let shown = MASCOT_POSES.stand, frame = null, idleTimer = null, runId = 0;
+
+  function draw(pose) {
+    svg.replaceChildren();
+    const c = 16, i = 6;
+    [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]].forEach(([x, y, sx, sy]) => {
+      el("path", { d: `M${x},${y + sy * c} L${x},${y} L${x + sx * c},${y}`, class: "thin" }, svg);
+    });
+    el("line", { x1: 40, y1: GROUND, x2: W - 40, y2: GROUND, class: "thin" }, svg);
+    const defs = el("defs", {}, svg);
+    const shadow = el("radialGradient", { id: "mascot-shadow" }, defs);
+    el("stop", { offset: "0", "stop-color": "#000", "stop-opacity": "0.28" }, shadow);
+    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": "0" }, shadow);
+    el("ellipse", { cx: W / 2 + 4, cy: GROUND, rx: 46, ry: 5, style: "fill:url(#mascot-shadow);stroke:none" }, svg);
+    const g = el("g", { class: "fig", transform: `translate(${W / 2} ${f(HIP_Y)}) scale(${SCALE})` }, svg);
+    paintFigure(g, computeFigure(pose, RIG).shapes, getMaterial());
+  }
+
+  // steps: [nazwa pozy, czas ms]
+  function play(steps, done) {
+    const id = ++runId;
+    cancelAnimationFrame(frame);
+    clearTimeout(idleTimer);
+    if (reduceMotion.matches) {
+      shown = MASCOT_POSES[steps[steps.length - 1][0]];
+      draw(shown);
+      if (done) done();
+      return;
+    }
+    let k = 0;
+    const next = () => {
+      if (id !== runId) return;
+      if (k >= steps.length) { if (done) done(); return; }
+      const [name, dur] = steps[k++];
+      const from = shown, to = MASCOT_POSES[name], start = performance.now();
+      const step = now => {
+        if (id !== runId) return;
+        const t = Math.min(1, (now - start) / dur);
+        shown = t < 1 ? blendPose(from, to, t) : to;
+        draw(shown);
+        if (t < 1) frame = requestAnimationFrame(step); else next();
+      };
+      frame = requestAnimationFrame(step);
+    };
+    next();
+  }
+
+  // Bezczynność: co kilka sekund spokojny przechył głowy
+  function idle() {
+    clearTimeout(idleTimer);
+    if (reduceMotion.matches) return;
+    idleTimer = setTimeout(() => play([["hipTilt", 1300], ["hip", 1400]], idle), 4500);
+  }
+
+  return {
+    draw: () => draw(shown),
+    greet: () => play([["waveA", 900], ["waveB", 480], ["waveA", 480], ["waveB", 480], ["waveA", 480], ["hip", 1100]], idle),
+    point: mode => play([[mode === "photo" ? "pointLeft" : "pointRight", 800]]),
+    admire: () => play([["lookHand", 850], ["lookHand2", 650], ["lookHand", 600], ["lookArm", 900], ["hip", 950]], idle),
+    stop: () => { runId++; cancelAnimationFrame(frame); clearTimeout(idleTimer); }
+  };
+}

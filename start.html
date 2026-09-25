@@ -111,108 +111,9 @@
 
 <script src="manikun.js"></script>
 <script>
-  const RIG = BODIES.male;
-
-  // Pozy maskotki. Kąty bezwzględne: 0 = w dół, 90 = w prawo, 180 = w górę.
-  const BASE = {
-    spine: 180, head: 180,
-    nearUpper: -7, nearFore: -2, farUpper: 7, farFore: 3,
-    nearThigh: -3, nearShin: 1, farThigh: 3, farShin: 0,
-    nearFoot: 62, farFoot: 62
-  };
-  const POSES = {
-    stand: BASE,
-    waveA: { ...BASE, head: 176, farUpper: 140, farFore: 160, nearUpper: -5 },
-    waveB: { ...BASE, head: 176, farUpper: 140, farFore: 205, nearUpper: -5 },
-    // Ręka na biodrze i ciężar na jednej nodze, jak drewniany model
-    hip: { ...BASE, spine: 177, head: 184, nearUpper: -38, nearFore: 48, farUpper: 9, farFore: 4,
-           nearThigh: -7, nearShin: 2, farThigh: 7, farShin: -3, farFoot: 70 },
-    hipTilt: { ...BASE, spine: 177, head: 172, nearUpper: -38, nearFore: 48, farUpper: 9, farFore: 4,
-           nearThigh: -7, nearShin: 2, farThigh: 7, farShin: -3, farFoot: 70 },
-    // Wskazuje na wybrany kafelek
-    pointLeft: { ...BASE, head: 188, nearUpper: -58, nearFore: -62, farUpper: 10, farFore: 5 },
-    pointRight: { ...BASE, head: 172, farUpper: 58, farFore: 62, nearUpper: -10, nearFore: -5 },
-    // Przygląda się swojej dłoni i ramieniu po zmianie materiału
-    lookHand: { ...BASE, spine: 178, head: 160, farUpper: 28, farFore: 158, nearUpper: -8, nearFore: -3 },
-    lookHand2: { ...BASE, spine: 178, head: 156, farUpper: 34, farFore: 195, nearUpper: -8, nearFore: -3 },
-    lookArm: { ...BASE, spine: 181, head: 198, nearUpper: -52, nearFore: -30, farUpper: 9, farFore: 4 }
-  };
-
   let material = MATERIALS[0];
-
-  // ---------- Scena maskotki ----------
-  // Stałe pole i stała skala: biodra zawsze w tym samym miejscu, stopy na podłożu.
   const svg = document.getElementById("mani");
-  const W = 300, H = 300, GROUND = 280, SCALE = 1.05;
-  const HIP_Y = GROUND - (RIG.shin + RIG.thigh + 5) * SCALE;
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-
-  function draw(pose) {
-    svg.replaceChildren();
-    // Narożniki wizjera i podłoże
-    const c = 16, i = 6;
-    [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]].forEach(([x, y, sx, sy]) => {
-      el("path", { d: `M${x},${y + sy * c} L${x},${y} L${x + sx * c},${y}`, class: "thin" }, svg);
-    });
-    el("line", { x1: 40, y1: GROUND, x2: W - 40, y2: GROUND, class: "thin" }, svg);
-    // Miękki cień kontaktowy pod stopami
-    el("ellipse", { cx: W / 2 + 4, cy: GROUND, rx: 46, ry: 5, style: "fill:url(#shadow);stroke:none" }, svg);
-
-    const defs = el("defs", {}, svg);
-    const shadow = el("radialGradient", { id: "shadow" }, defs);
-    el("stop", { offset: "0", "stop-color": "#000", "stop-opacity": "0.28" }, shadow);
-    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": "0" }, shadow);
-    const g = el("g", { class: "fig", transform: `translate(${W / 2} ${f(HIP_Y)}) scale(${SCALE})` }, svg);
-    paintFigure(g, computeFigure(pose, RIG).shapes, material);
-  }
-
-  // ---------- Animacja: sekwencje póz ----------
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const lerpPose = (a, b, t) => { const o = {}; for (const k in b) o[k] = lerp(a[k], b[k], t); return o; };
-  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-  let shown = POSES.stand, frame = null, idleTimer = null, runId = 0;
-
-  // Odtwarza kroki [nazwa pozy, czas ms] po kolei, zaczynając od aktualnie widocznej pozy.
-  function play(steps, done) {
-    const id = ++runId;
-    cancelAnimationFrame(frame);
-    clearTimeout(idleTimer);
-    if (reduceMotion.matches) {
-      shown = POSES[steps[steps.length - 1][0]];
-      draw(shown);
-      if (done) done();
-      return;
-    }
-    let k = 0;
-    const next = () => {
-      if (id !== runId) return;
-      if (k >= steps.length) { if (done) done(); return; }
-      const [name, dur] = steps[k++];
-      const from = shown, to = POSES[name], start = performance.now();
-      const step = now => {
-        if (id !== runId) return;
-        const t = Math.min(1, (now - start) / dur);
-        shown = t < 1 ? lerpPose(from, to, ease(t)) : to;
-        draw(shown);
-        if (t < 1) frame = requestAnimationFrame(step); else next();
-      };
-      frame = requestAnimationFrame(step);
-    };
-    next();
-  }
-
-  // Bezczynność: co kilka sekund lekki przechył głowy
-  function idle() {
-    clearTimeout(idleTimer);
-    if (reduceMotion.matches) return;
-    idleTimer = setTimeout(() => play([["hipTilt", 700], ["hip", 800]], idle), 4500);
-  }
-
-  function greet() {
-    play([["waveA", 550], ["waveB", 260], ["waveA", 260], ["waveB", 260], ["waveA", 260], ["hip", 650]], idle);
-  }
+  const mascot = createMascot(svg, () => material);
 
   // ---------- Wybór trybu ----------
   const COPY = {
@@ -225,28 +126,26 @@
       document.querySelectorAll(".choice").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
       document.getElementById("line1").textContent = COPY[mode][0];
       document.getElementById("line2").textContent = COPY[mode][1];
-      play([[mode === "photo" ? "pointLeft" : "pointRight", 450]]);
+      mascot.point(mode);
     });
   });
 
   // Przełącznik materiału: Manikun od razu zmienia kolor i się sobie przygląda
-  const matBtn = document.getElementById("material");
   function paintSwatch() {
-    const m = material;
-    document.getElementById("swatch").style.background = swatchCss(m);
-    document.getElementById("material-name").textContent = m.name;
+    document.getElementById("swatch").style.background = swatchCss(material);
+    document.getElementById("material-name").textContent = material.name;
   }
-  matBtn.addEventListener("click", () => {
+  document.getElementById("material").addEventListener("click", () => {
     material = MATERIALS[(MATERIALS.indexOf(material) + 1) % MATERIALS.length];
     paintSwatch();
-    draw(shown);
-    play([["lookHand", 480], ["lookHand2", 380], ["lookHand", 320], ["lookArm", 520], ["hip", 560]], idle);
+    mascot.draw();
+    mascot.admire();
   });
   paintSwatch();
 
   // Kliknięcie w Manikuna: macha jeszcze raz
-  svg.addEventListener("click", greet);
+  svg.addEventListener("click", mascot.greet);
 
-  draw(shown);
-  greet();
+  mascot.draw();
+  mascot.greet();
 </script>
