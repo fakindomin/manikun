@@ -425,7 +425,7 @@
       { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "Eye-level three-quarter view from the right: the camera stands to the subject's right at eye height, pointing straight at the subject with no tilt" },
       { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "High-angle three-quarter view from the right: the camera is raised above and to the right of the subject, tilted down, looking down at the subject" },
       { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "Low-angle three-quarter view from the right: the camera is placed low near the ground to the right of the subject, tilted up, looking up at the subject" },
-      { id: "D", name: "Z drona", short: "Dron", prompt: "Aerial drone shot: the camera is a drone hovering high above the subject, looking steeply down at them from above, with the surroundings visible around the subject" }
+      { id: "D", name: "Z drona", short: "Dron", prompt: "Wide aerial drone shot from a distance: the camera is a drone hovering high above and some distance away from the subject, looking down at a steep angle, the subject appearing noticeably smaller in the frame with plenty of the surroundings visible around them" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
       { id: "natural", name: "Naturalne", children: [
@@ -877,7 +877,8 @@
 
   // Umieszcza manekina w kadrze W×H. Skala zależy tylko od kadru i postaci stojącej.
   // anchorX: środek pozy bazowej w układzie manekina, żeby gesty nie przesuwały postaci w kadrze.
-  function place(fig, shot, W, H, anchorX) {
+  // far: oddalenie ujęcia z drona (0..1), postać robi się mniejsza, widać więcej otoczenia
+  function place(fig, shot, W, H, anchorX, far = 0) {
     const b = fig.box;
     let scale, x, y, groundY;
     if (shot.startsWith("face-")) {
@@ -894,7 +895,7 @@
       groundY = y + b.h * scale;
     } else {
       groundY = H * 0.86;
-      scale = (groundY - H * 0.14) / REF.h;
+      scale = (groundY - H * 0.14) / REF.h * (1 - 0.42 * far);
       const ax = anchorX === undefined ? (b.minX + b.maxX) / 2 : anchorX;
       x = W / 2 - (ax - b.minX) * scale;
       y = groundY - b.h * scale;
@@ -937,12 +938,15 @@
   }
 
   // Punkty odniesienia sceny: manekin (animowany i bazowy), horyzont, pozycje lampy
+  // Oddalenie przy dronie: w trakcie zmiany kamery płynne (props.drone), inaczej od razu
+  const droneFar = st => st.props && st.props.drone != null ? st.props.drone : (st.camera === "D" ? 1 : 0);
   function anchors(st, W, H) {
     // Środek wyznacza sama postawa, więc gest rękami nie przesuwa Manikuna w kadrze
     const bb = buildFigure(st.pose, st.body).box, ax = (bb.minX + bb.maxX) / 2;
     const baseFig = buildFigure(poseKey(st), st.body, st.outfit);
-    const plBase = place(baseFig, st.shot, W, H, ax);
-    const pl = st.fig ? place(st.fig, st.shot, W, H, ax) : plBase;
+    const far = droneFar(st);
+    const plBase = place(baseFig, st.shot, W, H, ax, far);
+    const pl = st.fig ? place(st.fig, st.shot, W, H, ax, far) : plBase;
     return { pl, plBase, u: H / 100, cx: pl.x + pl.w / 2 };
   }
 
@@ -1277,7 +1281,7 @@
   }
   // Miejsce przedmiotu w kadrze: ten sam poziom podłoża co Manikun
   function objectPlace(st, W, H) {
-    const gy = H * 0.86, s = H * 0.36 / 100, bottom = gy - H * BASE_H[st.base];
+    const gy = H * 0.86, s = H * 0.36 / 100 * (1 - 0.42 * droneFar(st)), bottom = gy - H * BASE_H[st.base] * (1 - 0.42 * droneFar(st));
     return { x: W / 2 - 30 * s, y: bottom - 100 * s, w: 60 * s, h: 100 * s, bottom, gy, s };
   }
 
@@ -1867,7 +1871,7 @@
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
   let figAnim = null;                        // kolejka klatek kluczowych Manikuna
-  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, skyX: null, subj: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
+  const props = { camX: null, camY: null, litX: null, litY: null, light: null, kind: null, tod: null, sky: null, skyX: null, subj: null, drone: null, reveal: 0 };  // widoczny stan kamery, lampy i odsłonięcia sceny (0..1)
   const propAnim = {};
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
@@ -1882,9 +1886,10 @@
     light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1,
     tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0,
     skyX: skySide(scene),
-    subj: scene.subject === "object" ? 1 : 0
+    subj: scene.subject === "object" ? 1 : 0,
+    drone: scene.camera === "D" ? 1 : 0
   });
-  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX", "subj"];
+  const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX", "subj", "drone"];
   const baseShown = () => ({ pose: curPose(), rig: BODIES[scene.body] });
   const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
 
@@ -1939,8 +1944,10 @@
     if (!G) return true;
     const d = diffFromUp(angleTo(G.head, gaze.what === "camera" ? G.camPt : G.litPt));
     const k = 1 - Math.exp(-dt / GAZE_LAG);
-    gaze.turn += (headTurn(d) - gaze.turn) * k;
-    gaze.lean += (clamp(d * 0.05, -6, 6) - gaze.lean) * k;
+    // Dron nad głową: Manikun unosi brodę i lekko odchyla się do tyłu
+    const up = gaze.what === "camera" && scene.camera === "D";
+    gaze.turn += ((up ? 16 : headTurn(d)) - gaze.turn) * k;
+    gaze.lean += ((up ? 2.5 : clamp(d * 0.05, -6, 6)) - gaze.lean) * k;
     shown = { pose: variant({}, { head: gaze.turn, spine: gaze.lean }), rig: BODIES[scene.body] };
     const keys = gaze.what === "camera" ? ["camX", "camY"] : ["litX", "litY"];
     if (gaze.hold || keys.some(key => propAnim[key])) gaze.release = 0;
