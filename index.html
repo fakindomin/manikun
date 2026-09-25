@@ -404,9 +404,9 @@
     ]},
     { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
-      { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" },
+      { id: "portrait", name: "Portret", short: "Portret", noDrone: true, prompt: "Close-up portrait, head and shoulders in frame" },
       // Twarz: samo zbliżenie na twarz; minę wybiera się w kategorii Twarz
-      { id: "face", name: "Twarz", short: "Twarz", prompt: "Extreme close-up of the face" }
+      { id: "face", name: "Twarz", short: "Twarz", noDrone: true, prompt: "Extreme close-up of the face" }
     ]},
     { id: "camera", label: "Kamera", patch: "#627A9D", options: [
       // Opis kamery trafia na początek promptu: kąt, wysokość i kierunek patrzenia obiektywu
@@ -419,7 +419,7 @@
       { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "High-angle three-quarter view from the right: the camera is raised above and to the right of the subject, tilted down, looking down at the subject" },
       { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "Low-angle three-quarter view from the right: the camera is placed low near the ground to the right of the subject, tilted up, looking up at the subject" },
       { id: "S", name: "Selfie", short: "Selfie", subjects: ["person"], prompt: "Selfie shot: the camera is the subject's own smartphone held in their outstretched hand at arm's length, slightly above eye level, the subject looking straight into the phone camera, close personal perspective with a slight wide-angle look" },
-      { id: "D", name: "Z drona", short: "Dron", prompt: "Wide aerial drone shot from a distance: the camera is a drone hovering high above and some distance away from the subject, looking down at a steep angle, the subject appearing noticeably smaller in the frame with plenty of the surroundings visible around them" }
+      { id: "D", name: "Z drona", short: "Dron", outdoor: true, prompt: "Wide aerial drone shot from a distance: the camera is a drone hovering high above and some distance away from the subject, looking down at a steep angle, the subject appearing noticeably smaller in the frame with plenty of the surroundings visible around them" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
       { id: "natural", name: "Naturalne", children: [
@@ -781,7 +781,9 @@
     return OUTFIT_PROMPTS[scene.outfit](w(scene.topColor), hasBottom(scene.outfit) ? w(scene.bottomColor) : null, scene.body);
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
-  const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject));
+  // Czy opcja pasuje do reszty sceny: sylwetka, obiekt/postać, dron tylko w plenerze i bez zbliżeń
+  const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject))
+    && (!o.noDrone || st.camera !== "D") && (!o.outdoor || isOutdoor(st.background));
 
   function buildPrompt() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
@@ -2412,6 +2414,9 @@
     document.body.dataset.mode = scene.mode;
     document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
     if (phase === "director" && scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
+    // Dron tylko w plenerze (we wnętrzu kamera przechodzi na ujęcie z góry) i zawsze z całą sylwetką
+    if (scene.camera === "D" && !isOutdoor(scene.background)) scene.camera = "T";
+    if (scene.camera === "D" && scene.shot !== "full") scene.shot = "full";
     // Selfie tylko z postacią
     if (scene.subject === "object" && scene.camera === "S") scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
