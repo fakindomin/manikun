@@ -647,7 +647,11 @@
   }
 
   // W kucaniu luźne ręce opierają się przedramionami o kolana
-  const armsPrompt = () => scene.camera === "S" ? "one arm raised and extended toward the camera, holding the smartphone" : scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
+  // Gest drugiej ręki przy selfie
+  const OTHER_HAND = { down: "the other arm relaxed", hipOne: "the other hand resting on the hip", hips: "the other hand resting on the hip",
+    chin: "the other hand raised to the chin in a thoughtful gesture", shade: "the other hand raised to the forehead, shading the eyes" };
+  const SELFIE_ARM = "one arm raised and extended toward the camera, holding the smartphone";
+  const armsPrompt = () => scene.camera === "S" ? SELFIE_ARM + ", " + OTHER_HAND[scene.arms] : scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
 
   // Kolory ubrania: "auto" to kolory domyślne danego ubioru
   const COLORS = [
@@ -789,11 +793,14 @@
     ] : [
       shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) ? ", " + lookOpt("expr", exprOf(scene)).prompt : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
-      ...(faceShot ? [] : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : "")]),
+      ...(faceShot
+        // Przy zbliżeniu na twarz zostaje tylko to, co widać przy twarzy: telefon lub dłoń przy brodzie albo czole
+        ? (scene.camera === "S" || (armsApply(scene) && ["chin", "shade"].includes(scene.arms)) ? [armsApply(scene) ? armsPrompt() : SELFIE_ARM] : [])
+        : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : scene.camera === "S" ? ", " + SELFIE_ARM + " for a selfie" : "")]),
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
-    if (scene.mode === "video") parts.push(optionOf("motion", scene.motion).prompt);
+    if (scene.mode === "video") parts.push(scene.camera === "S" ? "handheld selfie video, the phone moving slightly with the subject's hand" : optionOf("motion", scene.motion).prompt);
     parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", (scene.subject === "object" ? ENDING_OBJECT : ENDING)[scene.mode]);
     return optionOf("camera", scene.camera).prompt + ". " + parts.join(", ") + ".";
   }
@@ -885,20 +892,23 @@
     hips: { nearUpper: -38, nearFore: 48, farUpper: 36, farFore: -50 },
     chin: { nearUpper: 28, nearFore: 172, head: 176 },
     shade: { nearUpper: -150, nearFore: 95, head: 184 },
-    // Selfie: bliższa ręka wyciągnięta w górę i w bok, trzyma telefon
-    selfie: { nearUpper: -128, nearFore: -150, head: 172 }
+    // Selfie: dalsza ręka wyciągnięta w górę i w bok z telefonem; bliższa zostaje wolna na gest z kategorii Ręce
+    selfie: { farUpper: 142, farFore: 172, head: 186 }
   };
   const armsApply = st => STANDING.includes(st.pose);
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
   // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)
   const EXPR_POSE = { neutral: {}, joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
   const exprOf = st => st.look && st.look.expr ? st.look.expr : null;
-  const poseKey = st => (st.camera === "S" ? st.pose + "+selfie" : armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose) + (exprOf(st) ? "!" + exprOf(st) : "");
+  // Przy selfie obie dłonie na biodrach nie są możliwe: zostaje jedna
+  const armsFor = st => st.camera === "S" && st.arms === "hips" ? "hipOne" : st.arms;
+  const poseKey = st => st.pose + (armsApply(st) && armsFor(st) !== "down" ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
-    const [main, expr] = key.split("!"), [base, arms] = main.split("+");
+    const [main, expr] = key.split("!"), [body, selfie] = main.split("~"), [base, arms] = body.split("+");
     let p = arms ? { ...POSES[base], ...ARMS[arms] } : POSES[base];
+    if (selfie) p = { ...p, ...ARMS.selfie };
     if (expr) p = { ...p, ...EXPR_POSE[expr] };
     return (poseCache[key] = p);
   }
@@ -986,7 +996,7 @@
       y = groundY - b.h * scale;
     }
     const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
-    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.near ? toScene(fig.hands.near) : null };
+    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.far ? toScene(fig.hands.far) : null };
   }
 
   function drawFigureAt(parent, pl, cls) {
@@ -1878,7 +1888,8 @@
     barItems.forEach(({ cat, b, svg, value }) => {
       b.setAttribute("aria-pressed", String(scene.open === cat.id));
       // Studio nie ma pory dnia, a siedząc ręce są oparte: te kategorie są przygaszone i nieaktywne
-      const off = (cat.id === "time" && !timeApplies(scene)) || (cat.id === "arms" && !armsApply(scene));
+      // Przy selfie ruch kamery wyznacza ręka z telefonem, więc kategoria Ruch jest wyłączona
+      const off = (cat.id === "time" && !timeApplies(scene)) || (cat.id === "arms" && !armsApply(scene)) || (cat.id === "motion" && scene.camera === "S");
       b.disabled = off;
       value.textContent = off ? "—" : valueShort(cat);
       svg.replaceChildren();
@@ -2305,7 +2316,7 @@
     const fmt = currentFormat();
     const H = 300, W = H * fmt.w / fmt.h;
     const layers = ["ground", "camera", "light", "background"];
-    if (scene.mode === "video") layers.push("motion");
+    if (scene.mode === "video" && scene.camera !== "S") layers.push("motion");
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
     if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
