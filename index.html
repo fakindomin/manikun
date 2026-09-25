@@ -345,6 +345,7 @@
 <script>
 
   // ---------- Szablon: kategorie, opcje, frazy promptu ----------
+  const SELFIE_PROMPT = "Selfie taken from the smartphone's own point of view: the picture is captured by the front camera of a phone the subject holds at arm's length slightly above eye level, so the phone itself is not visible in the frame; the subject looks straight into the lens, close personal perspective with a slight wide-angle look";
   const CATEGORIES = [
     { id: "format", label: "Format", patch: "#E0A32E" },
     // Obiekt: przedmiot, podstawa i kolor; reszta (kamera, światło, tło, pora dnia) wspólna z postacią
@@ -418,7 +419,11 @@
       { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "Eye-level three-quarter view from the right: the camera stands to the subject's right at eye height, pointing straight at the subject with no tilt" },
       { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "High-angle three-quarter view from the right: the camera is raised above and to the right of the subject, tilted down, looking down at the subject" },
       { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "Low-angle three-quarter view from the right: the camera is placed low near the ground to the right of the subject, tilted up, looking up at the subject" },
-      { id: "S", name: "Selfie", short: "Selfie", subjects: ["person"], prompt: "Selfie shot: the camera is the subject's own smartphone held in their outstretched hand at arm's length, slightly above eye level, the subject looking straight into the phone camera, close personal perspective with a slight wide-angle look" },
+      // Selfie: zdjęcie z perspektywy telefonu (telefonu nie widać); wybór ręki, która go trzyma (ręce Manikuna)
+      { id: "selfie", name: "Selfie", subjects: ["person"], children: [
+        { id: "S", name: "Lewa ręka", short: "Selfie L", prompt: SELFIE_PROMPT },
+        { id: "SR", name: "Prawa ręka", short: "Selfie P", prompt: SELFIE_PROMPT }
+      ]},
       { id: "D", name: "Z drona", short: "Dron", outdoor: true, prompt: "Wide aerial drone shot from a distance: the camera is a drone hovering high above and some distance away from the subject, looking down at a steep angle, the subject appearing noticeably smaller in the frame with plenty of the surroundings visible around them" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
@@ -588,8 +593,10 @@
   // Dron: nad środkiem kadru; wybierany kafelkiem, nie jest strefą przeciągania
   const DRONE = { x: 0.5, y: 0.07, name: "Dron", from: "from high above" };
   // Selfie: kamerą jest telefon w dłoni Manikuna (pozycję bierze się z dłoni, strefa tylko na czas animacji)
-  const SELFIE = { x: 0.3, y: 0.2, name: "Selfie", from: "from the phone in hand" };
-  const camZone = id => id === "D" ? DRONE : id === "S" ? SELFIE : ZONES[id];
+  const SELFIE = { x: 0.7, y: 0.2, name: "Selfie", from: "from the phone in hand" };
+  const SELFIE_R = { ...SELFIE, x: 0.3 };
+  const isSelfie = id => id === "S" || id === "SR";
+  const camZone = id => id === "D" ? DRONE : id === "S" ? SELFIE : id === "SR" ? SELFIE_R : ZONES[id];
   // Punkt strefy w kadrze W×H, z zapasem od krawędzi
   const zonePt = (n, W, H, u) => [clamp(W * n[0], u * 9, W - u * 9), clamp(H * n[1], u * 8, H - u * 8)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -650,8 +657,9 @@
   // Gest drugiej ręki przy selfie
   const OTHER_HAND = { down: "the other arm relaxed", hipOne: "the other hand resting on the hip", hips: "the other hand resting on the hip",
     chin: "the other hand raised to the chin in a thoughtful gesture", shade: "the other hand raised to the forehead, shading the eyes" };
-  const SELFIE_ARM = "one arm raised and extended toward the camera, holding the smartphone";
-  const armsPrompt = () => scene.camera === "S" ? SELFIE_ARM + ", " + OTHER_HAND[scene.arms] : scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
+  // Ręka z telefonem jest poza kadrem: model ma nie rysować telefonu
+  const selfieArm = () => `${scene.camera === "SR" ? "right" : "left"} arm extended toward the lens and out of frame, holding the phone that takes the picture`;
+  const armsPrompt = () => isSelfie(scene.camera) ? selfieArm() + ", " + OTHER_HAND[scene.arms] : scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
 
   // Kolory ubrania: "auto" to kolory domyślne danego ubioru
   const COLORS = [
@@ -797,12 +805,13 @@
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
       ...(faceShot
         // Przy zbliżeniu na twarz zostaje tylko to, co widać przy twarzy: telefon lub dłoń przy brodzie albo czole
-        ? (scene.camera === "S" || (armsApply(scene) && ["chin", "shade"].includes(scene.arms)) ? [armsApply(scene) ? armsPrompt() : SELFIE_ARM] : [])
-        : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : scene.camera === "S" ? ", " + SELFIE_ARM + " for a selfie" : "")]),
+        ? (isSelfie(scene.camera) || (armsApply(scene) && ["chin", "shade"].includes(scene.arms)) ? [armsApply(scene) ? armsPrompt() : selfieArm()] : [])
+        : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : isSelfie(scene.camera) ? ", " + selfieArm() : "")]),
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
-    if (scene.mode === "video") parts.push(scene.camera === "S" ? "handheld selfie video, the phone moving slightly with the subject's hand" : optionOf("motion", scene.motion).prompt);
+    if (scene.mode === "video") parts.push(isSelfie(scene.camera) ? "handheld selfie video filmed by the phone itself, moving slightly with the subject's hand" : optionOf("motion", scene.motion).prompt);
+    if (isSelfie(scene.camera)) parts.push("no phone visible in the picture");
     parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", (scene.subject === "object" ? ENDING_OBJECT : ENDING)[scene.mode]);
     return optionOf("camera", scene.camera).prompt + ". " + parts.join(", ") + ".";
   }
@@ -895,22 +904,30 @@
     chin: { nearUpper: 28, nearFore: 172, head: 176 },
     shade: { nearUpper: -150, nearFore: 95, head: 184 },
     // Selfie: dalsza ręka wyciągnięta w górę i w bok z telefonem; bliższa zostaje wolna na gest z kategorii Ręce
-    selfie: { farUpper: 142, farFore: 172, head: 186 }
+    selfie: { farUpper: 142, farFore: 172, head: 186 },
+    selfieR: { nearUpper: -142, nearFore: -172, head: 174 }
   };
   const armsApply = st => STANDING.includes(st.pose);
+  // Te same gesty wykonane dalszą ręką
+  const ARMS_FAR = {
+    hipOne: { farUpper: 36, farFore: -50 },
+    chin: { farUpper: -80, farFore: 122, farFront: 1, head: 176 },
+    shade: { farUpper: 150, farFore: -95, farFront: 1, head: 184 }
+  };
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
   // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)
   const EXPR_POSE = { neutral: {}, joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
   const exprOf = st => st.look && st.look.expr ? st.look.expr : null;
   // Przy selfie obie dłonie na biodrach nie są możliwe: zostaje jedna
-  const armsFor = st => st.camera === "S" && st.arms === "hips" ? "hipOne" : st.arms;
-  const poseKey = st => st.pose + (armsApply(st) && armsFor(st) !== "down" ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
+  const armsFor = st => isSelfie(st.camera) && st.arms === "hips" ? "hipOne" : st.arms;
+  const poseKey = st => st.pose + (armsApply(st) && armsFor(st) !== "down" ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
     const [main, expr] = key.split("!"), [body, selfie] = main.split("~"), [base, arms] = body.split("+");
-    let p = arms ? { ...POSES[base], ...ARMS[arms] } : POSES[base];
-    if (selfie) p = { ...p, ...ARMS.selfie };
+    // Telefon w bliższej ręce: gest wykonuje dalsza ręka (dłoń przy twarzy rysowana przed głową)
+    let p = arms ? { ...POSES[base], ...(selfie === "selfieR" ? ARMS_FAR[arms] : ARMS[arms]) } : POSES[base];
+    if (selfie) p = { ...p, ...ARMS[selfie] };
     if (expr) p = { ...p, ...EXPR_POSE[expr] };
     return (poseCache[key] = p);
   }
@@ -998,7 +1015,7 @@
       y = groundY - b.h * scale;
     }
     const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
-    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.far ? toScene(fig.hands.far) : null };
+    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.far ? toScene(fig.hands.far) : null, handNear: fig.hands && fig.hands.near ? toScene(fig.hands.near) : null };
   }
 
   function drawFigureAt(parent, pl, cls) {
@@ -1621,8 +1638,9 @@
     const zc = camZone(st.camera), zl = ZONES[st.lightZone];
     let camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
     // Selfie: telefon w dłoni Manikuna (póki nie jest przeciągany)
-    const selfie = st.camera === "S" && subj < 0.5 && A.pl.hand && opts.grab !== "camera";
-    if (selfie) camPt = [clamp(A.pl.hand[0], u * 7, W - u * 7), clamp(A.pl.hand[1] - u * 1.5, u * 7, H - u * 7)];
+    const hand = st.camera === "SR" ? A.pl.handNear : A.pl.hand;
+    const selfie = isSelfie(st.camera) && subj < 0.5 && hand && opts.grab !== "camera";
+    if (selfie) camPt = [clamp(hand[0], u * 7, W - u * 7), clamp(hand[1] - u * 1.5, u * 7, H - u * 7)];
     const litRaw = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
     const lightT = P.light ?? (isBackLight(st.light) ? 1 : 0);
     const kindT = P.kind ?? (isNaturalLight(st.light) ? 0 : 1);
@@ -1891,7 +1909,7 @@
       b.setAttribute("aria-pressed", String(scene.open === cat.id));
       // Studio nie ma pory dnia, a siedząc ręce są oparte: te kategorie są przygaszone i nieaktywne
       // Przy selfie ruch kamery wyznacza ręka z telefonem, więc kategoria Ruch jest wyłączona
-      const off = (cat.id === "time" && !timeApplies(scene)) || (cat.id === "arms" && !armsApply(scene)) || (cat.id === "motion" && scene.camera === "S");
+      const off = (cat.id === "time" && !timeApplies(scene)) || (cat.id === "arms" && !armsApply(scene)) || (cat.id === "motion" && isSelfie(scene.camera));
       b.disabled = off;
       value.textContent = off ? "—" : valueShort(cat);
       svg.replaceChildren();
@@ -2318,7 +2336,7 @@
     const fmt = currentFormat();
     const H = 300, W = H * fmt.w / fmt.h;
     const layers = ["ground", "camera", "light", "background"];
-    if (scene.mode === "video" && scene.camera !== "S") layers.push("motion");
+    if (scene.mode === "video" && !isSelfie(scene.camera)) layers.push("motion");
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
     if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
@@ -2418,7 +2436,7 @@
     if (scene.camera === "D" && !isOutdoor(scene.background)) scene.camera = "T";
     if (scene.camera === "D" && scene.shot !== "full") scene.shot = "full";
     // Selfie tylko z postacią
-    if (scene.subject === "object" && scene.camera === "S") scene.camera = "L2";
+    if (scene.subject === "object" && isSelfie(scene.camera)) scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
     if (!fitsBody(optionOf("outfit", scene.outfit), scene)) scene.outfit = "casual";
     // Lampa w pełnym słońcu na zewnątrz nie ma sensu: przechodzimy na naturalne w tym samym kierunku

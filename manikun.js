@@ -157,7 +157,9 @@ function computeFigure(pose, RIG, cloth = null) {
   }
 
   leg("far");
-  arm("far");
+  // farFront: dalsza ręka przed tułowiem i głową (np. dłoń przy twarzy, gdy bliższa trzyma telefon)
+  const farFront = (pose.farFront || 0) > 0.5;
+  if (!farFront) arm("far");
   const hd = dir(pose.head);
   const N1 = add(Ct, hd, RIG.neck);
   const Hc = add(N1, hd, RIG.headRy - 1);
@@ -269,6 +271,7 @@ function computeFigure(pose, RIG, cloth = null) {
       shapes.push({ t: "deco", d: `M${f(b1[0])},${f(b1[1])} L${f(b2[0])},${f(b2[1])} M${f(t1[0])},${f(t1[1])} L${f(t2[0])},${f(t2[1])}`, style: `fill:none;${frame}` });
     }
   }
+  if (farFront) arm("far");
   leg("near");
   // Spódnica sukienki albo poły płaszcza: jedna tkanina rozpięta od bioder do obu kolan i trochę niżej.
   // To otoczka wypukła bioder i brzegów przy kolanach, więc w każdej pozie zakrywa uda bez prześwitów.
@@ -433,7 +436,7 @@ function blendPose(a, b, t) {
   for (const k in { ...a, ...b }) {
     const d = STAGGER[k] || 0;
     const lt = Math.min(1, Math.max(0, (t - d) / (1 - STAGGER_MAX)));
-    const av = a[k] ?? 1, bv = b[k] ?? 1;
+    const def = k.endsWith("Len") ? 1 : 0, av = a[k] ?? def, bv = b[k] ?? def;
     o[k] = av + (bv - av) * easeInOut(lt);
   }
   return o;
