@@ -1328,37 +1328,34 @@
   }
   const back = dur => ({ pose: POSES[scene.pose], dur });
 
+  // Reakcje na zmiany ustawień: tylko głowa i lekkie pochylenie tułowia, ręce zostają w pozie
   const REACTIONS = {
     // Więcej miejsca: spokojnie się rozgląda
     bigger: () => pick("bigger", [
       () => [{ pose: variant({}, { head: 16, spine: 2 }), dur: 700 }, { pose: variant({}, { head: -16, spine: -2 }), dur: 1000 }, back(900)],
-      () => [{ pose: variant({ farUpper: 150, farFore: 262 }, { head: 12 }), dur: 800 }, { pose: variant({ farUpper: 150, farFore: 262 }, { head: -14 }), dur: 1100 }, back(950)],
-      () => [{ pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: -6 }), dur: 850 }, { pose: variant({ nearUpper: -95, nearFore: -110, farUpper: 95, farFore: 110 }, { head: 6 }), dur: 700 }, back(950)]
+      () => [{ pose: variant({}, { head: -14, spine: -2 }), dur: 750 }, { pose: variant({}, { head: 12, spine: 1.5 }), dur: 1100 }, back(950)],
+      () => [{ pose: variant({}, { head: 10, spine: 1 }), dur: 800 }, { pose: variant({}, { head: 12, spine: 1 }), dur: 500 }, { pose: variant({}, { head: -18, spine: -2 }), dur: 1100 }, back(950)]
     ]),
     // Mniej miejsca: wzdryga się, jakby kadr miał go zgnieść, i powoli się uspokaja
     smaller: () => pick("smaller", [
-      () => [{ pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 8, spine: 3 }), dur: 380 }, { pose: variant({ nearUpper: 165, nearFore: 95, farUpper: 195, farFore: 265 }, { head: 12, spine: 3 }), dur: 800 }, back(1100)],
-      () => [{ pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -4, head: -6 }), dur: 400 }, { pose: variant({ nearUpper: -40, nearFore: -150, farUpper: 40, farFore: 150 }, { spine: -5, head: -10 }), dur: 750 }, back(1100)],
-      () => [{ pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 22, spine: 4 }), dur: 360 }, { pose: variant({ nearUpper: 15, nearFore: 150, farUpper: -15, farFore: 210 }, { head: 26, spine: 4 }), dur: 850 }, back(1100)]
+      () => [{ pose: variant({}, { head: 14, spine: 3 }), dur: 380 }, { pose: variant({}, { head: 18, spine: 3 }), dur: 800 }, back(1100)],
+      () => [{ pose: variant({}, { head: -14, spine: -4 }), dur: 400 }, { pose: variant({}, { head: -18, spine: -4 }), dur: 750 }, back(1100)],
+      () => [{ pose: variant({}, { head: 10, spine: 2 }), dur: 260 }, { pose: variant({}, { head: -10, spine: -2 }), dur: 320 }, { pose: variant({}, { head: 6, spine: 1 }), dur: 420 }, back(900)]
     ]),
     // Odprowadza wzrokiem obiekt: najpierw tam, gdzie był, potem za nim w nowe miejsce
     look: (target, prev) => {
       const head = objectPos(scene, "head");
       const aim = pos => {
-        const a = angleTo(head, pos), d = diffFromUp(a);
-        return { a, turn: clamp(d * 0.35, -38, 38), lean: clamp(d * 0.05, -6, 6), onRight: pos[0] > head[0] };
+        const d = diffFromUp(angleTo(head, pos));
+        return { turn: clamp(d * 0.35, -38, 38), lean: clamp(d * 0.05, -6, 6) };
       };
       const was = aim(objectPos(prev, target)), now = aim(objectPos(scene, target));
-      const arm = o => o.onRight ? { farUpper: o.a, farFore: o.a } : { nearUpper: o.a, nearFore: o.a };
-      const shade = o => o.onRight ? { farUpper: 150, farFore: 262 } : { nearUpper: -150, nearFore: -262 };
       const follow = PROP_MS;
       return pick("look-" + target, [
         () => [{ pose: variant({}, { head: was.turn, spine: was.lean }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant({}, { head: now.turn * 1.1, spine: now.lean }), dur: 600 }, back(950)],
-        () => [{ pose: variant(arm(was), { head: was.turn, spine: was.lean }), dur: 550 }, { pose: variant(arm(now), { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant(arm(now), { head: now.turn, spine: now.lean }), dur: 500 }, back(1000)],
-        () => {
-          const hand = o => target === "light" ? shade(o) : {};
-          return [{ pose: variant(hand(was), { head: was.turn * 0.8, spine: was.lean * 1.5 }), dur: 550 }, { pose: variant(hand(now), { head: now.turn, spine: now.lean * 1.5 }), dur: follow }, { pose: variant(hand(now), { head: now.turn, spine: now.lean * 1.5 }), dur: 550 }, back(1000)];
-        }
+        () => [{ pose: variant({}, { head: was.turn * 0.8, spine: was.lean * 1.5 }), dur: 550 }, { pose: variant({}, { head: now.turn, spine: now.lean * 1.5 }), dur: follow }, { pose: variant({}, { head: now.turn, spine: now.lean * 1.5 }), dur: 700 }, back(1000)],
+        // Spojrzenie, szybki powrót i drugie spojrzenie, jakby chciał się upewnić
+        () => [{ pose: variant({}, { head: was.turn, spine: was.lean }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: follow }, { pose: variant({}, { head: now.turn * 0.3 }), dur: 450 }, { pose: variant({}, { head: now.turn, spine: now.lean }), dur: 500 }, back(950)]
       ]);
     }
   };
