@@ -187,8 +187,7 @@
   }
   .copy-logo:active { transform: scale(0.94); }
   .copy-logo svg { width: 100%; height: 100%; display: block; }
-  .copy-logo .logo-bg { fill: var(--accent); stroke: var(--bg); stroke-width: 5; }
-  .copy-logo .logo-back { fill: var(--accent); opacity: 0.45; }
+  .copy-logo .logo-bg { fill: var(--accent); }
   .copy-logo .logo-ink { stroke: var(--on-accent); }
   .copy-logo .logo-ink circle { fill: var(--on-accent); }
 
@@ -396,15 +395,14 @@
     </div>
     <!-- Przełącznik materiału (drewno / biały) jest ukryty, ale działa: wystarczy usunąć atrybut hidden -->
     <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna" hidden><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
-    <!-- Kopiowanie promptu: logo Manikuna jako ikona kopiowania (dwie nałożone karty, na przedniej głowa Manikuna) -->
+    <!-- Kopiowanie promptu: logo Manikuna (głowa na kwadracie w kolorze akcentu), większe niż reszta przycisków -->
     <button class="copy-logo director-only" type="button" id="copy" aria-label="Kopiuj prompt" title="Kopiuj prompt">
       <svg viewBox="0 0 120 120" aria-hidden="true">
-        <rect x="30" y="4" width="86" height="86" rx="22" class="logo-back" />
-        <rect x="4" y="30" width="86" height="86" rx="22" class="logo-bg" />
-        <g class="logo-ink" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 30) scale(0.7167)">
-          <ellipse cx="60" cy="48" rx="24" ry="28" fill="none" stroke-width="7" />
-          <line x1="60" y1="76" x2="60" y2="90" stroke-width="7" />
-          <circle cx="60" cy="95" r="5.5" stroke-width="2" />
+        <rect width="120" height="120" rx="28" class="logo-bg" />
+        <g class="logo-ink" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="60" cy="48" rx="24" ry="28" fill="none" stroke-width="6" />
+          <line x1="60" y1="76" x2="60" y2="90" stroke-width="6" />
+          <circle cx="60" cy="95" r="5" stroke-width="2" />
         </g>
       </svg>
     </button>
