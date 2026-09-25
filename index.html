@@ -244,6 +244,14 @@
   .dock-start.leaving .choice { transform: translateY(calc(100% + 60px)); }
 
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toast {
+    position: fixed; left: 50%; top: 64px; z-index: 5; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box;
+    transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 14px;
+    padding: 10px 14px; font-size: 13px; font-weight: 600; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    transition: opacity 280ms ease, transform 420ms var(--ease);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
   /* Niskie ekrany: przyciski trybu bez opisów, żeby powitanie nie wchodziło na kadr */
   @media (max-height: 760px) {
     .choice { padding: 12px 10px 11px; gap: 4px; }
@@ -280,6 +288,7 @@
     </div>
     <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna"><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
     <button class="chip director-only" type="button" id="copy">Kopiuj</button>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
   <div class="stage">
@@ -444,7 +453,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    body: "male", outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    body: "male", face: false, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -548,6 +557,12 @@
     dress: t => `wearing a simple, elegant ${t ? t + " " : ""}midi dress`
   };
   const hasBottom = outfitId => outfitId !== "dress";
+  // Moja twarz: generator bierze twarz z dołączonego zdjęcia, reszta sceny zostaje z kafelków
+  const bodyPrompt = () => {
+    if (!scene.face) return optionOf("body", scene.body).prompt;
+    const [who, pro] = scene.body === "female" ? ["woman", "her"] : ["man", "his"];
+    return `of the ${who} from the attached reference photo, keeping ${pro} face, facial features, skin tone and hairstyle exactly the same,`;
+  };
   const outfitPrompt = () => {
     const w = id => id === "auto" ? null : colorOf(id).word;
     return OUTFIT_PROMPTS[scene.outfit](w(scene.topColor), hasBottom(scene.outfit) ? w(scene.bottomColor) : null, scene.body);
@@ -557,7 +572,7 @@
 
   function buildPrompt() {
     const parts = [
-      optionOf("shot", scene.shot).prompt + " " + optionOf("body", scene.body).prompt + " " + outfitPrompt(),
+      optionOf("shot", scene.shot).prompt + " " + bodyPrompt() + " " + outfitPrompt(),
       optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : ""),
       optionOf("camera", scene.camera).prompt,
       lightPrompt(),
@@ -1227,6 +1242,7 @@
 
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
+    if (cat.id === "body" && scene.face) return "Moja twarz";
     return optionOf(cat.id, scene[cat.id]).short;
   }
 
@@ -1337,7 +1353,23 @@
     return t;
   }
 
+  // Znak twarzy ze zdjęcia: ramka zdjęcia z głową w środku
+  function faceGlyph(svg) {
+    svg.setAttribute("viewBox", "0 0 64 64");
+    el("rect", { x: 12, y: 10, width: 40, height: 44, rx: 6 }, svg);
+    el("circle", { cx: 32, cy: 27, r: 8 }, svg);
+    el("path", { d: "M18 50 Q20 38 32 38 Q44 38 46 50" }, svg);
+    el("path", { d: "M44 16 L48 16 L48 20", class: "thin" }, svg);
+  }
+
   function makeTiles(catId) {
+    if (catId === "body") {
+      // Postać i przełącznik "Moja twarz" (włącz/wyłącz, niezależnie od sylwetki)
+      const list = optionsOf("body").map(o => tile("opt-body-" + o.id, o.name, () => scene.body === o.id,
+        () => { scene.body = o.id; render(); }, svg => drawOption("body", o.id, svg)));
+      list.push(tile("opt-body-face", "Moja twarz", () => scene.face, () => { scene.face = !scene.face; render(); }, faceGlyph));
+      return list;
+    }
     if (catId === "outfit" && (scene.sub === "topColor" || scene.sub === "bottomColor")) return colorTiles(scene.sub);
     if (catId === "format") {
       return FORMATS[scene.mode].map(fmt => tile("opt-format-" + fmt.id, fmt.name,
@@ -1711,8 +1743,18 @@
     ta.remove();
     copyStatus(ok ? "Skopiowano" : "Nie udało się");
   }
+  // Przy "Mojej twarzy" przypomnienie, że zdjęcie trzeba dołączyć w generatorze
+  const toast = document.getElementById("toast");
+  let toastTimer;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 4200);
+  }
   copyBtn.addEventListener("click", () => {
     const text = buildPrompt();
+    if (scene.face) showToast("Wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
     try {
       navigator.clipboard.writeText(text).then(() => copyStatus("Skopiowano")).catch(() => hiddenCopy(text));
     } catch (e) {
