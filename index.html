@@ -3,7 +3,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#09090B">
-<title>Manikun Reżyser</title>
+<title>Manikun – wirtualny reżyser ujęć</title>
+<meta name="description" content="Ustaw scenę na drewnianym manekinie: pozę, ubiór, kamerę, światło i tło. Manikun zamieni ją w gotowy prompt do generatora zdjęć i wideo AI.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://manikun.vercel.app/">
+<meta property="og:site_name" content="Manikun">
+<meta property="og:locale" content="pl_PL">
+<meta property="og:title" content="Manikun – wirtualny reżyser ujęć">
+<meta property="og:description" content="Ustaw scenę na drewnianym manekinie: pozę, ubiór, kamerę, światło i tło. Manikun zamieni ją w gotowy prompt do generatora zdjęć i wideo AI.">
+<meta property="og:image" content="https://manikun.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Drewniany manekin Manikun w kadrze z kamerą i lampą">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Manikun – wirtualny reżyser ujęć">
+<meta name="twitter:description" content="Ustaw scenę na manekinie i skopiuj gotowy prompt do generatora zdjęć i wideo AI.">
+<meta name="twitter:image" content="https://manikun.vercel.app/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
@@ -208,9 +223,9 @@
     display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
   }
   .hello { text-align: center; display: grid; gap: 4px; transition: opacity 280ms ease, transform 420ms var(--ease); }
-  .hello h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+  .hello h1 { margin: 0; font-size: clamp(20px, 6.4vw, 26px); white-space: nowrap; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
   .hello h1 em { font-style: normal; color: var(--accent); }
-  .hello p { margin: 0; font-size: 15px; color: var(--muted); }
+  .hello p { margin: 0 auto; max-width: 34ch; font-size: 14px; line-height: 1.35; color: var(--muted); text-wrap: balance; }
   .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .choice {
     font: inherit; color: var(--ink);
@@ -229,6 +244,12 @@
   .dock-start.leaving .choice { transform: translateY(calc(100% + 60px)); }
 
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Niskie ekrany: przyciski trybu bez opisów, żeby powitanie nie wchodziło na kadr */
+  @media (max-height: 760px) {
+    .choice { padding: 12px 10px 11px; gap: 4px; }
+    .choice svg { width: 34px; height: 34px; }
+    .choice .desc { display: none; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .director-only, .hello, .tile, .cat, .choice, .chip { transition-duration: 0.01ms !important; }
@@ -273,7 +294,7 @@
   <div class="dock-start" id="dockStart">
     <div class="hello">
       <h1 id="line1">Cześć, jestem <em>Manikun</em>.</h1>
-      <p id="line2">Co dziś ustawiamy?</p>
+      <p id="line2">Wirtualny reżyser ujęć: ustaw na mnie scenę, a ja napiszę gotowy prompt do zdjęcia lub wideo AI.</p>
     </div>
     <div class="choices" role="group" aria-label="Tryb">
       <button class="choice" type="button" id="pick-photo" data-mode="photo" aria-pressed="false">
