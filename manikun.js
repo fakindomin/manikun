@@ -113,6 +113,7 @@ function computeFigure(pose, RIG, cloth = null) {
   const clothPoly = (pts, color) => wear({ t: "poly", q: pts, d: poly(pts) }, color);
   const loose = cloth && cloth.loose ? 1.2 : 1;
 
+  const hands = {};
   function arm(side) {
     const S = shoulder(side);
     const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
@@ -130,6 +131,7 @@ function computeFigure(pose, RIG, cloth = null) {
       wear(cap(S, lerpP(S, E, 0.45), 6.8, 6.2), cloth.top);
     }
     push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] }, [Hc, 9]);
+    hands[side] = Hc;
   }
   const knees = {};
   function leg(side) {
@@ -286,7 +288,7 @@ function computeFigure(pose, RIG, cloth = null) {
     minX = Math.min(minX, p[0] - rr); maxX = Math.max(maxX, p[0] + rr);
     minY = Math.min(minY, p[1] - rr); maxY = Math.max(maxY, p[1] + rr);
   });
-  return { shapes, head: Hc, box: { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY } };
+  return { shapes, head: Hc, hands, box: { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY } };
 }
 
 // Materiały: light/mid/dark to cieniowanie w poprzek członu, line to kontur, grain to słoje.

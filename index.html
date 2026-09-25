@@ -405,15 +405,8 @@
     { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
       { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" },
-      // Twarz: zbliżenie na samą twarz, w środku wybór miny
-      { id: "face", name: "Twarz", children: [
-        { id: "face-neutral", name: "Neutralna", short: "Neutralna", prompt: "Extreme close-up of the face", expr: "with a calm, neutral expression and a relaxed face" },
-        { id: "face-joy", name: "Radość", short: "Radość", prompt: "Extreme close-up of the face", expr: "with a big genuine joyful smile and bright happy eyes" },
-        { id: "face-anger", name: "Złość", short: "Złość", prompt: "Extreme close-up of the face", expr: "with an angry expression, furrowed brows, a clenched jaw and an intense glare" },
-        { id: "face-sad", name: "Smutek", short: "Smutek", prompt: "Extreme close-up of the face", expr: "with a sad expression, a downturned mouth and glossy eyes looking slightly down" },
-        { id: "face-thought", name: "Zamyślenie", short: "Zamyśl.", prompt: "Extreme close-up of the face", expr: "with a thoughtful, pensive expression, eyes looking slightly away and lips gently pressed" },
-        { id: "face-cry", name: "Płacz", short: "Płacz", prompt: "Extreme close-up of the face", expr: "crying, with tears running down the cheeks, trembling lips and reddened eyes" }
-      ]}
+      // Twarz: samo zbliżenie na twarz; minę wybiera się w kategorii Twarz
+      { id: "face", name: "Twarz", short: "Twarz", prompt: "Extreme close-up of the face" }
     ]},
     { id: "camera", label: "Kamera", patch: "#627A9D", options: [
       // Opis kamery trafia na początek promptu: kąt, wysokość i kierunek patrzenia obiektywu
@@ -425,6 +418,7 @@
       { id: "R2", name: "Prawo · środek", short: "Prawo", prompt: "Eye-level three-quarter view from the right: the camera stands to the subject's right at eye height, pointing straight at the subject with no tilt" },
       { id: "R1", name: "Prawo · z góry", short: "Prawo góra", prompt: "High-angle three-quarter view from the right: the camera is raised above and to the right of the subject, tilted down, looking down at the subject" },
       { id: "R3", name: "Prawo · z dołu", short: "Prawo dół", prompt: "Low-angle three-quarter view from the right: the camera is placed low near the ground to the right of the subject, tilted up, looking up at the subject" },
+      { id: "S", name: "Selfie", short: "Selfie", subjects: ["person"], prompt: "Selfie shot: the camera is the subject's own smartphone held in their outstretched hand at arm's length, slightly above eye level, the subject looking straight into the phone camera, close personal perspective with a slight wide-angle look" },
       { id: "D", name: "Z drona", short: "Dron", prompt: "Wide aerial drone shot from a distance: the camera is a drone hovering high above and some distance away from the subject, looking down at a steep angle, the subject appearing noticeably smaller in the frame with plenty of the surroundings visible around them" }
     ]},
     { id: "light", label: "Światło", patch: "#576C43", options: [
@@ -484,7 +478,7 @@
     photo: "100mm lens, photorealistic commercial product photography, crisp detail, clean composition",
     video: "100mm lens, cinematic photorealistic commercial product video, crisp detail, clean composition"
   };
-  const isFaceShot = st => st.shot.startsWith("face-");
+  const isFaceShot = st => st.shot === "face";
   const ENDING = {
     photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
     video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
@@ -495,7 +489,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "none", hairColor: "auto", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
+    subject: "person", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "none", hairColor: "auto", expr: "none", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -515,7 +509,9 @@
   };
   // Dron: nad środkiem kadru; wybierany kafelkiem, nie jest strefą przeciągania
   const DRONE = { x: 0.5, y: 0.07, name: "Dron", from: "from high above" };
-  const camZone = id => id === "D" ? DRONE : ZONES[id];
+  // Selfie: kamerą jest telefon w dłoni Manikuna (pozycję bierze się z dłoni, strefa tylko na czas animacji)
+  const SELFIE = { x: 0.3, y: 0.2, name: "Selfie", from: "from the phone in hand" };
+  const camZone = id => id === "D" ? DRONE : id === "S" ? SELFIE : ZONES[id];
   // Punkt strefy w kadrze W×H, z zapasem od krawędzi
   const zonePt = (n, W, H, u) => [clamp(W * n[0], u * 9, W - u * 9), clamp(H * n[1], u * 8, H - u * 8)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -573,7 +569,7 @@
   }
 
   // W kucaniu luźne ręce opierają się przedramionami o kolana
-  const armsPrompt = () => scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
+  const armsPrompt = () => scene.camera === "S" ? "one arm raised and extended toward the camera, holding the smartphone" : scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
 
   // Kolory ubrania: "auto" to kolory domyślne danego ubioru
   const COLORS = [
@@ -638,6 +634,16 @@
       { id: "red", name: "Czerwone", hex: "#B3262E", prompt: "classic red lipstick" },
       { id: "berry", name: "Bordowe", hex: "#6E2233", prompt: "deep berry lipstick" }
     ],
+    // Mina: rysunek twarzy Manikuna, postawa głowy i opis w prompcie
+    expr: [
+      { id: "none", name: "Bez miny", prompt: null },
+      { id: "neutral", name: "Neutralna", prompt: "with a calm, neutral expression and a relaxed face" },
+      { id: "joy", name: "Radość", prompt: "with a big genuine joyful smile and bright happy eyes" },
+      { id: "anger", name: "Złość", prompt: "with an angry expression, furrowed brows, a clenched jaw and an intense glare" },
+      { id: "sad", name: "Smutek", prompt: "with a sad expression, a downturned mouth and glossy eyes looking slightly down" },
+      { id: "thought", name: "Zamyślenie", prompt: "with a thoughtful, pensive expression, eyes looking slightly away and lips gently pressed" },
+      { id: "cry", name: "Płacz", prompt: "crying, with tears running down the cheeks, trembling lips and reddened eyes" }
+    ],
     glasses: [
       { id: "none", name: "Bez okularów", prompt: null },
       { id: "round", name: "Okrągłe", prompt: c => `round ${c}eyeglasses` },
@@ -694,7 +700,7 @@
     return OUTFIT_PROMPTS[scene.outfit](w(scene.topColor), hasBottom(scene.outfit) ? w(scene.bottomColor) : null, scene.body);
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
-  const fitsBody = (o, st) => !o.bodies || o.bodies.includes(st.body);
+  const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject));
 
   function buildPrompt() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
@@ -704,7 +710,7 @@
       "Product photograph of " + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt()
     ] : [
-      shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (shot.expr ? ", " + shot.expr : ""),
+      shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) ? ", " + lookOpt("expr", exprOf(scene)).prompt : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
       ...(faceShot ? [] : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : "")]),
       lightPrompt(),
@@ -801,14 +807,16 @@
     hipOne: { nearUpper: -38, nearFore: 48 },
     hips: { nearUpper: -38, nearFore: 48, farUpper: 36, farFore: -50 },
     chin: { nearUpper: 28, nearFore: 172, head: 176 },
-    shade: { nearUpper: -150, nearFore: 95, head: 184 }
+    shade: { nearUpper: -150, nearFore: 95, head: 184 },
+    // Selfie: bliższa ręka wyciągnięta w górę i w bok, trzyma telefon
+    selfie: { nearUpper: -128, nearFore: -150, head: 172 }
   };
   const armsApply = st => STANDING.includes(st.pose);
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
   // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)
   const EXPR_POSE = { neutral: {}, joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
-  const exprOf = st => st.shot && st.shot.startsWith("face-") ? st.shot.slice(5) : null;
-  const poseKey = st => (armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose) + (exprOf(st) ? "!" + exprOf(st) : "");
+  const exprOf = st => st.look && st.look.expr && st.look.expr !== "none" ? st.look.expr : null;
+  const poseKey = st => (st.camera === "S" ? st.pose + "+selfie" : armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose) + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
@@ -881,7 +889,7 @@
   function place(fig, shot, W, H, anchorX, far = 0) {
     const b = fig.box;
     let scale, x, y, groundY;
-    if (shot.startsWith("face-")) {
+    if (shot === "face") {
       // Zbliżenie na twarz: głowa wypełnia większość kadru
       scale = (H * 0.5) / (REF.h * 0.15);
       y = H * 0.46 - (fig.head[1] - b.minY) * scale;
@@ -901,7 +909,7 @@
       y = groundY - b.h * scale;
     }
     const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
-    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]) };
+    return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.near ? toScene(fig.hands.near) : null };
   }
 
   function drawFigureAt(parent, pl, cls) {
@@ -919,6 +927,12 @@
     const p = t => [x2 - size * Math.cos(a + t), y2 - size * Math.sin(a + t)];
     const l = p(0.45), r = p(-0.45);
     el("path", { d: `M${f(l[0])},${f(l[1])} L${f(x2)},${f(y2)} L${f(r[0])},${f(r[1])}` }, parent);
+  }
+
+  // Telefon do selfie: ekranem do Manikuna, obiektyw w rogu
+  function phoneGlyph(parent, cx, cy, s) {
+    el("rect", { x: f(cx - s * 0.3), y: f(cy - s * 0.52), width: f(s * 0.6), height: f(s * 1.04), rx: f(s * 0.1), style: "fill:#1E1F24;stroke:#F4F4F5;stroke-width:1.6" }, parent);
+    el("circle", { cx: f(cx + s * 0.12), cy: f(cy - s * 0.36), r: f(s * 0.07), style: "fill:#F4F4F5;stroke:none" }, parent);
   }
 
   // Dron: korpus, cztery ramiona z wirnikami i mała kamera pod spodem
@@ -1304,7 +1318,10 @@
     // Położenie aparatu i lampy: w trakcie animacji lub przeciągania z props, inaczej środek strefy
     const P = st.props || {};
     const zc = camZone(st.camera), zl = ZONES[st.lightZone];
-    const camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
+    let camPt = zonePt([P.camX ?? zc.x, P.camY ?? zc.y], W, H, u);
+    // Selfie: telefon w dłoni Manikuna (póki nie jest przeciągany)
+    const selfie = st.camera === "S" && subj < 0.5 && A.pl.hand && opts.grab !== "camera";
+    if (selfie) camPt = [clamp(A.pl.hand[0], u * 7, W - u * 7), clamp(A.pl.hand[1] - u * 1.5, u * 7, H - u * 7)];
     const litRaw = zonePt([P.litX ?? zl.x, P.litY ?? zl.y], W, H, u);
     const lightT = P.light ?? (isBackLight(st.light) ? 1 : 0);
     const kindT = P.kind ?? (isNaturalLight(st.light) ? 0 : 1);
@@ -1430,12 +1447,13 @@
     // Kamera na pierwszym planie (nad Manikunem i lampą), żeby łatwo ją chwycić; znak aparatu albo drona
     if (layers.has("camera") && reveal > 0) {
       const s = u * 7, [x, y] = camPt, lg = layer();
-      el("circle", { cx: f(x), cy: f(y), r: f(s * 1.25), class: "halo" }, lg);
+      if (!selfie) el("circle", { cx: f(x), cy: f(y), r: f(s * 1.25), class: "halo" }, lg);
       // Obiektyw zawsze skierowany na Manikuna; po prawej stronie aparat jest odbity, nie odwrócony
       const a = Math.atan2(target[1] - y, target[0] - x) * 180 / Math.PI, flip = Math.abs(a) > 90 ? -1 : 1;
       const grab = opts.grab === "camera" ? ` translate(${f(x)} ${f(y)}) scale(1.25) translate(${f(-x)} ${f(-y)})` : "";
       const cg = el("g", { transform: `rotate(${f(a)} ${f(x)} ${f(y)}) translate(${f(x)} ${f(y)}) scale(1 ${flip}) translate(${f(-x)} ${f(-y)})${grab}`, class: opts.grab === "camera" ? "grabbed" : "" }, lg);
-      if (st.camera === "D") droneGlyph(lg, x, y, s * (opts.grab === "camera" ? 1.25 : 1));
+      if (selfie) phoneGlyph(lg, x, y, s * 0.8);
+      else if (st.camera === "D") droneGlyph(lg, x, y, s * (opts.grab === "camera" ? 1.25 : 1));
       else cameraGlyph(cg, x + s * 0.15, y, s);
     }
 
@@ -1501,6 +1519,7 @@
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "look") {
       const lk = scene.look;
+      if (lk.expr !== "none") return lookOpt("expr", lk.expr).name;
       if (lk.hair !== "none") return lookOpt("hair", lk.hair).name;
       if (lk.glasses !== "none") return lookOpt("glasses", lk.glasses).name;
       if (scene.body === "male" && lk.beard !== "none") return lookOpt("beard", lk.beard).name;
@@ -1699,15 +1718,17 @@
       () => set({ beard: o.id }, o.id === "none" ? undefined : "beardColor"), svg => headTile(svg, with_({ beard: o.id })))));
     if (sub === "beardColor") return [backTile("beard")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.beardColor].map(o => tile("opt-beardColor-" + o.id, o.name,
       () => lk.beardColor === o.id, () => set({ beardColor: o.id }), svg => headTile(svg, with_({ beardColor: o.id })))));
+    if (sub === "expr") return [backTile(null)].concat(LOOK.expr.map(o => tile("opt-expr-" + o.id, o.name, () => lk.expr === o.id,
+      () => set({ expr: o.id }), svg => headTile(svg, with_({ expr: o.id })))));
     if (sub === "lips") return [backTile(null)].concat(LOOK.lips.map(o => tile("opt-lips-" + o.id, o.name, () => lk.lips === o.id,
       () => set({ lips: o.id }), svg => headTile(svg, with_({ lips: o.id })))));
     if (sub === "glasses") return [backTile(null)].concat(LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
       () => set({ glasses: o.id }, o.id === "none" ? undefined : "glassesColor"), svg => headTile(svg, with_({ glasses: o.id === "none" ? "none" : o.id })))));
     if (sub === "glassesColor") return [backTile("glasses")].concat(LOOK.glassesColor.map(o => tile("opt-glassesColor-" + o.id, o.name,
       () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), svg => headTile(svg, with_({ glassesColor: o.id })))));
-    const groups = [["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
+    const groups = [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
     // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
-    const SAMPLE = { hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
+    const SAMPLE = { expr: { expr: "joy" }, hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
     return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => lk[k] !== "none",
       () => { scene.sub = k; render(); }, svg => headTile(svg, lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
   }
@@ -2066,6 +2087,8 @@
     document.body.dataset.mode = scene.mode;
     document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
     if (phase === "director" && scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
+    // Selfie tylko z postacią
+    if (scene.subject === "object" && scene.camera === "S") scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
     if (!fitsBody(optionOf("outfit", scene.outfit), scene)) scene.outfit = "casual";
     // Lampa w pełnym słońcu na zewnątrz nie ma sensu: przechodzimy na naturalne w tym samym kierunku
