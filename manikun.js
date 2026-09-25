@@ -239,6 +239,10 @@ function computeFigure(pose, RIG, cloth = null) {
             shapes.push({ t: "deco", d: `M${P(x + 0.02, y - 0.3)} L${P(x + 0.04, y - 0.5)}`, style: "fill:none;stroke:#8FC3E8;stroke-width:2;stroke-linecap:round" });
           });
         }
+      } else if (e === "neutral") {
+        dot(0.2, 0.1, 0.065); dot(0.72, 0.1, 0.05);
+        line(`M${P(0.06, 0.34)} L${P(0.34, 0.36)}`); line(`M${P(0.6, 0.36)} L${P(0.86, 0.34)}`);
+        line(`M${P(0.32, -0.62)} L${P(0.64, -0.62)}`);
       } else if (e === "thought") {
         dot(0.26, 0.14, 0.065); dot(0.78, 0.14, 0.05);
         line(`M${P(0.04, 0.36)} L${P(0.34, 0.36)}`); line(`M${P(0.6, 0.44)} Q${P(0.72, 0.56)} ${P(0.86, 0.46)}`);

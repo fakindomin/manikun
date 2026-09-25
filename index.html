@@ -214,6 +214,9 @@
     transition: background-color 300ms ease, color 300ms ease, opacity 320ms ease, transform 420ms var(--ease);
   }
   [data-phase="director"] .cat:disabled { opacity: 0.35; cursor: default; }
+  .cat.reset .label { color: var(--muted); }
+  .cat.reset.armed { background: var(--accent-soft); color: var(--accent); }
+  .cat.reset.armed .label { color: var(--accent); }
   .cat[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
   .cat > svg { width: 22px; height: 22px; display: block; }
   .cat .label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--ink); }
@@ -404,6 +407,7 @@
       { id: "portrait", name: "Portret", short: "Portret", prompt: "Close-up portrait, head and shoulders in frame" },
       // Twarz: zbliżenie na samą twarz, w środku wybór miny
       { id: "face", name: "Twarz", children: [
+        { id: "face-neutral", name: "Neutralna", short: "Neutralna", prompt: "Extreme close-up of the face", expr: "with a calm, neutral expression and a relaxed face" },
         { id: "face-joy", name: "Radość", short: "Radość", prompt: "Extreme close-up of the face", expr: "with a big genuine joyful smile and bright happy eyes" },
         { id: "face-anger", name: "Złość", short: "Złość", prompt: "Extreme close-up of the face", expr: "with an angry expression, furrowed brows, a clenched jaw and an intense glare" },
         { id: "face-sad", name: "Smutek", short: "Smutek", prompt: "Extreme close-up of the face", expr: "with a sad expression, a downturned mouth and glossy eyes looking slightly down" },
@@ -802,7 +806,7 @@
   const armsApply = st => STANDING.includes(st.pose);
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
   // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)
-  const EXPR_POSE = { joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
+  const EXPR_POSE = { neutral: {}, joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
   const exprOf = st => st.shot && st.shot.startsWith("face-") ? st.shot.slice(5) : null;
   const poseKey = st => (armsApply(st) && st.arms !== "down" ? st.pose + "+" + st.arms : st.pose) + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
@@ -1504,6 +1508,35 @@
 
   // Pasek kategorii: przebudowa tylko przy zmianie listy kategorii, poza tym aktualizacja w miejscu
   let barKey = "", barItems = [];
+  // Układ domyślny: ostatni przycisk paska. Pierwsze stuknięcie pyta, drugie wraca do ekranu startowego.
+  function resetButton() {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cat reset";
+    b.id = "cat-reset";
+    const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" }, b);
+    el("path", { d: "M5 12a7 7 0 1 0 2.1-5" }, svg);
+    el("path", { d: "M7 3v4h4" }, svg);
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = "Układ";
+    const value = document.createElement("span");
+    value.className = "value";
+    value.textContent = "domyślny";
+    b.append(label, value);
+    let armed = null;
+    b.addEventListener("click", () => {
+      if (!armed) {
+        value.textContent = "Na pewno?";
+        b.classList.add("armed");
+        armed = setTimeout(() => { armed = null; value.textContent = "domyślny"; b.classList.remove("armed"); }, 3000);
+        return;
+      }
+      clearTimeout(armed);
+      location.reload();
+    });
+    return b;
+  }
   function renderBar() {
     const cats = activeCats(), key = cats.map(c => c.id).join();
     if (key !== barKey) {
@@ -1528,6 +1561,7 @@
         bar.appendChild(b);
         return { cat, b, svg, value };
       });
+      bar.appendChild(resetButton());
     }
     barItems.forEach(({ cat, b, svg, value }) => {
       b.setAttribute("aria-pressed", String(scene.open === cat.id));
