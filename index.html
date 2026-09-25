@@ -441,7 +441,9 @@
         { id: "mountains", name: "Góry", short: "Góry", prompt: "misty mountain landscape in the background, softly out of focus" },
         { id: "forest", name: "Las", short: "Las", prompt: "quiet pine forest in the background, softly out of focus" },
         { id: "beach", name: "Plaża", short: "Plaża", prompt: "calm sandy beach with the sea on the horizon in the background, softly out of focus" },
-        { id: "meadow", name: "Łąka", short: "Łąka", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" }
+        { id: "meadow", name: "Łąka", short: "Łąka", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" },
+        { id: "lake", name: "Jezioro", short: "Jezioro", prompt: "calm lake in the background, softly out of focus" },
+        { id: "river", name: "Rzeka", short: "Rzeka", prompt: "river flowing through the landscape in the background, softly out of focus" }
       ]},
       { id: "interior", name: "Wnętrze", children: [
         { id: "room", name: "Pokój", short: "Pokój", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
@@ -502,14 +504,27 @@
       { id: "peaks", name: "Szczyty", prompt: "misty mountain landscape in the background, softly out of focus" },
       { id: "lake", name: "Jezioro", prompt: "calm mountain lake with peaks reflected in the water in the background, softly out of focus" },
       { id: "alp", name: "Hala", prompt: "green alpine meadow with mountains behind in the background, softly out of focus" },
-      { id: "fog", name: "Mgła", prompt: "mountains fading into thick fog in the background, softly out of focus" }
+      { id: "fog", name: "Mgła", extra: true }
+    ],
+    lake: [
+      { id: "calm", name: "Spokojne", prompt: "calm lake with a tree-lined far shore in the background, softly out of focus" },
+      { id: "jetty", name: "Pomost", prompt: "calm lake with a wooden jetty reaching into the water in the background, softly out of focus" },
+      { id: "reeds", name: "Trzciny", prompt: "calm lake with tall reeds along the shore in the background, softly out of focus" },
+      { id: "fog", name: "Mgła", extra: true }
+    ],
+    river: [
+      { id: "calm", name: "Spokojna", prompt: "calm river winding through green banks in the background, softly out of focus" },
+      { id: "rocky", name: "Kamienista", prompt: "rocky river with small rapids and white water in the background, softly out of focus" },
+      { id: "bridge", name: "Mostek", prompt: "river with a small wooden footbridge across it in the background, softly out of focus" },
+      { id: "fog", name: "Mgła", extra: true }
     ],
     forest: [
       { id: "conifer", name: "Iglasty", prompt: "quiet pine forest in the background, softly out of focus" },
       { id: "leafy", name: "Liściasty", prompt: "leafy deciduous forest in the background, softly out of focus" },
       { id: "clearing", name: "Polana", prompt: "sunny forest clearing surrounded by trees in the background, softly out of focus" },
       { id: "stream", name: "Rzeczka", prompt: "small forest stream winding between the trees in the background, softly out of focus" },
-      { id: "path", name: "Ścieżka", prompt: "forest path leading into the trees in the background, softly out of focus" }
+      { id: "path", name: "Ścieżka", prompt: "forest path leading into the trees in the background, softly out of focus" },
+      { id: "fog", name: "Mgła", extra: true }
     ],
     beach: [
       { id: "sand", name: "Piaszczysta", prompt: "calm sandy beach with the sea on the horizon in the background, softly out of focus" },
@@ -521,7 +536,8 @@
       { id: "green", name: "Zielona", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" },
       { id: "flowers", name: "Kwiaty", prompt: "meadow full of colourful wildflowers in the background, softly out of focus" },
       { id: "wheat", name: "Zboże", prompt: "golden wheat field in the background, softly out of focus" },
-      { id: "tree", name: "Samotne drzewo", prompt: "open meadow with a single lone tree on a hill in the background, softly out of focus" }
+      { id: "tree", name: "Samotne drzewo", prompt: "open meadow with a single lone tree on a hill in the background, softly out of focus" },
+      { id: "fog", name: "Mgła", extra: true }
     ],
     room: [
       { id: "living", name: "Salon", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
@@ -536,8 +552,11 @@
       { id: "bakery", name: "Piekarnia", prompt: "small bakery interior with shelves of fresh bread in the background, softly out of focus" }
     ]
   };
+  // Wariant główny (jeden) i dodatki (mgła), które łączą się z każdym wariantem
   const bgVariant = (st, bg = st.background) => (st.bgv && st.bgv[bg]) || BG_VARIANTS[bg][0].id;
-  const bgPrompt = () => BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).prompt;
+  const bgExtras = (st, bg = st.background) => (st.bgx && st.bgx[bg]) || [];
+  const EXTRA_PROMPT = { fog: "with soft mist drifting over the scene" };
+  const bgPrompt = () => [BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).prompt, ...bgExtras(scene).map(x => EXTRA_PROMPT[x])].join(", ");
   const ENDING = {
     photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
     video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
@@ -548,7 +567,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "none", hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, time: "day", motion: "orbit",
+    subject: "person", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", face: false, look: { hair: "none", hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -1075,7 +1094,17 @@
     }
   }
 
-  function drawBackground(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null) {
+  // Tło z dodatkami: najpierw wariant, potem nakładki (mgła leży pasami nad horyzontem i przy ziemi)
+  function drawBackground(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null, extras = []) {
+    drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod, cel, skyX, v);
+    if (extras.includes("fog")) {
+      [[-0.14, 0.24], [-0.07, 0.2], [0.0, 0.15], [0.06, 0.11], [0.14, 0.07]].forEach(([dy, op], k) => {
+        const y = hz + dy * H;
+        paint("path", { d: `M0,${f(y)} C${f(W * 0.3)},${f(y - H * 0.03)} ${f(W * 0.6)},${f(y + H * 0.03)} ${f(W)},${f(y - H * 0.01)} L${f(W)},${f(y + H * 0.07)} C${f(W * 0.6)},${f(y + H * 0.1)} ${f(W * 0.3)},${f(y + H * 0.04)} 0,${f(y + H * 0.08)} Z` }, "#D2D7DC", g, op);
+      });
+    }
+  }
+  function drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null) {
     // Miękka plama światła (latarnie, lampy w kawiarni)
     const glowAt = (x, y, r, color, op) => {
       const gid = uid + "l" + Math.round(x) + "_" + Math.round(y);
@@ -1157,9 +1186,6 @@
         paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.09) }, vGrad(defs, uid + "lk", [[0, "#6D8296"], [1, "#4E6275"]]), g);
         paint("path", { d: peaks([[0, 0.05], [0.2, 0.08], [0.4, 0.04], [0.55, 0.07], [0.75, 0.03], [1, 0.05]], W, hz + H * 0.02, -H) }, "#5C687A", g, 0.35);
         for (let k = 0; k < 5; k++) paint("rect", { x: f(W * (0.1 + k * 0.18)), y: f(hz + H * (0.05 + (k % 2) * 0.03)), width: f(W * 0.1), height: 0.8 }, "#C9D8E4", g, 0.5);
-      }
-      if (v === "fog") {
-        [0.02, 0.07, 0.12].forEach((y, k) => paint("rect", { x: 0, y: f(hz - H * (0.16 - y)), width: f(W), height: f(H * 0.08) }, "#C9CFD6", g, 0.28 - k * 0.05));
       }
       return;
     }
@@ -1271,6 +1297,49 @@
         const x0 = W * 0.64, x1 = W * 1.05;
         paint("path", { d: `M${f(W * 0.6)},${f(hz + H * 0.01)} L${f(W * 0.64)},${f(hz + H * 0.01)} L${f(x1)},${f(hz + H * 0.09)} L${f(x0 + W * 0.12)},${f(hz + H * 0.09)} Z` }, "#6A5844", g);
         for (let k = 0; k < 6; k++) { const t = k / 5; paint("rect", { x: f(W * (0.62 + t * 0.34)), y: f(hz + H * (0.01 + t * 0.08)), width: f(W * 0.006 * (1 + t * 2)), height: f(H * (0.01 + t * 0.03)) }, "#3E3226", g); }
+      }
+      return;
+    }
+    if (kind === "lake" || kind === "river") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#40526A"], [1, "#9AABB6"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      // Dalszy brzeg: linia drzew
+      let d = `M0,${f(hz)}`;
+      for (let x = 0; x <= 1.001; x += 0.04) d += ` L${f(x * W)},${f(hz - H * (0.035 + ((x * 29) % 1) * 0.03))} L${f((x + 0.02) * W)},${f(hz - H * 0.015)}`;
+      paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3F5143", g);
+      if (kind === "lake") {
+        // Szeroka tafla wody z odbiciem brzegu i jasnymi refleksami, bliżej trawiasty brzeg
+        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.2) }, vGrad(defs, uid + "w", [[0, "#6F8799"], [1, "#4D6475"]]), g);
+        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.025) }, "#3F5143", g, 0.35);
+        for (let k = 0; k < 7; k++) paint("rect", { x: f(W * (0.05 + ((k * 0.37) % 0.9))), y: f(hz + H * (0.04 + k * 0.02)), width: f(W * (0.08 + (k % 3) * 0.04)), height: 0.8 }, "#D5E2EA", g, 0.45);
+        paint("path", { d: `M0,${f(hz + H * 0.2)} Q${f(W * 0.5)},${f(hz + H * 0.17)} ${f(W)},${f(hz + H * 0.21)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#4A6146"], [1, "#2F3D2E"]]), g);
+        if (v === "jetty") {
+          paint("path", { d: `M${f(W * 0.62)},${f(H)} L${f(W * 0.9)},${f(H)} L${f(W * 0.7)},${f(hz + H * 0.07)} L${f(W * 0.64)},${f(hz + H * 0.07)} Z` }, "#6A5844", g);
+          for (let k = 1; k < 8; k++) { const t = k / 8, y = hz + H * 0.07 + (H - hz - H * 0.07) * t * t; paint("rect", { x: f(W * (0.64 - t * 0.02)), y: f(y), width: f(W * (0.06 + t * 0.22)), height: 0.8 }, "#3E3226", g, 0.6); }
+        }
+        if (v === "reeds") {
+          [[0, 0.22], [0.8, 1]].forEach(([x0, x1]) => { for (let k = 0; k < 14; k++) {
+            const x = (x0 + (x1 - x0) * (k / 13)) * W, h = H * (0.1 + ((k * 0.37) % 1) * 0.08), by = hz + H * 0.22;
+            el("path", { d: `M${f(x)},${f(by)} Q${f(x + W * 0.01)},${f(by - h / 2)} ${f(x + W * 0.004)},${f(by - h)}`, style: "fill:none;stroke:#5B6B3E;stroke-width:1.4" }, g);
+            if (k % 3 === 0) paint("ellipse", { cx: f(x + W * 0.004), cy: f(by - h), rx: f(W * 0.005), ry: f(H * 0.015) }, "#6A4A30", g);
+          } });
+        }
+      } else {
+        // Rzeka: zielone brzegi, szeroki nurt od horyzontu do przodu kadru
+        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#4A6146"], [1, "#2F3D2E"]]), g);
+        paint("path", { d: `M${f(W * 0.46)},${f(hz)} C${f(W * 0.7)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.2)},${f(hz + (H - hz) * 0.6)} ${f(W * 0.3)},${f(H)} L${f(W * 0.95)},${f(H)} C${f(W * 0.55)},${f(hz + (H - hz) * 0.6)} ${f(W * 0.85)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.54)},${f(hz)} Z` }, vGrad(defs, uid + "w", [[0, "#7C98A6"], [1, "#4F6D7C"]]), g);
+        if (v === "rocky") {
+          [[0.42, 0.72, 0.05], [0.62, 0.84, 0.06], [0.5, 0.95, 0.07], [0.72, 0.62, 0.035]].forEach(([x, y, r]) => {
+            paint("ellipse", { cx: f(x * W), cy: f(y * H), rx: f(r * W * 1.4), ry: f(r * H * 0.45) }, "#5A5853", g);
+            el("path", { d: `M${f(x * W - r * W * 1.8)},${f(y * H + r * H * 0.35)} q${f(r * W * 0.6)},${f(-r * H * 0.2)} ${f(r * W * 1.2)},0`, style: "fill:none;stroke:#E6EEF2;stroke-width:1.2;opacity:0.8" }, g);
+          });
+        }
+        if (v === "bridge") {
+          // Drewniany mostek łukiem nad rzeką
+          const y = hz + (H - hz) * 0.32;
+          el("path", { d: `M${f(W * 0.3)},${f(y + H * 0.02)} Q${f(W * 0.6)},${f(y - H * 0.06)} ${f(W * 0.9)},${f(y + H * 0.02)}`, style: `fill:none;stroke:#6A5844;stroke-width:${f(H * 0.018)}` }, g);
+          for (let k = 0; k <= 6; k++) { const t = k / 6, x = W * (0.3 + t * 0.6), yy = (1 - t) * (1 - t) * (y + H * 0.02) + 2 * t * (1 - t) * (y - H * 0.06) + t * t * (y + H * 0.02); paint("rect", { x: f(x - 0.7), y: f(yy - H * 0.04), width: 1.4, height: f(H * 0.04) }, "#4E3F30", g); }
+        }
       }
       return;
     }
@@ -1576,10 +1645,10 @@
       const gy = st.shot === "full" ? pl.groundY : H * 0.95;
       if (st.bgTrans) {
         // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st, st.bgTrans.old));
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st));
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st, st.bgTrans.old), bgExtras(st, st.bgTrans.old));
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st), bgExtras(st));
       } else {
-        drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st));
+        drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st), bgExtras(st));
       }
       // Pora dnia delikatnie zmienia całe tło (bez studia): ciepło o złotej godzinie, ciemny granat nocą
       if (st.background !== "studio") {
@@ -1961,9 +2030,20 @@
   }
   function variantTiles(bg) {
     const parent = (optionsOf("background").find(o => o.children && o.children.some(c => c.id === bg)) || {}).id || null;
-    return [backTile(parent)].concat(BG_VARIANTS[bg].map(vr => tile("opt-bgv-" + vr.id, vr.name, () => bgVariant(scene, bg) === vr.id,
-      () => { scene.bgv = { ...scene.bgv, [bg]: vr.id }; render(); },
-      svg => renderScene(svg, { ...scene, background: bg, bgv: { ...scene.bgv, [bg]: vr.id } }, 100, 100, new Set(TILE_LAYERS.background)))));
+    // Warianty wykluczają się nawzajem; dodatki ("+ Mgła") włącza się i wyłącza niezależnie
+    return [backTile(parent)].concat(BG_VARIANTS[bg].map(vr => {
+      if (vr.extra) {
+        const on = () => bgExtras(scene, bg).includes(vr.id);
+        return tile("opt-bgx-" + vr.id, "+ " + vr.name, on, () => {
+          const cur = bgExtras(scene, bg);
+          scene.bgx = { ...scene.bgx, [bg]: on() ? cur.filter(x => x !== vr.id) : [...cur, vr.id] };
+          render();
+        }, svg => renderScene(svg, { ...scene, background: bg, bgx: { ...scene.bgx, [bg]: [vr.id] } }, 100, 100, new Set(TILE_LAYERS.background)));
+      }
+      return tile("opt-bgv-" + vr.id, vr.name, () => bgVariant(scene, bg) === vr.id,
+        () => { scene.bgv = { ...scene.bgv, [bg]: vr.id }; render(); },
+        svg => renderScene(svg, { ...scene, background: bg, bgv: { ...scene.bgv, [bg]: vr.id } }, 100, 100, new Set(TILE_LAYERS.background)));
+    }));
   }
 
   function makeTiles(catId) {
