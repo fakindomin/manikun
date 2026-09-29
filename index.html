@@ -312,6 +312,12 @@
     transition: transform 460ms var(--ease), opacity 320ms ease;
   }
   .row::-webkit-scrollbar { display: none; }
+  /* Komputer: rząd da się złapać myszą i przesunąć */
+  @media (hover: hover) and (pointer: fine) {
+    .row { cursor: grab; -webkit-user-select: none; user-select: none; }
+    .row.dragging { cursor: grabbing; }
+    .row.dragging .tile { pointer-events: none; }
+  }
   .row[data-pos="bottom"] { transform: translateY(calc(var(--row-h) + var(--row-gap))); }
   .row[data-pos="below"] { transform: translateY(calc((var(--row-h) + var(--row-gap)) * 2 + 24px)); }
   .row[data-pos="gone"] { opacity: 0; pointer-events: none; }
@@ -1073,10 +1079,11 @@
   const READOUT = { photo: "f/2.8 · 1/125 · ISO 100", video: "00:00:05:00 · 24 fps" };
 
   // ---------- Stan sceny ----------
+  // Manikun zaczyna uśmiechnięty (mina Radość)
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "joy", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -4301,6 +4308,56 @@
   }
   addEventListener("resize", drawThread);
   rowsEl.addEventListener("transitionend", drawThread);
+
+  // Komputer: rzędy przewija kółko myszy (obrót w pionie przesuwa rząd w bok) albo przeciągnięcie myszą.
+  // Puszczony rząd jeszcze chwilę jedzie; kliknięcie kończące przeciąganie nie wybiera kafelka.
+  rowsEl.addEventListener("wheel", e => {
+    const row = e.target.closest(".row");
+    if (!row || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || row.scrollWidth <= row.clientWidth) return;
+    e.preventDefault();
+    row.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? row.clientWidth : 1);
+  }, { passive: false });
+  let rowDrag = null, rowGlide = null;
+  rowsEl.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    const row = e.target.closest(".row");
+    if (!row || row.scrollWidth <= row.clientWidth) return;
+    cancelAnimationFrame(rowGlide);
+    rowDrag = { row, x: e.clientX, left: row.scrollLeft, moved: false, v: 0, t: performance.now(), lx: e.clientX };
+  });
+  addEventListener("pointermove", e => {
+    if (!rowDrag) return;
+    const d = e.clientX - rowDrag.x;
+    if (!rowDrag.moved && Math.abs(d) < 6) return;
+    if (!rowDrag.moved) { rowDrag.moved = true; rowDrag.row.classList.add("dragging"); }
+    rowDrag.row.scrollLeft = rowDrag.left - d;
+    const now = performance.now(), dt = Math.max(1, now - rowDrag.t);
+    rowDrag.v = 0.8 * ((rowDrag.lx - e.clientX) / dt) + 0.2 * rowDrag.v;
+    rowDrag.t = now;
+    rowDrag.lx = e.clientX;
+  });
+  function endRowDrag() {
+    if (!rowDrag) return;
+    const { row, moved } = rowDrag;
+    let v = performance.now() - rowDrag.t > 80 ? 0 : rowDrag.v;
+    rowDrag = null;
+    if (!moved) return;
+    const block = e => { e.stopPropagation(); e.preventDefault(); };
+    rowsEl.addEventListener("click", block, { capture: true, once: true });
+    setTimeout(() => { rowsEl.removeEventListener("click", block, { capture: true }); row.classList.remove("dragging"); }, 0);
+    if (reduceMotion.matches) return;
+    let last = performance.now();
+    const glide = now => {
+      const dt = now - last;
+      last = now;
+      row.scrollLeft += v * dt;
+      v *= Math.pow(0.94, dt / 16);
+      if (Math.abs(v) > 0.02) rowGlide = requestAnimationFrame(glide);
+    };
+    rowGlide = requestAnimationFrame(glide);
+  }
+  addEventListener("pointerup", endRowDrag);
+  addEventListener("pointercancel", endRowDrag);
 
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
