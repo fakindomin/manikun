@@ -160,6 +160,9 @@
   body.sheet-open .sheet-scrim { opacity: 1; pointer-events: auto; }
   .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
   .sheet h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .sheet-head .icon-btn { width: 32px; height: 32px; border-radius: 11px; }
+  .sheet-head .icon-btn svg { width: 16px; height: 16px; }
   .switch-row {
     font: inherit; color: var(--ink); text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px;
     background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px;
@@ -175,8 +178,33 @@
   .guide-photo { width: 112px; height: 140px; flex: none; border-radius: 14px; }
   .guide-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--ink); }
   .guide-list li::before { content: "✓"; color: var(--accent); font-weight: 700; margin-right: 6px; }
-  .guide-steps { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-  .sheet-note { margin: 0; font-size: 13px; color: var(--muted); }
+  .sheet-lead { margin: -6px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+  /* Trzy kroki w jednym rzędzie */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .steps li {
+    display: flex; align-items: center; gap: 7px; min-width: 0;
+    font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px;
+  }
+  .steps b {
+    flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+    font-family: var(--mono); font-size: 11px; color: var(--on-accent); background: var(--accent);
+  }
+  /* Generatory: znak (litera w kolorze marki, później prawdziwe logo) i nazwa */
+  .gens { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .gen {
+    display: grid; justify-items: center; gap: 5px; padding: 8px 2px 7px; min-width: 0;
+    color: var(--ink); text-decoration: none; font-size: 10.5px; font-weight: 600; letter-spacing: -0.02em; text-align: center;
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px;
+    transition: border-color 300ms ease, filter 200ms ease;
+  }
+  .gen:active { filter: brightness(1.25); }
+  .gen .mark {
+    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    font-size: 16px; font-weight: 700; color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .gen .gname { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gen.used { border-color: var(--accent); }
   .sheet-copy {
     font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; border: 0; border-radius: 16px; padding: 14px;
     background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px var(--accent-soft);
@@ -353,7 +381,7 @@
 
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .toast {
-    position: fixed; left: 50%; top: 64px; z-index: 5; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box;
+    position: fixed; left: 50%; top: 64px; z-index: 20; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box;
     transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
     background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 14px;
     padding: 10px 14px; font-size: 13px; font-weight: 600; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,0.5);
@@ -418,11 +446,15 @@
   </nav>
   <!-- Panel kopiowania: opcja własnego zdjęcia, instrukcja z przykładem i przycisk kopiowania -->
   <div class="sheet-scrim" id="sheetScrim"></div>
-  <section class="sheet" id="copySheet" aria-label="Kopiuj prompt" aria-hidden="true">
+  <section class="sheet" id="copySheet" aria-label="Maniscrypt" aria-hidden="true">
     <div class="sheet-grip" aria-hidden="true"></div>
-    <h2>Kopiuj prompt</h2>
+    <div class="sheet-head">
+      <h2>Maniscrypt</h2>
+      <button class="icon-btn" type="button" id="sheetClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="sheet-lead">Maniscrypt to gotowy opis ujęcia (prompt) dla generatora AI.</p>
     <button class="switch-row" type="button" id="faceSwitch" role="switch" aria-checked="false">
-      <span class="switch-text"><b>Dołączę własne zdjęcie twarzy</b><small>Generator weźmie twarz z Twojego zdjęcia, a resztę z kreatora</small></span>
+      <span class="switch-text"><b>Dołączę zdjęcie swojej twarzy</b><small>Generator weźmie twarz z Twojego zdjęcia, a resztę z Maniscryptu</small></span>
       <span class="switch" aria-hidden="true"><span></span></span>
     </button>
     <div class="face-guide" id="faceGuide" hidden>
@@ -436,16 +468,18 @@
           <li>Spokojna mina lub lekki uśmiech, bez filtrów</li>
         </ul>
       </div>
-      <ol class="guide-steps">
-        <li>Skopiuj prompt przyciskiem poniżej.</li>
-        <li>Otwórz generator, np. ChatGPT, Gemini, Midjourney lub Higgsfield.</li>
-        <li>Wklej prompt i dołącz swoje zdjęcie twarzy, potem wyślij.</li>
-      </ol>
     </div>
-    <p class="sheet-note" id="sheetNote">Wklej prompt w generatorze obrazów lub wideo.</p>
-    <!-- Główny przycisk kopiowania: napis „Manikun” i ikona kopiowania (po skopiowaniu: ptaszek) -->
-    <button class="sheet-copy" type="button" id="sheetCopy" aria-label="Kopiuj prompt">
-      <span id="sheetCopyLabel">Manikun</span>
+    <!-- Trzy kroki; trzeci mówi o zdjęciu, gdy przełącznik jest włączony -->
+    <ol class="steps" aria-label="Jak użyć">
+      <li><b>1</b>Skopiuj</li>
+      <li><b>2</b>Otwórz generator</li>
+      <li><b>3</b><span id="stepPaste">Wklej</span></li>
+    </ol>
+    <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
+    <div class="gens" id="gens" role="list" aria-label="Generatory"></div>
+    <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
+    <button class="sheet-copy" type="button" id="sheetCopy">
+      <span id="sheetCopyLabel">Kopiuj Maniscrypt</span>
       <svg viewBox="0 0 24 24" aria-hidden="true" class="copy-ico"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>
       <svg viewBox="0 0 24 24" aria-hidden="true" class="done-ico"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
     </button>
@@ -3011,7 +3045,7 @@
   function copyStatus(text) {
     copyBtn.title = text;
     clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => { copyBtn.title = "Kopiuj prompt"; }, 2000);
+    copyTimer = setTimeout(() => { copyBtn.title = "Kopiuj Maniscrypt"; }, 2000);
   }
   function hiddenCopyOk(text) {
     const ta = document.createElement("textarea");
@@ -3079,16 +3113,65 @@
   }
   document.getElementById("narrator").addEventListener("click", () => nod());
 
-  // "Kopiuj" otwiera panel kopiowania; samo kopiowanie jest pod dużym przyciskiem w panelu
+  // ---------- Panel Maniscryptu ----------
+  // Przycisk Maniscryptu otwiera panel: wyjaśnienie, opcja zdjęcia twarzy, trzy kroki, generatory i duży przycisk kopiowania.
+  // Generatory: na razie litera w kolorze marki (prawdziwe logo podmienione później). Lista zależy od trybu.
+  const GENERATORS = {
+    photo: [
+      { name: "ChatGPT", mark: "C", color: "#10A37F", url: "https://chatgpt.com/" },
+      { name: "Gemini", mark: "G", color: "#4E7CF6", url: "https://gemini.google.com/" },
+      { name: "Midjourney", mark: "M", color: "#3B3F4A", url: "https://www.midjourney.com/imagine" },
+      { name: "Leonardo", mark: "L", color: "#7C4DDB", url: "https://app.leonardo.ai/" },
+      { name: "Ideogram", mark: "I", color: "#1F8FB8", url: "https://ideogram.ai/" }
+    ],
+    video: [
+      { name: "Sora", mark: "S", color: "#3B3F4A", url: "https://sora.chatgpt.com/" },
+      { name: "Veo", mark: "V", color: "#4E7CF6", url: "https://gemini.google.com/" },
+      { name: "Kling", mark: "K", color: "#12A58C", url: "https://klingai.com/" },
+      { name: "Runway", mark: "R", color: "#5B5F6B", url: "https://app.runwayml.com/" },
+      { name: "Hailuo", mark: "H", color: "#E3643A", url: "https://hailuoai.video/" }
+    ]
+  };
   const sheetEl = document.getElementById("copySheet"), faceSwitch = document.getElementById("faceSwitch");
-  const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetCopyLabel = document.getElementById("sheetCopyLabel"), sheetNote = document.getElementById("sheetNote");
+  const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetCopyLabel = document.getElementById("sheetCopyLabel");
+  const gensEl = document.getElementById("gens"), stepPaste = document.getElementById("stepPaste");
+  const withFace = () => sheetPhoto && scene.subject === "person";
   function syncSheet() {
     const person = scene.subject === "person";
     faceSwitch.hidden = !person;
-    faceSwitch.setAttribute("aria-checked", String(person && sheetPhoto));
-    faceGuide.hidden = !(person && sheetPhoto);
-    sheetNote.hidden = person && sheetPhoto;
-    if (person && sheetPhoto) drawGuidePhoto();
+    faceSwitch.setAttribute("aria-checked", String(withFace()));
+    faceGuide.hidden = !withFace();
+    stepPaste.textContent = withFace() ? "Wklej i dołącz zdjęcie" : "Wklej";
+    if (withFace()) drawGuidePhoto();
+    renderGens();
+  }
+  function renderGens() {
+    gensEl.replaceChildren();
+    GENERATORS[scene.mode].forEach(g => {
+      const a = document.createElement("a");
+      a.className = "gen";
+      a.href = g.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.setAttribute("role", "listitem");
+      a.setAttribute("aria-label", `Skopiuj Maniscrypt i otwórz ${g.name}`);
+      const m = document.createElement("span");
+      m.className = "mark";
+      m.style.background = g.color;
+      m.textContent = g.mark;
+      const n = document.createElement("span");
+      n.className = "gname";
+      n.textContent = g.name;
+      a.append(m, n);
+      // Stuknięcie w generator od razu kopiuje Maniscrypt, a link otwiera stronę generatora
+      a.addEventListener("click", () => {
+        copyManiscrypt(ok => {
+          a.classList.add("used");
+          showToast(ok ? `Skopiowano. Wklej w ${g.name}` + (withFace() ? " i dołącz zdjęcie twarzy" : "") : "Nie udało się skopiować. Użyj przycisku Kopiuj Maniscrypt");
+        });
+      });
+      gensEl.appendChild(a);
+    });
   }
   // Przykładowe zdjęcie: głowa i ramiona Manikuna na wprost, na jasnym tle, z owalem pokazującym, gdzie ma być twarz
   function drawGuidePhoto() {
@@ -3099,32 +3182,33 @@
     Object.assign(scene, saved);
     el("ellipse", { cx: f(g.head[0]), cy: f(g.head[1]), rx: 27, ry: 33, style: "fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:4 3" }, svg);
   }
+  // Kopiowanie tekstu Maniscryptu (z akapitem o zdjęciu, gdy przełącznik jest włączony)
+  function copyManiscrypt(done) {
+    const text = buildPrompt(withFace());
+    try {
+      navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(hiddenCopyOk(text)));
+    } catch (e) {
+      done(hiddenCopyOk(text));
+    }
+  }
   // Przy każdym otwarciu panelu wybór zdjęcia startuje wyłączony
   let sheetPhoto = false;
   function setSheet(open) {
     if (open) { sheetPhoto = false; syncSheet(); }
     document.body.classList.toggle("sheet-open", open);
     sheetEl.setAttribute("aria-hidden", String(!open));
-    sheetCopyLabel.textContent = "Manikun";
+    sheetCopyLabel.textContent = "Kopiuj Maniscrypt";
     sheetCopy.classList.remove("done");
   }
   copyBtn.addEventListener("click", () => setSheet(true));
   document.getElementById("sheetScrim").addEventListener("click", () => setSheet(false));
+  document.getElementById("sheetClose").addEventListener("click", () => setSheet(false));
   faceSwitch.addEventListener("click", () => { sheetPhoto = !sheetPhoto; syncSheet(); });
-  sheetCopy.addEventListener("click", () => {
-    const text = buildPrompt(sheetPhoto);
-    const done = ok => {
-      sheetCopyLabel.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
-      sheetCopy.classList.toggle("done", ok);
-      if (ok && sheetPhoto && scene.subject === "person") showToast("Teraz wklej prompt w generatorze i dołącz swoje zdjęcie twarzy");
-      if (ok) setTimeout(() => setSheet(false), 1100);
-    };
-    try {
-      navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(hiddenCopyOk(text)));
-    } catch (e) {
-      done(hiddenCopyOk(text));
-    }
-  });
+  sheetCopy.addEventListener("click", () => copyManiscrypt(ok => {
+    sheetCopyLabel.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
+    sheetCopy.classList.toggle("done", ok);
+    if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz zdjęcie twarzy" : ""));
+  }));
 
   // ---------- Start: Manikun wita się w kadrze, potem kadr zostaje, a dół zamienia się w opcje ----------
   const appEl = document.getElementById("app");
@@ -3314,7 +3398,7 @@
     appEl.dataset.phase = "director";
     navInit("style");
     render();
-    showToast("Scena z intro. Skopiuj prompt, potem przełącz styl na Fantasy i skopiuj drugi.");
+    showToast("Scena z intro. Skopiuj Maniscrypt, potem przełącz styl na Fantasy i skopiuj drugi.");
   } else {
     render();
     greet();
