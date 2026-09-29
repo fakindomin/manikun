@@ -234,8 +234,18 @@
   }
   .menu-item svg { width: 20px; height: 20px; flex: none; }
   .menu-item:not(:disabled) { color: var(--ink); cursor: pointer; }
-  .menu-credit { margin: auto 10px 4px; font-size: 11px; line-height: 1.4; color: var(--muted); }
-  .menu-credit a { color: inherit; }
+  /* Okno informacji z menu (instrukcja Maniscryptu, O Manikunie): wysuwa się od dołu jak panel Maniscryptu */
+  body.info-open .sheet.info { transform: none; }
+  body.info-open #infoScrim { opacity: 1; pointer-events: auto; }
+  .info-body { display: grid; gap: 16px; font-size: 14px; line-height: 1.5; color: var(--ink); }
+  .info-body h3 { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .info-body p { margin: 0; color: rgba(244, 244, 245, 0.86); max-width: 62ch; }
+  .info-body ol, .info-body ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  .info-body li::marker { color: var(--accent); font-weight: 700; }
+  .info-body small { color: var(--muted); font-size: 12px; }
+  .info-body a { color: var(--accent); }
+  .info-body .gens { margin-top: 6px; }
+  .info-body .lead { font-size: 15px; color: var(--ink); }
   .menu-item:not(:disabled):active { background: var(--surface-2); }
   .menu-item .soon { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 7px; }
   .chip {
@@ -497,12 +507,11 @@
     <h2><em>Manikun</em> · menu</h2>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Obejrzyj tutorial<span class="soon">Wkrótce</span></button>
-    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Jak używać Maniscryptu<span class="soon">Wkrótce</span></button>
+    <button class="menu-item" type="button" id="menuHelp"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Jak używać Maniscryptu</button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historia Maniscryptów<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ustawienia<span class="soon">Wkrótce</span></button>
-    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.5"/></svg>O Manikunie<span class="soon">Wkrótce</span></button>
-    <p class="menu-credit">Głowa 3D: model „<a href="https://sketchfab.com/3d-models/wooden-mannequin-rigged-8040cfbe4be54693bacbefe992da5cf4" target="_blank" rel="noopener">Wooden Mannequin (Rigged)</a>” – zionmuoria, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
+    <button class="menu-item" type="button" id="menuAbout"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.5"/></svg>O Manikunie</button>
   </nav>
   <!-- Panel kopiowania: opcja własnego zdjęcia, instrukcja z przykładem i przycisk kopiowania -->
   <div class="sheet-scrim" id="sheetScrim"></div>
@@ -545,6 +554,16 @@
       <svg viewBox="0 0 24 24" aria-hidden="true" class="copy-ico"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>
       <svg viewBox="0 0 24 24" aria-hidden="true" class="done-ico"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
     </button>
+  </section>
+  <!-- Okno informacji z menu -->
+  <div class="sheet-scrim" id="infoScrim"></div>
+  <section class="sheet info" id="infoSheet" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="infoTitle"></h2>
+      <button class="icon-btn" type="button" id="infoClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="info-body" id="infoBody"></div>
   </section>
 
   <div class="stage">
@@ -3327,6 +3346,58 @@
     menuNewLabel.textContent = "Na pewno? Stuknij jeszcze raz";
     newArmed = setTimeout(() => { newArmed = null; menuNewLabel.textContent = "Nowa scena"; }, 3000);
   });
+  // ---------- Menu: instrukcja Maniscryptu i O Manikunie ----------
+  const infoBody = document.getElementById("infoBody"), infoTitle = document.getElementById("infoTitle");
+  const INFO = {
+    help: {
+      title: "Jak używać Maniscryptu",
+      html: `
+        <p class="lead">Maniscrypt to gotowy opis ujęcia (prompt) dla generatora AI. Manikun pisze go za Ciebie na podstawie sceny w kadrze.</p>
+        <section><h3>Krok po kroku</h3><ol>
+          <li>Ustaw scenę: w Kreatorze krok po kroku albo w Swobodzie, gdzie wszystko jest pod ręką.</li>
+          <li>Stuknij zielony przycisk po prawej od suwaka Zdjęcie / Wideo.</li>
+          <li>Skopiuj Maniscrypt przyciskiem albo od razu stuknij generator: skopiuje i otworzy stronę.</li>
+          <li>W generatorze wklej tekst i wyślij.</li>
+        </ol></section>
+        <section><h3>Własna twarz</h3><p>W panelu Maniscryptu włącz „Dołączę zdjęcie swojej twarzy”. W generatorze wklej tekst i dołącz zdjęcie: twarz na wprost, dobrze oświetlona, bez okularów przeciwsłonecznych. Resztę sceny generator weźmie z Maniscryptu.</p></section>
+        <section><h3>Generatory zdjęć</h3><div class="gens" data-gens="photo"></div></section>
+        <section><h3>Generatory wideo</h3><div class="gens" data-gens="video"></div><small>Stuknięcie w generator kopiuje Maniscrypt bieżącej sceny i otwiera jego stronę.</small></section>
+        <section><h3>Wskazówki</h3><ul>
+          <li>Generator nie zawsze trzyma kąt kamery co do centymetra. Wygeneruj kilka wersji i wybierz najlepszą.</li>
+          <li>Styl zmienia cały opis, nie tylko kolory. Ten sam kadr w stylu Noir i Anime to dwa różne Maniscrypty.</li>
+          <li>Wideo najlepiej wychodzi w krótkich ujęciach z jednym ruchem kamery.</li>
+        </ul></section>`
+    },
+    about: {
+      title: "O Manikunie",
+      html: `
+        <p class="lead">Manikun to wirtualny reżyser ujęć. Ustawiasz scenę na drewnianym manekinie: postać, ubiór, pozę, kamerę, światło i tło, a Manikun zamienia ją w Maniscrypt, czyli gotowy opis dla generatora zdjęć i wideo AI.</p>
+        <p>Ponad miliard możliwych ujęć, bez pisania ani jednego słowa po angielsku.</p>
+        <section><h3>Podziękowania</h3><p>Głowa 3D na przycisku Manikuna: model „<a href="https://sketchfab.com/3d-models/wooden-mannequin-rigged-8040cfbe4be54693bacbefe992da5cf4" target="_blank" rel="noopener">Wooden Mannequin (Rigged)</a>”, autor: zionmuoria, licencja <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p></section>
+        <section><h3>Wersja</h3><p>Wersja testowa przebudowy. Obiekty, zwierzęta i sceny dowolne są w przygotowaniu.</p></section>`
+    }
+  };
+  function openInfo(id) {
+    const page = INFO[id];
+    infoTitle.textContent = page.title;
+    infoBody.innerHTML = page.html;
+    infoBody.querySelectorAll("[data-gens]").forEach(box => GENERATORS[box.dataset.gens].forEach(g => box.appendChild(genLink(g))));
+    infoBody.scrollTop = 0;
+    document.getElementById("infoSheet").scrollTop = 0;
+    setMenu(false);
+    document.body.classList.add("info-open");
+    document.getElementById("infoSheet").setAttribute("aria-hidden", "false");
+    sfx("tok");
+  }
+  function closeInfo() {
+    document.body.classList.remove("info-open");
+    document.getElementById("infoSheet").setAttribute("aria-hidden", "true");
+  }
+  document.getElementById("menuHelp").addEventListener("click", () => openInfo("help"));
+  document.getElementById("menuAbout").addEventListener("click", () => openInfo("about"));
+  document.getElementById("infoClose").addEventListener("click", closeInfo);
+  document.getElementById("infoScrim").addEventListener("click", closeInfo);
+
   // ---------- Dźwięki drewna: syntezowane w przeglądarce, bez plików; domyślnie wyciszone ----------
   // tik: wybór, tok: wejście głębiej, puk: powrót, TUK: duża zmiana (styl, gotowiec), KLAP: skopiowany Maniscrypt,
   // krrr-ik: skrzypnięcie przegubu szyi (głowa Manikuna)
@@ -3632,7 +3703,11 @@
   }
   function renderGens() {
     gensEl.replaceChildren();
-    GENERATORS[scene.mode].forEach(g => {
+    GENERATORS[scene.mode].forEach(g => gensEl.appendChild(genLink(g)));
+  }
+  // Kafelek generatora: znak w kolorze marki i nazwa; stuknięcie kopiuje Maniscrypt i otwiera stronę generatora
+  function genLink(g) {
+    {
       const a = document.createElement("a");
       a.className = "gen";
       a.href = g.url;
@@ -3656,8 +3731,8 @@
           showToast(ok ? `Skopiowano. Wklej w ${g.name}` + (withFace() ? " i dołącz zdjęcie twarzy" : "") : "Nie udało się skopiować. Użyj przycisku Kopiuj Maniscrypt");
         });
       });
-      gensEl.appendChild(a);
-    });
+      return a;
+    }
   }
   // Przykładowe zdjęcie: głowa i ramiona Manikuna na wprost, na jasnym tle, z owalem pokazującym, gdzie ma być twarz
   function drawGuidePhoto() {
