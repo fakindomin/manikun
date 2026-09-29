@@ -850,11 +850,16 @@
     ]},
     // Ręce tylko przy postawach stojących; siedząc ręce opiera na kolanach lub udach
     { id: "arms", label: "Ręce", subjects: ["person"], patch: "#B77A5B", options: [
-      { id: "down", name: "Wzdłuż ciała", short: "Luźno", prompt: "arms relaxed at the sides" },
-      { id: "hipOne", name: "Ręka na biodrze", short: "Biodro", prompt: "one hand resting on the hip, the other arm relaxed" },
-      { id: "hips", name: "Na biodrach", short: "Biodra", prompt: "both hands on the hips" },
-      { id: "chin", name: "Dłoń przy brodzie", short: "Broda", prompt: "one hand raised to the chin in a thoughtful gesture" },
-      { id: "shade", name: "Osłania oczy", short: "Osłania", prompt: "one hand raised to the forehead, shading the eyes" }
+      { id: "down", name: "Wzdłuż ciała", short: "Luźno", prompt: "arms relaxed at the sides", poses: ["stand", "contra", "wide", "stride", "crouch", "back"] },
+      { id: "hipOne", name: "Ręka na biodrze", short: "Biodro", prompt: "one hand resting on the hip, the other arm relaxed", standOnly: true },
+      { id: "hips", name: "Na biodrach", short: "Biodra", prompt: "both hands on the hips", standOnly: true },
+      { id: "chin", name: "Dłoń przy brodzie", short: "Broda", prompt: "one hand raised to the chin in a thoughtful gesture", standOnly: true },
+      { id: "shade", name: "Osłania oczy", short: "Osłania", prompt: "one hand raised to the forehead, shading the eyes", standOnly: true },
+      // Na leżąco (na plecach i na brzuchu)
+      { id: "behindHead", name: "Pod głową", short: "Pod głową", prompt: "hands clasped behind the head", poses: ["back"] },
+      { id: "onBelly", name: "Na brzuchu", short: "Na brzuchu", prompt: "hands resting on the stomach", poses: ["back"] },
+      { id: "chinUp", name: "Pod brodą", short: "Pod brodą", prompt: "chin propped on the hands", poses: ["belly"] },
+      { id: "folded", name: "Pod głową", short: "Pod głową", prompt: "head resting on the folded arms", poses: ["belly"] }
     ]},
     // Rzeczy przy postaci; kafelki buduje makeTiles (scene.things to lista), tu nazwy dla wyszukiwarki
     { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
@@ -1334,7 +1339,7 @@
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
   // Czy opcja pasuje do reszty sceny: sylwetka, obiekt/postać, dron tylko w plenerze i bez zbliżeń
-  const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject)) && (!o.needsThing || (st.things || []).length > 0)
+  const fitsBody = (o, st) => (!o.poses || o.poses.includes(st.pose)) && (!o.standOnly || STANDING.includes(st.pose)) && (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject)) && (!o.needsThing || (st.things || []).length > 0)
     && (!o.noDrone || st.camera !== "D") && (!o.outdoor || isOutdoor(st.background));
 
   // Własne zdjęcie twarzy: wybór tylko na czas kopiowania (panel "Kopiuj"), nie jest częścią sceny
@@ -1363,8 +1368,8 @@
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
       ...(faceShot
         // Przy zbliżeniu na twarz zostaje tylko to, co widać przy twarzy: telefon lub dłoń przy brodzie albo czole
-        ? (isSelfie(scene.camera) || (armsApply(scene) && ["chin", "shade"].includes(scene.arms)) ? [armsApply(scene) ? armsPrompt() : selfieArm()] : [])
-        : [sitPrompt(scene) + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : isSelfie(scene.camera) ? ", " + selfieArm() : "") + thingsPrompt(scene)]),
+        ? (isSelfie(scene.camera) || (standArms(scene) && ["chin", "shade"].includes(scene.arms)) ? [standArms(scene) ? armsPrompt() : selfieArm()] : [])
+        : [sitPrompt(scene) + (standArms(scene) ? ", " + armsPrompt() + ", facing the camera" : isSelfie(scene.camera) ? ", " + selfieArm() : "") + thingsPrompt(scene)]),
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
@@ -1498,13 +1503,15 @@
   };
 
 
-  // Leży na brzuchu: głowa po prawej uniesiona na dłoniach, łokcie na ziemi, łydki w górze
+  // Leży na brzuchu: biodra na ziemi, tułów uniesiony na łokciach (pod barkami), broda na dłoniach, łydki w górze
   POSES.belly = {
-    spine: 102, head: 146,
-    nearUpper: 6, nearFore: 158, farUpper: 12, farFore: 162,
-    nearThigh: -92, nearShin: -150, farThigh: -88, farShin: -128,
-    nearFoot: -80, farFoot: -60
+    spine: 118, head: 136,
+    nearUpper: 2, nearFore: 150, farUpper: 8, farFore: 158,
+    nearThigh: -90, nearShin: -150, farThigh: -88, farShin: -132,
+    nearFoot: 180, farFoot: -170
   };
+
+
   // Oparty plecami o rzecz tuż za nim: tułów odchylony do tyłu, stopy wysunięte i skrzyżowane w kostkach, dłonie luźno
   POSES.leanOn = {
     spine: 190, head: 182,
@@ -1524,9 +1531,18 @@
     shade: { nearUpper: -150, nearFore: 95, head: 184 },
     // Selfie: dalsza ręka wyciągnięta w górę i w bok z telefonem; bliższa zostaje wolna na gest z kategorii Ręce
     selfie: { farUpper: 142, farFore: 172, head: 186 },
-    selfieR: { nearUpper: -142, nearFore: -172, head: 174 }
+    selfieR: { nearUpper: -142, nearFore: -172, head: 174 },
+    // Na plecach: dłonie splecione pod głową (łokcie w górę) albo na brzuchu
+    behindHead: { nearUpper: -156, nearFore: -12, farUpper: -162, farFore: -20 },
+    onBelly: { nearUpper: 112, nearFore: 66, farUpper: 108, farFore: 60 },
+    // Na brzuchu: głowa oparta na złożonych przedramionach, tułów niżej
+    folded: { spine: 97, head: 102, nearUpper: 70, nearFore: 100, farUpper: 66, farFore: 96 }
   };
-  const armsApply = st => STANDING.includes(st.pose) && st.pose !== "leanOn";
+  // Ręce: stojąc (poza opartym) gesty z listy, na plecach i na brzuchu własne ułożenia; siedząc i na boku ręce wynikają z pozy
+  const LIE_ARMS = { back: ["down", "behindHead", "onBelly"], belly: ["chinUp", "folded"] };
+  const standArms = st => STANDING.includes(st.pose) && st.pose !== "leanOn";
+  const armsApply = st => standArms(st) || !!LIE_ARMS[st.pose];
+  const armsDefault = st => LIE_ARMS[st.pose] ? LIE_ARMS[st.pose][0] : "down";
   // Te same gesty wykonane dalszą ręką
   const ARMS_FAR = {
     hipOne: { farUpper: 36, farFore: -50 },
@@ -1538,8 +1554,13 @@
   const EXPR_POSE = { neutral: {}, joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
   const exprOf = st => st.look && st.look.expr ? st.look.expr : null;
   // Przy selfie obie dłonie na biodrach nie są możliwe: zostaje jedna
-  const armsFor = st => isSelfie(st.camera) && st.arms === "hips" ? "hipOne" : st.arms;
-  const poseKey = st => poseGeom(st) + (armsApply(st) && armsFor(st) !== "down" ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
+  const armsFor = st => {
+    const lie = LIE_ARMS[st.pose];
+    if (lie) return lie.includes(st.arms) ? st.arms : lie[0];
+    const a = isSelfie(st.camera) && st.arms === "hips" ? "hipOne" : st.arms;
+    return ["down", "hipOne", "hips", "chin", "shade"].includes(a) ? a : "down";
+  };
+  const poseKey = st => poseGeom(st) + (armsApply(st) && armsFor(st) !== armsDefault(st) ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
@@ -1790,8 +1811,12 @@
   function sitPrompt(st) {
     if (st.pose === "leanOn") return (st.things || []).length ? `leaning back casually against ${thingPhrase(st.things[0])}, legs crossed at the ankles, hands relaxed, facing the camera` : optionOf("pose", "stand").prompt;
     const seat = seatOf(st);
+    const it = seat && st.things[resolveAnchors(st).indexOf("under")], on = !seat ? "the ground" : seat.sitOn ? seat.sitOn(thingPhrase(it)) : thingPhrase(it);
+    // Na plecach i na brzuchu: ułożenie rąk z kategorii Ręce
+    const armTxt = () => optionOf("arms", armsFor(st)).prompt;
+    if (st.pose === "back") return `lying on their back on ${on}, ${armTxt()}`;
+    if (st.pose === "belly") return `lying on their stomach on ${on}, ${armTxt()}, lower legs raised behind them`;
     if (!seat) return optionOf("pose", st.pose).prompt;
-    const it = st.things[resolveAnchors(st).indexOf("under")], on = seat.sitOn ? seat.sitOn(thingPhrase(it)) : thingPhrase(it);
     if (seat.id === "stool" && (st.pose === "sit" || st.pose === "lean")) return `perched on ${on}, feet resting on the footrest, ${st.pose === "lean" ? "leaning forward with the elbows on the knees" : "hands resting on the thighs"}, facing the camera`;
     if (st.pose === "sit") return seat.seat === "low" ? `sitting on ${on} with knees bent, forearms resting on the knees, back straight, facing the camera` : `sitting upright on ${on}, feet flat on the floor, hands resting on the thighs, facing the camera`;
     if (st.pose === "lean") return `sitting on ${on}, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera`;
@@ -3104,7 +3129,8 @@
         glasses: Math.random() < 0.3 ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id
       };
       scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
-      scene.arms = anyOf(optionsOf("arms")).id;
+      const armOpts = optionsOf("arms").filter(o => fitsBody(o, scene));
+      if (armOpts.length) scene.arms = anyOf(armOpts).id;
       scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : [];
       scene.items = surfaceOf(scene) && Math.random() < 0.6 ? [{ id: anyOf(ALL_ITEMS).id }] : [];
       scene.shot = anyOf(["full", "full", "portrait", "face"]);
@@ -3415,7 +3441,7 @@
     return opts.map(o => {
       if (!o.children) {
         return tile("opt-" + catId + "-" + o.id, o.name,
-          () => scene[catId] === o.id,
+          () => catId === "arms" ? armsFor(scene) === o.id : scene[catId] === o.id,
           () => pickLeaf(catId, o.id),
           svg => drawOption(catId, o.id, svg));
       }
@@ -3669,7 +3695,7 @@
   const nameOf = cat => optionOf(cat, scene[cat]).name;
   const CH_SUMMARY = {
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
-    pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(nameOf("arms")) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
+    pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(optionOf("arms", armsFor(scene)).name) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
     place: () => nameOf("background") + ", " + low(BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).name) + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
     camera: () => `${nameOf("shot")}, ${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
     style: () => "Styl " + nameOf("style"),
@@ -3698,7 +3724,7 @@
     },
     pose() {
       scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
-      if (armsApply(scene)) scene.arms = anyOf(optionsOf("arms")).id;
+      if (armsApply(scene)) scene.arms = anyOf(optionsOf("arms").filter(o => fitsBody(o, scene))).id;
       // Siedząc zwykle na czymś, stojąc czasem coś obok (w Ekspercie rzeczy ma osobny rozdział)
       if (level === "expert") return;
       const seats = THINGS.filter(t => t.seat);
