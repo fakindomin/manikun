@@ -849,7 +849,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -1008,15 +1008,17 @@
   function dressIn(setId, colors = {}) {
     const set = CATEGORIES.find(c => c.id === "outfit").options.find(o => o.id === setId);
     const wc = Object.fromEntries(PARTS.map(p => [p, colors[p] || (set.colors || {})[p] || wearOpt(p, set.wear[p]).def || WEAR[p].options.find(o => o.def).def]));
-    return { outfit: setId, wear: { ...set.wear }, wc };
+    return { outfit: setId, wear: { ...set.wear }, wc, wcPicked: {} };
   }
-  // Zmiana pojedynczej części odznacza zestaw. Nowy krój wchodzi w swoim kolorze (zmienia się go kafelkiem Kolor).
+  // Zmiana pojedynczej części odznacza zestaw. Kolor wybrany kafelkiem "Kolor" zostaje przy każdym kroju
+  // (czerwone jeansy → czerwone chinosy); kolor niewybrany ręcznie przechodzi na naturalny dla nowego kroju.
   // Góra zdejmuje sukienkę (wraca zwykły dół).
+  const colorPicked = part => !!(scene.wcPicked || {})[part];
   function pickPart(part, id) {
     const wear = { ...scene.wear, [part]: id };
     const wc = { ...scene.wc };
-    if (part === "top" && scene.wear.bottom === "dress") { wear.bottom = "jeans"; wc.bottom = "denim"; }
-    if (scene.wear[part] !== id) wc[part] = wearOpt(part, id).def || wc[part];
+    if (part === "top" && scene.wear.bottom === "dress") { wear.bottom = "jeans"; if (!colorPicked("bottom")) wc.bottom = "denim"; }
+    if (scene.wear[part] !== id && !colorPicked(part)) wc[part] = wearOpt(part, id).def || wc[part];
     Object.assign(scene, { outfit: "custom", wear, wc });
   }
   // Opis ubioru w Maniscrypcie, z kolorami tak jak na Manikunie
@@ -2284,7 +2286,7 @@
   const INTRO_SCENE = {
     mode: "photo", subject: "person", style: "cyber", body: "male",
     // Stan końcowy tutoriala: streetwear (bluza z kapturem), w którym jeansy zamieniono na dres
-    outfit: "custom", wear: { ...dressIn("street").wear, bottom: "joggers" }, wc: { ...dressIn("street").wc, bottom: "graphite" },
+    outfit: "custom", wear: { ...dressIn("street").wear, bottom: "joggers" }, wc: { ...dressIn("street").wc, bottom: "graphite" }, wcPicked: {},
     pose: "stride", arms: "shade", shot: "full", camera: "L3",
     light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "night",
     look: { ...LOOK0, hair: "short" }
@@ -2429,7 +2431,7 @@
     if (sub && sub.startsWith("c:")) {
       const part = sub.slice(2);
       return COLORS.map(col => tile("opt-wc-" + part + "-" + col.id, col.name, () => scene.wc[part] === col.id,
-        () => { scene.wc = { ...scene.wc, [part]: col.id }; render(); },
+        () => { scene.wc = { ...scene.wc, [part]: col.id }; scene.wcPicked = { ...scene.wcPicked, [part]: true }; render(); },
         svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, col.hex); }));
     }
     if (sub === "sets") {
@@ -2454,7 +2456,8 @@
           if (o.id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
           const wear = { ...scene.wear, [part]: o.id };
           if (part === "top" && isDress()) wear.bottom = "jeans";
-          wearThumb(svg, { wear, wc: { ...scene.wc, [part]: scene.wear[part] === "none" ? o.def : scene.wc[part] } }, PART_REGION[part]);
+          // Miniatura pokazuje kolor, w jakim ten krój wejdzie: wybrany ręcznie albo naturalny dla kroju
+          wearThumb(svg, { wear, wc: { ...scene.wc, [part]: colorPicked(part) ? scene.wc[part] : (o.def || scene.wc[part]) } }, PART_REGION[part]);
         })));
       return list;
     }
