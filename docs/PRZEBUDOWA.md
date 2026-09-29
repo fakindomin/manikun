@@ -111,7 +111,7 @@ Pełna nawigacja dwoma rzędami. Tylko tu są Gotowe.
   2. Przełącznik „Dołączę zdjęcie swojej twarzy” z przykładem zdjęcia (działa jak dziś: zmienia tylko kopiowany tekst).
   3. Kroki: Skopiuj → Otwórz generator → Wklej.
   4. Przycisk „Kopiuj Maniscrypt”.
-- Generatory z linkami i ikoną (na razie litera w kolorze marki, prawdziwe logo podmienione później):
+- Generatory z linkami i ikoną: prawdziwa ikona serwisu ładowana z jego strony (przez usługę ikon stron Google); gdy się nie wczyta (brak sieci, blokada), zostaje litera w kolorze marki. Otwarta biblioteka ikon marek (simple-icons) nie ma większości tych logo.
   - zdjęcia: ChatGPT, Gemini, Midjourney, Leonardo, Ideogram
   - wideo: Sora, Veo, Kling, Runway, Hailuo
 - W tutorialu wersja uproszczona: „Skopiuj i wklej w generatorze AI” i duży przycisk.
@@ -259,3 +259,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
    - Mina przechyla głowę i tułów względem pozy, więc działa też na leżąco.
    - Ręce na leżąco: Na plecach: Wzdłuż ciała, Pod głową, Na brzuchu. Na brzuchu: Pod brodą, Pod głową (głowa na złożonych przedramionach). Na boku: Podpiera głowę, Głowa na ramieniu (leżąc płasko). Leżąca postać jest wyśrodkowana razem z rękami.
    - Na brzuchu: biodra na ziemi, tułów uniesiony na łokciach pod barkami, łydki w górze.
+
+## Poprawki po rozbudowie
+
+- Drobiazgi leżą na swoim blacie: każdy ma numer mebla. W Ekspercie przy kilku blatach „Na blacie” najpierw pyta, który blat; w Kreatorze trafiają na blat, który właśnie ustawiamy. Usunięcie mebla usuwa jego drobiazgi.
+- Kreator: „Oparty” jest zawsze w pytaniu o pozę; gdy w scenie nic nie ma, następne pytanie brzmi „O co się opiera?” (w Ekspercie „Oparty potrzebuje czegoś za plecami. Dodajemy?”).
+- Gdy rzecz nie mieści się w kadrze, Manikun proponuje szerszy kadr (raz na scenę, na obu poziomach; stuknięcie w dymek zmienia format).
