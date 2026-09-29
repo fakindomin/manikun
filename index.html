@@ -1051,7 +1051,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1625,7 +1625,6 @@
     });
     return out;
   }
-  const thingAnchor = (st, it) => resolveAnchors(st)[(st.things || []).indexOf(it)];
   const seatOf = st => { const i = resolveAnchors(st).indexOf("under"); return i >= 0 ? THING[st.things[i].id] : null; };
   // Geometria pozy: na siedzisku wysokim prosto i pochylony siedzi jak na krześle, na niskim jak na kamieniu
   // Pozy „jak na krześle” (stopy na ziemi, siedzisko pod biodrami); na niskim siedzisku wszystkie siedzą jak na kamieniu.
@@ -2879,7 +2878,7 @@
       const gy = st.shot === "full" ? pl.groundY : H * 0.95;
       if (st.bgTrans) {
         // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st, st.bgTrans.old), bgExtras(st, st.bgTrans.old));
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st, st.bgTrans.old), bgExtras(st));
         drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st), bgExtras(st));
       } else {
         drawBackground(layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgVariant(st), bgExtras(st));
@@ -3059,7 +3058,6 @@
   // ---------- Interfejs ----------
   const rowsEl = document.getElementById("rows");
   const preview = document.getElementById("preview");
-  const lerp = (a, b, t) => a + (b - a) * t;
 
   function valueShort(cat) {
     if (cat.id === "format") return currentFormat().short;
@@ -3148,7 +3146,7 @@
     scene.format[scene.mode] = anyOf(FORMATS[scene.mode]).id;
     scene.background = anyOf(leavesOf("background")).id;
     const vars = BG_VARIANTS[scene.background];
-    scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars.filter(v => !v.extra)).id };
+    scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars).id };
     scene.fx = Math.random() < 0.3 ? [anyOf(FX_LIST).id] : [];
     scene.time = anyOf(optionsOf("time")).id;
     scene.light = anyOf(leavesOf("light")).id;
@@ -3300,15 +3298,6 @@
       () => k === "sets" ? setName() : partValue(k))));
   }
 
-  // Znak twarzy ze zdjęcia: ramka zdjęcia z głową w środku
-  function faceGlyph(svg) {
-    svg.setAttribute("viewBox", "0 0 64 64");
-    el("rect", { x: 12, y: 10, width: 40, height: 44, rx: 6 }, svg);
-    el("circle", { cx: 32, cy: 27, r: 8 }, svg);
-    el("path", { d: "M18 50 Q20 38 32 38 Q44 38 46 50" }, svg);
-    el("path", { d: "M44 16 L48 16 L48 20", class: "thin" }, svg);
-  }
-
   // Głowa Manikuna z danym wyglądem, powiększona na kafelek
   function headTile(svg, lk) {
     const saved = scene.look;
@@ -3374,16 +3363,8 @@
   }
   function variantTiles(bg) {
     const parent = (optionsOf("background").find(o => o.children && o.children.some(c => c.id === bg)) || {}).id || null;
-    // Warianty wykluczają się nawzajem; dodatki ("+ Mgła") włącza się i wyłącza niezależnie
+    // Warianty wykluczają się nawzajem (dodatki jak mgła są w Elementach miejsca)
     return [backTile(parent)].concat(BG_VARIANTS[bg].map(vr => {
-      if (vr.extra) {
-        const on = () => bgExtras(scene, bg).includes(vr.id);
-        return tile("opt-bgx-" + vr.id, "+ " + vr.name, on, () => {
-          const cur = bgExtras(scene, bg);
-          scene.bgx = { ...scene.bgx, [bg]: on() ? cur.filter(x => x !== vr.id) : [...cur, vr.id] };
-          render();
-        }, svg => renderScene(svg, { ...scene, background: bg, bgx: { ...scene.bgx, [bg]: [vr.id] } }, 100, 100, new Set(TILE_LAYERS.background)));
-      }
       return tile("opt-bgv-" + vr.id, vr.name, () => bgVariant(scene, bg) === vr.id,
         () => { scene.bgv = { ...scene.bgv, [bg]: vr.id }; render(); },
         svg => renderScene(svg, { ...scene, background: bg, bgv: { ...scene.bgv, [bg]: vr.id } }, 100, 100, new Set(TILE_LAYERS.background)));
@@ -3787,7 +3768,7 @@
     place() {
       scene.background = anyOf(leavesOf("background")).id;
       const vars = BG_VARIANTS[scene.background];
-      scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars.filter(v => !v.extra)).id };
+      scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars).id };
       scene.fx = Math.random() < 0.35 ? [anyOf(FX_LIST).id] : [];
       scene.time = anyOf(optionsOf("time")).id;
       scene.light = anyOf(leavesOf("light").filter(o => lampAllowed(scene) || !o.id.startsWith("art"))).id;
@@ -4486,12 +4467,6 @@
 
   // Kopiowanie bez pokazywania tekstu promptu
   const copyBtn = document.getElementById("copy");
-  let copyTimer;
-  function copyStatus(text) {
-    copyBtn.title = text;
-    clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => { copyBtn.title = "Kopiuj Maniscrypt"; }, 2000);
-  }
   function hiddenCopyOk(text) {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -4503,18 +4478,6 @@
     try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
     ta.remove();
     return ok;
-  }
-  function hiddenCopy(text) {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
-    ta.remove();
-    copyStatus(ok ? "Skopiowano" : "Nie udało się");
   }
   // Przy "Mojej twarzy" przypomnienie, że zdjęcie trzeba dołączyć w generatorze
   const toast = document.getElementById("toast");
@@ -4809,13 +4772,13 @@
       });
     });
   }
-  // Warianty tła (np. Las › Ścieżka, + Mgła): wynik od razu wybiera to tło, żeby warianty dotyczyły kadru
+  // Warianty tła (np. Las › Ścieżka): wynik od razu wybiera to tło, żeby warianty dotyczyły kadru
   function bgVariants(leaf, grp, path, base, add, opts) {
     const lvl = grp
       ? [...base, opts("background", null, "opt-background-" + grp.id), opts("background", grp.id, "opt-background-" + leaf.id)]
       : [...base, opts("background", null, "opt-background-" + leaf.id)];
-    BG_VARIANTS[leaf.id].forEach(v => add((v.extra ? "+ " : "") + v.name, [...path, ...(grp ? [grp.name] : []), leaf.name],
-      () => jump([...lvl, opts("background", "v:" + leaf.id)], (v.extra ? "opt-bgx-" : "opt-bgv-") + v.id, () => { scene.background = leaf.id; })));
+    BG_VARIANTS[leaf.id].forEach(v => add(v.name, [...path, ...(grp ? [grp.name] : []), leaf.name],
+      () => jump([...lvl, opts("background", "v:" + leaf.id)], "opt-bgv-" + v.id, () => { scene.background = leaf.id; })));
   }
   function runSearch() {
     const q = norm(searchInput.value.trim());

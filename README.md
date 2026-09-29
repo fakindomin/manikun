@@ -1,11 +1,21 @@
 # Manikun Reżyser
 
 Mobilna aplikacja do ustawiania sceny zdjęcia lub wideo na drewnianym manekinie Manikunie.
-Kafelkami wybierasz format, postać, ubiór, pozę, ręce, kadr, kamerę, światło, tło i porę dnia,
-a przycisk „Kopiuj” kopiuje gotowy angielski prompt do generatora obrazu lub wideo.
+Scenę buduje się kafelkami (postać, ubiór, twarz, poza, ręce, rzeczy, miejsce, światło, kamera, format, styl),
+a przycisk Maniscryptu kopiuje gotowy angielski opis ujęcia (prompt) do generatora obrazu lub wideo.
 
-- `index.html` – cała aplikacja (interfejs, sceny, prompt)
-- `manikun.js` – manekin: proporcje ciała, geometria z kątów stawów, materiały, płynne przejścia póz
+- Start: Postać → poziom (Podstawowy / Ekspert) → Kreator (Manikun pyta krok po kroku) albo Swoboda (dwa rzędy kafelków).
+- Przy pierwszej wizycie tutorial; powtórka z menu.
+- Szczegóły ustaleń i kolejne etapy: `docs/PRZEBUDOWA.md`.
+
+## Pliki
+
+- `index.html` – cała aplikacja: interfejs, sceny, rzeczy, Kreator, tutorial, Maniscrypt
+- `manikun.js` – manekin: proporcje ciała, geometria z kątów stawów, ubrania, materiały
+- `head3d.js` – trójwymiarowa głowa Manikuna na przycisku narratora (three.js z CDN jsDelivr; bez WebGL zostaje rysowana głowa)
+- `assets/manikun3d.glb` – model głowy: „Wooden Mannequin (Rigged)”, zionmuoria, CC BY 4.0
+- `tutorial/cyberpunk.jpg`, `tutorial/fantasy.jpg` – zdjęcia do tutoriala (do dodania; do tego czasu plansze zastępcze).
+  Scena do ich wygenerowania: link `?intro` (Cyberpunk, potem przełączenie na Fantasy)
 
 ## Wdrożenie
 
