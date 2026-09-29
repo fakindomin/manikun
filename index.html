@@ -74,7 +74,7 @@
   [hidden] { display: none !important; }
   /* Bez systemowego prostokątnego błysku przy dotknięciu: reakcja na dotyk trzyma się kształtu elementu (niżej, :active) */
   * { -webkit-tap-highlight-color: transparent; }
-  .tile:active:not(:disabled), .icon-btn:active, .choice:active, .menu-item:not(:disabled):active, .modes .chip:active { filter: brightness(1.25); }
+  .tile:active:not(:disabled), .icon-btn:active, .menu-item:not(:disabled):active, .modes .chip:active { filter: brightness(1.25); }
   .tile:active:not(:disabled) { transform: scale(0.97); }
   .screen {
     box-sizing: border-box;
@@ -285,7 +285,7 @@
     border-radius: 26px 26px 0 0; border: 1px solid transparent; border-bottom: 0;
     transition: background-color 420ms ease, border-color 420ms ease;
   }
-  [data-phase="director"] .dock { background: #0F1013; border-color: var(--line); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.55); }
+  .dock { background: #0F1013; border-color: var(--line); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.55); }
   .rows { position: relative; height: calc(var(--row-h) * 2 + var(--row-gap)); overflow: hidden; }
   [data-phase="start"] .rows { opacity: 0; }
   /* Rząd: przewijany w bok. Pozycje: góra, dół i schowany pod krawędzią ekranu. */
@@ -346,41 +346,53 @@
   .row { z-index: 1; }
   .thread path { fill: none; stroke: var(--accent-line); stroke-width: 2; stroke-linejoin: miter; }
 
-  /* ---------- Start: powitanie i wybór trybu ---------- */
-  .dock-start {
-    position: absolute; left: 14px; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 2;
-    background: transparent;
-    display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
-  }
-  .hello { text-align: center; display: grid; gap: 4px; transition: opacity 280ms ease, transform 420ms var(--ease); }
-  /* Znaczek nad powitaniem: skala możliwości (ostrożnie liczone: kilkadziesiąt miliardów samych zdjęć postaci) */
-  /* Na starcie w pustym miejscu górnego paska po lewej; w reżyserze znika, tam są przełączniki trybu */
+  /* ---------- Start: siatka tematów w miejscu dwóch rzędów ---------- */
+  .dock-start { position: absolute; left: 12px; right: 12px; top: 8px; height: calc(var(--row-h) * 2 + var(--row-gap)); z-index: 2; }
+  [data-phase="director"] .dock-start { pointer-events: none; }
+  .start-grid { height: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: var(--row-gap); }
+  .start-grid.one { grid-template-columns: 1fr; }
+  .start-tile { height: auto; min-width: 0; max-width: none; transition: transform 420ms var(--ease), opacity 320ms ease, border-color 300ms ease; }
+  .start-tile.locked { color: var(--muted); }
+  .start-tile.locked .name { color: var(--muted); }
+  .tile > svg.lock { position: absolute; top: 8px; right: 9px; width: 12px; height: 12px; padding: 0; background: none; border-radius: 0; color: var(--muted); }
+  .start-tile.below { transform: translateY(calc(100% + 40px)); opacity: 0; }
+  /* Znaczek skali: na starcie w pustym miejscu nagłówka po lewej */
   .combos {
     position: absolute; left: 0; top: 50%; transform: translateY(-50%); transition: opacity 420ms ease;
     max-width: calc(100% - 128px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box;
     font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
     color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
   }
-  .hello h1 { margin: 0; font-size: clamp(20px, 6.4vw, 26px); white-space: nowrap; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
-  .hello h1 em { font-style: normal; color: var(--accent); }
-  .hello p { margin: 0 auto; max-width: 34ch; font-size: 14px; line-height: 1.35; color: var(--muted); text-wrap: balance; }
-  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .choice {
-    font: inherit; color: var(--ink);
-    background: var(--tile-bg);
-    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 22px;
-    box-shadow: var(--lift);
-    padding: 16px 12px 14px; cursor: pointer;
-    display: grid; justify-items: center; gap: 6px;
-    transition: transform 360ms cubic-bezier(0.4, 0, 1, 1), border-color 300ms ease, box-shadow 300ms ease;
+  /* Dymek Manikuna: nad przyciskiem z głową, ogonek w lewym dolnym rogu */
+  .bubble {
+    position: fixed; z-index: 15; max-width: min(300px, calc(100vw - 32px)); box-sizing: border-box;
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 16px 16px 16px 4px;
+    padding: 10px 14px; font-size: 14px; font-weight: 600; line-height: 1.4; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    opacity: 0; translate: 0 8px; transition: opacity 260ms ease, translate 360ms var(--ease); cursor: pointer;
   }
-  .choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft), var(--lift); }
-  .choice svg { width: 44px; height: 44px; display: block; color: var(--ink); }
-  .choice .name { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
-  .choice .desc { font-size: 12px; line-height: 1.3; color: var(--muted); text-align: center; }
-  .dock-start.leaving .hello { opacity: 0; transform: translateY(-8px); }
-  .dock-start.leaving .choice, .dock-start.swap .choice { transform: translateY(calc(100% + 60px)); }
-  .choice.rise { transition: transform 420ms var(--ease), border-color 300ms ease, box-shadow 300ms ease; }
+  .bubble.show { opacity: 1; translate: 0 0; }
+  .bubble::before {
+    content: ""; position: absolute; left: 14px; bottom: -7px; width: 12px; height: 12px; background: inherit;
+    border-right: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); transform: rotate(45deg);
+  }
+  /* Przycisk, na który Manikun wskazuje (np. Maniscrypt po Kreatorze) */
+  .square.pulse { animation: pulse 1.2s ease-in-out 5; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft), 0 0 22px var(--accent); transform: scale(1.06); } }
+  /* Kreator: rząd mieści się bez przewijania; Wstecz i Swoboda to małe przyciski z ikoną, krok się rozciąga */
+  .row.wizard { overflow: hidden; }
+  .row.wizard .tile { max-width: none; }
+  .row.wizard #wiz-step { flex: 1 1 0; min-width: 0; }
+  .row.wizard #wiz-next { flex: 0 0 auto; width: 88px; min-width: 0; padding: 0 10px; grid-template-columns: 1fr; justify-items: center; }
+  .row.wizard #wiz-next > svg { display: none; }
+  .row.wizard #wiz-next .name { font-size: 14px; }
+  @media (max-width: 379px) { .row.wizard #wiz-step { grid-template-columns: minmax(0, 1fr); padding-left: 12px; } .row.wizard #wiz-step > svg { display: none; } }
+  .tile.mini { min-width: 0; width: 46px; padding: 0; grid-template-columns: 1fr; justify-items: center; }
+  .tile.mini > svg { width: 36px; height: 36px; padding: 8px; background: none; }
+  .tile.mini .txt { display: none; }
+  /* Kreator: przycisk Dalej wyróżniony akcentem */
+  .tile.accent { background: var(--accent); border-color: transparent; }
+  .tile.accent .name, .tile.accent .value { color: var(--on-accent); }
+  .tile.accent > svg { background: rgba(0, 0, 0, 0.12); color: var(--on-accent); }
 
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .toast {
@@ -392,14 +404,10 @@
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   /* Niskie ekrany: przyciski trybu bez opisów, żeby powitanie nie wchodziło na kadr */
-  @media (max-height: 760px) {
-    .choice { padding: 12px 10px 11px; gap: 4px; }
-    .choice svg { width: 34px; height: 34px; }
-    .choice .desc { display: none; }
-  }
 
   @media (prefers-reduced-motion: reduce) {
-    .director-only, .hello, .tile, .row, .choice, .chip { transition-duration: 0.01ms !important; }
+    .director-only, .tile, .row, .chip, .bubble { transition-duration: 0.01ms !important; }
+    .square.pulse { animation: none; }
   }
 
   /* ---------- Kreska szkicu sceny ---------- */
@@ -434,6 +442,8 @@
     <!-- Przełącznik materiału (drewno / biały) jest ukryty, ale działa: wystarczy usunąć atrybut hidden -->
     <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna" hidden><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <!-- Dymek Manikuna: wychodzi z przycisku z głową -->
+    <div class="bubble" id="bubble" role="status" aria-live="polite" hidden><span id="bubbleText"></span></div>
   </div>
   <div class="menu-scrim" id="menuScrim"></div>
   <nav class="menu" id="menu" aria-label="Menu" aria-hidden="true">
@@ -496,17 +506,17 @@
   </div>
 
   <!-- Pasek roboczy: narrator (głowa Manikuna), suwak Zdjęcie/Wideo, Maniscrypt -->
-  <div class="work director-only">
+  <div class="work">
     <button class="square narrator" type="button" id="narrator" aria-label="Manikun">
       <canvas id="head3d" aria-hidden="true"></canvas>
       <svg viewBox="0 0 120 120" aria-hidden="true"><g class="head" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="60" cy="50" rx="23" ry="27" fill="none" stroke-width="7"/><line x1="60" y1="77" x2="60" y2="90" stroke-width="7"/><circle cx="60" cy="96" r="5.5" stroke-width="2"/></g></svg>
     </button>
-    <div class="modes" role="group" aria-label="Tryb">
+    <div class="modes director-only" role="group" aria-label="Tryb">
       <span class="thumb" aria-hidden="true"></span>
       <button class="chip" type="button" id="mode-photo" data-mode="photo"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M3.5 8h4l1.5-2.5h6L16.5 8h4v11h-17z"/><circle cx="12" cy="13" r="3.2"/></svg>Zdjęcie</button>
       <button class="chip" type="button" id="mode-video" data-mode="video"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 10.5l5-3v9l-5-3z"/></svg>Wideo</button>
     </div>
-    <button class="square maniscrypt" type="button" id="copy" aria-label="Kopiuj Maniscrypt" title="Kopiuj Maniscrypt">
+    <button class="square maniscrypt director-only" type="button" id="copy" aria-label="Kopiuj Maniscrypt" title="Kopiuj Maniscrypt">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5l1.8 4.7 4.7 1.8-4.7 1.8L11 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>
     </button>
   </div>
@@ -516,33 +526,10 @@
     <div class="rows" id="rows" role="group" aria-label="Wybór">
       <svg class="thread" id="thread" aria-hidden="true"><path id="threadPath" d=""/></svg>
     </div>
+  <!-- Start: siatka tematów (2×2), potem wybór Kreator / Swoboda; stoi dokładnie w miejscu dwóch rzędów -->
   <div class="dock-start" id="dockStart">
-    <div class="hello">
-      <h1 id="line1">Cześć, jestem <em>Manikun</em>.</h1>
-      <p id="line2">Wirtualny reżyser ujęć: ustaw na mnie scenę, a ja napiszę gotowy prompt do zdjęcia lub wideo AI.</p>
-    </div>
-    <div class="choices" role="group" aria-label="Tryb">
-      <button class="choice" type="button" id="pick-photo" data-mode="photo" aria-pressed="false">
-        <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
-          <path d="M6 16h8l3-5h14l3 5h8v22H6z"/>
-          <circle cx="24" cy="26" r="7"/>
-          <circle cx="24" cy="26" r="3"/>
-          <path d="M36 20h3"/>
-        </svg>
-        <span class="name"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</span>
-        <span class="desc">Jeden kadr: poza, światło, tło</span>
-      </button>
-      <button class="choice" type="button" id="pick-video" data-mode="video" aria-pressed="false">
-        <svg viewBox="0 0 48 48" class="ink" aria-hidden="true">
-          <path d="M7 20h34v19H7z"/>
-          <path d="M6 13l33-7 1.6 7L7.6 20z"/>
-          <path d="M14 11.4l4 6.6 M22 9.7l4 6.6 M30 8l4 6.6"/>
-          <path d="M14 20l4 6 M22 20l4 6 M30 20l4 6" class="thin"/>
-        </svg>
-        <span class="name"><span class="patch" style="background:#AF363C"></span>Wideo</span>
-        <span class="desc">Ujęcie z ruchem kamery</span>
-      </button>
-    </div>
+    <div class="start-grid" id="startGrid" role="group" aria-label="Wybór"></div>
+  </div>
   </div>
 
   </div>
@@ -2665,6 +2652,8 @@
   };
 
   let nav = [], rows = { top: null, bottom: null }, pendingNav = null, navAnim = null, navBusy = false;
+  // Tryb pracy: "free" (Swoboda, pełna nawigacja) albo "wizard" (Kreator, krok po kroku)
+  let flow = "free", wizStep = 0;
   const NAV_MS = 460, TILE_STEP = 35;
   // Czasy przejścia tła w kadrze (takie same jak wymiana kafelków): wyjście 280 ms, wejście 420 ms
   const PANEL_MS = 420, OUT_MS = 280;
@@ -2673,7 +2662,64 @@
     nav = [{ kind: "groups", open: g }, childOf(g)];
   }
   // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
-  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene)].join("|");
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene), st.kind === "wizard" ? wizStep : ""].join("|");
+
+  // ---------- Kreator: jeden krok to jedna kategoria w górnym rzędzie ----------
+  // Dolny rząd: Wstecz, bieżący krok (np. "Twarz · Krok 3 z 12"), Dalej, Swoboda.
+  // Kroki, które w tej scenie nic nie zmieniają (np. pora dnia w studiu), są pomijane.
+  const WIZ_STEPS = () => ["body", "outfit", "look", "pose", "arms", "background", "time", "light", "shot", "camera", ...(scene.mode === "video" ? ["motion"] : []), "style", "format"];
+  const wizCat = () => WIZ_STEPS()[wizStep];
+  function wizardStart() {
+    flow = "wizard";
+    wizStep = 0;
+    nav = [{ kind: "wizard", open: "wiz-step" }, { kind: "opts", cat: wizCat(), sub: null }];
+  }
+  const wizNext = d => { const st = WIZ_STEPS(); let i = wizStep + d; while (i >= 0 && i < st.length && catOff(st[i])) i += d; return i; };
+  function wizGo(d) {
+    const i = wizNext(d);
+    if (i < 0) return;
+    if (i >= WIZ_STEPS().length) { wizFinish(); return; }
+    wizStep = i;
+    nav = [nav[0], { kind: "opts", cat: wizCat(), sub: null }];
+    navAnim = "swap";
+    render();
+  }
+  // Swoboda z zachowaniem wyborów: rzędy wjeżdżają od nowa
+  function toFree(group = "person") {
+    flow = "free";
+    [rows.top, rows.bottom].forEach(r => r && r.el.remove());
+    rows = { top: null, bottom: null };
+    navInit(group);
+    render();
+  }
+  function wizFinish() {
+    toFree();
+    const btn = document.getElementById("copy");
+    btn.classList.remove("pulse");
+    btn.offsetWidth;
+    btn.classList.add("pulse");
+    setTimeout(() => btn.classList.remove("pulse"), 6200);
+    say("Gotowe! Stuknij zielony przycisk po prawej i skopiuj Maniscrypt. Poprawki zrobisz tutaj, w Swobodzie.", 7000);
+  }
+  function wizardTiles() {
+    const steps = WIZ_STEPS(), cat = catById(wizCat()), last = wizNext(1) >= steps.length;
+    const shown = steps.filter(id => !catOff(id)), pos = shown.indexOf(wizCat()) + 1;
+    const arrow = d => svg => { svg.setAttribute("viewBox", "0 0 24 24"); el("path", { d }, svg); };
+    const prev = tile("wiz-prev", "Wstecz", () => false, () => wizGo(-1), arrow("M14 6l-6 6 6 6 M8 12h11"), () => "krok wcześniej");
+    prev.action = true;
+    prev.btn.classList.add("mini");
+    prev.btn.setAttribute("aria-label", "Poprzedni krok");
+    const step = tile("wiz-step", cat.label, () => false, null, iconDraw(cat.id), () => `krok ${pos} / ${shown.length}`);
+    step.navId = "wiz-step";
+    const next = tile("wiz-next", last ? "Gotowe ✓" : "Dalej →", () => false, () => wizGo(1), arrow(last ? "M5 12.5l4.5 4.5L19 7.5" : "M10 6l6 6-6 6 M16 12H5"));
+    next.action = true;
+    next.btn.classList.add("accent");
+    const free = tile("wiz-free", "Swoboda", () => false, () => { toFree(); say("Swoboda: wszystkie opcje pod ręką. Wybory z Kreatora zostają.", 4500); }, svg => { svg.setAttribute("viewBox", "0 0 24 24"); svg.innerHTML = ICON.free; }, () => "wszystkie opcje");
+    free.action = true;
+    free.btn.classList.add("mini");
+    free.btn.setAttribute("aria-label", "Przejdź do Swobody");
+    return [prev, step, next, free];
+  }
 
   const iconDraw = id => svg => { svg.setAttribute("viewBox", "0 0 24 24"); CAT_ICONS[id](svg); };
   function groupTile(g) {
@@ -2713,12 +2759,13 @@
 
   function buildRow(st, pos) {
     const div = document.createElement("div");
-    div.className = "row";
+    div.className = "row" + (st.kind === "wizard" ? " wizard" : "");
     div.dataset.pos = pos;
     const row = { el: div, st, key: rowKey(st), tiles: [], back: null };
     tileHost = div;
     tileRow = row;
     if (st.kind === "groups") row.tiles = activeGroups().map(groupTile);
+    else if (st.kind === "wizard") row.tiles = wizardTiles();
     else if (st.kind === "cats") row.tiles = groupCats(GROUPS.find(g => g.id === st.group)).map(catTile);
     else {
       const saved = [scene.open, scene.sub];
@@ -2731,7 +2778,7 @@
     row.tiles.forEach(t => {
       t.row = row;
       if (t.navId === undefined) t.navId = t.id;
-      if (st.kind !== "opts" && !t.action) t.btn.classList.add("cat");
+      if (st.kind !== "opts") t.btn.classList.add("cat");
     });
     tileHost = null;
     tileRow = null;
@@ -2807,6 +2854,15 @@
 
   // Grupa lub kategoria, której już nie ma (np. Ruch po przejściu na zdjęcie): wracamy do poziomu, który jeszcze istnieje
   function validateNav() {
+    if (flow === "wizard" && nav[0] && nav[0].kind === "wizard") {
+      // Kreator: krok, którego już nie ma (np. Ruch po przejściu na zdjęcie), przechodzi na najbliższy istniejący
+      const steps = WIZ_STEPS();
+      if (!steps.includes(nav[1].cat) || nav.some((st, i) => i > 0 && st.kind === "opts" && !activeCats().some(c => c.id === st.cat))) {
+        wizStep = Math.min(wizStep, steps.length - 1);
+        nav = [nav[0], { kind: "opts", cat: wizCat(), sub: null }];
+      }
+      return;
+    }
     if (nav.length < 2 || !activeGroups().some(g => g.id === nav[0].open)) { navInit(); return; }
     for (let i = 1; i < nav.length; i++) {
       const st = nav[i];
@@ -2880,6 +2936,7 @@
       t.redraw();
       t.btn.classList.toggle("open", row === rows.bottom && t.navId === botSt.open);
       if (t.cat) t.btn.disabled = catOff(t.cat);
+      if (t.id === "wiz-prev") t.btn.disabled = wizNext(-1) < 0;
     }));
     // Górny rząd odpowiada otwartej kategorii i jej poziomowi (z tego korzystają kafelki i kopiowanie)
     scene.open = topSt.kind === "opts" ? topSt.cat : null;
@@ -3211,7 +3268,7 @@
   const narratorHead = document.querySelector("#narrator .head");
   let nodTimer;
   function nod(kind = "tilt") {
-    if (window.head3d) { window.head3d[kind](); return; }
+    if (window.manikunHead) { window.manikunHead[kind](); return; }
     narratorHead.style.transform = `rotate(${kind === "nod" ? 10 : -14}deg)`;
     clearTimeout(nodTimer);
     nodTimer = setTimeout(() => { narratorHead.style.transform = ""; }, 420);
@@ -3415,82 +3472,112 @@
   preview.addEventListener("pointerup", endDrag);
   preview.addEventListener("pointercancel", endDrag);
 
-  const COPY = {
-    photo: ["Zdjęcie. Świetnie.", "Ustawiamy jeden kadr."],
-    video: ["Wideo. Kamera w ruch.", "Ustawiamy ujęcie z ruchem."]
-  };
-  // Drugi krok startu: co jest w kadrze. Te same dwa przyciski dostają nową treść.
-  const SUBJECT_CHOICES = [
-    { id: "object", name: "Obiekt", patch: "#6E8B4A", desc: "Przedmiot na podstawie: światło, tło",
-      svg: '<path d="M19 44V22q0-6 4-8V6h4v8q4 2 4 8v22z"/><path d="M9 44h32" class="thin"/><path d="M22 28h6" class="thin"/>' },
-    { id: "person", name: "Postać", patch: "#BB5695", desc: "Osoba: poza, ubiór, twarz",
-      svg: '<circle cx="24" cy="9" r="5"/><path d="M24 14v16M24 18l-9 8M24 18l9 8M24 30l-7 14M24 30l7 14"/>' }
-  ];
-  let startStep = "mode";
-  function swapToSubject(mode) {
-    const fast = reduceMotion.matches;
-    dock.classList.add("swap");
-    setTimeout(() => {
-      document.getElementById("line1").textContent = COPY[mode][0];
-      document.getElementById("line2").textContent = "Co będzie w kadrze: przedmiot czy postać?";
-      [...dock.querySelectorAll(".choice")].forEach((btn, i) => {
-        const c = SUBJECT_CHOICES[i];
-        btn.id = "pick-" + c.id;
-        btn.dataset.subject = c.id;
-        btn.setAttribute("aria-pressed", "false");
-        btn.innerHTML = `<svg viewBox="0 0 48 48" class="ink" aria-hidden="true">${c.svg}</svg>`
-          + `<span class="name"><span class="patch" style="background:${c.patch}"></span>${c.name}</span><span class="desc">${c.desc}</span>`;
-        btn.classList.add("rise");
-        btn.style.transitionDelay = (i * 70) + "ms";
-      });
-      void dock.offsetWidth;
-      dock.classList.remove("swap");
-      startStep = "subject";
-      setTimeout(() => dock.querySelectorAll(".choice").forEach(b => { b.classList.remove("rise"); b.style.transitionDelay = ""; }), 700);
-    }, fast ? 0 : 420);
+  // ---------- Dymki Manikuna: wychodzą z przycisku z głową ----------
+  const bubbleEl = document.getElementById("bubble"), bubbleText = document.getElementById("bubbleText");
+  let bubbleTimer;
+  function say(text, ms = 4500) {
+    const r = document.getElementById("narrator").getBoundingClientRect();
+    bubbleText.textContent = text;
+    bubbleEl.hidden = false;
+    bubbleEl.style.left = Math.max(12, r.left) + "px";
+    bubbleEl.style.bottom = (innerHeight - r.top + 12) + "px";
+    requestAnimationFrame(() => bubbleEl.classList.add("show"));
+    nod();
+    clearTimeout(bubbleTimer);
+    if (ms) bubbleTimer = setTimeout(hush, ms);
   }
-  document.querySelectorAll(".choice").forEach(btn => btn.addEventListener("click", () => {
+  function hush() {
+    bubbleEl.classList.remove("show");
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => { bubbleEl.hidden = true; }, 320);
+  }
+  bubbleEl.addEventListener("click", hush);
+
+  // ---------- Start: temat (2×2), potem Kreator albo Swoboda ----------
+  // Na razie działa tylko Postać. Inne tematy: za pierwszym razem żart, potem informacja, że będą wkrótce.
+  // (Kreator obiektów jest w kodzie, odblokowanie to zdjęcie "locked" z kafelka Obiekt)
+  const ICON = {
+    person: '<circle cx="12" cy="5" r="2.6"/><path d="M12 8v6.5M12 10l-4.5 3.5M12 10l4.5 3.5M12 14.5l-3.5 6.5M12 14.5l3.5 6.5"/>',
+    object: '<path d="M9.5 21v-9q0-3 2-4V4h1v4q2 1 2 4v9z"/><path d="M5 21h14" class="thin"/>',
+    animal: '<circle cx="7" cy="9" r="1.8"/><circle cx="12" cy="6.5" r="1.8"/><circle cx="17" cy="9" r="1.8"/><path d="M12 11.5c-3 0-5.5 3.5-5.5 6 0 1.7 1.5 2.5 3 2.5 1 0 1.6-.5 2.5-.5s1.5.5 2.5.5c1.5 0 3-.8 3-2.5 0-2.5-2.5-6-5.5-6z"/>',
+    any: '<path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.5 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
+    wizard: '<path d="M4 18h4v-4h4v-4h4V6h4"/><circle cx="20" cy="6" r="1.5"/>',
+    free: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>'
+  };
+  const LOCK = '<svg class="lock ink" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+  const SUBJECTS = [
+    { id: "person", name: "Postać", desc: "poza, ubiór, twarz" },
+    { id: "object", name: "Obiekt", desc: "wkrótce", locked: true, joke: "Obiekty? Zgubiłem gdzieś rekwizyty… Szukam za kanapą." },
+    { id: "animal", name: "Zwierzę", desc: "wkrótce", locked: true, joke: "Kot miał tu być o dziewiątej. Szukamy go od rana." },
+    { id: "any", name: "Dowolne", desc: "wkrótce", locked: true, joke: "Dowolne? Ambitnie. Najpierw muszę się nauczyć rysować." }
+  ];
+  const SOON = "Ta opcja będzie dostępna wkrótce. Na razie zróbmy świetną postać!";
+  const FLOWS = [
+    { id: "wizard", name: "Kreator", desc: "krok po kroku" },
+    { id: "free", name: "Swoboda", desc: "wszystkie opcje naraz" }
+  ];
+  const startGrid = document.getElementById("startGrid");
+  const jokeSeen = {};
+  let startStep = "subject";
+  // Kafelki startu wjeżdżają spod spodu jak kafelki w rzędach
+  function showStart(list, oneCol) {
+    const fast = reduceMotion.matches, old = [...startGrid.children];
+    old.forEach(b => b.classList.add("below"));
+    setTimeout(() => {
+      startGrid.replaceChildren();
+      startGrid.classList.toggle("one", !!oneCol);
+      list.forEach((c, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "tile cat start-tile below" + (c.locked ? " locked" : "");
+        b.id = "pick-" + c.id;
+        b.innerHTML = `<svg class="ink" viewBox="0 0 24 24" aria-hidden="true">${ICON[c.id]}</svg><span class="txt"><span class="name">${c.name}</span><span class="value">${c.desc}</span></span>` + (c.locked ? LOCK : "");
+        b.addEventListener("click", () => startPick(c));
+        startGrid.appendChild(b);
+        b.style.transitionDelay = (i * 60) + "ms";
+      });
+      startGrid.offsetWidth;
+      requestAnimationFrame(() => startGrid.querySelectorAll(".start-tile").forEach(b => b.classList.remove("below")));
+      setTimeout(() => startGrid.querySelectorAll(".start-tile").forEach(b => { b.style.transitionDelay = ""; }), 700);
+    }, old.length && !fast ? 320 : 0);
+  }
+  function startPick(c) {
     if (phase !== "start") return;
-    document.querySelectorAll(".choice").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
     clearTimeout(idleTimer);
-    if (startStep === "mode") {
-      const mode = btn.dataset.mode;
-      document.getElementById("line1").textContent = COPY[mode][0];
-      document.getElementById("line2").textContent = COPY[mode][1];
-      startStep = "busy";
-      scene.mode = mode;
-      lastScene = { ...scene, format: { ...scene.format } }; // zmiana trybu na starcie to nie reakcja na kadr
-      render();
-      playFrames([{ pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 800 }, { pose: mode === "photo" ? MP.pointLeft : MP.pointRight, dur: 250 }]);
-      setTimeout(() => swapToSubject(mode), reduceMotion.matches ? 0 : 900);
+    if (c.locked) {
+      say(jokeSeen[c.id] ? SOON : c.joke);
+      jokeSeen[c.id] = true;
       return;
     }
-    if (startStep !== "subject") return;
-    // Postać: Manikun wskazuje i zostaje w kadrze. Obiekt: Manikun znika, a na jego miejscu pojawia się przedmiot.
-    startStep = "busy";
-    scene.subject = btn.dataset.subject;
-    if (scene.subject === "person") playFrames([{ pose: MP.pointLeft, dur: 700 }, { pose: MP.pointLeft, dur: 200 }]);
-    render();
-    setTimeout(enterDirector, reduceMotion.matches ? 0 : 900);
-  }));
+    if (startStep === "subject") {
+      startStep = "flow";
+      scene.subject = c.id;
+      playFrames([{ pose: MP.pointLeft, dur: 700 }, { pose: MP.pointLeft, dur: 200 }, { pose: MP.hip, dur: 900 }]);
+      showStart(FLOWS, true);
+      say("Jak pracujemy? Kreator prowadzi krok po kroku, w Swobodzie wszystko jest pod ręką.", 6000);
+      return;
+    }
+    if (startStep === "flow") {
+      startStep = "busy";
+      hush();
+      enterDirector(c.id);
+    }
+  }
 
-  // Kadr zostaje nieruchomo. Kafelki trybu chowają się w dół, a spod spodu wysuwają się
-  // ikony kategorii i kafelki formatu. Scena pojawia się wokół Manikuna, a on staje do kadru.
-  function enterDirector() {
+  // Kadr zostaje nieruchomo. Kafelki startu chowają się w dół, a na ich miejsce wjeżdżają dwa rzędy.
+  // Scena pojawia się wokół Manikuna, a on staje do kadru.
+  function enterDirector(how = "free") {
     const fast = reduceMotion.matches;
-    const choices = [...dock.querySelectorAll(".choice")].sort(a => a.getAttribute("aria-pressed") === "true" ? 1 : -1);
-    choices.forEach((c, i) => { c.style.transitionDelay = (i * 70) + "ms"; });
-    dock.classList.add("leaving");
-
+    startGrid.querySelectorAll(".start-tile").forEach((b, i) => { b.style.transitionDelay = (i * 60) + "ms"; b.classList.add("below"); });
     propAnim.reveal = { from: props.reveal, to: 1, start: performance.now(), dur: 1100 };
     playFrames([{ pose: curPose(), dur: 1000 }]);
-
     setTimeout(() => {
       dock.hidden = true;
       phase = "director";
       appEl.dataset.phase = "director";
-      navInit();
+      if (how === "wizard") wizardStart(); else { flow = "free"; navInit(); }
       render();
+      if (how === "wizard") setTimeout(() => say("Zaczynamy! Wybieraj na górze, a potem stuknij Dalej. Każdy krok możesz pominąć.", 6000), fast ? 0 : 700);
     }, fast ? 0 : 480);
   }
 
@@ -3506,7 +3593,9 @@
     showToast("Scena z intro. Skopiuj Maniscrypt, potem przełącz styl na Fantasy i skopiuj drugi.");
   } else {
     render();
+    showStart(SUBJECTS);
     greet();
     startIdle();
+    setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
   }
 </script>

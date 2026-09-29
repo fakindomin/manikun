@@ -67,7 +67,7 @@ function start() {
     apply();
     renderer.render(scene, camera);
     btn.classList.add("is3d");
-    window.head3d = { nod, tilt, look };
+    window.manikunHead = { nod, tilt, look };
     if (!reduce.matches) idle();
   }, undefined, () => {});
 
