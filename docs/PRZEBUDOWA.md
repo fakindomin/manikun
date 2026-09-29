@@ -225,7 +225,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 ## Etapy
 
 1. Poziomy: Podstawowy / Ekspert na starcie i w menu (fundament, oba działają jeszcze tak samo). **Gotowe.**
-2. Obiekty i meble z rysunkiem, przerobione pozy siedzące, grupa „Rzeczy” w Swobodzie, „Przy czym?” w Kreatorze, automatyczne punkty zaczepienia, gramatyka Maniscryptu.
+2. Obiekty i meble z rysunkiem, przerobione pozy siedzące, grupa „Rzeczy” w Swobodzie, „Przy czym?” w Kreatorze, automatyczne punkty zaczepienia, gramatyka Maniscryptu. **Gotowe.**
+   - Pozy siedzące: Siedzi prosto, Pochylony, Po turecku, Kolano pod brodą. Bez rzeczy siedzi na ziemi.
+   - Na siedzisku wysokim (krzesło, fotel, kanapa, ławka, hoker) prosto i pochylony siedzi jak na krześle; na niskim (pufa, kamień, pień, schody, skrzynia) z kolanami w górze. Po turecku i z kolanem pod brodą siedzi na wierzchu siedziska. Na hokerze stopy są na podnóżku.
+   - Automat: siedząca postać siada na tym, na czym się da; inne rzeczy stają w swoim zwykłym miejscu (stół i biurko przed stojącą, obok siedzącej; kanapa, ławka, schody, regał i parasol za postacią; samochód w tle; reszta obok). Rzecz obok przesuwa kompozycję, żeby razem stały w środku kadru.
+   - Swoboda: grupa „Rzeczy” w dolnym rzędzie (Nic + 20 rzeczy). Kreator: w rozdziale Poza pytanie „Na czym siedzi? Albo co ma obok?” / „Coś obok?”.
+   - Maniscrypt: „sitting upright on a comfortable sofa…”, „…with a wooden table in front of them”.
 3. Drobiazgi (rysunek i znak), „Co na nim leży?”, słownik pl → en, własne rzeczy, wyszukiwarka.
 4. Elementy miejsca (10, kilka naraz, deszcz/śnieg się wykluczają).
 5. Ekspert: rozdział „Rzeczy”, wskazywanie punktu w kadrze, propozycje zmiany kadru, kolory rzeczy, ostrzeżenie przy więcej niż 6 rzeczach.

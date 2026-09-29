@@ -680,6 +680,35 @@
 
   // ---------- Szablon: kategorie, opcje, frazy promptu ----------
   const SELFIE_PROMPT = "Selfie taken from the smartphone's own point of view: the picture is captured by the front camera of a phone the subject holds at arm's length slightly above eye level, so the phone itself is not visible in the frame; the subject looks straight into the lens, close personal perspective with a slight wide-angle look";
+  // ---------- Rzeczy: obiekty i meble przy postaci ----------
+  // seat: da się na tym usiąść ("high" jak krzesło, "low" jak kamień), top: wysokość siedziska w jednostkach Manikuna
+  // (stojący mężczyzna = 205). at: gdzie staje obok stojącej postaci, seatedAt: obok siedzącej (gdy nie da się usiąść).
+  // box: [lewa krawędź, prawa krawędź, wysokość] względem punktu odniesienia rysunku (przy siedziskach to biodro).
+  // phrase: opis w Maniscrypcie.
+  const THINGS = [
+    { id: "chair", name: "Krzesło", seat: "high", top: 42, at: "right", phrase: "a simple wooden chair", box: [-26, 34, 104] },
+    { id: "armchair", name: "Fotel", seat: "high", top: 42, at: "right", phrase: "a cosy upholstered armchair", box: [-40, 40, 95] },
+    { id: "sofa", name: "Kanapa", seat: "high", top: 42, at: "behind", phrase: "a comfortable sofa", box: [-106, 136, 88] },
+    { id: "stool", name: "Hoker barowy", seat: "high", top: 82, at: "right", phrase: "a tall bar stool", box: [-20, 28, 82] },
+    { id: "bench", name: "Ławka", seat: "high", top: 42, at: "behind", phrase: "a wooden park bench", box: [-70, 110, 100] },
+    { id: "pouf", name: "Pufa", seat: "low", top: 21, at: "right", phrase: "a round pouf", box: [-24, 32, 21] },
+    { id: "rock", name: "Kamień", seat: "low", top: 21, at: "right", phrase: "a large rock", box: [-32, 38, 23] },
+    { id: "stump", name: "Pień drzewa", seat: "low", top: 21, at: "right", phrase: "a tree stump", box: [-30, 36, 21] },
+    { id: "stairs", name: "Schody", seat: "low", top: 21, at: "behind", phrase: "a short flight of stairs", sitPhrase: "the bottom step of a short flight of stairs", box: [-120, 44, 63] },
+    { id: "crate", name: "Skrzynia", seat: "low", top: 30, at: "right", phrase: "a wooden crate", box: [-26, 30, 30] },
+    { id: "table", name: "Stół", surface: true, at: "front", seatedAt: "right", phrase: "a wooden table", box: [-65, 65, 78] },
+    { id: "coffeeTable", name: "Stolik kawowy", surface: true, at: "front", phrase: "a low coffee table", box: [-55, 55, 38] },
+    { id: "bar", name: "Lada barowa", surface: true, at: "right", phrase: "a bar counter", box: [-88, 88, 112] },
+    { id: "desk", name: "Biurko", surface: true, at: "front", seatedAt: "right", phrase: "a desk", box: [-70, 70, 76] },
+    { id: "floorLamp", name: "Lampa stojąca", at: "left", phrase: "a floor lamp", box: [-20, 20, 176] },
+    { id: "shelf", name: "Regał z książkami", at: "behind", phrase: "a tall bookshelf full of books", box: [-45, 45, 190] },
+    { id: "plant", name: "Roślina w donicy", at: "left", phrase: "a large potted plant", box: [-36, 36, 110] },
+    { id: "umbrella", name: "Parasol plażowy", at: "behind", phrase: "a beach umbrella", box: [-100, 100, 215] },
+    { id: "bike", name: "Rower", at: "right", phrase: "a bicycle", box: [-87, 87, 102] },
+    { id: "car", name: "Samochód", at: "background", phrase: "a car", box: [-212, 212, 138] }
+  ];
+  const THING = Object.fromEntries(THINGS.map(t => [t.id, t]));
+
   const CATEGORIES = [
     // Gotowe schematy: zestawy ustawień do szybkiego startu (osobne dla postaci i obiektu), kafelki buduje presetTiles()
     { id: "preset", label: "Gotowe", patch: "#C9A24A", options: [] },
@@ -736,13 +765,12 @@
         { id: "stride", name: "W pół kroku", short: "Pół kroku", prompt: "caught mid-stride as if walking, one foot in front of the other" },
         { id: "crouch", name: "Kuca", short: "Kuca", prompt: "crouching low in a deep squat, knees bent, heels close to the hips" }
       ]},
+      // Siedzi: poza opisuje ciało; na czym siedzi, wynika z Rzeczy (bez siedziska na ziemi)
       { id: "sitting", name: "Siedzi", children: [
-        { id: "sit", name: "Na ziemi", short: "Na ziemi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
-        { id: "chair", name: "Na krześle", short: "Krzesło", prompt: "sitting upright on a simple wooden chair, feet flat on the floor, hands resting on the thighs, facing the camera" },
-        { id: "stone", name: "Na kamieniu", short: "Kamień", prompt: "sitting on a large rock with knees bent, forearms resting on the knees, back straight, facing the camera" },
+        { id: "sit", name: "Siedzi prosto", short: "Siedzi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
+        { id: "lean", name: "Pochylony", short: "Pochylony", prompt: "sitting on the ground, leaning forward with the forearms resting on the knees, facing the camera" },
         { id: "cross", name: "Po turecku", short: "Po turecku", prompt: "sitting cross-legged on the ground, back straight, hands resting on the knees, facing the camera" },
-        { id: "kneeUp", name: "Kolano pod brodą", short: "Kolano", prompt: "sitting on the ground with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera" },
-        { id: "lean", name: "Pochylony", short: "Pochylony", prompt: "sitting on a simple wooden chair, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera" }
+        { id: "kneeUp", name: "Kolano pod brodą", short: "Kolano", prompt: "sitting on the ground with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera" }
       ]}
     ]},
     // Ręce tylko przy postawach stojących; siedząc ręce opiera na kolanach lub udach
@@ -753,6 +781,8 @@
       { id: "chin", name: "Dłoń przy brodzie", short: "Broda", prompt: "one hand raised to the chin in a thoughtful gesture" },
       { id: "shade", name: "Osłania oczy", short: "Osłania", prompt: "one hand raised to the forehead, shading the eyes" }
     ]},
+    // Rzeczy przy postaci; kafelki buduje makeTiles (scene.things to lista), tu nazwy dla wyszukiwarki
+    { id: "things", label: "Rzeczy", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
     { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
       { id: "portrait", name: "Portret", short: "Portret", noDrone: true, prompt: "Close-up portrait, head and shoulders in frame" },
@@ -935,7 +965,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1259,7 +1289,7 @@
       ...(faceShot
         // Przy zbliżeniu na twarz zostaje tylko to, co widać przy twarzy: telefon lub dłoń przy brodzie albo czole
         ? (isSelfie(scene.camera) || (armsApply(scene) && ["chin", "shade"].includes(scene.arms)) ? [armsApply(scene) ? armsPrompt() : selfieArm()] : [])
-        : [optionOf("pose", scene.pose).prompt + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : isSelfie(scene.camera) ? ", " + selfieArm() : "")]),
+        : [sitPrompt(scene) + (armsApply(scene) ? ", " + armsPrompt() + ", facing the camera" : isSelfie(scene.camera) ? ", " + selfieArm() : "") + thingsPrompt(scene)]),
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
@@ -1374,7 +1404,7 @@
   const exprOf = st => st.look && st.look.expr ? st.look.expr : null;
   // Przy selfie obie dłonie na biodrach nie są możliwe: zostaje jedna
   const armsFor = st => isSelfie(st.camera) && st.arms === "hips" ? "hipOne" : st.arms;
-  const poseKey = st => st.pose + (armsApply(st) && armsFor(st) !== "down" ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
+  const poseKey = st => poseGeom(st) + (armsApply(st) && armsFor(st) !== "down" ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
@@ -1387,21 +1417,179 @@
   }
   const curPose = () => poseOf(poseKey(scene));
 
-  // Rekwizyt, na którym siedzi Manikun
-  const POSE_PROPS = { chair: "chair", stone: "stone", lean: "chair" };
+  // ---------- Rzeczy w kadrze ----------
+  // Siedzisko pod postacią (tylko gdy siedzi), inne rzeczy w punktach zaczepienia wokół niej.
+  // Punkt wybiera automat: siedząca postać siada na tym, na czym się da; reszta staje tam, gdzie zwykle stoi (THING.at).
+  const seated = st => !STANDING.includes(st.pose);
+  const thingAnchor = (st, it) => {
+    const t = THING[it.id];
+    if (it.anchor) return it.anchor;
+    if (t.seat && seated(st)) return "under";
+    return (seated(st) && t.seatedAt) || t.at;
+  };
+  const seatOf = st => { const it = (st.things || []).find(x => thingAnchor(st, x) === "under"); return it ? THING[it.id] : null; };
+  // Geometria pozy: na siedzisku wysokim prosto i pochylony siedzi jak na krześle, na niskim jak na kamieniu
+  function poseGeom(st) {
+    const seat = seatOf(st);
+    if (!seat) return st.pose;
+    if (st.pose === "sit") return seat.seat === "low" ? "stone" : "chair";
+    if (st.pose === "lean") return seat.seat === "low" ? "stone" : "lean";
+    return st.pose;
+  }
+  // Uniesienie postaci nad ziemię (np. na hokerze stopy na podnóżku, po turecku na kanapie)
+  const GEOM_SEAT = { chair: 42, lean: 42, stone: 21 };
+  function poseLift(st) {
+    const seat = seatOf(st);
+    return seat ? seat.top - (GEOM_SEAT[poseGeom(st)] || 0) : 0;
+  }
 
-  // Rysuje rekwizyt pod biodrami (hip) w skali s, do linii podłoża G
-  function drawProp(g, kind, hip, s, G) {
-    const [hx, hy] = hip;
-    if (kind === "chair") {
-      const sy = hy + 6 * s;
-      el("rect", { x: f(hx - 26 * s), y: f(sy - 62 * s), width: f(5 * s), height: f(62 * s), rx: f(1.5 * s), class: "prop" }, g);
-      el("path", { d: `M${f(hx - 14 * s)},${f(sy + 4 * s)} L${f(hx - 14 * s)},${f(G)} M${f(hx + 30 * s)},${f(sy + 4 * s)} L${f(hx + 30 * s)},${f(G)} M${f(hx - 24 * s)},${f(sy + 4 * s)} L${f(hx - 24 * s)},${f(G - 2 * s)}`, class: "prop-line" }, g);
-      el("rect", { x: f(hx - 26 * s), y: f(sy), width: f(60 * s), height: f(5 * s), rx: f(1.5 * s), class: "prop" }, g);
-    } else if (kind === "stone") {
-      const top = hy + 5 * s, x0 = hx - 26 * s, x1 = hx + 30 * s;
-      el("path", { d: `M${f(x0)},${f(G)} C${f(x0 - 4 * s)},${f(top + 10 * s)} ${f(hx - 14 * s)},${f(top - 2 * s)} ${f(hx + 2 * s)},${f(top)} C${f(hx + 20 * s)},${f(top + 1 * s)} ${f(x1 + 6 * s)},${f(top + 8 * s)} ${f(x1)},${f(G)} Z`, class: "prop" }, g);
+  // Proste rysunki w stylu rekwizytów Manikuna: x = punkt odniesienia, G = linia podłoża, s = skala, wysokości w górę od podłoża
+  function thingPen(g, x, G, s) {
+    const X = a => f(x + a * s), Y = h => f(G - h * s);
+    return {
+      rect: (a, b, top, bottom = 0, rx = 1.5, cls = "prop") => el("rect", { x: X(a), y: Y(top), width: f((b - a) * s), height: f((top - bottom) * s), rx: f(rx * s), class: cls }, g),
+      line: (pts, cls = "prop-line") => el("path", { d: pts.map(([a, h], i) => (i ? "L" : "M") + X(a) + "," + Y(h)).join(" "), class: cls }, g),
+      poly: (pts, cls = "prop") => el("path", { d: "M" + pts.map(([a, h]) => X(a) + "," + Y(h)).join(" L") + " Z", class: cls }, g),
+      path: (d, cls = "prop") => el("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), class: cls }, g),
+      circle: (a, h, r, cls = "prop") => el("circle", { cx: X(a), cy: Y(h), r: f(r * s), class: cls }, g),
+      ellipse: (a, h, rx, ry, cls = "prop") => el("ellipse", { cx: X(a), cy: Y(h), rx: f(rx * s), ry: f(ry * s), class: cls }, g)
+    };
+  }
+  const THING_DRAW = {
+    chair: p => {
+      p.rect(-26, -21, 104, 42);
+      p.line([[-14, 38], [-14, 0]]); p.line([[30, 38], [30, 0]]); p.line([[-24, 38], [-24, 2]]);
+      p.rect(-26, 34, 42, 37);
+    },
+    armchair: p => {
+      p.rect(-40, -24, 95, 4, 6);
+      p.rect(-30, 40, 32, 4, 4);
+      p.rect(-26, 38, 42, 30, 3);
+      p.rect(-30, 38, 62, 55, 3);
+      p.rect(30, 38, 62, 30, 3);
+      p.line([[-26, 4], [-26, 0]]); p.line([[34, 4], [34, 0]]);
+    },
+    sofa: p => {
+      p.rect(-92, 122, 88, 38, 9);
+      p.rect(-92, 122, 44, 22, 5);
+      p.line([[15, 44], [15, 24]]);
+      p.rect(-108, -86, 62, 8, 8); p.rect(116, 138, 62, 8, 8);
+      p.line([[-96, 8], [-96, 0]]); p.line([[126, 8], [126, 0]]);
+    },
+    stool: p => {
+      p.line([[-12, 77], [-18, 0]]); p.line([[20, 77], [26, 0]]); p.line([[4, 77], [4, 0]]);
+      p.line([[-16, 38], [24, 38]]);
+      p.rect(-20, 26, 82, 77, 2);
+    },
+    bench: p => {
+      p.rect(-66, -60, 100, 40); p.rect(100, 106, 100, 40);
+      p.rect(-70, 110, 100, 94); p.rect(-70, 110, 86, 80);
+      p.rect(-62, -56, 37, 0); p.rect(96, 102, 37, 0);
+      p.rect(-70, 110, 42, 37);
+    },
+    pouf: p => { p.rect(-24, 32, 21, 0, 9); p.line([[-20, 11], [28, 11]]); },
+    rock: p => p.path("M-26,0 C-30,11 -14,23 2,21 C20,20 36,13 30,0 Z"),
+    stump: p => {
+      p.poly([[-30, 0], [-22, 6], [-22, 21], [28, 21], [28, 6], [36, 0]]);
+      p.ellipse(3, 21, 25, 4);
+      p.line([[-12, 17], [-12, 4]]); p.line([[6, 17], [6, 3]]); p.line([[20, 16], [20, 6]]);
+    },
+    stairs: p => { p.rect(-120, -50, 63, 42, 1); p.rect(-120, -18, 42, 21, 1); p.rect(-120, 44, 21, 0, 1); },
+    crate: p => { p.rect(-26, 30, 30, 0, 1.5); p.line([[-26, 15], [30, 15]]); p.line([[-24, 2], [28, 28]]); },
+    table: p => { p.rect(-60, -55, 73, 0); p.rect(55, 60, 73, 0); p.rect(-65, 65, 78, 73); },
+    coffeeTable: p => { p.rect(-50, -45, 32, 0); p.rect(45, 50, 32, 0); p.line([[-48, 10], [48, 10]]); p.rect(-55, 55, 38, 32, 2); },
+    bar: p => {
+      p.rect(-80, 80, 106, 0, 2);
+      [-40, 0, 40].forEach(a => p.line([[a, 100], [a, 6]]));
+      p.rect(-88, 88, 112, 106, 2);
+    },
+    desk: p => {
+      p.rect(-68, -30, 71, 0); p.line([[-66, 48], [-32, 48]]); p.line([[-66, 24], [-32, 24]]);
+      p.rect(62, 67, 71, 0); p.rect(-70, 70, 76, 71);
+    },
+    floorLamp: p => { p.ellipse(0, 2, 16, 3); p.line([[0, 3], [0, 150]]); p.poly([[-12, 176], [12, 176], [20, 150], [-20, 150]]); },
+    shelf: p => {
+      p.rect(-45, 45, 190, 0, 1.5);
+      const H = [30, 26, 34, 28, 31, 24, 33, 27, 29, 35, 25];
+      [5, 51, 97, 143].forEach((b, row) => {
+        if (b > 5) p.line([[-45, b], [45, b]]);
+        for (let i = 0; i < 11; i++) { const a = -40 + i * 7.3, h = H[(i + row * 3) % H.length]; if ((i + row) % 5 !== 4) p.rect(a, a + 5.5, b + Math.min(h, 40), b + 1, 0.5); }
+      });
+    },
+    plant: p => {
+      [[-32, 88], [-14, 110], [8, 106], [28, 90], [2, 80]].forEach(([tx, ty]) =>
+        p.path(`M0,34 Q${tx - 14},${(34 + ty) / 2} ${tx},${ty} Q${tx + 12},${(34 + ty) / 2} 0,34 Z`));
+      p.poly([[-16, 36], [16, 36], [12, 0], [-12, 0]]);
+    },
+    umbrella: p => {
+      p.line([[0, 0], [0, 206]]);
+      p.path("M-100,186 Q-50,226 0,216 Q50,226 100,186 Q75,194 50,186 Q25,194 0,186 Q-25,194 -50,186 Q-75,194 -100,186 Z");
+    },
+    bike: p => {
+      p.circle(-55, 32, 32, "prop-line"); p.circle(55, 32, 32, "prop-line");
+      p.line([[-55, 32], [-5, 32], [40, 84], [-20, 90], [-55, 32]]);
+      p.line([[-5, 32], [-20, 90], [-24, 98]]); p.line([[-34, 98], [-14, 98]]);
+      p.line([[55, 32], [40, 84], [44, 100], [56, 102]]);
+    },
+    car: p => {
+      p.path("M-210,22 L-210,60 Q-206,72 -182,75 L-112,78 L-72,126 Q-62,138 -40,138 L50,138 Q70,138 86,120 L116,80 L190,74 Q210,70 212,54 L212,22 Z");
+      p.poly([[-60, 124], [-8, 124], [-8, 86], [-94, 86]], "prop-line");
+      p.poly([[2, 124], [48, 124], [80, 86], [2, 86]], "prop-line");
+      [-130, 130].forEach(a => { p.circle(a, 26, 26); p.circle(a, 26, 10, "prop-line"); });
     }
+  };
+  function drawThing(g, id, x, G, s) { THING_DRAW[id](thingPen(g, x, G, s)); }
+  // Kafelek rzeczy: sam rysunek, wyśrodkowany
+  function thingTile(svg, id) {
+    if (id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
+    const [x0, x1, h] = THING[id].box, side = Math.max(x1 - x0, h) + 16, cx = (x0 + x1) / 2;
+    svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(-h / 2 - side / 2)} ${f(side)} ${f(side)}`);
+    drawThing(svg, id, 0, 0, 1);
+  }
+
+  // Punkty zaczepienia względem postaci w kadrze: pod nią, przed, za, obok (lewo, prawo) i w tle.
+  // Zwraca rzeczy z położeniem i przesunięcie całej kompozycji, żeby postać z rzeczą obok stały w środku kadru.
+  function thingLayout(st, pl, plBase, W) {
+    const s = plBase.scale, G = plBase.groundY, cx = pl.x + pl.w / 2;
+    const out = (st.things || []).filter(it => THING[it.id]).map(it => {
+      const t = THING[it.id], anchor = thingAnchor(st, it), [x0, x1] = t.box;
+      if (anchor === "under") return { t, anchor, x: plBase.hip[0], G, s, front: false };
+      if (anchor === "front") return { t, anchor, x: cx + 6 * s, G, s, front: true };
+      if (anchor === "behind") return { t, anchor, x: cx + 34 * s, G: G - 22 * s, s: s * 0.72, front: false };
+      if (anchor === "background") return { t, anchor, x: cx + 70 * s, G: G - 36 * s, s: s * 0.5, front: false };
+      // Obok: krawędź rzeczy tuż przy krawędzi postaci (lekko za nią), więc siedząca z nogami do przodu nie wchodzi na rzecz
+      const figL = pl.x + 8 * s, figR = pl.x + pl.w - 8 * s;
+      if (anchor === "left") return { t, anchor, x: Math.min(cx - 22 * s, figL) - x1 * s, G, s, front: false };
+      return { t, anchor, x: Math.max(cx + 22 * s, figR) - x0 * s, G, s, front: false };
+    });
+    let shift = 0;
+    const side = out.filter(o => o.anchor === "left" || o.anchor === "right");
+    if (side.length && st.shot === "full") {
+      const lo = Math.min(pl.x, ...side.map(o => o.x + o.t.box[0] * o.s)), hi = Math.max(pl.x + pl.w, ...side.map(o => o.x + o.t.box[1] * o.s));
+      shift = clamp(W / 2 - (lo + hi) / 2, -W * 0.18, W * 0.18);
+    }
+    out.forEach(o => { o.x += shift; });
+    return { list: out, shift };
+  }
+  // Przesunięcie postaci w kadrze (razem z punktami, z których korzystają kamera, lampa i selfie)
+  const shiftPl = (pl, dx) => !dx ? pl : { ...pl, x: pl.x + dx, hip: [pl.hip[0] + dx, pl.hip[1]], head: [pl.head[0] + dx, pl.head[1]],
+    hand: pl.hand && [pl.hand[0] + dx, pl.hand[1]], handNear: pl.handNear && [pl.handNear[0] + dx, pl.handNear[1]] };
+
+  // Maniscrypt: siedzenie na rzeczy i rzeczy wokół postaci
+  const ANCHOR_WORDS = { front: "in front of them", behind: "behind them", right: "next to them on the right", left: "next to them on the left", background: "in the background behind them" };
+  function sitPrompt(st) {
+    const seat = seatOf(st);
+    if (!seat) return optionOf("pose", st.pose).prompt;
+    const on = seat.sitPhrase || seat.phrase;
+    if (seat.id === "stool" && (st.pose === "sit" || st.pose === "lean")) return `perched on ${on}, feet resting on the footrest, ${st.pose === "lean" ? "leaning forward with the elbows on the knees" : "hands resting on the thighs"}, facing the camera`;
+    if (st.pose === "sit") return seat.seat === "low" ? `sitting on ${on} with knees bent, forearms resting on the knees, back straight, facing the camera` : `sitting upright on ${on}, feet flat on the floor, hands resting on the thighs, facing the camera`;
+    if (st.pose === "lean") return `sitting on ${on}, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera`;
+    if (st.pose === "cross") return `sitting cross-legged on ${on}, back straight, hands resting on the knees, facing the camera`;
+    return `sitting on ${on} with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera`;
+  }
+  function thingsPrompt(st) {
+    const items = (st.things || []).filter(it => THING[it.id] && thingAnchor(st, it) !== "under").map(it => THING[it.id].phrase + " " + ANCHOR_WORDS[thingAnchor(st, it)]);
+    return items.length ? ", with " + andList(items) : "";
   }
 
   const figCache = {};
@@ -1445,7 +1633,8 @@
   // Umieszcza manekina w kadrze W×H. Skala zależy tylko od kadru i postaci stojącej.
   // anchorX: środek pozy bazowej w układzie manekina, żeby gesty nie przesuwały postaci w kadrze.
   // far: oddalenie ujęcia z drona (0..1), postać robi się mniejsza, widać więcej otoczenia
-  function place(fig, shot, W, H, anchorX, far = 0) {
+  // lift: uniesienie postaci nad podłoże w jednostkach Manikuna (siedzisko wyższe niż zwykłe krzesło)
+  function place(fig, shot, W, H, anchorX, far = 0, lift = 0) {
     const b = fig.box;
     let scale, x, y, groundY;
     if (shot === "face") {
@@ -1453,19 +1642,19 @@
       scale = (H * 0.5) / (REF.h * 0.15);
       y = H * 0.46 - (fig.head[1] - b.minY) * scale;
       x = W / 2 - (fig.head[0] - b.minX) * scale;
-      groundY = y + b.h * scale;
+      groundY = y + (b.h + lift) * scale;
     } else if (shot === "portrait") {
       scale = (H * 0.78) / (REF.h * 0.42);
       const headY = H * 0.1 + 16 * scale;
       y = headY - (fig.head[1] - b.minY) * scale;
       x = W / 2 - (fig.head[0] - b.minX) * scale;
-      groundY = y + b.h * scale;
+      groundY = y + (b.h + lift) * scale;
     } else {
       groundY = H * 0.86;
       scale = (groundY - H * 0.14) / REF.h * (1 - 0.42 * far);
       const ax = anchorX === undefined ? (b.minX + b.maxX) / 2 : anchorX;
       x = W / 2 - (ax - b.minX) * scale;
-      y = groundY - b.h * scale;
+      y = groundY - (b.h + lift) * scale;
     }
     const toScene = p => [x + (p[0] - b.minX) * scale, y + (p[1] - b.minY) * scale];
     return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.far ? toScene(fig.hands.far) : null, handNear: fig.hands && fig.hands.near ? toScene(fig.hands.near) : null };
@@ -1513,14 +1702,18 @@
   // Punkty odniesienia sceny: manekin (animowany i bazowy), horyzont, pozycje lampy
   // Oddalenie przy dronie: w trakcie zmiany kamery płynne (props.drone), inaczej od razu
   const droneFar = st => st.props && st.props.drone != null ? st.props.drone : (st.camera === "D" ? 1 : 0);
-  function anchors(st, W, H) {
+  function anchors(st, W, H, withThings = false) {
     // Środek wyznacza sama postawa, więc gest rękami nie przesuwa Manikuna w kadrze
-    const bb = buildFigure(st.pose, st.body).box, ax = (bb.minX + bb.maxX) / 2;
+    const bb = buildFigure(poseGeom(st), st.body).box, ax = (bb.minX + bb.maxX) / 2;
     const baseFig = buildFigure(poseKey(st), st.body, st.outfit);
-    const far = droneFar(st);
-    const plBase = place(baseFig, st.shot, W, H, ax, far);
-    const pl = st.fig ? place(st.fig, st.shot, W, H, ax, far) : plBase;
-    return { pl, plBase, u: H / 100, cx: pl.x + pl.w / 2 };
+    const far = droneFar(st), lift = poseLift(st);
+    let plBase = place(baseFig, st.shot, W, H, ax, far, lift);
+    let pl = st.fig ? place(st.fig, st.shot, W, H, ax, far, lift) : plBase;
+    // Rzeczy obok postaci przesuwają kompozycję, żeby razem stały w środku kadru
+    const things = withThings ? thingLayout(st, pl, plBase, W) : { list: [], shift: 0 };
+    plBase = shiftPl(plBase, things.shift);
+    pl = st.fig ? shiftPl(pl, things.shift) : plBase;
+    return { pl, plBase, things: things.list, u: H / 100, cx: pl.x + pl.w / 2 };
   }
 
   // ---------- Tła ----------
@@ -2115,7 +2308,7 @@
     el("rect", { x: 0, y: 0, width: f(W), height: f(H) }, el("clipPath", { id }, defs));
     const g = el("g", { "clip-path": `url(#${id})` }, svg);
 
-    const A = anchors(st, W, H);
+    const A = anchors(st, W, H, layers.has("things"));
     const { u } = A;
     // Obiekt albo postać: przy przejściu jedno przenika się z drugim (subj 0 = Manikun, 1 = przedmiot)
     const subj = st.props && st.props.subj != null ? st.props.subj : (st.subject === "object" ? 1 : 0);
@@ -2212,8 +2405,11 @@
 
     if (subj < 1) {
       const fg = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
-      if (POSE_PROPS[st.pose]) drawProp(fg, POSE_PROPS[st.pose], A.plBase.hip, A.plBase.scale, A.plBase.groundY);
+      // Rzeczy za postacią (i siedzisko pod nią), postać, potem rzeczy przed nią
+      const tg = reveal >= 1 ? fg : el("g", { opacity: f(reveal) }, fg);
+      A.things.filter(o => !o.front).forEach(o => drawThing(tg, o.t.id, o.x, o.G, o.s));
       drawFigureAt(fg, A.pl, "fig");
+      A.things.filter(o => o.front).forEach(o => drawThing(tg, o.t.id, o.x, o.G, o.s));
     }
     if (subj > 0) {
       const og = subj < 1 ? el("g", { opacity: f(subj) }, g) : g;
@@ -2288,6 +2484,7 @@
 
   // ---------- Ikony paska kategorii ----------
   const CAT_ICONS = {
+    things: svg => { el("path", { d: "M6 4v16 M6 12h11 M17 12v8 M6 16h11" }, svg); el("path", { d: "M14 8h6" }, svg); },
     format: svg => el("rect", { x: 6, y: 3, width: 12, height: 18, rx: 1.5 }, svg),
     shot: svg => el("path", { d: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5" }, svg),
     camera: svg => { el("rect", { x: 3, y: 7, width: 13, height: 11, rx: 1.5 }, svg); el("path", { d: "M16 10l5-3v11l-5-3z" }, svg); },
@@ -2328,6 +2525,7 @@
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "outfit") return setName();
+    if (cat.id === "things") return scene.things.length ? THING[scene.things[0].id].name : "Nic";
     if (cat.id === "look") {
       const lk = scene.look;
       if (lk.expr !== "neutral") return lookOpt("expr", lk.expr).name;
@@ -2375,7 +2573,7 @@
     mode: "photo", subject: "person", style: "cyber", body: "male",
     // Stan końcowy tutoriala: streetwear (bluza z kapturem), w którym jeansy zamieniono na dres
     outfit: "custom", wear: { ...dressIn("street").wear, bottom: "joggers" }, wc: { ...dressIn("street").wc, bottom: "graphite" }, wcPicked: {},
-    pose: "stride", arms: "shade", shot: "full", camera: "L3",
+    pose: "stride", arms: "shade", things: [], shot: "full", camera: "L3",
     light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "night",
     look: { ...LOOK0, hair: "short" }
   };
@@ -2384,7 +2582,7 @@
     const set = { ...pr.set };
     // Gotowiec bez fryzury dostaje domyślną dla postaci
     if (set.look) set.look = { ...set.look, hair: set.look.hair || DEFAULT_HAIR_OF[scene.body], hairPicked: !!set.look.hair };
-    Object.assign(scene, { ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
+    Object.assign(scene, { things: [], ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
     lastPreset = pr.id;
     render();
   }
@@ -2432,6 +2630,7 @@
       };
       scene.pose = anyOf(leavesOf("pose")).id;
       scene.arms = anyOf(optionsOf("arms")).id;
+      scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : [];
       scene.shot = anyOf(["full", "full", "portrait", "face"]);
     }
     scene.camera = anyOf(leavesOf("camera").filter(fit)).id;
@@ -2650,6 +2849,9 @@
     if (catId === "style") return optionsOf("style").map(o => tile("opt-style-" + o.id, o.name, () => scene.style === o.id,
       () => { scene.style = o.id; render(); }, svg => renderScene(svg, { ...scene, style: o.id }, 100, 100, new Set(["ground"]), { styleFrame: true, corners: false })));
     if (catId === "look") return lookTiles();
+    if (catId === "things") return [{ id: "none", name: "Nic" }, ...THINGS].map(o => tile("opt-things-" + o.id, o.name,
+      () => ((scene.things || [])[0] || { id: "none" }).id === o.id,
+      () => { scene.things = o.id === "none" ? [] : [{ id: o.id }]; render(); }, svg => thingTile(svg, o.id)));
     if (catId === "background" && scene.sub && scene.sub.startsWith("v:")) return variantTiles(scene.sub.slice(2));
     if (catId === "itemColor") {
       // Kolor przedmiotu: domyślny dla danego przedmiotu albo z palety
@@ -2745,16 +2947,18 @@
         boxes.push(buildFigure(poseKey({ pose: pk, arms: ak }), bk).box))));
       const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
       const poseId = catId === "pose" ? leafId : scene.pose;
-      const key = poseKey({ pose: poseId, arms: catId === "arms" ? leafId : scene.arms });
+      // Siedzisko z Rzeczy: kafelek pokazuje, jak postać na nim siedzi
+      const stT = { ...scene, pose: poseId, arms: catId === "arms" ? leafId : scene.arms, look: { ...scene.look, expr: "neutral" } };
+      const key = poseKey({ pose: poseId, arms: stT.arms, things: scene.things }), seat = seatOf(stT), lift = poseLift(stT);
       // Kafelek postaci pokazuje jej domyślną fryzurę, póki fryzura nie jest wybrana ręcznie
       const savedLook = scene.look;
       if (catId === "body" && !scene.look.hairPicked) scene.look = { ...scene.look, hair: DEFAULT_HAIR_OF[leafId] };
       const fig = buildFigure(key, catId === "body" ? leafId : scene.body, scene.outfit), b = fig.box;
       scene.look = savedLook;
-      const x = b.minX - (side - b.w) / 2, y = b.maxY + 6 - side;
+      const G = b.maxY + lift, x = b.minX - (side - b.w) / 2, y = G + 6 - side;
       svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
-      el("line", { x1: f(x), y1: f(b.maxY), x2: f(x + side), y2: f(b.maxY), class: "thin" }, svg);
-      if (POSE_PROPS[poseId]) drawProp(svg, POSE_PROPS[poseId], [0, 0], 1, b.maxY);
+      el("line", { x1: f(x), y1: f(G), x2: f(x + side), y2: f(G), class: "thin" }, svg);
+      if (seat) drawThing(svg, seat.id, 0, G, 1);
       paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
       return;
     }
@@ -2771,6 +2975,7 @@
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms"], subjects: ["person"], icon: "body" },
+    { id: "things", label: "Rzeczy", cat: "things", subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "scene", label: "Scena", cats: ["background", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
@@ -2781,7 +2986,7 @@
   const catById = id => CATEGORIES.find(c => c.id === id);
   const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
-  const GROUP_VALUE = { preset: "preset", person: "body", object: "item", scene: "background", camera: "camera", style: "style" };
+  const GROUP_VALUE = { preset: "preset", person: "body", things: "things", object: "item", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
   const catOff = id => (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   const childOf = id => {
@@ -2845,6 +3050,7 @@
     { id: "glassesColor", say: "Jakie oprawki?", cat: "look", sub: "glassesColor", when: () => face() && scene.look.glasses !== "none" },
     { id: "pose", ch: "pose", say: "Co robi?", cat: "pose", flat: true },
     { id: "arms", say: "A ręce?", cat: "arms", when: () => armsApply(scene) },
+    { id: "things", say: () => seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things" },
     { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
     { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
     { id: "time", say: "Pora dnia?", cat: "time", when: () => timeApplies(scene) },
@@ -2934,7 +3140,7 @@
   const nameOf = cat => optionOf(cat, scene[cat]).name;
   const CH_SUMMARY = {
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
-    pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(nameOf("arms")) : ""),
+    pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(nameOf("arms")) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
     place: () => nameOf("background") + ", " + low(BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).name) + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
     camera: () => `${nameOf("shot")}, ${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
     style: () => "Styl " + nameOf("style")
@@ -2962,6 +3168,9 @@
     pose() {
       scene.pose = anyOf(leavesOf("pose")).id;
       if (armsApply(scene)) scene.arms = anyOf(optionsOf("arms")).id;
+      // Siedząc zwykle na czymś, stojąc czasem coś obok
+      const seats = THINGS.filter(t => t.seat);
+      scene.things = seated(scene) ? (Math.random() < 0.75 ? [{ id: anyOf(seats).id }] : []) : (Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : []);
     },
     place() {
       scene.background = anyOf(leavesOf("background")).id;
@@ -3508,7 +3717,7 @@
   function renderPreview() {
     const fmt = currentFormat();
     const H = 300, W = H * fmt.w / fmt.h;
-    const layers = ["ground", "camera", "light", "background"];
+    const layers = ["ground", "camera", "light", "background", "things"];
     if (scene.mode === "video" && !isSelfie(scene.camera)) layers.push("motion");
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
@@ -3840,7 +4049,7 @@
     nodTimer = setTimeout(() => { narratorHead.style.transform = ""; }, 420);
   }
   // Reakcja na każdy wybór: kiwnięcie albo przechył, bez dymków; styl i gotowce dostają wyraźne kiwnięcie
-  const sceneFP = () => JSON.stringify([scene.mode, scene.style, scene.body, scene.wear, scene.wc, scene.look, scene.pose, scene.arms, scene.shot, scene.camera,
+  const sceneFP = () => JSON.stringify([scene.mode, scene.style, scene.body, scene.wear, scene.wc, scene.look, scene.pose, scene.arms, scene.things, scene.shot, scene.camera,
     scene.light, scene.lightZone, scene.background, scene.bgv, scene.bgx, scene.time, scene.motion, scene.format]);
   let lastReact = 0;
   function react(big = false) {
@@ -3868,6 +4077,8 @@
     camera: "obiektyw kat ujecie", format: "proporcje rozmiar", motion: "ruch kamery", style: "wyglad",
     top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", sun: "przeciwsloneczne",
     stand: "stanie stoi", stride: "chod idzie spacer krok", crouch: "kucanie kucnij przysiad", wide: "rozkrok",
+    things: "przedmiot rekwizyt meble obiekt", sofa: "sofa", stool: "stolek", floorLamp: "lampa", shelf: "polka ksiazki", umbrella: "parasol",
+    car: "auto", bike: "rowerek", crate: "pudlo", stump: "pieniek", table: "stolik",
     sit: "siedzenie siedzi", chair: "krzeslo", cross: "turecku", chin: "myslenie zamyslenie", shade: "oslania patrzy wypatruje",
     hips: "rece na biodrach", D: "dron z gory lot", night: "wieczor ciemno", golden: "zachod wschod"
   };
