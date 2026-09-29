@@ -180,11 +180,14 @@
   .guide-list li::before { content: "✓"; color: var(--accent); font-weight: 700; margin-right: 6px; }
   .sheet-lead { margin: -6px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
   /* Trzy kroki w jednym rzędzie */
-  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  /* Kroki ze strzałkami między nimi: kierunek pracy od lewej do prawej */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 16px 1fr 16px 1fr; gap: 2px; align-items: stretch; }
+  .steps li.step-arrow { background: none; border: 0; padding: 0; display: grid; place-items: center; }
+  .step-arrow svg { width: 16px; height: 16px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .steps li {
-    display: flex; align-items: center; gap: 7px; min-width: 0;
-    font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--ink);
-    background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px;
+    display: flex; align-items: center; gap: 6px; min-width: 0;
+    font-size: 11.5px; font-weight: 600; line-height: 1.2; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 6px;
   }
   .steps b {
     flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
@@ -472,7 +475,9 @@
     <!-- Trzy kroki; trzeci mówi o zdjęciu, gdy przełącznik jest włączony -->
     <ol class="steps" aria-label="Jak użyć">
       <li><b>1</b>Skopiuj</li>
+      <li class="step-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg></li>
       <li><b>2</b>Otwórz generator</li>
+      <li class="step-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg></li>
       <li><b>3</b><span id="stepPaste">Wklej</span></li>
     </ol>
     <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
