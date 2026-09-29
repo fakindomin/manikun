@@ -245,5 +245,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
    - W kadrze: woda, śnieg na ziemi, kałuże, ognisko, neony, latarnia i mgła za postacią; deszcz, płatki śniegu i liście przed nią.
    - Swoboda: Scena › Elementy (Brak + 10). Kreator: w rozdziale Miejsce po „A dokładniej?” pytanie „Dodać coś do miejsca?” (w Ekspercie „Coś jeszcze w miejscu? Możesz wybrać kilka.”).
    - Maniscrypt: „quiet pine forest in the background…, with a river flowing past, soft mist drifting over the scene and autumn leaves falling through the air”.
-5. Ekspert: rozdział „Rzeczy”, wskazywanie punktu w kadrze, propozycje zmiany kadru, kolory rzeczy, ostrzeżenie przy więcej niż 6 rzeczach.
+5. Ekspert: rozdział „Rzeczy”, wskazywanie punktu w kadrze, propozycje zmiany kadru, kolory rzeczy, ostrzeżenie przy więcej niż 6 rzeczach. **Gotowe.**
+   - Punkty: Pod postacią (tylko siedzisko przy siedzącej), Przed, Za, Obok z lewej, Obok z prawej, W tle; w kadrze co najmniej kwadratowym dodatkowo Dalej z lewej / z prawej, w wyraźnie pionowym Na pierwszym planie. Dalej po bokach stoi za rzeczą z miejsca „obok”.
+   - Położenie: wskazane ręcznie ma pierwszeństwo, reszta automatem w pierwszym wolnym punkcie. Wskazanie zajętego punktu przestawia tamtą rzecz z powrotem na automat.
+   - Swoboda (Ekspert): Rzeczy › Obiekty włączają i wyłączają rzeczy (kilka naraz); nowa rzecz od razu czeka na wskazanie punktu w kadrze. Stuknięcie w rzecz w kadrze pozwala ją przestawić. Na blacie: kilka drobiazgów. Nowa kategoria Kolory: rzecz → paleta (Domyślny + 20).
+   - Kreator (Ekspert): rozdział Rzeczy: „Dodajemy coś do sceny?” → „Co dodajemy?” → „Wskaż na ekranie, gdzie ma stać” (stuknięcie w punkt przechodzi dalej; są też kafelki z punktami) → „Co leży na stole?” (gdy blat) → „Jaki kolor?” → znowu „Co dodajemy?”, aż do „Rzeczy gotowe”. W Podstawowym pytania o rzeczy zostają w rozdziale Poza.
+   - Propozycje Manikuna (raz na scenę): obie strony zajęte → szerszy kadr (3:2, w wideo 16:9); rzeczy nad sobą (za postacią albo w tle, a do tego drobiazgi albo coś przed) → wyższy kadr (4:5, w wideo 9:16). Propozycję wykonuje stuknięcie w dymek. Powyżej 6 rzeczy (obiekty, drobiazgi, elementy miejsca) ostrzeżenie.
+   - Maniscrypt: kolor przed nazwą („a red comfortable sofa”), położenie z punktu („further away on the right”, „in the foreground, close to the camera”).
 6. Nowe pozy: Rozparty, Na brzegu, Noga na nogę, grupa Leży, Oparty.

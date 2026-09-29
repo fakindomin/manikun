@@ -375,6 +375,8 @@
     color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
   }
   /* Dymek Manikuna: nad przyciskiem z głową, ogonek w lewym dolnym rogu */
+  /* Propozycja Manikuna (np. szerszy kadr): stuknięcie w dymek ją wykonuje */
+  .bubble.offer::after { content: "Stuknij, aby zmienić ›"; display: block; margin-top: 4px; font-size: 11.5px; font-weight: 700; opacity: 0.75; }
   .bubble {
     position: fixed; z-index: 15; max-width: min(300px, calc(100vw - 32px)); box-sizing: border-box;
     background: var(--accent); color: var(--on-accent); border: 0; border-radius: 16px 16px 16px 4px;
@@ -471,11 +473,15 @@
   .row.wizard .tile.ch.open .txt { display: grid; text-align: center; justify-items: center; }
   .row.wizard .tile.ch.done::after { content: "✓"; position: absolute; top: 3px; right: 5px; font-size: 10px; font-weight: 700; color: var(--accent); }
   .row.wizard .tile.mini { width: 40px; }
+  .row.wizard.six .tile.ch { width: 33px; }
+  .row.wizard.six .tile.ch > svg { width: 28px; height: 28px; padding: 6px; }
   @media (max-width: 379px) {
     .row.wizard { gap: 4px; }
     .row.wizard .tile.ch { width: 28px; }
     .row.wizard .tile.ch > svg { width: 26px; height: 26px; padding: 5px; }
     .row.wizard .tile.mini { width: 34px; }
+    .row.wizard.six .tile.ch { width: 24px; }
+    .row.wizard.six .tile.ch > svg { width: 22px; height: 22px; padding: 4px; }
   }
   /* Kreator, górny rząd: odpowiedzi przewijają się pod przypiętym po prawej "Zostaw" / "Dalej" */
   .row.question #wiz-next { position: sticky; right: 0; z-index: 2; min-width: 0; width: 92px; padding: 0 8px; grid-template-columns: 1fr; justify-items: center; text-align: center;
@@ -525,6 +531,12 @@
   .ink .halo { fill: var(--halo, var(--bg)); stroke: none; }
   .ink .prop { fill: #3A3833; stroke: #8E8A80; }
   .ink .prop-line { stroke: #8E8A80; stroke-width: 2.5; }
+  /* Ekspert: punkty do wskazania miejsca rzeczy w kadrze */
+  .pick circle { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; animation: pickPulse 1.4s ease-in-out infinite; }
+  .pick.mine circle { fill: var(--accent); animation: none; }
+  .pick.taken { opacity: 0.45; }
+  .pick text { fill: #F4F4F5; stroke: #0B0B0D; stroke-width: 2.4; paint-order: stroke; }
+  @keyframes pickPulse { 50% { fill-opacity: 0.35; } }
 </style>
 
 <div class="screen app" id="app" data-phase="start">
@@ -695,7 +707,7 @@
     { id: "pouf", name: "Pufa", seat: "low", top: 21, at: "right", phrase: "a round pouf", box: [-24, 32, 21] },
     { id: "rock", name: "Kamień", seat: "low", top: 21, at: "right", phrase: "a large rock", box: [-32, 38, 23] },
     { id: "stump", name: "Pień drzewa", seat: "low", top: 21, at: "right", phrase: "a tree stump", box: [-30, 36, 21] },
-    { id: "stairs", name: "Schody", seat: "low", top: 21, at: "behind", phrase: "a short flight of stairs", sitPhrase: "the bottom step of a short flight of stairs", box: [-120, 44, 63] },
+    { id: "stairs", name: "Schody", seat: "low", top: 21, at: "behind", phrase: "a short flight of stairs", sitOn: p => "the bottom step of " + p, box: [-120, 44, 63] },
     { id: "crate", name: "Skrzynia", seat: "low", top: 30, at: "right", phrase: "a wooden crate", box: [-26, 30, 30] },
     { id: "table", name: "Stół", surf: 78, on: "stole", at: "front", seatedAt: "right", phrase: "a wooden table", box: [-65, 65, 78] },
     { id: "coffeeTable", name: "Stolik kawowy", surf: 38, on: "stoliku", at: "front", phrase: "a low coffee table", box: [-55, 55, 38] },
@@ -837,6 +849,8 @@
     { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
     // Drobiazgi na blacie: kafelki i wyszukiwarkę buduje kod (katalog ALL_ITEMS, słownik pl → en)
     { id: "items", label: "Na blacie", subjects: ["person"], patch: "#A88A5B", options: [] },
+    // Kolory rzeczy (tylko Ekspert): najpierw rzecz, potem paleta
+    { id: "thingColor", label: "Kolory", subjects: ["person"], levels: ["expert"], patch: "#B07A5B", options: [] },
     { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
       { id: "portrait", name: "Portret", short: "Portret", noDrone: true, prompt: "Close-up portrait, head and shoulders in frame" },
@@ -1021,7 +1035,7 @@
   // Scena domyślna na powrót do startu bez przeładowania strony
   const SCENE0 = JSON.parse(JSON.stringify(scene));
 
-  const activeCats = () => CATEGORIES.filter(c => (!c.modes || c.modes.includes(scene.mode)) && (!c.subjects || c.subjects.includes(scene.subject)));
+  const activeCats = () => CATEGORIES.filter(c => (!c.modes || c.modes.includes(scene.mode)) && (!c.subjects || c.subjects.includes(scene.subject)) && (!c.levels || c.levels.includes(level)));
   const currentFormat = () => FORMATS[scene.mode].find(x => x.id === scene.format[scene.mode]);
   const optionsOf = catId => CATEGORIES.find(c => c.id === catId).options;
   // 8 stref kotwiczenia aparatu i światła: 3 po lewej, 3 po prawej, góra i dół na środku (x, y w ułamkach kadru)
@@ -1471,13 +1485,44 @@
   // Siedzisko pod postacią (tylko gdy siedzi), inne rzeczy w punktach zaczepienia wokół niej.
   // Punkt wybiera automat: siedząca postać siada na tym, na czym się da; reszta staje tam, gdzie zwykle stoi (THING.at).
   const seated = st => !STANDING.includes(st.pose);
-  const thingAnchor = (st, it) => {
-    const t = THING[it.id];
-    if (it.anchor) return it.anchor;
-    if (t.seat && seated(st)) return "under";
-    return (seated(st) && t.seatedAt) || t.at;
+  // Punkty zaczepienia. wide: tylko w kadrze co najmniej kwadratowym, tall: tylko w wyraźnie pionowym
+  // (szerszy kadr daje miejsca dalej po bokach, wyższy miejsce na pierwszym planie).
+  const ANCHORS = {
+    under: { name: "Pod postacią", short: "Pod" },
+    front: { name: "Przed", short: "Przed", words: "in front of them" },
+    behind: { name: "Za", short: "Za", words: "behind them" },
+    left: { name: "Obok z lewej", short: "Lewo", words: "next to them on the left" },
+    right: { name: "Obok z prawej", short: "Prawo", words: "next to them on the right" },
+    leftFar: { name: "Dalej z lewej", short: "Dalej L", words: "further away on the left", wide: true },
+    rightFar: { name: "Dalej z prawej", short: "Dalej P", words: "further away on the right", wide: true },
+    background: { name: "W tle", short: "W tle", words: "in the background behind them" },
+    foreground: { name: "Na pierwszym planie", short: "1. plan", words: "in the foreground, close to the camera", tall: true }
   };
-  const seatOf = st => { const it = (st.things || []).find(x => thingAnchor(st, x) === "under"); return it ? THING[it.id] : null; };
+  const fmtOf = st => FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
+  const isWide = st => fmtOf(st).w / fmtOf(st).h >= 1;
+  const isTall = st => fmtOf(st).h / fmtOf(st).w >= 1.2;
+  const anchorOK = (st, a, t) => a === "under" ? !!(t && t.seat) && seated(st) : !(ANCHORS[a].wide && !isWide(st)) && !(ANCHORS[a].tall && !isTall(st));
+  const AUTO_ORDER = ["right", "left", "behind", "front", "background", "rightFar", "leftFar", "foreground"];
+  // Położenie każdej rzeczy: wskazane ręcznie (Ekspert) ma pierwszeństwo, potem automat (siedzisko pod postacią,
+  // reszta w swoim zwykłym miejscu albo w pierwszym wolnym). Dwie rzeczy nie dzielą jednego punktu, póki są wolne.
+  function resolveAnchors(st) {
+    const list = st.things || [], out = list.map(() => null), used = new Set();
+    list.forEach((it, i) => {
+      const t = THING[it.id];
+      if (t && it.anchor && anchorOK(st, it.anchor, t) && !used.has(it.anchor)) { out[i] = it.anchor; used.add(it.anchor); }
+    });
+    list.forEach((it, i) => {
+      const t = THING[it.id];
+      if (!t || out[i]) return;
+      const usual = (seated(st) && t.seatedAt) || t.at;
+      const a = [...(t.seat && seated(st) ? ["under"] : []), usual, ...AUTO_ORDER].find(x => anchorOK(st, x, t) && !used.has(x)) || usual;
+      out[i] = a;
+      used.add(a);
+    });
+    return out;
+  }
+  const thingAnchor = (st, it) => resolveAnchors(st)[(st.things || []).indexOf(it)];
+  const seatOf = st => { const i = resolveAnchors(st).indexOf("under"); return i >= 0 ? THING[st.things[i].id] : null; };
   // Geometria pozy: na siedzisku wysokim prosto i pochylony siedzi jak na krześle, na niskim jak na kamieniu
   function poseGeom(st) {
     const seat = seatOf(st);
@@ -1494,16 +1539,18 @@
   }
 
   // Proste rysunki w stylu rekwizytów Manikuna: x = punkt odniesienia, G = linia podłoża, s = skala, wysokości w górę od podłoża
-  function thingPen(g, x, G, s) {
+  // fill: kolor rzeczy (Ekspert) zamiast domyślnego ciemnego wypełnienia rekwizytów
+  function thingPen(g, x, G, s, fill = null) {
     const X = a => f(x + a * s), Y = h => f(G - h * s);
+    const mk = (tag, attrs, parent) => el(tag, fill && attrs.class === "prop" ? { ...attrs, style: `fill:${fill}` } : attrs, parent);
     return {
-      rect: (a, b, top, bottom = 0, rx = 1.5, cls = "prop") => el("rect", { x: X(a), y: Y(top), width: f((b - a) * s), height: f((top - bottom) * s), rx: f(rx * s), class: cls }, g),
-      line: (pts, cls = "prop-line") => el("path", { d: pts.map(([a, h], i) => (i ? "L" : "M") + X(a) + "," + Y(h)).join(" "), class: cls }, g),
-      poly: (pts, cls = "prop") => el("path", { d: "M" + pts.map(([a, h]) => X(a) + "," + Y(h)).join(" L") + " Z", class: cls }, g),
-      path: (d, cls = "prop") => el("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), class: cls }, g),
-      styled: (d, style) => el("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), style }, g),
-      circle: (a, h, r, cls = "prop") => el("circle", { cx: X(a), cy: Y(h), r: f(r * s), class: cls }, g),
-      ellipse: (a, h, rx, ry, cls = "prop") => el("ellipse", { cx: X(a), cy: Y(h), rx: f(rx * s), ry: f(ry * s), class: cls }, g)
+      rect: (a, b, top, bottom = 0, rx = 1.5, cls = "prop") => mk("rect", { x: X(a), y: Y(top), width: f((b - a) * s), height: f((top - bottom) * s), rx: f(rx * s), class: cls }, g),
+      line: (pts, cls = "prop-line") => mk("path", { d: pts.map(([a, h], i) => (i ? "L" : "M") + X(a) + "," + Y(h)).join(" "), class: cls }, g),
+      poly: (pts, cls = "prop") => mk("path", { d: "M" + pts.map(([a, h]) => X(a) + "," + Y(h)).join(" L") + " Z", class: cls }, g),
+      path: (d, cls = "prop") => mk("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), class: cls }, g),
+      styled: (d, style) => mk("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), style }, g),
+      circle: (a, h, r, cls = "prop") => mk("circle", { cx: X(a), cy: Y(h), r: f(r * s), class: cls }, g),
+      ellipse: (a, h, rx, ry, cls = "prop") => mk("ellipse", { cx: X(a), cy: Y(h), rx: f(rx * s), ry: f(ry * s), class: cls }, g)
     };
   }
   const THING_DRAW = {
@@ -1589,32 +1636,45 @@
       [-130, 130].forEach(a => { p.circle(a, 26, 26); p.circle(a, 26, 10, "prop-line"); });
     }
   };
-  function drawThing(g, id, x, G, s) { THING_DRAW[id](thingPen(g, x, G, s)); }
+  function drawThing(g, id, x, G, s, fill = null) { THING_DRAW[id](thingPen(g, x, G, s, fill)); }
   // Kafelek rzeczy: sam rysunek, wyśrodkowany
-  function thingTile(svg, id) {
+  function thingTile(svg, id, color = null) {
     if (id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
     const [x0, x1, h] = THING[id].box, side = Math.max(x1 - x0, h) + 16, cx = (x0 + x1) / 2;
     svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(-h / 2 - side / 2)} ${f(side)} ${f(side)}`);
-    drawThing(svg, id, 0, 0, 1);
+    drawThing(svg, id, 0, 0, 1, color ? colorOf(color).hex : null);
   }
 
   // Punkty zaczepienia względem postaci w kadrze: pod nią, przed, za, obok (lewo, prawo) i w tle.
   // Zwraca rzeczy z położeniem i przesunięcie całej kompozycji, żeby postać z rzeczą obok stały w środku kadru.
   function thingLayout(st, pl, plBase, W) {
     const s = plBase.scale, G = plBase.groundY, cx = pl.x + pl.w / 2;
-    const out = (st.things || []).filter(it => THING[it.id]).map(it => {
-      const t = THING[it.id], anchor = thingAnchor(st, it), [x0, x1] = t.box;
-      if (anchor === "under") return { t, anchor, x: plBase.hip[0], G, s, front: false };
-      if (anchor === "front") return { t, anchor, x: cx + 6 * s, G, s, front: true };
-      if (anchor === "behind") return { t, anchor, x: cx + 34 * s, G: G - 22 * s, s: s * 0.72, front: false };
-      if (anchor === "background") return { t, anchor, x: cx + 70 * s, G: G - 36 * s, s: s * 0.5, front: false };
-      // Obok: krawędź rzeczy tuż przy krawędzi postaci (lekko za nią), więc siedząca z nogami do przodu nie wchodzi na rzecz
-      const figL = pl.x + 8 * s, figR = pl.x + pl.w - 8 * s;
-      if (anchor === "left") return { t, anchor, x: Math.min(cx - 22 * s, figL) - x1 * s, G, s, front: false };
-      return { t, anchor, x: Math.max(cx + 22 * s, figR) - x0 * s, G, s, front: false };
+    const anchors = resolveAnchors(st);
+    const out = (st.things || []).map((it, i) => {
+      const t = THING[it.id];
+      if (!t) return null;
+      const anchor = anchors[i], [x0, x1] = t.box, base = { t, i, anchor, color: it.color, front: false };
+      if (anchor === "under") return { ...base, x: plBase.hip[0], G, s };
+      if (anchor === "front") return { ...base, x: cx + 6 * s, G, s, front: true };
+      if (anchor === "foreground") return { ...base, x: cx - 70 * s, G: G + 16 * s, s: s * 1.12, front: true };
+      if (anchor === "behind") return { ...base, x: cx + 34 * s, G: G - 22 * s, s: s * 0.72 };
+      if (anchor === "background") return { ...base, x: cx + 70 * s, G: G - 36 * s, s: s * 0.5 };
+      // Obok: krawędź rzeczy tuż przy krawędzi postaci (lekko za nią), więc siedząca z nogami do przodu nie wchodzi na rzecz.
+      // Dalej: za miejscem „obok”, trochę mniejsza i głębiej
+      const figL = pl.x + 8 * s, figR = pl.x + pl.w - 8 * s, fs = s * 0.85;
+      if (anchor === "left") return { ...base, x: Math.min(cx - 22 * s, figL) - x1 * s, G, s };
+      if (anchor === "leftFar") return { ...base, x: Math.min(cx - 22 * s, figL) - 95 * s - x1 * fs, G: G - 10 * s, s: fs };
+      if (anchor === "rightFar") return { ...base, x: Math.max(cx + 22 * s, figR) + 95 * s - x0 * fs, G: G - 10 * s, s: fs };
+      return { ...base, x: Math.max(cx + 22 * s, figR) - x0 * s, G, s };
+    }).filter(Boolean);
+    // Dalej po bokach: za krawędzią rzeczy stojącej obok (jeśli jest), żeby się nie nakładały
+    const near = k => out.find(o => o.anchor === k);
+    out.forEach(o => {
+      if (o.anchor === "rightFar" && near("right")) { const n = near("right"); o.x = n.x + n.t.box[1] * n.s + 12 * s - o.t.box[0] * o.s; }
+      if (o.anchor === "leftFar" && near("left")) { const n = near("left"); o.x = n.x + n.t.box[0] * n.s - 12 * s - o.t.box[1] * o.s; }
     });
     let shift = 0;
-    const side = out.filter(o => o.anchor === "left" || o.anchor === "right");
+    const side = out.filter(o => ["left", "right", "leftFar", "rightFar"].includes(o.anchor));
     if (side.length && st.shot === "full") {
       const lo = Math.min(pl.x, ...side.map(o => o.x + o.t.box[0] * o.s)), hi = Math.max(pl.x + pl.w, ...side.map(o => o.x + o.t.box[1] * o.s));
       shift = clamp(W / 2 - (lo + hi) / 2, -W * 0.18, W * 0.18);
@@ -1626,12 +1686,24 @@
   const shiftPl = (pl, dx) => !dx ? pl : { ...pl, x: pl.x + dx, hip: [pl.hip[0] + dx, pl.hip[1]], head: [pl.head[0] + dx, pl.head[1]],
     hand: pl.hand && [pl.hand[0] + dx, pl.hand[1]], handNear: pl.handNear && [pl.handNear[0] + dx, pl.handNear[1]] };
 
-  // Maniscrypt: siedzenie na rzeczy i rzeczy wokół postaci
-  const ANCHOR_WORDS = { front: "in front of them", behind: "behind them", right: "next to them on the right", left: "next to them on the left", background: "in the background behind them" };
+  // Punkty do wskazania w kadrze (Ekspert): gdzie stanie rzecz t (bez siedziska, gdy postać stoi, i bez punktów spoza formatu)
+  function anchorPoints(st, A, t) {
+    const pl = A.pl, s = A.plBase.scale, G = A.plBase.groundY, cx = pl.x + pl.w / 2;
+    const figL = pl.x + 8 * s, figR = pl.x + pl.w - 8 * s, L = Math.min(cx - 22 * s, figL), R = Math.max(cx + 22 * s, figR);
+    const P = {
+      under: [A.plBase.hip[0] + 4 * s, A.plBase.hip[1] + 14 * s], front: [cx + 6 * s, G - 12 * s], behind: [cx + 38 * s, G - 110 * s],
+      left: [L - 34 * s, G - 30 * s], right: [R + 34 * s, G - 30 * s], leftFar: [L - 130 * s, G - 44 * s], rightFar: [R + 130 * s, G - 44 * s],
+      background: [cx + 72 * s, G - 70 * s], foreground: [cx - 70 * s, G + 6 * s]
+    };
+    return Object.fromEntries(Object.entries(P).filter(([a]) => anchorOK(st, a, t)));
+  }
+  // Maniscrypt: siedzenie na rzeczy i rzeczy wokół postaci (z kolorem, jeśli wybrany w Ekspercie)
+  const ANCHOR_WORDS = Object.fromEntries(Object.entries(ANCHORS).map(([k, v]) => [k, v.words]));
+  const thingPhrase = it => { const t = THING[it.id]; return it.color ? an(colorOf(it.color).word + " " + t.phrase.replace(/^(an?|the) /, "")) : t.phrase; };
   function sitPrompt(st) {
     const seat = seatOf(st);
     if (!seat) return optionOf("pose", st.pose).prompt;
-    const on = seat.sitPhrase || seat.phrase;
+    const it = st.things[resolveAnchors(st).indexOf("under")], on = seat.sitOn ? seat.sitOn(thingPhrase(it)) : thingPhrase(it);
     if (seat.id === "stool" && (st.pose === "sit" || st.pose === "lean")) return `perched on ${on}, feet resting on the footrest, ${st.pose === "lean" ? "leaning forward with the elbows on the knees" : "hands resting on the thighs"}, facing the camera`;
     if (st.pose === "sit") return seat.seat === "low" ? `sitting on ${on} with knees bent, forearms resting on the knees, back straight, facing the camera` : `sitting upright on ${on}, feet flat on the floor, hands resting on the thighs, facing the camera`;
     if (st.pose === "lean") return `sitting on ${on}, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera`;
@@ -1639,8 +1711,9 @@
     return `sitting on ${on} with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera`;
   }
   function thingsPrompt(st) {
-    const items = (st.things || []).filter(it => THING[it.id] && thingAnchor(st, it) !== "under")
-      .map(it => THING[it.id].phrase + (surfaceOf(st) === THING[it.id] ? itemsPrompt(st) : "") + " " + ANCHOR_WORDS[thingAnchor(st, it)]);
+    const anchors = resolveAnchors(st), si = surfaceIndex(st);
+    const items = (st.things || []).map((it, i) => THING[it.id] && anchors[i] !== "under"
+      ? thingPhrase(it) + (i === si ? itemsPrompt(st) : "") + " " + ANCHOR_WORDS[anchors[i]] : null).filter(Boolean);
     return items.length ? ", with " + andList(items) : "";
   }
   // ---------- Drobiazgi: rysunki, znak z podpisem, położenie na blacie ----------
@@ -1703,12 +1776,13 @@
     ITEM_DRAW[id](thingPen(svg, 0, 0, 1));
   }
   // Blat, na którym leżą drobiazgi (pierwsza rzecz z blatem w scenie)
-  const surfaceOf = st => { const it = (st.things || []).find(x => THING[x.id] && THING[x.id].surf); return it ? THING[it.id] : null; };
+  const surfaceIndex = st => (st.things || []).findIndex(x => THING[x.id] && THING[x.id].surf);
+  const surfaceOf = st => { const i = surfaceIndex(st); return i >= 0 ? THING[st.things[i].id] : null; };
   const activeItems = st => surfaceOf(st) ? (st.items || []).filter(it => itemInfo(it)) : [];
   // Rysuje rzecz, a jeśli ma blat, to drobiazgi na nim (na środku blatu, obok siebie)
   function drawThingWithItems(g, st, o) {
-    drawThing(g, o.t.id, o.x, o.G, o.s);
-    if (!o.t.surf || surfaceOf(st) !== o.t) return;
+    drawThing(g, o.t.id, o.x, o.G, o.s, o.color ? colorOf(o.color).hex : null);
+    if (o.i !== surfaceIndex(st)) return;
     const items = activeItems(st), top = o.G - o.t.surf * o.s;
     items.forEach((it, i) => drawSmall(g, it, o.x + (i - (items.length - 1) / 2) * 30 * o.s, top, o.s));
   }
@@ -1728,6 +1802,62 @@
       say(`${FX[id].name} i ${FX[gone[0]].name.toLowerCase()} naraz się nie da. Zostawiam: ${FX[id].name.toLowerCase()}.`, 4000);
     }
     scene.fx = fx;
+    checkCrowd();
+  }
+  // ---------- Ekspert: wskazywanie miejsca rzeczy w kadrze ----------
+  let anchorPick = null;
+  // Która rzecz czeka na wskazanie: w Kreatorze pytanie „Wskaż na ekranie”, w Swobodzie świeżo dodana albo stuknięta
+  const pickIndex = () => wiz ? (wiz.q === "stuffWhere" ? wiz.thingIdx : null) : anchorPick ? anchorPick.index : null;
+  function startAnchorPick(i) {
+    if (wiz || !scene.things[i]) return;
+    anchorPick = { index: i };
+    say(`Wskaż w kadrze, gdzie ma stać: ${THING[scene.things[i].id].name.toLowerCase()}. Stuknij punkt.`, 0);
+    render();
+  }
+  function endAnchorPick() {
+    if (!anchorPick) return;
+    anchorPick = null;
+    hush();
+    render();
+  }
+  // Rzecz staje w punkcie; rzecz, która tam stała, wraca do automatu (znajdzie sobie wolne miejsce)
+  function placeThing(i, a) {
+    scene.things = scene.things.map((it, j) => j === i ? { ...it, anchor: a } : it.anchor === a ? { id: it.id, ...(it.color ? { color: it.color } : {}) } : it);
+    sfx("tok");
+    react();
+    if (wiz) {
+      wiz.chosen = true;
+      render();
+      const at = wiz.q;
+      setTimeout(() => { if (wiz && wiz.q === at) wizAdvance(); }, 450);
+    } else { anchorPick = null; hush(); render(); }
+    checkCrowd();
+  }
+  function setThingColor(i, c) {
+    scene.things = scene.things.map((it, j) => j !== i ? it : c === "auto" ? { id: it.id, ...(it.anchor ? { anchor: it.anchor } : {}) } : { ...it, color: c });
+  }
+  // Tłok i kadr (Ekspert): gdy obie strony są zajęte, propozycja szerszego kadru; gdy rzeczy są nad sobą, wyższego;
+  // przy więcej niż 6 rzeczach ostrzeżenie. Każda propozycja raz na scenę.
+  let crowdSaid = {};
+  const WIDE_FMT = { photo: "3x2", video: "16x9" }, TALL_FMT = { photo: "4x5", video: "9x16" };
+  function checkCrowd() {
+    if (level !== "expert" || tut) return;
+    setTimeout(() => {
+      if (phase !== "director") return;
+      const an = resolveAnchors(scene), has = a => an.includes(a);
+      const count = (scene.things || []).length + activeItems(scene).length + bgExtras(scene).length;
+      const toFmt = (fmt, text) => { scene.format[scene.mode] = fmt[scene.mode]; render(); say(text, 3500); };
+      if (has("left") && has("right") && !isWide(scene) && !crowdSaid.wide) {
+        crowdSaid.wide = true;
+        offer("Robi się ciasno na boki. Stuknij mnie, a poszerzę kadr (dalej po bokach zmieszczą się kolejne rzeczy).", () => toFmt(WIDE_FMT, "Szerszy kadr. Więcej miejsca po bokach."));
+      } else if ((has("behind") || has("background")) && (activeItems(scene).length || has("front")) && !isTall(scene) && !crowdSaid.tall) {
+        crowdSaid.tall = true;
+        offer("Rzeczy stoją nad sobą. Stuknij mnie, a dam wyższy kadr (zmieści się też pierwszy plan).", () => toFmt(TALL_FMT, "Wyższy kadr. Jest miejsce na pierwszym planie."));
+      } else if (count > 6 && !crowdSaid.many) {
+        crowdSaid.many = true;
+        say(`Robi się tłoczno: ${count} rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.`, 6500);
+      }
+    }, 650);
   }
   // Wybór drobiazgu (z kafelka albo z wyszukiwarki). Bez blatu: pusta scena dostaje stół, inaczej Manikun prosi o blat.
   function pickItem(it) {
@@ -1736,7 +1866,13 @@
       scene.things = [{ id: "table" }];
       say("Postawiłem stół, żeby było na czym położyć.", 3500);
     }
-    scene.items = it ? [it] : [];
+    if (!it) scene.items = [];
+    else if (level === "expert") {
+      // Ekspert: kilka drobiazgów; ponowny wybór zdejmuje
+      const same = x => x.id === it.id && (it.id !== "custom" || x.name === it.name);
+      scene.items = (scene.items || []).some(same) ? scene.items.filter(x => !same(x)) : [...(scene.items || []), it];
+    } else scene.items = [it];
+    checkCrowd();
     return true;
   }
   // Słownik: wpisana nazwa → rzecz z katalogu albo własna (angielski opis, jeśli słowo jest znane)
@@ -2694,6 +2830,19 @@
       }
     }
 
+    // Ekspert: punkty do wskazania, gdzie ma stać rzecz (bieżący pełny, zajęty przez inną rzecz przygaszony)
+    let pickPts = null;
+    if (opts.pick != null && st.things && st.things[opts.pick]) {
+      pickPts = anchorPoints(st, A, THING[st.things[opts.pick].id]);
+      const cur = resolveAnchors(st), mine = cur[opts.pick];
+      for (const a in pickPts) {
+        const [px, py] = pickPts[a], taken = cur.some((x, j) => x === a && j !== opts.pick);
+        const pg = el("g", { class: "pick" + (a === mine ? " mine" : "") + (taken ? " taken" : "") }, svg);
+        el("circle", { cx: f(px), cy: f(py), r: f(u * 3.2) }, pg);
+        const t = el("text", { x: f(px), y: f(py + u * 6.4), "text-anchor": "middle", style: `font:700 ${f(u * 2.6)}px var(--font)` }, pg);
+        t.textContent = ANCHORS[a].short;
+      }
+    }
     // Rama kadru
     el("rect", { x: 0.5, y: 0.5, width: f(W - 1), height: f(H - 1), rx: f(Math.min(W, H) * 0.035), class: "frame" }, svg);
     const sty = styleOf(st);
@@ -2704,12 +2853,14 @@
         el("path", { d: `M${f(x)},${f(y + sy * c)} L${f(x)},${f(y)} L${f(x + sx * c)},${f(y)}`, class: "corner", style: sty ? `stroke:${sty.frame}` : "" }, svg);
       });
     }
-    return { camPt, litPt, zonePts, u, W, H, head: A.plBase.head };
+    const thingBoxes = A.things.map(o => ({ i: o.i, box: [o.x + o.t.box[0] * o.s, o.G - o.t.box[2] * o.s, o.x + o.t.box[1] * o.s, o.G] }));
+    return { camPt, litPt, zonePts, u, W, H, head: A.plBase.head, pickPts, thingBoxes };
   }
 
   // ---------- Ikony paska kategorii ----------
   const CAT_ICONS = {
     things: svg => { el("path", { d: "M6 4v16 M6 12h11 M17 12v8 M6 16h11" }, svg); el("path", { d: "M14 8h6" }, svg); },
+    thingColor: svg => { el("circle", { cx: 12, cy: 12, r: 8 }, svg); el("path", { d: "M12 4v16 M4.5 9.5l15 5" }, svg); },
     fx: svg => { el("path", { d: "M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.5 1.5 3.3 3.3 0 0 1-.5 6.5z" }, svg); el("path", { d: "M8 18l-1 2.5 M12 18l-1 2.5 M16 18l-1 2.5" }, svg); },
     items: svg => { el("path", { d: "M3 17h18 M7 17v4 M17 17v4" }, svg); el("path", { d: "M8 17v-5h5v5 M13 14h2a1.5 1.5 0 0 1 0 3" }, svg); el("circle", { cx: 17.5, cy: 15, r: 2 }, svg); },
     format: svg => el("rect", { x: 6, y: 3, width: 12, height: 18, rx: 1.5 }, svg),
@@ -2753,6 +2904,7 @@
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "outfit") return setName();
     if (cat.id === "things") return scene.things.length ? THING[scene.things[0].id].name : "Nic";
+    if (cat.id === "thingColor") return (scene.things || []).filter(it => it.color).length ? (scene.things || []).filter(it => it.color).map(it => colorOf(it.color).name).join(", ") : "Domyślne";
     if (cat.id === "fx") return bgExtras(scene).length ? bgExtras(scene).map(x => FX[x].name).join(", ") : "Brak";
     if (cat.id === "items") return activeItems(scene).length ? itemInfo(activeItems(scene)[0]).name : "Nic";
     if (cat.id === "look") {
@@ -3085,19 +3237,41 @@
       svg => o.id === "none" ? thingTile(svg, "none") : renderScene(svg, { ...scene, fx: [o.id], shot: "full" }, 100, 100, new Set(["ground", "background"]))));
     if (catId === "items") {
       // Nic, znaleziony wcześniej drobiazg spoza rysunków, 18 z rysunkiem, na końcu wyszukiwanie w słowniku
-      const cur = (scene.items || [])[0], extra = cur && (cur.id === "custom" || ITEM[cur.id].sign) ? [cur] : [];
+      const extra = (scene.items || []).filter(it => it.id === "custom" || ITEM[it.id].sign);
       const list = [{ id: "none", name: "Nic" }, ...extra.map(it => ({ id: it.id, name: itemInfo(it).name, it })), ...DRAWN_ITEMS];
       const tiles = list.map(o => tile("opt-items-" + (o.id === "custom" ? "custom" : o.id.replace(/[^a-z0-9]/gi, "_")), o.name,
-        () => ((scene.items || [])[0] || { id: "none" }).id === o.id,
+        () => o.id === "none" ? !(scene.items || []).length : (scene.items || []).some(x => x.id === o.id),
         () => { pickItem(o.id === "none" ? null : o.it || { id: o.id }); render(); }, svg => itemTile(svg, o.id)));
       const find = tile("opt-items-search", "Szukaj…", () => false, () => openItemSearch(), svg => itemTile(svg, "search"), () => "banan, kaktus…");
       find.action = true;
       find.btn.classList.add("cat");
       return tiles.concat(find);
     }
-    if (catId === "things") return [{ id: "none", name: "Nic" }, ...THINGS].map(o => tile("opt-things-" + o.id, o.name,
-      () => ((scene.things || [])[0] || { id: "none" }).id === o.id,
-      () => { scene.things = o.id === "none" ? [] : [{ id: o.id }]; render(); }, svg => thingTile(svg, o.id)));
+    if (catId === "things") {
+      // Podstawowy: jedna rzecz. Ekspert: kafelki włączają i wyłączają rzeczy, nowa od razu czeka na wskazanie miejsca w kadrze
+      const multi = level === "expert", has = id => (scene.things || []).some(x => x.id === id);
+      return [{ id: "none", name: "Nic" }, ...THINGS].map(o => tile("opt-things-" + o.id, o.name,
+        () => o.id === "none" ? !(scene.things || []).length : multi ? has(o.id) : ((scene.things || [])[0] || {}).id === o.id,
+        () => {
+          if (o.id === "none") scene.things = [];
+          else if (!multi) scene.things = [{ id: o.id }];
+          else if (has(o.id)) scene.things = scene.things.filter(x => x.id !== o.id);
+          else { scene.things = [...(scene.things || []), { id: o.id }]; render(); startAnchorPick(scene.things.length - 1); return; }
+          render();
+        }, svg => thingTile(svg, o.id)));
+    }
+    if (catId === "thingColor") {
+      const sub = scene.sub, list = scene.things || [];
+      if (sub && sub.startsWith("c:")) {
+        const i = +sub.slice(2), it = list[i];
+        if (!it) return [];
+        return [{ id: "auto", name: "Domyślny" }, ...COLORS].map(c => tile("opt-tc-" + c.id, c.name, () => ((scene.things[i] || {}).color || "auto") === c.id,
+          () => { setThingColor(i, c.id); render(); },
+          svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, c.id === "auto" ? "#3A3833" : c.hex, c.id === "auto"); }));
+      }
+      return list.map((it, i) => groupMark(tile("opt-tc-thing-" + i, THING[it.id].name, () => !!it.color, () => { scene.sub = "c:" + i; render(); },
+        svg => thingTile(svg, it.id, (scene.things[i] || {}).color), () => (scene.things[i] || {}).color ? colorOf(scene.things[i].color).name : "Domyślny")));
+    }
     if (catId === "background" && scene.sub && scene.sub.startsWith("v:")) return variantTiles(scene.sub.slice(2));
     if (catId === "itemColor") {
       // Kolor przedmiotu: domyślny dla danego przedmiotu albo z palety
@@ -3221,7 +3395,7 @@
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms"], subjects: ["person"], icon: "body" },
-    { id: "stuff", label: "Rzeczy", cats: ["things", "items"], subjects: ["person"], icon: "things" },
+    { id: "stuff", label: "Rzeczy", cats: ["things", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
@@ -3234,7 +3408,7 @@
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
   const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
-  const catOff = id => (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
+  const catOff = id => (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   const childOf = id => {
     const g = GROUPS.find(x => x.id === id);
     if (g) return g.cat ? { kind: "opts", cat: g.cat, sub: null } : { kind: "cats", group: g.id };
@@ -3252,20 +3426,23 @@
     nav = [{ kind: "groups", open: g }, childOf(g)];
   }
   // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
-  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene), st.kind === "q" ? st.q + ":" + (wiz && wiz.part) : ""].join("|");
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene), (scene.things || []).length, level, st.kind === "q" ? st.q + ":" + (wiz && wiz.part) + ":" + (wiz && wiz.thingIdx) : ""].join("|");
 
   // ---------- Kreator: Manikun pyta, odpowiedzi są w górnym rzędzie ----------
   // Jedno pytanie = jeden dymek = jeden rząd odpowiedzi. Dolny rząd: Wstecz, 5 rozdziałów, Swoboda.
   // Pytania Tak / Nie (bramki) i wybory drogi przechodzą dalej same; wszystko, co zmienia wygląd, ma "Dalej".
   // "Zostaw" pomija pytanie, "Zdaj się na mnie" ustawia cały rozdział. Pytania bez sensu w tej scenie znikają.
   let wiz = null;
-  const CHAPTERS = [
+  // Rozdział Rzeczy tylko w Ekspercie (w Podstawowym pytania o rzeczy są w rozdziale Poza)
+  const CHAPTERS_ALL = [
     { id: "person", name: "Postać", icon: "body", done: "Postać gotowa." },
     { id: "pose", name: "Poza", icon: "pose", done: "Poza jest." },
+    { id: "stuff", name: "Rzeczy", icon: "things", done: "Rzeczy gotowe.", expert: true },
     { id: "place", name: "Miejsce", icon: "background", done: "Miejsce mamy." },
     { id: "camera", name: "Kamera", icon: "camera", done: "Kamera ustawiona." },
     { id: "style", name: "Styl", icon: "style", done: "" }
   ];
+  const chapters = () => CHAPTERS_ALL.filter(c => !c.expert || level === "expert");
   const him = () => scene.body === "female" ? "ją" : "go";
   const own = () => wiz.ans.dress === "own";
   const face = () => wiz.ans.face === true;
@@ -3296,8 +3473,15 @@
     { id: "glassesColor", say: "Jakie oprawki?", cat: "look", sub: "glassesColor", when: () => face() && scene.look.glasses !== "none" },
     { id: "pose", ch: "pose", say: "Co robi?", cat: "pose", flat: true },
     { id: "arms", say: "A ręce?", cat: "arms", when: () => armsApply(scene) },
-    { id: "things", say: () => seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things" },
-    { id: "items", say: () => `Co leży na ${surfaceOf(scene).on}? Szukaj znajdzie też banana.`, cat: "items", when: () => !!surfaceOf(scene) },
+    { id: "things", say: () => seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things", when: () => level !== "expert" },
+    { id: "items", say: () => `Co leży na ${surfaceOf(scene).on}? Szukaj znajdzie też banana.`, cat: "items", when: () => level !== "expert" && !!surfaceOf(scene) },
+    // Ekspert: rozdział Rzeczy. Pętla: co dodajemy → gdzie (wskazanie w kadrze) → co leży na blacie → kolor → znowu co dodajemy,
+    // aż do „Rzeczy gotowe”. wiz.thingIdx to rzecz, którą właśnie ustawiamy.
+    { id: "stuffGate", ch: "stuff", say: "Dodajemy coś do sceny? Meble, siedziska, rower…", yesno: true, when: () => level === "expert" },
+    { id: "stuffPick", say: () => wiz.thingIdx == null && (scene.things || []).length ? "Coś jeszcze? Wybierz albo stuknij Rzeczy gotowe." : seated(scene) && !seatOf(scene) ? "Co dodajemy? Może coś do siedzenia?" : "Co dodajemy?", stuffPick: true, when: () => level === "expert" && wiz.ans.stuffGate === true },
+    { id: "stuffWhere", say: () => `Wskaż na ekranie, gdzie ma stać: ${THING[scene.things[wiz.thingIdx].id].name.toLowerCase()}.`, where: true, when: () => level === "expert" && wiz.thingIdx != null && !!scene.things[wiz.thingIdx] },
+    { id: "stuffItems", say: () => `Co leży na ${THING[scene.things[wiz.thingIdx].id].on}? Możesz wybrać kilka.`, cat: "items", when: () => level === "expert" && wiz.thingIdx != null && surfaceIndex(scene) === wiz.thingIdx },
+    { id: "stuffColor", say: () => `Jaki kolor: ${THING[scene.things[wiz.thingIdx].id].name.toLowerCase()}?`, cat: "thingColor", sub: () => "c:" + wiz.thingIdx, next: () => { wiz.thingIdx = null; return "stuffPick"; }, when: () => level === "expert" && wiz.thingIdx != null && !!scene.things[wiz.thingIdx] },
     { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
     { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
     { id: "fx", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, deszcz…", cat: "fx" },
@@ -3317,7 +3501,7 @@
   const qOn = q => !q.when || q.when();
   const qText = q => q.id === "auto" ? wiz.autoText : typeof q.say === "function" ? q.say() : q.say;
   const qSub = q => typeof q.sub === "function" ? q.sub() : q.sub || null;
-  const chIndex = id => CHAPTERS.findIndex(c => c.id === id);
+  const chIndex = id => chapters().findIndex(c => c.id === id);
   const firstOn = ch => { const q = WIZ_Q.find(x => x.ch === ch && qOn(x)); return q && q.id; };
   const isFirstOfCh = q => q.id !== "auto" && firstOn(q.ch) === q.id;
   function qAfter(id) {
@@ -3328,7 +3512,7 @@
 
   function wizardStart() {
     flow = "wizard";
-    wiz = { q: "body", hist: [], ans: {}, chosen: false, far: "body", part: null, seen: {}, autoCh: null, autoText: "" };
+    wiz = { q: "body", hist: [], ans: {}, chosen: false, far: "body", part: null, thingIdx: null, seen: {}, autoCh: null, autoText: "" };
     nav = [{ kind: "wizard", open: "wiz-ch-person" }, { kind: "q", q: "body" }];
   }
   function wizSay(prefix = "") {
@@ -3349,12 +3533,12 @@
   }
   // Dalej: następne pytanie; przy zmianie rozdziału Manikun zamyka poprzedni jednym zdaniem
   function wizAdvance(from = wiz.q, jump = true) {
-    const q = qById(from);
-    if (jump && q.next) { wizGoTo(q.next); return; }
-    const next = from === "auto" ? firstOn((CHAPTERS[chIndex(wiz.autoCh) + 1] || {}).id) : qAfter(from);
+    const q = qById(from), nx = typeof q.next === "function" ? q.next() : q.next;
+    if (jump && nx) { wizGoTo(nx); return; }
+    const next = from === "auto" ? firstOn((chapters()[chIndex(wiz.autoCh) + 1] || {}).id) : qAfter(from);
     if (!next) { wizFinish(); return; }
     const ch = qById(from).ch, nch = qById(next).ch;
-    wizGoTo(next, { prefix: ch !== nch ? CHAPTERS[chIndex(ch)].done : "" });
+    wizGoTo(next, { prefix: ch !== nch ? (CHAPTERS_ALL.find(c => c.id === ch) || {}).done || "" : "" });
   }
   function wizBack() {
     while (wiz.hist.length) {
@@ -3366,6 +3550,7 @@
   function toFree(group = "person") {
     flow = "free";
     wiz = null;
+    anchorPick = null;
     [rows.top, rows.bottom].forEach(r => r && r.el.remove());
     rows = { top: null, bottom: null };
     navInit(group);
@@ -3391,7 +3576,9 @@
     pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(nameOf("arms")) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
     place: () => nameOf("background") + ", " + low(BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).name) + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
     camera: () => `${nameOf("shot")}, ${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
-    style: () => "Styl " + nameOf("style")
+    style: () => "Styl " + nameOf("style"),
+    stuff: () => (scene.things || []).length ? (scene.things || []).map(it => (it.color ? colorOf(it.color).name.toLowerCase() + " " : "") + THING[it.id].name.toLowerCase()).join(", ")
+      + (activeItems(scene).length ? ", na blacie: " + activeItems(scene).map(it => itemInfo(it).name.toLowerCase()).join(", ") : "") : "Bez rzeczy"
   };
   const wizSummary = () => [CH_SUMMARY.person(), low(CH_SUMMARY.pose()), CH_SUMMARY.place().split(", światło")[0], nameOf("style")].join(" · ");
 
@@ -3416,7 +3603,8 @@
     pose() {
       scene.pose = anyOf(leavesOf("pose")).id;
       if (armsApply(scene)) scene.arms = anyOf(optionsOf("arms")).id;
-      // Siedząc zwykle na czymś, stojąc czasem coś obok
+      // Siedząc zwykle na czymś, stojąc czasem coś obok (w Ekspercie rzeczy ma osobny rozdział)
+      if (level === "expert") return;
       const seats = THINGS.filter(t => t.seat);
       scene.things = seated(scene) ? (Math.random() < 0.75 ? [{ id: anyOf(seats).id }] : []) : (Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : []);
       scene.items = surfaceOf(scene) && Math.random() < 0.7 ? [{ id: anyOf(DRAWN_ITEMS).id }] : [];
@@ -3437,6 +3625,14 @@
       if (scene.camera === "D") scene.shot = "full";
       if (scene.mode === "video") scene.motion = anyOf(optionsOf("motion")).id;
       scene.format[scene.mode] = anyOf(FORMATS[scene.mode]).id;
+    },
+    stuff() {
+      // Siedząc: siedzisko i czasem stół przed; stojąc: jedna albo dwie rzeczy obok; na blacie jeden lub dwa drobiazgi
+      const seats = THINGS.filter(t => t.seat), others = THINGS.filter(t => !t.seat);
+      const list = seated(scene) ? [{ id: anyOf(seats).id }, ...(Math.random() < 0.6 ? [{ id: anyOf(["table", "coffeeTable", "desk"]), anchor: "front" }] : [])]
+        : [{ id: anyOf(others).id }, ...(Math.random() < 0.5 ? [{ id: anyOf(THINGS).id }] : [])];
+      scene.things = list.filter((x, i, a) => a.findIndex(y => y.id === x.id) === i).map(x => Math.random() < 0.3 ? { ...x, color: anyOf(COLORS).id } : x);
+      scene.items = surfaceOf(scene) ? DRAWN_ITEMS.slice().sort(() => Math.random() - 0.5).slice(0, 1 + (Math.random() < 0.5 ? 1 : 0)).map(o => ({ id: o.id })) : [];
     },
     style() {
       const cur = scene.style;
@@ -3471,6 +3667,15 @@
   }
 
   const glyph = d => svg => { svg.setAttribute("viewBox", "0 0 24 24"); el("path", { d }, svg); };
+  // Znak punktu zaczepienia: postać i kropka tam, gdzie stanie rzecz
+  const ANCHOR_DOT = { under: [32, 44], front: [32, 56], behind: [44, 14], left: [14, 38], right: [50, 38], leftFar: [4, 30], rightFar: [60, 30], background: [52, 8], foreground: [12, 58] };
+  function anchorGlyph(svg, a) {
+    svg.setAttribute("viewBox", "0 0 64 64");
+    el("circle", { cx: 32, cy: 20, r: 5, class: "thin" }, svg);
+    el("path", { d: "M32 25v14 M26 52l6-13 6 13 M24 31h16", class: "thin" }, svg);
+    const [x, y] = ANCHOR_DOT[a];
+    el("circle", { cx: x, cy: y, r: 4.5, style: "fill:var(--accent);stroke:none" }, svg);
+  }
   const DICE = svg => {
     svg.setAttribute("viewBox", "0 0 24 24");
     el("rect", { x: 4, y: 4, width: 16, height: 16, rx: 3.5 }, svg);
@@ -3501,6 +3706,23 @@
       q.choice.forEach(([id, name, value]) => answer("wiz-" + q.id + "-" + id, name, value,
         id === "set" ? svg => wearThumb(svg, {}, "full") : svg => wearThumb(svg, {}, "top"),
         () => { wiz.ans[q.id] = id; wizAdvance(); }).btn.classList.remove("cat"));
+    } else if (q.stuffPick) {
+      // Rzeczy gotowe (gdy coś już jest), potem wszystkie rzeczy; wybór dodaje nową albo podmienia tę, którą właśnie ustawiamy
+      if ((scene.things || []).length && wiz.thingIdx == null) {
+        const d = answer("wiz-stuff-done", "Rzeczy gotowe", null, glyph("M5 12.5l4.5 4.5L19 7.5"), () => { wiz.thingIdx = null; wizAdvance("stuffColor", false); });
+        d.btn.classList.add("accent");
+      }
+      THINGS.forEach(t => tile("opt-things-" + t.id, t.name, () => wiz.thingIdx != null && (scene.things[wiz.thingIdx] || {}).id === t.id, () => {
+        if (wiz.thingIdx == null) { scene.things = [...(scene.things || []), { id: t.id }]; wiz.thingIdx = scene.things.length - 1; }
+        else scene.things = scene.things.map((it, j) => j === wiz.thingIdx ? { id: t.id } : it);
+        render();
+      }, svg => thingTile(svg, t.id)));
+    } else if (q.where) {
+      // Wskazanie w kadrze albo kafelkiem; punkty spoza formatu kadru nie są dostępne
+      const t = THING[scene.things[wiz.thingIdx].id], mine = () => resolveAnchors(scene)[wiz.thingIdx];
+      Object.keys(ANCHORS).filter(a => anchorOK(scene, a, t)).forEach(a => tile("wiz-where-" + a, ANCHORS[a].name, () => mine() === a,
+        () => { scene.things = scene.things.map((it, j) => j === wiz.thingIdx ? { ...it, anchor: a } : it.anchor === a ? { id: it.id, ...(it.color ? { color: it.color } : {}) } : it); render(); },
+        svg => anchorGlyph(svg, a)));
     } else if (q.parts) {
       // Na początku "Kolory gotowe" (koniec zmian kolorów), potem części; przemalowane są zaznaczone
       const done = answer("wiz-colors-done", "Kolory gotowe", null, glyph("M5 12.5l4.5 4.5L19 7.5"), () => { wiz.part = null; wizAdvance("cpick", false); });
@@ -3547,12 +3769,12 @@
     prev.btn.setAttribute("aria-label", "Poprzednie pytanie");
     prev.disabledIf = () => !wiz.hist.length;
     const list = [prev];
-    CHAPTERS.forEach((c, i) => {
+    chapters().forEach((c, i) => {
       const farCh = () => chIndex(qById(wiz.far).ch);
       const t = tile("wiz-ch-" + c.id, c.name, () => false, () => {
         if (qById(wiz.q).ch === c.id && i === farCh()) return;
         wizGoTo(i === farCh() ? wiz.far : firstOn(c.id));
-      }, iconDraw(c.icon), () => `${i + 1} z 5`);
+      }, iconDraw(c.icon), () => `${i + 1} z ${chapters().length}`);
       t.btn.classList.add("ch");
       t.navId = "wiz-ch-" + c.id;
       t.disabledIf = () => i > farCh();
@@ -3607,7 +3829,7 @@
 
   function buildRow(st, pos) {
     const div = document.createElement("div");
-    div.className = "row" + (st.kind === "wizard" ? " wizard" : st.kind === "q" ? " question" : "");
+    div.className = "row" + (st.kind === "wizard" ? " wizard" + (chapters().length > 5 ? " six" : "") : st.kind === "q" ? " question" : "");
     div.dataset.pos = pos;
     const row = { el: div, st, key: rowKey(st), tiles: [], back: null };
     tileHost = div;
@@ -3974,7 +4196,7 @@
       st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
     const grabbed = drag && drag.grabbed ? drag.what : null;
-    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null });
+    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null, pick: pickIndex() });
     // Podpis tylko przy przeciąganiu kamery lub lampy
     const ro = document.getElementById("readout");
     ro.hidden = !grabbed;
@@ -4496,6 +4718,7 @@
     if (before) { before(); }
     flow = "free";
     wiz = null;
+    anchorPick = null;
     [rows.top, rows.bottom].forEach(r => r && r.el.remove());
     rows = { top: null, bottom: null };
     nav = navArr.map(st => ({ ...st }));
@@ -4666,9 +4889,25 @@
   preview.addEventListener("pointerdown", e => {
     if (phase !== "director" || !previewGeom) return;
     const p = toSvg(e), G = previewGeom, r = G.u * 10;
+    // Wskazywanie miejsca rzeczy: najbliższy punkt; stuknięcie obok punktów kończy wskazywanie bez zmiany
+    const pi = pickIndex();
+    if (pi != null && G.pickPts) {
+      let best = null, bd = G.u * 9;
+      for (const a in G.pickPts) { const d = Math.hypot(G.pickPts[a][0] - p.x, G.pickPts[a][1] - p.y); if (d < bd) { bd = d; best = a; } }
+      if (best) placeThing(pi, best);
+      else if (!wiz) endAnchorPick();
+      return;
+    }
     const near = pt => Math.hypot(pt[0] - p.x, pt[1] - p.y) < r;
     const what = near(G.camPt) ? "camera" : near(G.litPt) ? "light" : null;
-    if (!what) return;
+    if (!what) {
+      // Ekspert: stuknięcie w rzecz w kadrze pozwala ją przestawić
+      if (level === "expert" && !tut) {
+        const hit = (G.thingBoxes || []).slice().reverse().find(({ box }) => p.x >= box[0] && p.x <= box[2] && p.y >= box[1] && p.y <= box[3]);
+        if (hit) startAnchorPick(hit.i);
+      }
+      return;
+    }
     preview.setPointerCapture(e.pointerId);
     drag = { what, sx: e.clientX, sy: e.clientY, grabbed: false, near: what === "camera" ? scene.camera : scene.lightZone };
     drag.timer = setTimeout(() => {
@@ -4719,7 +4958,17 @@
   // ---------- Dymki Manikuna: wychodzą z przycisku z głową ----------
   const bubbleEl = document.getElementById("bubble"), bubbleText = document.getElementById("bubbleText");
   let bubbleTimer;
+  // Propozycja Manikuna: stuknięcie w dymek ją wykonuje (np. zmiana kadru)
+  let bubbleAction = null;
+  function offer(text, fn, ms = 8000) {
+    say(text, ms);
+    bubbleAction = fn;
+    bubbleEl.classList.add("offer");
+    if (wiz) { const at = wiz.q; setTimeout(() => { if (wiz && wiz.q === at && bubbleAction === fn) { bubbleAction = null; bubbleEl.classList.remove("offer"); wizSay(); } }, ms - 300); }
+  }
   function say(text, ms = 4500) {
+    bubbleAction = null;
+    bubbleEl.classList.remove("offer");
     const r = document.getElementById("narrator").getBoundingClientRect();
     bubbleText.textContent = text;
     bubbleEl.hidden = false;
@@ -4736,7 +4985,10 @@
     bubbleTimer = setTimeout(() => { bubbleEl.hidden = true; }, 320);
   }
   // W Kreatorze dymek to bieżące pytanie, więc zostaje na miejscu
-  bubbleEl.addEventListener("click", () => { if (tut) tutTap(); else if (!wiz) hush(); });
+  bubbleEl.addEventListener("click", () => {
+    if (bubbleAction && !tut) { const a = bubbleAction; bubbleAction = null; bubbleEl.classList.remove("offer"); sfx("tuk"); a(); return; }
+    if (tut) tutTap(); else if (!wiz) hush();
+  });
 
   // ---------- Start: temat (2×2), potem Kreator albo Swoboda ----------
   // Na razie działa tylko Postać. Inne tematy: za pierwszym razem żart, potem informacja, że będą wkrótce.
@@ -4987,6 +5239,8 @@
     nav = [];
     flow = "free";
     wiz = null;
+    anchorPick = null;
+    crowdSaid = {};
     startStep = "subject";
     phase = "start";
     appEl.dataset.phase = "start";
