@@ -859,7 +859,9 @@
       { id: "behindHead", name: "Pod głową", short: "Pod głową", prompt: "hands clasped behind the head", poses: ["back"] },
       { id: "onBelly", name: "Na brzuchu", short: "Na brzuchu", prompt: "hands resting on the stomach", poses: ["back"] },
       { id: "chinUp", name: "Pod brodą", short: "Pod brodą", prompt: "chin propped on the hands", poses: ["belly"] },
-      { id: "folded", name: "Pod głową", short: "Pod głową", prompt: "head resting on the folded arms", poses: ["belly"] }
+      { id: "folded", name: "Pod głową", short: "Pod głową", prompt: "head resting on the folded arms", poses: ["belly"] },
+      { id: "propped", name: "Podpiera głowę", short: "Podpiera", prompt: "head propped up on one hand", poses: ["side"] },
+      { id: "onArm", name: "Głowa na ramieniu", short: "Na ramieniu", prompt: "head resting on the outstretched lower arm", poses: ["side"] }
     ]},
     // Rzeczy przy postaci; kafelki buduje makeTiles (scene.things to lista), tu nazwy dla wyszukiwarki
     { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
@@ -1536,10 +1538,12 @@
     behindHead: { nearUpper: -156, nearFore: -12, farUpper: -162, farFore: -20 },
     onBelly: { nearUpper: 112, nearFore: 66, farUpper: 108, farFore: 60 },
     // Na brzuchu: głowa oparta na złożonych przedramionach, tułów niżej
-    folded: { spine: 97, head: 102, nearUpper: 70, nearFore: 100, farUpper: 66, farFore: 96 }
+    folded: { spine: 97, head: 102, nearUpper: 70, nearFore: 100, farUpper: 66, farFore: 96 },
+    // Na boku płasko: dolna ręka wyciągnięta po ziemi za głowę, głowa leży na ramieniu, druga ręka wzdłuż ciała
+    onArm: { spine: -96, head: -100, nearUpper: -86, nearFore: -150, farUpper: 80, farFore: 96 }
   };
   // Ręce: stojąc (poza opartym) gesty z listy, na plecach i na brzuchu własne ułożenia; siedząc i na boku ręce wynikają z pozy
-  const LIE_ARMS = { back: ["down", "behindHead", "onBelly"], belly: ["chinUp", "folded"] };
+  const LIE_ARMS = { back: ["down", "behindHead", "onBelly"], belly: ["chinUp", "folded"], side: ["propped", "onArm"] };
   const standArms = st => STANDING.includes(st.pose) && st.pose !== "leanOn";
   const armsApply = st => standArms(st) || !!LIE_ARMS[st.pose];
   const armsDefault = st => LIE_ARMS[st.pose] ? LIE_ARMS[st.pose][0] : "down";
@@ -1816,6 +1820,7 @@
     const armTxt = () => optionOf("arms", armsFor(st)).prompt;
     if (st.pose === "back") return `lying on their back on ${on}, ${armTxt()}`;
     if (st.pose === "belly") return `lying on their stomach on ${on}, ${armTxt()}, lower legs raised behind them`;
+    if (st.pose === "side") return `lying on their side on ${on}, ${armTxt()}, legs slightly bent`;
     if (!seat) return optionOf("pose", st.pose).prompt;
     if (seat.id === "stool" && (st.pose === "sit" || st.pose === "lean")) return `perched on ${on}, feet resting on the footrest, ${st.pose === "lean" ? "leaning forward with the elbows on the knees" : "hands resting on the thighs"}, facing the camera`;
     if (st.pose === "sit") return seat.seat === "low" ? `sitting on ${on} with knees bent, forearms resting on the knees, back straight, facing the camera` : `sitting upright on ${on}, feet flat on the floor, hands resting on the thighs, facing the camera`;
@@ -1825,7 +1830,6 @@
     if (st.pose === "edge") return `perched on the very edge of ${on}, leaning slightly forward, feet tucked back, hands on the knees, facing the camera`;
     if (st.pose === "legsCrossed") return `sitting on ${on} with one leg crossed over the other, hands clasped on the knee, facing the camera`;
     if (st.pose === "back") return `lying on their back on ${on}, arms relaxed along the body`;
-    if (st.pose === "side") return `lying on their side on ${on}, head propped up on one hand, legs slightly bent`;
     if (st.pose === "belly") return `lying on their stomach on ${on}, chin resting on the hands, lower legs raised behind them`;
     return `sitting on ${on} with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera`;
   }
@@ -2114,7 +2118,8 @@
   const droneFar = st => st.props && st.props.drone != null ? st.props.drone : (st.camera === "D" ? 1 : 0);
   function anchors(st, W, H, withThings = false) {
     // Środek wyznacza sama postawa, więc gest rękami nie przesuwa Manikuna w kadrze
-    const bb = buildFigure(poseGeom(st), st.body).box, ax = (bb.minX + bb.maxX) / 2;
+    // Leżąc ręce mocno zmieniają szerokość figury, więc środek liczy się z całej pozy (z rękami)
+    const bb = buildFigure(LYING.includes(st.pose) ? poseKey(st) : poseGeom(st), st.body).box, ax = (bb.minX + bb.maxX) / 2;
     const baseFig = buildFigure(poseKey(st), st.body, st.outfit);
     const far = droneFar(st), lift = poseLift(st);
     let plBase = place(baseFig, st.shot, W, H, ax, far, lift);

@@ -257,5 +257,5 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
    - Leży (nowa grupa): Na plecach (głowa po lewej, twarz w górę), Na boku (głowa wsparta na dłoni), Na brzuchu (głowa na dłoniach, łydki w górze). Na ziemi albo na wierzchu siedziska (kanapa, ławka).
    - Stoi: Oparty, tylko gdy w scenie jest rzecz. Postać opiera się plecami o pierwszą rzecz, która staje tuż za nią (działa dla lady, samochodu, regału, stołu). Bez rzeczy kafelek znika, a postać stoi prosto.
    - Mina przechyla głowę i tułów względem pozy, więc działa też na leżąco.
-   - Ręce na leżąco: Na plecach: Wzdłuż ciała, Pod głową, Na brzuchu. Na brzuchu: Pod brodą, Pod głową (głowa na złożonych przedramionach). Na boku ręka podpiera głowę, więc kategoria Ręce jest wygaszona (tak jak przy siedzeniu).
+   - Ręce na leżąco: Na plecach: Wzdłuż ciała, Pod głową, Na brzuchu. Na brzuchu: Pod brodą, Pod głową (głowa na złożonych przedramionach). Na boku: Podpiera głowę, Głowa na ramieniu (leżąc płasko). Leżąca postać jest wyśrodkowana razem z rękami.
    - Na brzuchu: biodra na ziemi, tułów uniesiony na łokciach pod barkami, łydki w górze.
