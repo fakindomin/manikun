@@ -2123,6 +2123,14 @@
       { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "rocks" }, time: "golden" } }
     ]
   };
+  // Scena onboardingu: jedno źródło dla szkicu w intro i dla linku ?intro, pod którym generuje się do niej zdjęcia
+  // (wersje Cyberpunk i Fantasy różnią się tylko stylem)
+  const INTRO_SCENE = {
+    mode: "photo", subject: "person", style: "cyber", body: "male",
+    outfit: "street", topColor: "auto", bottomColor: "auto", pose: "stride", arms: "shade", shot: "full", camera: "L3",
+    light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "night",
+    look: { ...LOOK0, hair: "short" }
+  };
   let lastPreset = null;
   function applyPreset(pr) {
     const set = { ...pr.set };
@@ -3114,7 +3122,19 @@
     setTimeout(() => barItems.forEach(it => { it.b.style.transitionDelay = ""; }), fast ? 0 : 1400);
   }
 
-  render();
-  greet();
-  startIdle();
+  // Link ?intro: od razu reżyser ze sceną z intro (format 4:5, styl Cyberpunk); przełącz styl na Fantasy i skopiuj drugi prompt
+  if (new URLSearchParams(location.search).has("intro")) {
+    Object.assign(scene, { ...INTRO_SCENE, format: { ...scene.format, photo: "4x5" }, look: { ...INTRO_SCENE.look },
+      bgv: { ...INTRO_SCENE.bgv }, bgx: { forest: [...INTRO_SCENE.bgx.forest] } });
+    dock.hidden = true;
+    phase = "director";
+    appEl.dataset.phase = "director";
+    scene.open = "style";
+    render();
+    showToast("Scena z intro. Skopiuj prompt, potem przełącz styl na Fantasy i skopiuj drugi.");
+  } else {
+    render();
+    greet();
+    startIdle();
+  }
 </script>
