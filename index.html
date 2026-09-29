@@ -72,6 +72,10 @@
     -webkit-font-smoothing: antialiased;
   }
   [hidden] { display: none !important; }
+  /* Bez systemowego prostokątnego błysku przy dotknięciu: reakcja na dotyk trzyma się kształtu elementu (niżej, :active) */
+  * { -webkit-tap-highlight-color: transparent; }
+  .tile:active:not(:disabled), .icon-btn:active, .choice:active, .menu-item:not(:disabled):active, .modes .chip:active { filter: brightness(1.25); }
+  .tile:active:not(:disabled) { transform: scale(0.97); }
   .screen {
     box-sizing: border-box;
     height: 100%;
