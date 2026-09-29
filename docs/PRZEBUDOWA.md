@@ -4,11 +4,11 @@ Wzorem wyglądu i tutoriala jest przykładowy plik użytkownika (układ ekranu, 
 
 ## Układ ekranu (od góry)
 
-- **Nagłówek:** po lewej menu (3 kreski), na środku dyskretny napis MANIKUN (bez głowy), po prawej przycisk dźwięku. W czasie tutoriala obok dźwięku stoi „Pomiń”.
+- **Nagłówek:** po lewej menu (3 kreski), na środku dyskretny napis MANIKUN (bez głowy), po prawej przycisk dźwięku. W czasie tutoriala obok dźwięku stoi „Pomiń”. Na ekranie startowym 2×2 jest menu, a w miejscu napisu znaczek „Ponad miliard ujęć”.
 - **Kadr:** wizjer z narożnikami, ramka w kolorze stylu (jak dziś).
 - **Pasek roboczy:** po lewej przycisk-narrator z głową Manikuna (jedyne miejsce z głową), na środku suwak Zdjęcie / Wideo, po prawej przycisk Maniscryptu.
 - **Dwa rzędy nawigacji na dole.**
-- Przycisku domu nie ma. Powrót do początku: „Nowa scena” w menu albo Układ domyślny.
+- Przycisku domu nie ma. Powrót do początku: „Nowa scena” w menu albo Układ domyślny. Powrót dzieje się bez przeładowania strony: rzędy zjeżdżają, scena płynnie wraca do domyślnej, wjeżdża siatka 2×2 (tak samo po końcu tutoriala).
 
 ## Nawigacja: dwa rzędy schodzące w głąb
 

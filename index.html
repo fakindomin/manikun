@@ -366,9 +366,9 @@
   .start-tile.locked .name { color: var(--muted); }
   .tile > svg.lock { position: absolute; top: 8px; right: 9px; width: 12px; height: 12px; padding: 0; background: none; border-radius: 0; color: var(--muted); }
   .start-tile.below { transform: translateY(calc(100% + 40px)); opacity: 0; }
-  /* Znaczek skali: na starcie w pustym miejscu nagłówka po lewej */
+  /* Znaczek skali: na starcie na środku nagłówka, w miejscu nazwy */
   .combos {
-    position: absolute; left: 0; top: 50%; transform: translateY(-50%); transition: opacity 420ms ease;
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); transition: opacity 420ms ease;
     max-width: calc(100% - 128px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box;
     font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
     color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
@@ -511,7 +511,7 @@
   <div class="top">
     <span class="combos" id="combos">Ponad miliard ujęć</span>
     <!-- Nagłówek: menu po lewej, nazwa na środku, dźwięk po prawej -->
-    <button class="icon-btn director-only" type="button" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+    <button class="icon-btn" type="button" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <span class="brand director-only"><span class="rec" aria-hidden="true"></span>MANIKUN</span>
@@ -917,6 +917,8 @@
     subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
+  // Scena domyślna na powrót do startu bez przeładowania strony
+  const SCENE0 = JSON.parse(JSON.stringify(scene));
 
   const activeCats = () => CATEGORIES.filter(c => (!c.modes || c.modes.includes(scene.mode)) && (!c.subjects || c.subjects.includes(scene.subject)));
   const currentFormat = () => FORMATS[scene.mode].find(x => x.id === scene.format[scene.mode]);
@@ -3372,6 +3374,7 @@
   // Menu: wysuwa się z lewej, zamyka stuknięciem obok lub ponownie w przycisk
   const menuBtn = document.getElementById("menuBtn"), menuEl = document.getElementById("menu");
   function setMenu(open) {
+    if (open) hush();
     document.body.classList.toggle("menu-open", open);
     menuBtn.setAttribute("aria-expanded", String(open));
     menuEl.setAttribute("aria-hidden", String(!open));
@@ -3380,9 +3383,12 @@
   document.getElementById("menuScrim").addEventListener("click", () => setMenu(false));
 
   // Nowa scena: strona zaczyna od nowa, ale Manikun już się nie przedstawia (użytkownik go zna)
+  // Nowa scena bez przeładowania strony: powrót do siatki 2×2, bez ponownego powitania
   function newScene() {
-    try { sessionStorage.setItem("manikun-new-scene", "1"); } catch (e) {}
-    location.href = location.pathname;
+    setMenu(false);
+    setSearch(false);
+    closeInfo();
+    backToStart();
   }
   // Menu › Nowa scena: pierwsze stuknięcie pyta, drugie zaczyna od nowa (ustawienia znikają)
   const menuNewLabel = document.getElementById("menuNewLabel");
@@ -4137,7 +4143,33 @@
     if (tut) clearInterval(tut.timer);
     tut = null;
     document.body.classList.remove("tutorial");
-    newScene();
+    document.querySelectorAll(".tut-target").forEach(x => x.classList.remove("tut-target"));
+    backToStart();
+  }
+  // Powrót do siatki 2×2 bez przeładowania: rzędy zjeżdżają, scena płynnie wraca do domyślnej, kafelki wjeżdżają od spodu
+  function backToStart() {
+    const fast = reduceMotion.matches;
+    hush();
+    setSheet(false);
+    tutPhoto(null);
+    leaveRow(rows.top);
+    leaveRow(rows.bottom);
+    rows = { top: null, bottom: null };
+    nav = [];
+    flow = "free";
+    wizStep = 0;
+    startStep = "subject";
+    phase = "start";
+    appEl.dataset.phase = "start";
+    Object.assign(scene, JSON.parse(JSON.stringify(SCENE0)));
+    propAnim.reveal = { from: props.reveal, to: 0, start: performance.now(), dur: 900 };
+    render();
+    playFrames([{ pose: MP.hip, dur: 900 }]);
+    setTimeout(() => {
+      dock.hidden = false;
+      showStart(SUBJECTS);
+      startIdle();
+    }, fast ? 0 : 380);
   }
   document.getElementById("tutSkip").addEventListener("click", () => { sfx("puk"); tutFinish(); });
   document.getElementById("menuTutorial").addEventListener("click", () => { try { localStorage.removeItem("manikun-tutorial"); } catch (e) {} startTutorial(); });
@@ -4160,8 +4192,6 @@
     showStart(SUBJECTS);
     greet();
     startIdle();
-    let again = false;
-    try { again = sessionStorage.getItem("manikun-new-scene") === "1"; sessionStorage.removeItem("manikun-new-scene"); } catch (e) {}
-    if (!again) setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
+    setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
   }
 </script>
