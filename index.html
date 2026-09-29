@@ -238,6 +238,7 @@
   @keyframes previewSpin { to { transform: rotate(360deg); } }
   .preview-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   #previewLeft { color: var(--ink); }
+  .preview-better { color: var(--ink); font-weight: 600; }
   .sheet-copy .done-ico, .sheet-copy.done .copy-ico { display: none; }
   .sheet-copy.done .done-ico { display: block; }
 
@@ -654,7 +655,7 @@
     <!-- Szybki podgląd: darmowy szkic kadru bez wychodzenia z aplikacji -->
     <button class="sheet-preview" type="button" id="sheetPreview">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
-      <span class="sp-text"><b>Szybki podgląd kadru</b><small id="sheetPreviewNote">darmowy szkic, ok. 10 s</small></span>
+      <span class="sp-text"><b>Szybki podgląd kadru</b><small id="sheetPreviewNote">darmowy szkic w kilka sekund; generatory z listy dadzą lepszy efekt</small></span>
     </button>
     <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
     <button class="sheet-copy" type="button" id="sheetCopy">
@@ -686,7 +687,7 @@
       <div class="preview-wait" id="previewWait" role="status"><span class="preview-spin" aria-hidden="true"></span><b id="previewWaitText"></b><small id="previewTime"></small></div>
       <div class="preview-error" id="previewError" role="alert" hidden></div>
     </div>
-    <p class="sheet-lead">Szybki, darmowy szkic (FLUX), zawsze kwadratowy. Pełną jakość i Twój format da generator z listy w panelu Maniscryptu. <span id="previewLeft"></span></p>
+    <p class="sheet-lead">To tylko szybki, darmowy szkic (FLUX), zawsze kwadratowy. <b class="preview-better">Generatory z listy, np. ChatGPT, Gemini, Midjourney czy Kling, dadzą dużo lepszy efekt i Twój format:</b> skopiuj Maniscrypt i wklej go tam. <span id="previewLeft"></span></p>
     <div class="preview-actions">
       <button class="chip" type="button" id="previewCancel">Anuluj</button>
       <button class="chip" type="button" id="previewSave" hidden>Zapisz obraz</button>
