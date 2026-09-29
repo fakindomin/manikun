@@ -156,8 +156,8 @@
     background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0;
     transform: translateY(105%); transition: transform 420ms var(--ease); display: flex; flex-direction: column; gap: 12px;
   }
-  body.sheet-open .sheet { transform: none; }
-  body.sheet-open .sheet-scrim { opacity: 1; pointer-events: auto; }
+  body.sheet-open #copySheet { transform: none; }
+  body.sheet-open #sheetScrim { opacity: 1; pointer-events: auto; }
   .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
   .sheet h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -420,6 +420,41 @@
   /* Kafelek znaleziony wyszukiwarką: krótko pulsuje */
   .tile.found { animation: found 0.9s ease-in-out 3; }
   @keyframes found { 50% { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent), 0 0 22px var(--accent); } }
+  /* ---------- Tutorial ---------- */
+  .top-right { display: flex; align-items: center; gap: 8px; }
+  .chip.skip { display: none; padding: 7px 12px; font-size: 13px; gap: 5px; }
+  .chip.skip svg { width: 14px; height: 14px; color: var(--accent); }
+  body.tutorial .chip.skip { display: flex; }
+  /* Działa tylko wskazany element (pulsuje), reszta jest przygaszona i zablokowana; suwak trybu zablokowany do końca */
+  body.tutorial #app * { pointer-events: none; }
+  body.tutorial #app .tut-target, body.tutorial #app .tut-target *, body.tutorial #bubble, body.tutorial #bubble *, body.tutorial #tutSkip, body.tutorial #tutSkip * { pointer-events: auto; }
+  body.tutorial .row .tile:not(.tut-target) { opacity: 0.4; }
+  body.tutorial .modes { opacity: 0.4; }
+  .tile.tut-target, .square.tut-target, .sheet-copy.tut-target { animation: tutGlow 1.3s ease-in-out infinite; }
+  @keyframes tutGlow { 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px var(--accent); } }
+  body.tutorial .bubble { cursor: pointer; }
+  .bubble .tap { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; opacity: 0.7; }
+  /* Uproszczony panel Maniscryptu w tutorialu */
+  .tut-note { display: none; margin: -6px 0 0; font-size: 14px; color: var(--ink); }
+  body.tutorial #copySheet .tut-note { display: block; }
+  body.tutorial #copySheet .sheet-lead, body.tutorial #copySheet .steps, body.tutorial #copySheet .gens,
+  body.tutorial #copySheet #faceSwitch, body.tutorial #copySheet #faceGuide, body.tutorial #copySheet .sheet-head .icon-btn { display: none; }
+  /* Zdjęcie z generatora na miejscu kadru */
+  .tut-photo { position: absolute; inset: 5px; margin: 0; border-radius: 18px; overflow: hidden; background: #000; opacity: 0; transition: opacity 500ms ease; z-index: 3; }
+  .tut-photo.show { opacity: 1; }
+  .tut-photo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .tut-ph { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; text-align: center; color: #fff; }
+  .tut-ph b { font-size: 26px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .tut-ph span { font-size: 13px; opacity: 0.8; }
+  .tut-photo[data-style="cyber"] .tut-ph { background: radial-gradient(120% 90% at 30% 20%, #3B1A5E, transparent 60%), radial-gradient(100% 80% at 80% 90%, #0E4B5E, transparent 60%), #0B0A16; }
+  .tut-photo[data-style="cyber"] .tut-ph b { color: #FF4FD8; text-shadow: 0 0 18px #FF4FD8; }
+  .tut-photo[data-style="fantasy"] .tut-ph { background: radial-gradient(120% 90% at 50% 20%, #6B4E1A, transparent 60%), radial-gradient(100% 80% at 30% 90%, #1E4A30, transparent 60%), #0D120C; }
+  .tut-photo[data-style="fantasy"] .tut-ph b { color: #F4D27A; text-shadow: 0 0 18px #F4D27A; }
+  .tut-photo.has-img .tut-ph { display: none; }
+  .tut-photo figcaption {
+    position: absolute; left: 50%; top: 14px; transform: translateX(-50%); white-space: nowrap;
+    font-family: var(--mono); font-size: 11px; color: #fff; background: rgba(0, 0, 0, 0.6); border-radius: 999px; padding: 5px 12px;
+  }
   /* Przycisk, na który Manikun wskazuje (np. Maniscrypt po Kreatorze) */
   .square.pulse { animation: pulse 1.2s ease-in-out 5; }
   @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft), 0 0 22px var(--accent); transform: scale(1.06); } }
@@ -452,7 +487,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .director-only, .tile, .row, .chip, .bubble { transition-duration: 0.01ms !important; }
-    .square.pulse, .tile.found { animation: none; }
+    .square.pulse, .tile.found, .tut-target { animation: none !important; }
   }
 
   /* ---------- Kreska szkicu sceny ---------- */
@@ -480,10 +515,13 @@
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <span class="brand director-only"><span class="rec" aria-hidden="true"></span>MANIKUN</span>
-    <!-- Dźwięk: na razie sam przełącznik (odgłosy drewna dojdą w kolejnym etapie), domyślnie wyciszony -->
+    <!-- Prawa strona: "Pomiń" (tylko w tutorialu) i dźwięk (domyślnie wyciszony) -->
+    <div class="top-right">
+    <button class="chip skip" type="button" id="tutSkip">Pomiń <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M10 6l6 6-6 6 M16 12H5"/></svg></button>
     <button class="icon-btn director-only" type="button" id="sound" aria-label="Dźwięk" aria-pressed="false">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="sound-off" d="M16 9.5l5 5M21 9.5l-5 5"/><path class="sound-on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
     </button>
+    </div>
     <!-- Przełącznik materiału (drewno / biały) jest ukryty, ale działa: wystarczy usunąć atrybut hidden -->
     <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna" hidden><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -506,7 +544,7 @@
   <nav class="menu" id="menu" aria-label="Menu" aria-hidden="true">
     <h2><em>Manikun</em> · menu</h2>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
-    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Obejrzyj tutorial<span class="soon">Wkrótce</span></button>
+    <button class="menu-item" type="button" id="menuTutorial"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Obejrzyj tutorial</button>
     <button class="menu-item" type="button" id="menuHelp"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Jak używać Maniscryptu</button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historia Maniscryptów<span class="soon">Wkrótce</span></button>
@@ -522,6 +560,7 @@
       <button class="icon-btn" type="button" id="sheetClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <p class="sheet-lead">Maniscrypt to gotowy opis ujęcia (prompt) dla generatora AI.</p>
+    <p class="tut-note">Skopiuj i wklej w generatorze AI.</p>
     <button class="switch-row" type="button" id="faceSwitch" role="switch" aria-checked="false">
       <span class="switch-text"><b>Dołączę zdjęcie swojej twarzy</b><small>Generator weźmie twarz z Twojego zdjęcia, a resztę z Maniscryptu</small></span>
       <span class="switch" aria-hidden="true"><span></span></span>
@@ -569,6 +608,13 @@
   <div class="stage">
     <svg id="preview" class="ink" role="img" aria-label="Podgląd kadru z Manikunem" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="readout" id="readout" hidden></div>
+    <!-- Tutorial: przykładowe zdjęcie z generatora na miejscu kadru (tutorial/cyberpunk.jpg, tutorial/fantasy.jpg);
+         bez pliku pokazuje planszę w kolorach stylu -->
+    <figure class="tut-photo" id="tutPhoto" hidden>
+      <img id="tutImg" alt="">
+      <div class="tut-ph" id="tutPh"><b id="tutPhName"></b><span>Tu będzie zdjęcie z generatora</span></div>
+      <figcaption>Tak to może wyjść w generatorze</figcaption>
+    </figure>
   </div>
 
   <!-- Pasek roboczy: narrator (głowa Manikuna), suwak Zdjęcie/Wideo, Maniscrypt -->
@@ -3767,6 +3813,7 @@
   faceSwitch.addEventListener("click", () => { sheetPhoto = !sheetPhoto; syncSheet(); });
   sheetCopy.addEventListener("click", () => copyManiscrypt(ok => {
     if (ok) { sfx("klap"); nod("nod"); }
+    if (tut) { tut.copied = true; return; }
     sheetCopyLabel.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
     sheetCopy.classList.toggle("done", ok);
     if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz zdjęcie twarzy" : ""));
@@ -3891,7 +3938,7 @@
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(() => { bubbleEl.hidden = true; }, 320);
   }
-  bubbleEl.addEventListener("click", hush);
+  bubbleEl.addEventListener("click", () => { if (tut) tutTap(); else hush(); });
 
   // ---------- Start: temat (2×2), potem Kreator albo Swoboda ----------
   // Na razie działa tylko Postać. Inne tematy: za pierwszym razem żart, potem informacja, że będą wkrótce.
@@ -3982,6 +4029,119 @@
     }, fast ? 0 : 480);
   }
 
+  // ---------- Tutorial: nauka przez działanie na prawdziwym interfejsie ----------
+  // Tylko przy pierwszej wizycie (powtórka z menu). Pulsuje jeden element, reszta jest zablokowana.
+  // Kroki "tap" czekają na stuknięcie w dymek, pozostałe na wykonanie czynności.
+  let tut = null;
+  const tutorialSeen = () => { try { return localStorage.getItem("manikun-tutorial") === "done"; } catch (e) { return false; } };
+  const topOpts = () => nav[nav.length - 1];
+  const TUT_STEPS = [
+    { say: "Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej opis dla generatora AI.", tap: true },
+    { say: "Zmieńmy mu spodnie na dres. Stuknij Dół.", target: () => document.getElementById("opt-outfit-grp-bottom"),
+      done: () => topOpts().cat === "outfit" && topOpts().sub === "bottom" },
+    { say: "Teraz wybierz Dres.", target: () => document.getElementById("opt-wear-bottom-joggers"), done: () => scene.wear.bottom === "joggers" },
+    { say: "Świetnie. Stwórzmy Maniscrypt dla tej sceny: stuknij zielony przycisk.", target: () => document.getElementById("copy"),
+      done: () => document.body.classList.contains("sheet-open") },
+    { say: "Skopiuj Maniscrypt.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
+      after: () => { setSheet(false); tutPhoto("cyber"); } },
+    { say: "Hmm… cyberpunk w lesie? Chyba nie mój klimat.", tap: true, after: () => tutPhoto(null) },
+    { say: "Przełączmy styl. Wróć strzałką do głównych grup.", target: () => rows.bottom && rows.bottom.back,
+      done: () => nav.length === 2 && nav[0].kind === "groups" },
+    { say: "Stuknij Styl.", target: () => document.getElementById("nav-style"), done: () => topOpts().cat === "style" },
+    { say: "Wybierz Fantasy.", target: () => document.getElementById("opt-style-fantasy"), done: () => scene.style === "fantasy" },
+    { say: "Stwórzmy Maniscrypt dla stylu Fantasy.", target: () => document.getElementById("copy"),
+      done: () => document.body.classList.contains("sheet-open"), before: () => { tut.copied = false; } },
+    { say: "Skopiuj Maniscrypt.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
+      after: () => { setSheet(false); tutPhoto("fantasy"); } },
+    { say: "No, teraz to gra. Klimat siedzi.", tap: true, after: () => tutPhoto(null) },
+    { say: "A Ty? Zrobisz lepszy kadr?", tap: true, after: () => tutFinish() }
+  ];
+  // Scena startowa tutoriala: streetwear z jeansami, las ze ścieżką i mgłą, noc, Cyberpunk, 4:5; rzędy otwarte na Postać › Ubiór
+  function startTutorial() {
+    setMenu(false);
+    setSearch(false);
+    setSheet(false);
+    closeInfo();
+    Object.assign(scene, { ...INTRO_SCENE, ...dressIn("street"), format: { ...scene.format, photo: "4x5" }, look: { ...INTRO_SCENE.look },
+      bgv: { ...INTRO_SCENE.bgv }, bgx: { forest: [...INTRO_SCENE.bgx.forest] } });
+    dock.hidden = true;
+    phase = "director";
+    appEl.dataset.phase = "director";
+    flow = "free";
+    [rows.top, rows.bottom].forEach(r => r && r.el.remove());
+    rows = { top: null, bottom: null };
+    nav = [{ kind: "groups", open: "person" }, { kind: "cats", group: "person", open: "outfit" }, { kind: "opts", cat: "outfit", sub: null }];
+    propAnim.reveal = { from: props.reveal, to: 1, start: performance.now(), dur: 900 };
+    render();
+    tut = { step: -1, copied: false, timer: null };
+    document.body.classList.add("tutorial");
+    tut.timer = setInterval(tutTick, 250);
+    setTimeout(() => tutGo(0), reduceMotion.matches ? 0 : 700);
+  }
+  function tutGo(i) {
+    const st = TUT_STEPS[i];
+    tut.step = i;
+    if (st.before) st.before();
+    say(st.say, 0);
+    if (st.tap) {
+      const hint = document.createElement("span");
+      hint.className = "tap";
+      hint.textContent = "Dotknij, aby kontynuować ›";
+      bubbleText.appendChild(hint);
+    }
+    tutTick();
+  }
+  // Co chwilę: zaznacz cel (rzędy mogły się przebudować), przewiń do niego i sprawdź, czy krok jest wykonany
+  function tutTick() {
+    if (!tut || tut.step < 0) return;
+    const st = TUT_STEPS[tut.step];
+    const el = st.target ? st.target() : null;
+    document.querySelectorAll(".tut-target").forEach(x => { if (x !== el) x.classList.remove("tut-target"); });
+    if (el && !el.classList.contains("tut-target")) {
+      el.classList.add("tut-target");
+      const row = [rows.top, rows.bottom].find(r => r && r.el.contains(el));
+      const t = row && row.tiles.find(x => x.btn === el);
+      if (t) scrollToTile(row, t);
+    }
+    if (st.done && st.done() && !navBusy) tutNext();
+  }
+  function tutNext() {
+    const st = TUT_STEPS[tut.step];
+    document.querySelectorAll(".tut-target").forEach(x => x.classList.remove("tut-target"));
+    if (st.after) st.after();
+    if (!tut) return;
+    const next = tut.step + 1;
+    tut.step = -1;
+    if (next < TUT_STEPS.length) setTimeout(() => tut && tutGo(next), 350);
+  }
+  function tutTap() {
+    if (!tut || tut.step < 0) return;
+    if (TUT_STEPS[tut.step].tap) { sfx("tik"); tutNext(); }
+  }
+  function tutPhoto(style) {
+    const fig = document.getElementById("tutPhoto"), img = document.getElementById("tutImg");
+    if (!style) { fig.classList.remove("show"); setTimeout(() => { fig.hidden = true; }, 500); return; }
+    fig.dataset.style = style;
+    document.getElementById("tutPhName").textContent = style === "cyber" ? "Cyberpunk" : "Fantasy";
+    fig.classList.remove("has-img");
+    img.onload = () => fig.classList.add("has-img");
+    img.onerror = () => fig.classList.remove("has-img");
+    img.src = "tutorial/" + (style === "cyber" ? "cyberpunk" : "fantasy") + ".jpg";
+    fig.hidden = false;
+    requestAnimationFrame(() => fig.classList.add("show"));
+    sfx("tuk");
+  }
+  // Koniec (albo Pomiń): zapamiętaj i zacznij od siatki tematów, bez ponownego powitania
+  function tutFinish() {
+    try { localStorage.setItem("manikun-tutorial", "done"); } catch (e) {}
+    if (tut) clearInterval(tut.timer);
+    tut = null;
+    document.body.classList.remove("tutorial");
+    newScene();
+  }
+  document.getElementById("tutSkip").addEventListener("click", () => { sfx("puk"); tutFinish(); });
+  document.getElementById("menuTutorial").addEventListener("click", () => { try { localStorage.removeItem("manikun-tutorial"); } catch (e) {} startTutorial(); });
+
   // Link ?intro: od razu reżyser ze sceną z intro (format 4:5, styl Cyberpunk); przełącz styl na Fantasy i skopiuj drugi prompt
   if (new URLSearchParams(location.search).has("intro")) {
     Object.assign(scene, { ...INTRO_SCENE, format: { ...scene.format, photo: "4x5" }, look: { ...INTRO_SCENE.look },
@@ -3992,6 +4152,9 @@
     navInit("style");
     render();
     showToast("Scena z intro. Skopiuj Maniscrypt, potem przełącz styl na Fantasy i skopiuj drugi.");
+  } else if (!tutorialSeen()) {
+    render();
+    startTutorial();
   } else {
     render();
     showStart(SUBJECTS);
