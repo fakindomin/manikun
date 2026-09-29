@@ -113,6 +113,8 @@ Pełna nawigacja dwoma rzędami. Tylko tu są Gotowe.
   - stuknięcie w wynik przeskakuje rzędami do miejsca,
   - przykładowe hasła pod rozwijaną podpowiedzią.
 
+Dopasowanie wyszukiwarki: każde wpisane słowo musi zaczynać słowo nazwy, ścieżki albo synonimu (np. „kucanie” → Kuca, „spodnie” → Dół). Okno wyszukiwania stoi pod nagłówkiem, żeby klawiatura telefonu nie zasłaniała wyników. Wynik z wariantem tła (np. „+ Mgła” w lesie) od razu wybiera to tło.
+
 ## Menu
 
 | Pozycja | Stan |

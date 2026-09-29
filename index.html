@@ -374,6 +374,42 @@
   .bubble::before {
     content: ""; position: absolute; left: 14px; bottom: -6px; width: 12px; height: 12px; background: inherit; transform: rotate(45deg);
   }
+  /* Wyszukiwarka: pod nagłówkiem (klawiatura telefonu nie zasłania wyników) */
+  .search-scrim { position: fixed; inset: 0; z-index: 15; background: rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
+  .search {
+    position: fixed; z-index: 16; left: 12px; right: 12px; top: calc(52px + env(safe-area-inset-top, 0px)); max-width: 460px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 8px; max-height: min(70dvh, 520px); box-sizing: border-box;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 10px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    opacity: 0; translate: 0 -10px; pointer-events: none; transition: opacity 240ms ease, translate 360ms var(--ease);
+  }
+  body.search-open .search { opacity: 1; translate: 0 0; pointer-events: auto; }
+  body.search-open .search-scrim { opacity: 1; pointer-events: auto; }
+  .search-field { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 0 4px 0 12px; }
+  .search-field > svg { width: 18px; height: 18px; flex: none; color: var(--muted); }
+  .search-field input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: none; border: 0; outline: none; padding: 11px 0; }
+  .search-field input::-webkit-search-cancel-button { display: none; }
+  .search-field .icon-btn { width: 32px; height: 32px; border-radius: 10px; }
+  .search-field .icon-btn svg { width: 16px; height: 16px; }
+  .search-results { overflow-y: auto; display: grid; gap: 4px; }
+  .search-results:empty { display: none; }
+  .search-hit {
+    font: inherit; text-align: left; color: var(--ink); cursor: pointer; display: grid; gap: 2px;
+    background: transparent; border: 0; border-radius: 12px; padding: 9px 10px;
+  }
+  .search-hit:active, .search-hit:focus-visible { background: var(--surface-2); }
+  .search-hit b { font-size: 14px; font-weight: 600; }
+  .search-hit b mark { background: none; color: var(--accent); }
+  .search-hit small { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .search-empty { font-size: 13px; color: var(--muted); padding: 6px 10px; }
+  .search-more { align-self: flex-start; font: inherit; font-size: 12px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 4px 6px; cursor: pointer; }
+  .search-more::after { content: " ▾"; }
+  .search-more[aria-expanded="true"]::after { content: " ▴"; }
+  .search-examples { display: flex; flex-wrap: wrap; gap: 6px; }
+  .search-examples button { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  /* Kafelek znaleziony wyszukiwarką: krótko pulsuje */
+  .tile.found { animation: found 0.9s ease-in-out 3; }
+  @keyframes found { 50% { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent), 0 0 22px var(--accent); } }
   /* Przycisk, na który Manikun wskazuje (np. Maniscrypt po Kreatorze) */
   .square.pulse { animation: pulse 1.2s ease-in-out 5; }
   @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft), 0 0 22px var(--accent); transform: scale(1.06); } }
@@ -406,7 +442,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .director-only, .tile, .row, .chip, .bubble { transition-duration: 0.01ms !important; }
-    .square.pulse { animation: none; }
+    .square.pulse, .tile.found { animation: none; }
   }
 
   /* ---------- Kreska szkicu sceny ---------- */
@@ -443,6 +479,18 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <!-- Dymek Manikuna: wychodzi z przycisku z głową -->
     <div class="bubble" id="bubble" role="status" aria-live="polite" hidden><span id="bubbleText"></span></div>
+    <!-- Wyszukiwarka Manikuna: otwiera się po stuknięciu w przycisk z głową -->
+    <div class="search-scrim" id="searchScrim"></div>
+    <div class="search" id="search" role="dialog" aria-label="Szukaj" aria-hidden="true">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+        <input id="searchInput" type="search" placeholder="Czego szukasz? np. dres, noc, okulary" autocomplete="off" enterkeyhint="search" aria-label="Szukaj">
+        <button class="icon-btn" type="button" id="searchClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+      <button class="search-more" type="button" id="searchMore" aria-expanded="false">Przykładowe hasła</button>
+      <div class="search-examples" id="searchExamples" hidden></div>
+    </div>
   </div>
   <div class="menu-scrim" id="menuScrim"></div>
   <nav class="menu" id="menu" aria-label="Menu" aria-hidden="true">
@@ -2824,6 +2872,7 @@
 
   function navPop() {
     if (navBusy || nav.length <= 2) return;
+    sfx("puk");
     nav.pop();
     navAnim = "pop";
     render();
@@ -2835,9 +2884,15 @@
     const n = nav.length, isBottom = row === rows.bottom;
     // Stuknięcie w otwarty kafelek dolnego rzędu cofa o poziom
     if (isBottom && t.navId === nav[n - 2].open) { navPop(); return; }
-    if (t.action) { handler(); return; }
+    if (t.action) {
+      const fp = sceneFP();
+      handler();
+      if (sceneFP() !== fp) { sfx("tuk"); react(true); } else sfx("tik");
+      return;
+    }
     if (row.st.kind !== "opts") {
       // Grupa albo kategoria: jej zawartość trafia do górnego rzędu
+      sfx("tok");
       if (isBottom) { nav[n - 2].open = t.navId; nav[n - 1] = childOf(t.navId); navAnim = "swap"; }
       else { nav[n - 1].open = t.navId; nav.push(childOf(t.navId)); navAnim = "push"; }
       render();
@@ -2847,8 +2902,13 @@
     scene.open = row.st.cat;
     scene.sub = row.st.sub;
     pendingNav = { isBottom, id: t.navId, sub: row.st.sub };
+    const fp = sceneFP(), style = scene.style, len = nav.length;
     handler();
     pendingNav = null;
+    // Dźwięk i reakcja głowy: głębiej = tok, zwykły wybór = tik, styl i gotowiec = TUK z wyraźnym kiwnięciem
+    const big = scene.style !== style || row.st.cat === "preset";
+    sfx(nav.length > len ? "tok" : big ? "tuk" : "tik");
+    if (sceneFP() !== fp) react(big);
   }
 
   // Grupa lub kategoria, której już nie ma (np. Ruch po przejściu na zdjęcie): wracamy do poziomu, który jeszcze istnieje
@@ -3264,10 +3324,88 @@
     menuNewLabel.textContent = "Na pewno? Stuknij jeszcze raz";
     newArmed = setTimeout(() => { newArmed = null; menuNewLabel.textContent = "Nowa scena"; }, 3000);
   });
-  // Dźwięk: na razie sam przełącznik (odgłosy dojdą później)
+  // ---------- Dźwięki drewna: syntezowane w przeglądarce, bez plików; domyślnie wyciszone ----------
+  // tik: wybór, tok: wejście głębiej, puk: powrót, TUK: duża zmiana (styl, gotowiec), KLAP: skopiowany Maniscrypt,
+  // krrr-ik: skrzypnięcie przegubu szyi (głowa Manikuna)
   const soundBtn = document.getElementById("sound");
-  soundBtn.addEventListener("click", () => soundBtn.setAttribute("aria-pressed", String(soundBtn.getAttribute("aria-pressed") !== "true")));
-  // Narrator: głowa przechyla się przy stuknięciu (wyszukiwarka dojdzie w kolejnym etapie).
+  let audioCtx = null, soundOn = false, noise = null;
+  try { soundOn = localStorage.getItem("manikun-sound") === "1"; } catch (e) {}
+  soundBtn.setAttribute("aria-pressed", String(soundOn));
+  function actx() {
+    if (!audioCtx) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      audioCtx = new C();
+      noise = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.25, audioCtx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  // Uderzenie w drewno: krótki ton ze spadkiem wysokości i stuk szumu przez filtr
+  function knock(c, t, freq, dur, gain) {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.62, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), ng = c.createGain();
+    n.buffer = noise;
+    f.type = "bandpass"; f.frequency.value = freq * 2.2; f.Q.value = 3;
+    ng.gain.setValueAtTime(gain * 0.5, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+    n.connect(f).connect(ng).connect(c.destination);
+    n.start(t); n.stop(t + 0.05);
+  }
+  function clap(c, t, gain) {
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    n.buffer = noise;
+    f.type = "bandpass"; f.frequency.value = 1600; f.Q.value = 1.2;
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    n.connect(f).connect(g).connect(c.destination);
+    n.start(t); n.stop(t + 0.1);
+  }
+  function creak(c, t) {
+    const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(95, t);
+    o.frequency.linearRampToValueAtTime(230, t + 0.2);
+    f.type = "bandpass"; f.frequency.value = 1100; f.Q.value = 2.5;
+    // Szarpanie tarcia: szybka modulacja głośności
+    lfo.type = "square"; lfo.frequency.value = 38; lg.gain.value = 0.05;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.07, t + 0.03);
+    g.gain.linearRampToValueAtTime(0.0001, t + 0.24);
+    lfo.connect(lg).connect(g.gain);
+    o.connect(f).connect(g).connect(c.destination);
+    o.start(t); lfo.start(t); o.stop(t + 0.26); lfo.stop(t + 0.26);
+  }
+  function sfx(type) {
+    if (!soundOn) return;
+    const c = actx();
+    if (!c) return;
+    const t = c.currentTime + 0.01;
+    if (type === "tik") knock(c, t, 1500, 0.05, 0.22);
+    else if (type === "tok") knock(c, t, 720, 0.09, 0.28);
+    else if (type === "puk") { knock(c, t, 430, 0.1, 0.26); }
+    else if (type === "tuk") { knock(c, t, 170, 0.22, 0.5); knock(c, t, 340, 0.12, 0.2); }
+    else if (type === "klap") { clap(c, t, 0.5); knock(c, t + 0.005, 900, 0.07, 0.25); }
+    else if (type === "krrr") { creak(c, t); knock(c, t + 0.24, 1300, 0.05, 0.16); }
+  }
+  soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem("manikun-sound", soundOn ? "1" : "0"); } catch (e) {}
+    soundBtn.setAttribute("aria-pressed", String(soundOn));
+    if (soundOn) { actx(); sfx("tik"); }
+  });
+
+  // ---------- Narrator: głowa Manikuna ----------
   // Głowa 3D (head3d.js) ma własne ruchy; bez niej przechyla się rysowana.
   const narratorHead = document.querySelector("#narrator .head");
   let nodTimer;
@@ -3277,7 +3415,185 @@
     clearTimeout(nodTimer);
     nodTimer = setTimeout(() => { narratorHead.style.transform = ""; }, 420);
   }
-  document.getElementById("narrator").addEventListener("click", () => nod());
+  // Reakcja na każdy wybór: kiwnięcie albo przechył, bez dymków; styl i gotowce dostają wyraźne kiwnięcie
+  const sceneFP = () => JSON.stringify([scene.mode, scene.style, scene.body, scene.wear, scene.wc, scene.look, scene.pose, scene.arms, scene.shot, scene.camera,
+    scene.light, scene.lightZone, scene.background, scene.bgv, scene.bgx, scene.time, scene.motion, scene.format]);
+  let lastReact = 0;
+  function react(big = false) {
+    const now = performance.now();
+    if (now - lastReact < 350) return;
+    lastReact = now;
+    nod(big || Math.random() < 0.55 ? "nod" : "tilt");
+  }
+  // Stuknięcie w głowę: w reżyserze wyszukiwarka, na starcie podpowiedź
+  document.getElementById("narrator").addEventListener("click", () => {
+    sfx("krrr");
+    if (phase !== "director") { nod(); say("Najpierw wybierz, co kręcimy. Na razie działa Postać.", 3500); return; }
+    hush();
+    setSearch(!document.body.classList.contains("search-open"));
+  });
+
+  // ---------- Wyszukiwarka: kategorie i opcje, wynik przeskakuje rzędami i podświetla kafelek ----------
+  const searchEl = document.getElementById("search"), searchInput = document.getElementById("searchInput");
+  const searchResults = document.getElementById("searchResults"), searchMore = document.getElementById("searchMore"), searchExamples = document.getElementById("searchExamples");
+  const norm = str => str.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  // Słowa, pod którymi ludzie szukają danej kategorii
+  const ALIAS = {
+    body: "plec kobieta mezczyzna", look: "twarz glowa", outfit: "ubranie stroj ciuchy", pose: "pozycja", arms: "dlonie gest",
+    background: "miejsce lokacja otoczenie", time: "godzina", light: "oswietlenie lampa slonce", shot: "kadrowanie zblizenie plan",
+    camera: "obiektyw kat ujecie", format: "proporcje rozmiar", motion: "ruch kamery", style: "wyglad",
+    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", sun: "przeciwsloneczne",
+    stand: "stanie stoi", stride: "chod idzie spacer krok", crouch: "kucanie kucnij przysiad", wide: "rozkrok",
+    sit: "siedzenie siedzi", chair: "krzeslo", cross: "turecku", chin: "myslenie zamyslenie", shade: "oslania patrzy wypatruje",
+    hips: "rece na biodrach", D: "dron z gory lot", night: "wieczor ciemno", golden: "zachod wschod"
+  };
+  const EXAMPLES = ["dres", "noc", "okulary", "las", "selfie", "cyberpunk", "kucanie", "mgła", "kapelusz", "z drona"];
+  EXAMPLES.forEach(w => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = w;
+    b.addEventListener("click", () => { searchInput.value = w; runSearch(); searchInput.focus(); });
+    searchExamples.appendChild(b);
+  });
+  searchMore.addEventListener("click", () => {
+    const open = searchExamples.hidden;
+    searchExamples.hidden = !open;
+    searchMore.setAttribute("aria-expanded", String(open));
+  });
+  // Indeks budowany przy otwarciu: dokładnie to, co jest teraz dostępne (postać, tryb, reguły sceny)
+  function searchIndex() {
+    const out = [];
+    const add = (name, path, go, extra = "") => {
+      const key = norm([name, ...path, extra].join(" "));
+      out.push({ name, path, go, nk: norm(name), words: key.split(/[^a-z0-9:]+/).filter(Boolean) });
+    };
+    const opts = (cat, sub, open) => ({ kind: "opts", cat, sub, ...(open ? { open } : {}) });
+    activeGroups().filter(g => !g.action).forEach(g => {
+      const root = { kind: "groups", open: g.id };
+      add(g.label, [], () => jump([root, childOf(g.id)]));
+      if (g.cat) { catEntries(g.cat, [g.label], [root], add, opts); return; }
+      groupCats(g).forEach(cat => {
+        const base = [root, { kind: "cats", group: g.id, open: cat.id }];
+        add(cat.label, [g.label], () => jump([...base, opts(cat.id, null)]), ALIAS[cat.id]);
+        catEntries(cat.id, [g.label, cat.label], base, add, opts);
+      });
+    });
+    return out;
+  }
+  function catEntries(cat, path, base, add, opts) {
+    const leafAt = (sub, id) => () => jump([...base, ...(sub ? [opts(cat, null, "opt-" + cat + "-" + sub), opts(cat, sub)] : [opts(cat, null)])], "opt-" + cat + "-" + id);
+    if (cat === "preset") { PRESETS[scene.subject].forEach(pr => add(pr.name, path, () => jump([...base, opts(cat, null)], "opt-preset-" + pr.id))); return; }
+    if (cat === "style") { optionsOf("style").forEach(o => add(o.name, path, () => jump([...base, opts(cat, null)], "opt-style-" + o.id))); return; }
+    if (cat === "format") { FORMATS[scene.mode].forEach(fm => add(fm.name, path, () => jump([...base, opts(cat, null)], "opt-format-" + fm.id))); return; }
+    if (cat === "look") {
+      [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male").forEach(([k, name]) => {
+        const lvl = [...base, opts(cat, null, "opt-look-" + k)];
+        add(name, path, () => jump([...lvl, opts(cat, k)]));
+        LOOK[k].forEach(o => add(o.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-" + k + "-" + o.id), ALIAS[o.id]));
+      });
+      LOOK.hairColor.forEach(o => add(o.name, [...path, "Włosy", "Kolor"], () => jump([...base, opts(cat, null, "opt-look-hair"), opts(cat, "hair", "opt-hair-" + scene.look.hair), opts(cat, "hairColor")], "opt-hairColor-" + o.id), "kolor wlosow"));
+      return;
+    }
+    if (cat === "outfit") {
+      OUTFIT_SUBS.forEach(([k, name]) => {
+        const lvl = [...base, opts(cat, null, "opt-outfit-grp-" + k)];
+        add(name, path, () => jump([...lvl, opts(cat, k)]), ALIAS[k]);
+        if (k === "sets") optionsOf("outfit").filter(o => fitsBody(o, scene)).forEach(o => add(o.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-outfit-" + o.id), "zestaw"));
+        else WEAR[k].options.filter(o => !o.hidden && o.id !== "none" && fitsBody(o, scene)).forEach(o => add(o.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-wear-" + k + "-" + o.id), ALIAS[k]));
+      });
+      return;
+    }
+    let list = optionsOf(cat).filter(o => fitsBody(o, scene));
+    if (cat === "light" && !lampAllowed(scene)) list = list.filter(o => o.id !== "artificial");
+    if (list.length === 1 && list[0].children) list = list[0].children;
+    list.forEach(o => {
+      if (!o.children) {
+        add(o.name, path, leafAt(null, o.id), ALIAS[o.id]);
+        if (cat === "background" && BG_VARIANTS[o.id]) bgVariants(o, null, path, base, add, opts);
+        return;
+      }
+      add(o.name, path, () => jump([...base, opts(cat, null, "opt-" + cat + "-" + o.id), opts(cat, o.id)]));
+      o.children.filter(c => fitsBody(c, scene)).forEach(c => {
+        add(c.name, [...path, o.name], leafAt(o.id, c.id), ALIAS[c.id]);
+        if (cat === "background" && BG_VARIANTS[c.id]) bgVariants(c, o, path, base, add, opts);
+      });
+    });
+  }
+  // Warianty tła (np. Las › Ścieżka, + Mgła): wynik od razu wybiera to tło, żeby warianty dotyczyły kadru
+  function bgVariants(leaf, grp, path, base, add, opts) {
+    const lvl = grp
+      ? [...base, opts("background", null, "opt-background-" + grp.id), opts("background", grp.id, "opt-background-" + leaf.id)]
+      : [...base, opts("background", null, "opt-background-" + leaf.id)];
+    BG_VARIANTS[leaf.id].forEach(v => add((v.extra ? "+ " : "") + v.name, [...path, ...(grp ? [grp.name] : []), leaf.name],
+      () => jump([...lvl, opts("background", "v:" + leaf.id)], (v.extra ? "opt-bgx-" : "opt-bgv-") + v.id, () => { scene.background = leaf.id; })));
+  }
+  function runSearch() {
+    const q = norm(searchInput.value.trim());
+    searchResults.replaceChildren();
+    if (!q) return;
+    const words = q.split(/\s+/);
+    // Każde wpisane słowo musi zaczynać któreś słowo nazwy, ścieżki albo synonimów ("las" nie trafia w "płaszcz")
+    const hits = searchIndex().filter(e => words.every(w => e.words.some(k => k.startsWith(w))))
+      .map(e => ({ e, rank: e.nk.startsWith(q) ? 0 : e.nk.includes(q) ? 1 : 2 }))
+      .sort((a, b) => a.rank - b.rank || a.e.path.length - b.e.path.length).slice(0, 8);
+    if (!hits.length) {
+      const p = document.createElement("p");
+      p.className = "search-empty";
+      p.textContent = "Nic nie znalazłem. Spróbuj innego słowa albo zajrzyj do przykładów.";
+      searchResults.appendChild(p);
+      return;
+    }
+    hits.forEach(({ e }) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "search-hit";
+      const name = document.createElement("b");
+      name.textContent = e.name;
+      const path = document.createElement("small");
+      path.textContent = [...e.path, e.name].join(" › ");
+      b.append(name, path);
+      b.addEventListener("click", e.go);
+      searchResults.appendChild(b);
+    });
+  }
+  searchInput.addEventListener("input", runSearch);
+  searchInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") { const first = searchResults.querySelector(".search-hit"); if (first) first.click(); }
+    if (e.key === "Escape") setSearch(false);
+  });
+  function setSearch(open) {
+    document.body.classList.toggle("search-open", open);
+    searchEl.setAttribute("aria-hidden", String(!open));
+    if (open) {
+      toast.classList.remove("show");
+      searchInput.value = "";
+      searchResults.replaceChildren();
+      setTimeout(() => searchInput.focus(), 60);
+      nod("tilt");
+    } else searchInput.blur();
+  }
+  document.getElementById("searchScrim").addEventListener("click", () => setSearch(false));
+  document.getElementById("searchClose").addEventListener("click", () => setSearch(false));
+  // Przeskok do miejsca: rzędy wjeżdżają od nowa na właściwym poziomie, znaleziony kafelek pulsuje
+  function jump(navArr, highlight, before) {
+    setSearch(false);
+    if (before) { before(); }
+    flow = "free";
+    [rows.top, rows.bottom].forEach(r => r && r.el.remove());
+    rows = { top: null, bottom: null };
+    nav = navArr.map(st => ({ ...st }));
+    render();
+    sfx("tok");
+    nod("nod");
+    if (!highlight) return;
+    setTimeout(() => {
+      const t = rows.top && rows.top.tiles.find(x => x.id === highlight);
+      if (!t) return;
+      scrollToTile(rows.top, t);
+      t.btn.classList.add("found");
+      setTimeout(() => t.btn.classList.remove("found"), 2800);
+    }, 260);
+  }
 
   // ---------- Panel Maniscryptu ----------
   // Przycisk Maniscryptu otwiera panel: wyjaśnienie, opcja zdjęcia twarzy, trzy kroki, generatory i duży przycisk kopiowania.
@@ -3332,6 +3648,7 @@
       // Stuknięcie w generator od razu kopiuje Maniscrypt, a link otwiera stronę generatora
       a.addEventListener("click", () => {
         copyManiscrypt(ok => {
+          if (ok) sfx("klap");
           a.classList.add("used");
           showToast(ok ? `Skopiowano. Wklej w ${g.name}` + (withFace() ? " i dołącz zdjęcie twarzy" : "") : "Nie udało się skopiować. Użyj przycisku Kopiuj Maniscrypt");
         });
@@ -3371,6 +3688,7 @@
   document.getElementById("sheetClose").addEventListener("click", () => setSheet(false));
   faceSwitch.addEventListener("click", () => { sheetPhoto = !sheetPhoto; syncSheet(); });
   sheetCopy.addEventListener("click", () => copyManiscrypt(ok => {
+    if (ok) { sfx("klap"); nod("nod"); }
     sheetCopyLabel.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
     sheetCopy.classList.toggle("done", ok);
     if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz zdjęcie twarzy" : ""));
@@ -3548,6 +3866,7 @@
   function startPick(c) {
     if (phase !== "start") return;
     clearTimeout(idleTimer);
+    sfx(c.locked ? "puk" : "tik");
     if (c.locked) {
       say(jokeSeen[c.id] ? SOON : c.joke);
       jokeSeen[c.id] = true;
