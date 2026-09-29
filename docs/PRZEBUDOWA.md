@@ -65,7 +65,7 @@ Manikun prowadzi rozmową: jedno pytanie w dymku, odpowiedzi w górnym rzędzie.
 
 Pytania:
 
-1. **Postać:** Kogo ustawiamy? → Jak go/ją ubierzemy? (Gotowy zestaw / Składam sam) → zestaw albo po kolei Góra, Okrycie, Dół, Buty, Nakrycie głowy → Zmieniamy kolory? (Którą część? → kolor → Coś jeszcze?) → Dopracujemy twarz? (fryzura, kolor włosów, mina, zarost i jego kolor, usta, okulary i oprawki)
+1. **Postać:** Kogo ustawiamy? → Jak go/ją ubierzemy? (Gotowy zestaw / Składam sam) → zestaw albo po kolei Góra, Okrycie, Dół, Buty, Nakrycie głowy → Zmieniamy kolory? (Którą część? → kolor → znowu wybór części, aż do „Kolory gotowe”) → Dopracujemy twarz? (fryzura, kolor włosów, mina, zarost i jego kolor, usta, okulary i oprawki)
 2. **Poza:** Co robi? (wszystkie pozy naraz, stojące i siedzące) → A ręce?
 3. **Miejsce:** Gdzie jesteśmy? (wszystkie tła naraz) → A dokładniej? (wariant i dodatki, np. mgła) → Pora dnia? → Jakie światło?
 4. **Kamera:** Jak blisko? → Z której strony patrzymy? → Jak rusza się kamera? → Format?
