@@ -25,7 +25,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <style>
   /* Ciemne studio: czarne tło z plamą światła za kadrem, zaokrąglone karty, jeden akcent.
-     Zdjęcie ma limonkowy akcent, wideo czerwony jak lampka nagrywania. */
+     Zdjęcie ma przygaszony szmaragd (bliżej szałwii), wideo czerwony jak lampka nagrywania. */
   :root {
     color-scheme: dark;
     --bg: #09090B;
@@ -36,8 +36,9 @@
     --line-strong: rgba(255, 255, 255, 0.16);
     --ink: #F4F4F5;
     --muted: #8D8D97;
-    --accent: #BCCB7C;
-    --accent-soft: rgba(188, 203, 124, 0.14);
+    --accent: #7DB896;
+    --accent-soft: rgba(125, 184, 150, 0.15);
+    --accent-line: rgba(125, 184, 150, 0.55);
     --on-accent: #0B0B0D;
     --stage: #131316;
     --tile-bg: #1F1F26;
@@ -53,6 +54,7 @@
     --bg-glow: #221718;
     --accent: #FF5A4F;
     --accent-soft: rgba(255, 90, 79, 0.16);
+    --accent-line: rgba(255, 90, 79, 0.55);
     --on-accent: #0B0B0D;
   }
 
@@ -85,29 +87,58 @@
   [data-phase="start"] .director-only { opacity: 0; pointer-events: none; }
   [data-phase="director"] .combos { opacity: 0; pointer-events: none; }
 
-  /* ---------- Pasek górny: pigułki ---------- */
-  .top { display: flex; align-items: center; gap: 8px; position: relative; }
+  /* ---------- Nagłówek: menu | MANIKUN | dźwięk ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; min-height: 40px; }
+  .icon-btn {
+    width: 40px; height: 40px; flex: none; display: grid; place-items: center; cursor: pointer;
+    color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 13px;
+  }
+  .icon-btn svg { width: 20px; height: 20px; display: block; }
+  #sound .sound-on, #sound[aria-pressed="true"] .sound-off { display: none; }
+  #sound[aria-pressed="true"] .sound-on { display: inline; }
+  #sound[aria-pressed="true"] { color: var(--accent); }
+  .brand {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.28em; color: var(--ink);
+  }
+  .brand .rec { width: 6px; height: 6px; }
+
+  /* ---------- Pasek roboczy: narrator, suwak trybu, Maniscrypt ---------- */
+  .work { flex: none; display: flex; align-items: center; gap: 10px; }
+  .square {
+    flex: none; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 15px; cursor: pointer;
+    display: grid; place-items: center;
+    background: var(--accent); color: var(--on-accent);
+    box-shadow: 0 6px 18px var(--accent-soft), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: transform 200ms var(--ease), background-color 300ms ease;
+  }
+  .square:active { transform: scale(0.94); }
+  .square svg { width: 26px; height: 26px; display: block; }
+  .narrator svg { width: 38px; height: 38px; }
+  .narrator .head { stroke: var(--on-accent); transform-origin: 60px 96px; transition: transform 380ms cubic-bezier(0.34, 1.4, 0.64, 1); }
+  .narrator .head circle { fill: var(--on-accent); }
+  .maniscrypt svg path { fill: var(--on-accent); }
   /* Suwak trybu: podświetlenie (thumb) przesuwa się pod wybrany tryb */
   .modes {
-    position: relative; display: grid; grid-template-columns: 1fr 1fr; margin: 0 auto;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px;
+    flex: 1; min-width: 0; height: 46px; box-sizing: border-box; position: relative;
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 15px; padding: 3px;
   }
   .modes .thumb {
     position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
-    background: var(--ink); border-radius: 999px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-    transition: transform 420ms var(--ease);
+    background: var(--surface-2); border: 1px solid var(--accent-line); box-sizing: border-box; border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); transition: transform 420ms var(--ease), border-color 300ms ease;
   }
   body[data-mode="video"] .modes .thumb { transform: translateX(100%); }
-  /* Suwak zawsze dokładnie na środku paska, logo kopiowania samotnie przy prawej krawędzi */
-  .modes { position: absolute; left: 50%; transform: translateX(-50%); }
-  .top .copy-logo { margin-left: auto; }
-  /* Wąskie telefony: suwak bez kropek i ciaśniej, żeby nie wjeżdżał na przycisk domu */
-  @media (max-width: 419px) { .top .modes .chip { padding: 7px 8px; font-size: 12px; } .top .modes .chip .patch { display: none; } }
-  /* Bardzo wąskie (<375 px): środek nie zmieści się obok menu i domu, suwak wypełnia wolne miejsce między nimi a logo */
-  @media (max-width: 374px) { .modes { position: relative; left: auto; transform: none; margin: 0 auto; } .top { gap: 6px; } .top .copy-logo { width: 40px; height: 40px; } }
-  .modes .chip { position: relative; z-index: 1; justify-content: center; }
-  .chip.menu-btn { padding: 6px 8px; }
-  .menu-btn svg { width: 20px; height: 20px; display: block; }
+  .modes .chip {
+    position: relative; z-index: 1; flex: 1; justify-content: center; gap: 6px;
+    background: transparent; border-color: transparent; box-shadow: none; padding: 0 8px; border-radius: 12px; color: var(--muted);
+  }
+  .modes .chip svg { width: 16px; height: 16px; flex: none; }
+  .modes .chip[aria-pressed="true"] { color: var(--ink); }
+  .modes .chip[aria-pressed="true"] svg { color: var(--accent); }
+  @media (max-width: 359px) { .modes .chip svg { display: none; } .work { gap: 8px; } }
   /* Panel kopiowania wysuwany od dołu */
   .sheet-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, 0.55); opacity: 0; pointer-events: none; transition: opacity 280ms ease; }
   .sheet {
@@ -162,6 +193,8 @@
     background: transparent; border: 0; border-radius: 12px; padding: 12px 10px; display: flex; align-items: center; gap: 12px; cursor: default;
   }
   .menu-item svg { width: 20px; height: 20px; flex: none; }
+  .menu-item:not(:disabled) { color: var(--ink); cursor: pointer; }
+  .menu-item:not(:disabled):active { background: var(--surface-2); }
   .menu-item .soon { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 7px; }
   .chip {
     font: inherit; font-size: 13px; font-weight: 600;
@@ -172,29 +205,13 @@
     display: flex; align-items: center; gap: 7px;
     transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
   }
-  .modes .chip { flex: 1; background: transparent; border-color: transparent; box-shadow: none; padding: 7px 12px; color: var(--muted); }
-  .modes .chip[aria-pressed="true"] { color: var(--bg); }
   .patch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .chip.mat { padding: 4px 12px 4px 4px; }
-  .chip.home { padding: 6px 8px; gap: 6px; }
-  .chip.home svg { width: 20px; height: 20px; display: block; }
-  .chip.home.armed { color: var(--accent); border-color: var(--accent); }
 
   /* W reżyserze przełącznik materiału to sama próbka, żeby pasek się mieścił */
   [data-phase="director"] .chip.mat { padding: 4px; }
   [data-phase="director"] #material-name { display: none; }
   .swatch { width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35); flex: none; }
-  /* Przycisk kopiowania = logo; kolor idzie za trybem (zielony przy zdjęciu, czerwony przy wideo) */
-  .copy-logo {
-    flex: none; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 12px;
-    filter: drop-shadow(0 6px 16px var(--accent-soft)); transition: transform 200ms var(--ease);
-  }
-  .copy-logo:active { transform: scale(0.94); }
-  .copy-logo svg { width: 100%; height: 100%; display: block; }
-  .copy-logo .logo-bg { fill: var(--accent); }
-  .copy-logo .logo-ink { stroke: var(--on-accent); }
-  .copy-logo .logo-ink circle { fill: var(--on-accent); }
-
   /* ---------- Podgląd: karta sceny ---------- */
   .stage {
     flex: 1; min-height: 0;
@@ -216,101 +233,76 @@
   }
   .rec { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 
-  /* ---------- Dół ekranu: stała wysokość, kadr nad nim się nie rusza ---------- */
-  .dock { flex: none; position: relative; display: flex; flex-direction: column; gap: 10px; }
-  .options { position: relative; height: 128px; overflow: hidden; margin-bottom: -8px; }
-  .panel {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    height: 128px;
-    display: flex; gap: 10px; align-items: flex-end;
-    overflow-x: auto; overflow-y: hidden;
-    scrollbar-width: none;
-    padding: 0 2px 16px;
-    box-sizing: border-box;
+  /* ---------- Dół ekranu: dwa rzędy, stała wysokość, kadr nad nim się nie rusza ---------- */
+  .dock {
+    --row-h: 70px; --row-gap: 12px;
+    flex: none; position: relative; margin: 0 -16px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-radius: 26px 26px 0 0; border: 1px solid transparent; border-bottom: 0;
+    transition: background-color 420ms ease, border-color 420ms ease;
   }
-  .panel::-webkit-scrollbar { display: none; }
+  [data-phase="director"] .dock { background: #0F1013; border-color: var(--line); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.55); }
+  .rows { position: relative; height: calc(var(--row-h) * 2 + var(--row-gap)); overflow: hidden; }
+  [data-phase="start"] .rows { opacity: 0; }
+  /* Rząd: przewijany w bok. Pozycje: góra, dół i schowany pod krawędzią ekranu. */
+  .row {
+    position: absolute; left: 0; right: 0; top: 0; height: var(--row-h); box-sizing: border-box;
+    display: flex; gap: 8px; align-items: center; padding: 0 2px;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain;
+    transition: transform 460ms var(--ease), opacity 320ms ease;
+  }
+  .row::-webkit-scrollbar { display: none; }
+  .row[data-pos="bottom"] { transform: translateY(calc(var(--row-h) + var(--row-gap))); }
+  .row[data-pos="below"] { transform: translateY(calc((var(--row-h) + var(--row-gap)) * 2 + 24px)); }
+  .row[data-pos="gone"] { opacity: 0; pointer-events: none; }
 
-  /* Kafelki opcji: zawsze ten sam rozmiar */
+  /* Kafelek: obrazek (ikona kategorii albo miniatura opcji) i opis obok. Oba rzędy mają ten sam kształt. */
   .tile {
-    flex: none; box-sizing: border-box;
-    width: 98px; height: 108px;
-    font: inherit; color: rgba(244, 244, 245, 0.82);
-    background: var(--tile-bg);
-    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px;
-    box-shadow: var(--lift);
-    padding: 8px 6px; cursor: pointer;
-    display: grid; grid-template-rows: 60px auto; justify-items: center; align-content: start; gap: 4px;
-    position: relative;
-    --halo: var(--tile-bg);
-    transition: transform 420ms var(--ease), border-color 300ms ease, box-shadow 300ms ease, color 300ms ease;
+    flex: none; box-sizing: border-box; height: 60px; min-width: 112px; max-width: 176px;
+    font: inherit; color: rgba(244, 244, 245, 0.82); text-align: left;
+    background: var(--tile-bg); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 17px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 5px 12px 5px 5px; cursor: pointer;
+    display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 9px;
+    position: relative; --halo: #17171D;
+    transition: transform 420ms var(--ease), opacity 320ms ease, border-color 300ms ease, box-shadow 300ms ease, color 300ms ease, background-color 300ms ease;
   }
-  .tile.below { transform: translateY(calc(100% + 14px)); }
-  .tile.out { transform: translateY(calc(100% + 14px)); transition: transform 280ms cubic-bezier(0.4, 0, 1, 1); pointer-events: none; }
-  .tile[aria-pressed="true"] {
-    color: var(--ink);
-    border-color: var(--accent);
-    box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft), var(--lift);
-  }
-  .tile > svg { display: block; height: 60px; width: 60px; border-radius: 10px; }
-  .tile .name {
-    font-weight: 600; font-size: 12px; line-height: 1.2; text-align: center;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  }
-  /* Kafelek z wariantami: karta pod spodem i znacznik rozwinięcia */
-  .tile.group { margin-right: 5px; box-shadow: 5px -5px 0 -1px #19191F, 5px -5px 0 0 var(--line-strong), var(--lift); }
-  .tile.group[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--accent), 5px -5px 0 -1px #19191F, 5px -5px 0 0 var(--accent), 0 8px 22px var(--accent-soft), var(--lift); }
+  .tile > svg { display: block; width: 48px; height: 48px; border-radius: 12px; background: #17171D; box-sizing: border-box; }
+  .tile.cat > svg { padding: 11px; color: var(--ink); }
+  .tile .txt { display: grid; gap: 1px; min-width: 0; }
+  .tile .name { font-weight: 600; font-size: 12.5px; line-height: 1.2; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tile .value { font-family: var(--mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile:disabled { opacity: 0.35; cursor: default; }
+  /* Wybrana opcja */
+  .tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft); }
+  .tile[aria-pressed="true"] .value { color: var(--accent); }
+  /* Otwarty kafelek dolnego rzędu: to jego zawartość jest w górnym rzędzie */
+  .tile.open { background: #20261F; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft); }
+  body[data-mode="video"] .tile.open { background: #2A1C1C; }
+  .tile.open .value { color: var(--accent); }
+  /* Kafelek prowadzący dalej: znacznik w rogu */
   .tile .badge {
-    position: absolute; top: 8px; right: 9px; width: 6px; height: 6px;
+    position: absolute; top: 9px; right: 9px; width: 5px; height: 5px;
     border-top: 1.5px solid currentColor; border-right: 1.5px solid currentColor;
-    transform: rotate(45deg); opacity: 0.7;
+    transform: rotate(45deg); opacity: 0.55;
   }
-  /* Strzałka powrotu przypięta do lewej krawędzi: kafelki przewijają się pod nią */
+  /* Wejście nowych kafelków: wysuwają się spod spodu, kafelek po kafelku */
+  .tile.enter { transform: translateY(26px); opacity: 0; }
+  .tile.leave { transform: translateY(18px); opacity: 0; transition: transform 260ms cubic-bezier(0.4, 0, 1, 1), opacity 220ms ease; pointer-events: none; }
+  /* Strzałka powrotu przypięta do lewej krawędzi dolnego rzędu: kafelki przewijają się pod nią */
   .tile.back {
-    position: sticky; left: 0; z-index: 2;
-    background: var(--bg); border-style: dashed; border-color: var(--line-strong);
-    box-shadow: 10px 0 14px -4px var(--bg);
+    position: sticky; left: 0; z-index: 2; min-width: 0; width: 52px; padding: 0; grid-template-columns: 1fr; justify-items: center;
+    background: #0F1013; border: 1px dashed var(--line-strong); box-shadow: 10px 0 14px -4px #0F1013;
   }
-
-  /* ---------- Pasek kategorii: pływający dok ---------- */
-  [data-phase="start"] .cat { opacity: 0; transform: translateY(24px); }
-  .bar { transition: opacity 420ms ease; }
-  [data-phase="start"] .bar { opacity: 0; }
-  .bar {
-    flex: none;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(66px, 1fr);
-    overflow-x: auto;
-    scrollbar-width: none;
-    gap: 2px;
-    background: rgba(20, 20, 24, 0.92);
-    border: 1px solid var(--line);
-    border-radius: 24px;
-    padding: 6px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  .bar::-webkit-scrollbar { display: none; }
-  .cat {
-    font: inherit; color: var(--muted);
-    background: transparent; border: 0; border-radius: 18px;
-    padding: 7px 2px 6px; min-height: 48px; cursor: pointer;
-    display: grid; justify-items: center; gap: 2px;
-    transition: background-color 300ms ease, color 300ms ease, opacity 320ms ease, transform 420ms var(--ease);
-  }
-  [data-phase="director"] .cat:disabled { opacity: 0.35; cursor: default; }
-  .cat.reset .label { color: var(--muted); }
-  .cat.reset.armed { background: var(--accent-soft); color: var(--accent); }
-  .cat.reset.armed .label { color: var(--accent); }
-  .cat[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
-  .cat > svg { width: 22px; height: 22px; display: block; }
-  .cat .label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--ink); }
-  .cat[aria-pressed="true"] .label { color: var(--accent); }
-  .cat .label .patch { width: 6px; height: 6px; }
-  .cat .value { font-size: 11px; line-height: 1.1; white-space: nowrap; }
+  .tile.back > svg { width: 24px; height: 24px; background: none; }
+  .tile.reset.armed { border-color: var(--accent); }
+  .tile.reset.armed .value { color: var(--accent); }
+  /* Linia łącząca otwarty kafelek z dołu z wybraną opcją na górze */
+  .thread { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
+  .thread path { fill: none; stroke: var(--accent-line); stroke-width: 2; stroke-linejoin: miter; }
 
   /* ---------- Start: powitanie i wybór trybu ---------- */
   .dock-start {
-    position: absolute; inset: 0; z-index: 2;
+    position: absolute; left: 14px; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 2;
     background: transparent;
     display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
   }
@@ -361,7 +353,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .director-only, .hello, .tile, .cat, .choice, .chip { transition-duration: 0.01ms !important; }
+    .director-only, .hello, .tile, .row, .choice, .chip { transition-duration: 0.01ms !important; }
   }
 
   /* ---------- Kreska szkicu sceny ---------- */
@@ -384,42 +376,28 @@
 <div class="screen app" id="app" data-phase="start">
   <div class="top">
     <span class="combos" id="combos">Ponad miliard ujęć</span>
-    <!-- Lewa strona: menu (na razie same zapowiedzi) i dom; suwak trybu dokładnie na środku; logo-kopiowanie samo po prawej -->
-    <button class="chip menu-btn director-only" type="button" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+    <!-- Nagłówek: menu po lewej, nazwa na środku, dźwięk po prawej -->
+    <button class="icon-btn director-only" type="button" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
-    <!-- Powrót do ekranu startowego: pierwsze stuknięcie pyta, drugie wraca -->
-    <button class="chip home director-only" type="button" id="home" aria-label="Wróć do strony głównej">
-      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/></svg>
+    <span class="brand director-only"><span class="rec" aria-hidden="true"></span>MANIKUN</span>
+    <!-- Dźwięk: na razie sam przełącznik (odgłosy drewna dojdą w kolejnym etapie), domyślnie wyciszony -->
+    <button class="icon-btn director-only" type="button" id="sound" aria-label="Dźwięk" aria-pressed="false">
+      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="sound-off" d="M16 9.5l5 5M21 9.5l-5 5"/><path class="sound-on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
     </button>
-    <div class="modes director-only" role="group" aria-label="Tryb">
-      <span class="thumb" aria-hidden="true"></span>
-      <button class="chip" type="button" id="mode-photo" data-mode="photo"><span class="patch" style="background:#D67E2C"></span>Zdjęcie</button>
-      <button class="chip" type="button" id="mode-video" data-mode="video"><span class="patch" style="background:#AF363C"></span>Wideo</button>
-    </div>
     <!-- Przełącznik materiału (drewno / biały) jest ukryty, ale działa: wystarczy usunąć atrybut hidden -->
     <button class="chip mat" type="button" id="material" aria-label="Zmień materiał Manikuna" hidden><span class="swatch" id="swatch"></span><span id="material-name">Drewno</span></button>
-    <!-- Kopiowanie promptu: logo Manikuna (głowa na kwadracie w kolorze akcentu), większe niż reszta przycisków -->
-    <button class="copy-logo director-only" type="button" id="copy" aria-label="Kopiuj prompt" title="Kopiuj prompt">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
-        <rect width="120" height="120" rx="28" class="logo-bg" />
-        <g class="logo-ink" stroke-linecap="round" stroke-linejoin="round">
-          <ellipse cx="60" cy="48" rx="24" ry="28" fill="none" stroke-width="6" />
-          <line x1="60" y1="76" x2="60" y2="90" stroke-width="6" />
-          <circle cx="60" cy="95" r="5" stroke-width="2" />
-        </g>
-      </svg>
-    </button>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
   <div class="menu-scrim" id="menuScrim"></div>
   <nav class="menu" id="menu" aria-label="Menu" aria-hidden="true">
     <h2><em>Manikun</em> · menu</h2>
+    <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
+    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Obejrzyj tutorial<span class="soon">Wkrótce</span></button>
+    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Jak używać Maniscryptu<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="soon">Wkrótce</span></button>
-    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historia promptów<span class="soon">Wkrótce</span></button>
-    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Otwórz w generatorze<span class="soon">Wkrótce</span></button>
+    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historia Maniscryptów<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ustawienia<span class="soon">Wkrótce</span></button>
-    <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Pomoc<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.5"/></svg>O Manikunie<span class="soon">Wkrótce</span></button>
   </nav>
   <!-- Panel kopiowania: opcja własnego zdjęcia, instrukcja z przykładem i przycisk kopiowania -->
@@ -462,10 +440,26 @@
     <div class="readout director-only" id="readout"></div>
   </div>
 
-  <!-- Dół ekranu: stała wysokość. Na starcie przykryty powitaniem i wyborem trybu. -->
+  <!-- Pasek roboczy: narrator (głowa Manikuna), suwak Zdjęcie/Wideo, Maniscrypt -->
+  <div class="work director-only">
+    <button class="square narrator" type="button" id="narrator" aria-label="Manikun">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><g class="head" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="60" cy="50" rx="23" ry="27" fill="none" stroke-width="7"/><line x1="60" y1="77" x2="60" y2="90" stroke-width="7"/><circle cx="60" cy="96" r="5.5" stroke-width="2"/></g></svg>
+    </button>
+    <div class="modes" role="group" aria-label="Tryb">
+      <span class="thumb" aria-hidden="true"></span>
+      <button class="chip" type="button" id="mode-photo" data-mode="photo"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M3.5 8h4l1.5-2.5h6L16.5 8h4v11h-17z"/><circle cx="12" cy="13" r="3.2"/></svg>Zdjęcie</button>
+      <button class="chip" type="button" id="mode-video" data-mode="video"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 10.5l5-3v9l-5-3z"/></svg>Wideo</button>
+    </div>
+    <button class="square maniscrypt" type="button" id="copy" aria-label="Kopiuj Maniscrypt" title="Kopiuj Maniscrypt">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5l1.8 4.7 4.7 1.8-4.7 1.8L11 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>
+    </button>
+  </div>
+
+  <!-- Dół ekranu: dwa rzędy schodzące w głąb. Dolny to poziom wyżej (zaznaczony kafelek jest otwarty), górny to jego zawartość. -->
   <div class="dock">
-    <div class="options" id="panelWrap" role="group" aria-label="Opcje"></div>
-    <nav class="bar" id="bar" aria-label="Kategorie"></nav>
+    <div class="rows" id="rows" role="group" aria-label="Wybór">
+      <svg class="thread" id="thread" aria-hidden="true"><path id="threadPath" d=""/></svg>
+    </div>
   <div class="dock-start" id="dockStart">
     <div class="hello">
       <h1 id="line1">Cześć, jestem <em>Manikun</em>.</h1>
@@ -535,7 +529,7 @@
       { id: "float", name: "Lewitacja", short: "Lewitacja", prompt: "levitating in mid-air above the ground with a soft shadow below" }
     ]},
     { id: "itemColor", label: "Kolor", subjects: ["object"], patch: "#A8433C", options: [] },
-    { id: "body", label: "Postać", subjects: ["person"], patch: "#BB5695", options: [
+    { id: "body", label: "Sylwetka", subjects: ["person"], patch: "#BB5695", options: [
       { id: "female", name: "Kobieta", short: "Kobieta", prompt: "of a single adult woman" },
       { id: "male", name: "Mężczyzna", short: "Mężczyz.", prompt: "of a single adult man" }
     ]},
@@ -2070,8 +2064,7 @@
   }
 
   // ---------- Interfejs ----------
-  const bar = document.getElementById("bar");
-  const panelWrap = document.getElementById("panelWrap");
+  const rowsEl = document.getElementById("rows");
   const preview = document.getElementById("preview");
   const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -2090,9 +2083,6 @@
     return optionOf(cat.id, scene[cat.id]).short;
   }
 
-  // Pasek kategorii: przebudowa tylko przy zmianie listy kategorii, poza tym aktualizacja w miejscu
-  let barKey = "", barItems = [];
-  // Układ domyślny: ostatni przycisk paska. Pierwsze stuknięcie pyta, drugie wraca do ekranu startowego.
   // ---------- Gotowe schematy ----------
   const LOOK0 = { hair: null, hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" };
   const PRESETS = {
@@ -2192,113 +2182,35 @@
     lastPreset = null;
     render();
   }
-  function diceButton() {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "cat reset";
-    b.id = "cat-random";
-    const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" }, b);
-    el("rect", { x: 4, y: 4, width: 16, height: 16, rx: 3.5 }, svg);
-    [[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.1, style: "fill:currentColor" }, svg));
-    const label = document.createElement("span");
-    label.className = "label";
-    label.textContent = "Losuj";
-    const value = document.createElement("span");
-    value.className = "value";
-    value.textContent = "ustawienia";
-    b.append(label, value);
-    b.addEventListener("click", () => { svg.animate([{ transform: "rotate(0)" }, { transform: "rotate(360deg)" }], { duration: 500, easing: "ease-out" }); randomize(); });
-    return b;
-  }
-
-  function resetButton() {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "cat reset";
-    b.id = "cat-reset";
-    const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" }, b);
-    el("path", { d: "M5 12a7 7 0 1 0 2.1-5" }, svg);
-    el("path", { d: "M7 3v4h4" }, svg);
-    const label = document.createElement("span");
-    label.className = "label";
-    label.textContent = "Układ";
-    const value = document.createElement("span");
-    value.className = "value";
-    value.textContent = "domyślny";
-    b.append(label, value);
-    let armed = null;
-    b.addEventListener("click", () => {
-      if (!armed) {
-        value.textContent = "Na pewno?";
-        b.classList.add("armed");
-        armed = setTimeout(() => { armed = null; value.textContent = "domyślny"; b.classList.remove("armed"); }, 3000);
-        return;
-      }
-      clearTimeout(armed);
-      location.reload();
-    });
-    return b;
-  }
-  function renderBar() {
-    const cats = activeCats(), key = cats.map(c => c.id).join();
-    if (key !== barKey) {
-      barKey = key;
-      bar.replaceChildren();
-      barItems = cats.map(cat => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "cat";
-        b.id = "cat-" + cat.id;
-        const svg = el("svg", { viewBox: "0 0 24 24", class: "ink", "aria-hidden": "true" });
-        const label = document.createElement("span");
-        label.className = "label";
-        const patch = document.createElement("span");
-        patch.className = "patch";
-        patch.style.background = cat.patch;
-        label.append(patch, cat.label);
-        const value = document.createElement("span");
-        value.className = "value";
-        b.append(svg, label, value);
-        b.addEventListener("click", () => { scene.open = scene.open === cat.id && !scene.sub ? null : cat.id; scene.sub = null; render(); });
-        bar.appendChild(b);
-        return { cat, b, svg, value };
-      });
-      bar.appendChild(diceButton());
-      bar.appendChild(resetButton());
-    }
-    barItems.forEach(({ cat, b, svg, value }) => {
-      b.setAttribute("aria-pressed", String(scene.open === cat.id));
-      // Studio nie ma pory dnia, a siedząc ręce są oparte: te kategorie są przygaszone i nieaktywne
-      // Przy selfie ruch kamery wyznacza ręka z telefonem, więc kategoria Ruch jest wyłączona
-      const off = (cat.id === "time" && !timeApplies(scene)) || (cat.id === "arms" && !armsApply(scene)) || (cat.id === "motion" && isSelfie(scene.camera));
-      b.disabled = off;
-      value.textContent = off ? "—" : valueShort(cat);
-      svg.replaceChildren();
-      CAT_ICONS[cat.id](svg);
-    });
-  }
-
-  // Kafelek opcji. redraw() odświeża rysunek i zaznaczenie bez ponownej animacji wejścia.
-  function tile(id, name, isPressed, onClick, draw) {
+  // Kafelek: obrazek i opis. redraw() odświeża rysunek, opis i zaznaczenie bez ponownej animacji wejścia.
+  // Kafelki trafiają do rzędu, który jest właśnie budowany (tileHost); kliknięcie idzie przez nawigację.
+  let tileHost = null, tileRow = null;
+  function tile(id, name, isPressed, onClick, draw, value = null) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "tile";
     b.id = id;
     const svg = el("svg", { class: "ink", "aria-hidden": "true" });
+    const txt = document.createElement("span");
+    txt.className = "txt";
     const n = document.createElement("span");
     n.className = "name";
     n.textContent = name;
-    b.append(svg, n);
-    b.addEventListener("click", onClick);
-    panelEl.appendChild(b);
+    txt.appendChild(n);
+    let v = null;
+    if (value) { v = document.createElement("span"); v.className = "value"; txt.appendChild(v); }
+    b.append(svg, txt);
+    if (tileHost) tileHost.appendChild(b);
     const t = {
-      btn: b,
+      btn: b, row: tileRow, id,
       redraw() {
         svg.replaceChildren();
         draw(svg);
         b.setAttribute("aria-pressed", String(isPressed()));
+        if (v) v.textContent = value();
       }
     };
+    b.addEventListener("click", () => navTileClick(t, onClick));
     t.redraw();
     return t;
   }
@@ -2564,47 +2476,292 @@
     if (catId === "item" || catId === "base") svg.setAttribute("viewBox", "16 30 68 66");
   }
 
-  // Rząd kafelków opcji. Ta sama animacja dla każdej kategorii: stary rząd chowa się w dół,
-  // nowy wysuwa się spod spodu, kafelek po kafelku. Obszar ma stałą wysokość, kadr stoi w miejscu.
-  const PANEL_MS = 420, OUT_MS = 280, STEP_MS = 40;
-  let panelCat = null, panelEl = null, panelTiles = [];
+  // ---------- Nawigacja: dwa rzędy schodzące w głąb ----------
+  // Stos poziomów. Dolny rząd pokazuje przedostatni poziom z otwartym kafelkiem, górny ostatni (jego zawartość).
+  // Poziom: { kind: "groups" } | { kind: "cats", group } | { kind: "opts", cat, sub }; open = kafelek otwarty na tym poziomie.
+  // Wejście głębiej: dolny rząd zjeżdża pod krawędź ekranu, górny na jego miejsce, na górze wjeżdżają nowe kafelki.
+  // Powrót: strzałka przypięta po lewej w dolnym rzędzie albo stuknięcie w otwarty kafelek.
+  const GROUPS = [
+    { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
+    { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms"], subjects: ["person"], icon: "body" },
+    { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
+    { id: "scene", label: "Scena", cats: ["background", "time", "light"], icon: "background" },
+    { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
+    { id: "style", label: "Styl", cat: "style", icon: "style" },
+    { id: "random", label: "Losuj", action: true },
+    { id: "reset", label: "Układ domyślny", action: true }
+  ];
+  const catById = id => CATEGORIES.find(c => c.id === id);
+  const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
+  const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
+  const GROUP_VALUE = { preset: "preset", person: "body", object: "item", scene: "background", camera: "camera", style: "style" };
+  // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
+  const catOff = id => (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
+  const childOf = id => {
+    const g = GROUPS.find(x => x.id === id);
+    if (g) return g.cat ? { kind: "opts", cat: g.cat, sub: null } : { kind: "cats", group: g.id };
+    return { kind: "opts", cat: id, sub: null };
+  };
 
-  function syncPanel() {
-    // Sukienka nie ma koloru dołu: przy zmianie na nią i z niej rząd kafelków ubioru się przebudowuje
-    const want = scene.open ? scene.open + (scene.sub ? "/" + scene.sub : "") + (scene.open === "outfit" && !hasBottom(scene.outfit) ? "#dress" : "") : null;
-    if (want === panelCat) { panelTiles.forEach(t => t.redraw()); return; }
-    panelCat = want;
-    const fast = reduceMotion.matches;
+  let nav = [], rows = { top: null, bottom: null }, pendingNav = null, navAnim = null, navBusy = false;
+  const NAV_MS = 460, TILE_STEP = 35;
+  // Czasy przejścia tła w kadrze (takie same jak wymiana kafelków): wyjście 280 ms, wejście 420 ms
+  const PANEL_MS = 420, OUT_MS = 280;
+  function navInit(open) {
+    const g = open || (scene.subject === "object" ? "object" : "person");
+    nav = [{ kind: "groups", open: g }, childOf(g)];
+  }
+  // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, hasBottom(scene.outfit), lampAllowed(scene)].join("|");
 
-    const old = panelEl, oldTiles = panelTiles;
-    if (old) {
-      if (fast) old.remove();
-      else {
-        oldTiles.forEach((t, i) => { t.btn.style.transitionDelay = (i * 25) + "ms"; t.btn.classList.add("out"); });
-        setTimeout(() => old.remove(), OUT_MS + oldTiles.length * 25 + 60);
+  const iconDraw = id => svg => { svg.setAttribute("viewBox", "0 0 24 24"); CAT_ICONS[id](svg); };
+  function groupTile(g) {
+    if (g.id === "random") {
+      const t = tile("nav-random", "Losuj", () => false, () => { randomize(); }, svg => {
+        svg.setAttribute("viewBox", "0 0 24 24");
+        el("rect", { x: 4, y: 4, width: 16, height: 16, rx: 3.5 }, svg);
+        [[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.1, style: "fill:currentColor" }, svg));
+      }, () => "całą scenę");
+      t.action = true;
+      return t;
+    }
+    if (g.id === "reset") {
+      // Pierwsze stuknięcie pyta, drugie zaczyna od nowa
+      let armed = null;
+      const t = tile("nav-reset", "Układ domyślny", () => false, () => {
+        if (armed) { location.href = location.pathname; return; }
+        t.btn.classList.add("armed");
+        armed = setTimeout(() => { armed = null; t.btn.classList.remove("armed"); t.redraw(); }, 3000);
+        t.redraw();
+      }, svg => { svg.setAttribute("viewBox", "0 0 24 24"); el("path", { d: "M5 12a7 7 0 1 0 2.1-5" }, svg); el("path", { d: "M7 3v4h4" }, svg); },
+      () => armed ? "Na pewno?" : "od nowa");
+      t.action = true;
+      t.btn.classList.add("reset");
+      return t;
+    }
+    const t = tile("nav-" + g.id, g.label, () => false, null, iconDraw(g.icon), () => valueShort(catById(GROUP_VALUE[g.id])));
+    t.navId = g.id;
+    return t;
+  }
+  function catTile(cat) {
+    const t = tile("nav-" + cat.id, cat.label, () => false, null, iconDraw(cat.id), () => catOff(cat.id) ? "—" : valueShort(cat));
+    t.navId = cat.id;
+    t.cat = cat.id;
+    return t;
+  }
+
+  function buildRow(st, pos) {
+    const div = document.createElement("div");
+    div.className = "row";
+    div.dataset.pos = pos;
+    const row = { el: div, st, key: rowKey(st), tiles: [], back: null };
+    tileHost = div;
+    tileRow = row;
+    if (st.kind === "groups") row.tiles = activeGroups().map(groupTile);
+    else if (st.kind === "cats") row.tiles = groupCats(GROUPS.find(g => g.id === st.group)).map(catTile);
+    else {
+      const saved = [scene.open, scene.sub];
+      scene.open = st.cat;
+      scene.sub = st.sub;
+      // Strzałkę powrotu ma teraz dolny rząd, więc kafelki "Wróć" z poziomów opcji odpadają
+      row.tiles = makeTiles(st.cat).filter(t => { if (t.btn.classList.contains("back")) { t.btn.remove(); return false; } return true; });
+      [scene.open, scene.sub] = saved;
+    }
+    row.tiles.forEach(t => {
+      t.row = row;
+      if (t.navId === undefined) t.navId = t.id;
+      if (st.kind !== "opts" && !t.action) t.btn.classList.add("cat");
+    });
+    tileHost = null;
+    tileRow = null;
+    rowsEl.appendChild(div);
+    div.addEventListener("scroll", drawThread, { passive: true });
+    return row;
+  }
+  function removeRow(row, delay = 0) { if (row) setTimeout(() => row.el.remove(), delay); }
+  // Kafelki wjeżdżają spod spodu, jeden po drugim
+  function enterTiles(row, delay) {
+    const list = row.tiles.map(t => t.btn);
+    list.forEach(b => { b.style.transition = "none"; b.classList.add("enter"); });
+    row.el.offsetWidth;
+    list.forEach((b, i) => { b.style.transition = ""; b.style.transitionDelay = (delay + i * TILE_STEP) + "ms"; });
+    requestAnimationFrame(() => list.forEach(b => b.classList.remove("enter")));
+    setTimeout(() => list.forEach(b => { b.style.transitionDelay = ""; }), delay + NAV_MS + list.length * TILE_STEP);
+  }
+  function leaveRow(row) {
+    if (!row) return;
+    row.el.style.pointerEvents = "none";
+    row.tiles.forEach((t, i) => { t.btn.style.transitionDelay = (i * 18) + "ms"; t.btn.classList.add("leave"); });
+    removeRow(row, 300 + row.tiles.length * 18);
+  }
+  // Strzałka powrotu w dolnym rzędzie (poza najwyższym poziomem)
+  function setBack(row, on) {
+    if (on && !row.back) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tile back";
+      b.setAttribute("aria-label", "Wróć poziom wyżej");
+      const svg = el("svg", { class: "ink", viewBox: "0 0 24 24", "aria-hidden": "true" }, b);
+      el("path", { d: "M14 6l-6 6 6 6 M8 12h11" }, svg);
+      b.addEventListener("click", navPop);
+      row.el.prepend(b);
+      row.back = b;
+    } else if (!on && row.back) { row.back.remove(); row.back = null; }
+  }
+  function scrollToTile(row, t) {
+    if (!t) return;
+    const r = row.el, x = t.btn.offsetLeft, w = t.btn.offsetWidth, pad = row.back ? 64 : 8;
+    if (x < r.scrollLeft + pad) r.scrollLeft = x - pad;
+    else if (x + w > r.scrollLeft + r.clientWidth - 8) r.scrollLeft = x + w - r.clientWidth + 8;
+  }
+
+  function navPop() {
+    if (navBusy || nav.length <= 2) return;
+    nav.pop();
+    navAnim = "pop";
+    render();
+  }
+  function navTileClick(t, handler) {
+    if (navBusy) return;
+    const row = t.row;
+    if (!row || phase !== "director") { if (handler) handler(); return; }
+    const n = nav.length, isBottom = row === rows.bottom;
+    // Stuknięcie w otwarty kafelek dolnego rzędu cofa o poziom
+    if (isBottom && t.navId === nav[n - 2].open) { navPop(); return; }
+    if (t.action) { handler(); return; }
+    if (row.st.kind !== "opts") {
+      // Grupa albo kategoria: jej zawartość trafia do górnego rzędu
+      if (isBottom) { nav[n - 2].open = t.navId; nav[n - 1] = childOf(t.navId); navAnim = "swap"; }
+      else { nav[n - 1].open = t.navId; nav.push(childOf(t.navId)); navAnim = "push"; }
+      render();
+      return;
+    }
+    // Opcja: zwykła obsługa. Jeśli zmieniła poziom (np. fryzura otwiera kolory), rzędy schodzą głębiej.
+    scene.open = row.st.cat;
+    scene.sub = row.st.sub;
+    pendingNav = { isBottom, id: t.navId, sub: row.st.sub };
+    handler();
+    pendingNav = null;
+  }
+
+  // Grupa lub kategoria, której już nie ma (np. Ruch po przejściu na zdjęcie): wracamy do poziomu, który jeszcze istnieje
+  function validateNav() {
+    if (nav.length < 2 || !activeGroups().some(g => g.id === nav[0].open)) { navInit(); return; }
+    for (let i = 1; i < nav.length; i++) {
+      const st = nav[i];
+      if (st.kind === "opts" && !activeCats().some(c => c.id === st.cat)) {
+        nav.length = i;
+        if (nav.length < 2) navInit();
+        else nav[nav.length - 1].open = null;
+        return;
       }
     }
-    panelEl = null;
-    panelTiles = [];
-    if (!want) return;
-
-    panelEl = document.createElement("div");
-    panelEl.className = "panel";
-    panelWrap.appendChild(panelEl);
-    panelTiles = makeTiles(scene.open);
-    if (fast) return;
-
-    panelTiles.forEach(t => { t.btn.style.transition = "none"; t.btn.classList.add("below"); });
-    panelEl.offsetWidth; // zatwierdź pozycję pod spodem przed animacją
-    const start = old ? 140 : 0;
-    panelTiles.forEach((t, i) => {
-      t.btn.style.transition = "";
-      t.btn.style.transitionDelay = (start + i * STEP_MS) + "ms";
-    });
-    requestAnimationFrame(() => panelTiles.forEach(t => t.btn.classList.remove("below")));
-    const tiles = panelTiles;
-    setTimeout(() => tiles.forEach(t => { t.btn.style.transitionDelay = ""; }), start + PANEL_MS + tiles.length * STEP_MS);
   }
+
+  function syncNav() {
+    if (pendingNav) {
+      const p = pendingNav, n = nav.length;
+      pendingNav = null;
+      if (scene.sub !== p.sub) {
+        const next = { kind: "opts", cat: scene.open, sub: scene.sub };
+        if (p.isBottom) { nav[n - 2].open = p.id; nav[n - 1] = next; navAnim = "swap"; }
+        else { nav[n - 1].open = p.id; nav.push(next); navAnim = "push"; }
+      } else if (p.isBottom && n > 2) {
+        // Wybór zwykłej opcji w dolnym rzędzie: ten poziom wraca na górę z nowym zaznaczeniem
+        nav.pop();
+        navAnim = "pop";
+      }
+    }
+    validateNav();
+    const n = nav.length, topSt = nav[n - 1], botSt = nav[n - 2];
+    const anim = reduceMotion.matches ? null : navAnim;
+    navAnim = null;
+    const fresh = !rows.top && !rows.bottom;
+
+    if (anim === "push" && rows.top && rows.top.st === botSt) {
+      if (rows.bottom) { rows.bottom.el.dataset.pos = "below"; removeRow(rows.bottom, NAV_MS + 40); }
+      rows.bottom = rows.top;
+      rows.bottom.el.dataset.pos = "bottom";
+      rows.top = buildRow(topSt, "top");
+      enterTiles(rows.top, 160);
+    } else if (anim === "pop" && rows.bottom && rows.bottom.st === topSt) {
+      leaveRow(rows.top);
+      rows.top = rows.bottom;
+      rows.top.el.dataset.pos = "top";
+      rows.bottom = buildRow(botSt, "below");
+      rows.bottom.el.offsetWidth;
+      rows.bottom.el.dataset.pos = "bottom";
+    } else if (anim === "swap" && rows.bottom && rows.bottom.st === botSt && !(rows.top && rows.top.st === topSt)) {
+      if (rows.top && rows.top.key === rowKey(topSt) && JSON.stringify(rows.top.st) === JSON.stringify(topSt)) rows.top.st = topSt;
+      else {
+        leaveRow(rows.top);
+        rows.top = buildRow(topSt, "top");
+        enterTiles(rows.top, 140);
+      }
+    } else {
+      if (!rows.bottom || rows.bottom.st !== botSt) { if (rows.bottom) rows.bottom.el.remove(); rows.bottom = buildRow(botSt, "bottom"); }
+      if (!rows.top || rows.top.st !== topSt) { if (rows.top) rows.top.el.remove(); rows.top = buildRow(topSt, "top"); }
+      if (fresh && !reduceMotion.matches) { enterTiles(rows.bottom, 0); enterTiles(rows.top, 120); }
+    }
+    // Zmiana warunków (np. postać, sukienka, tryb) przebudowuje rząd w miejscu, bez animacji
+    ["top", "bottom"].forEach(k => {
+      const row = rows[k];
+      if (row.key !== rowKey(row.st)) {
+        const scroll = row.el.scrollLeft;
+        row.el.remove();
+        rows[k] = buildRow(row.st, row.el.dataset.pos);
+        rows[k].el.scrollLeft = scroll;
+      }
+    });
+    setBack(rows.bottom, n > 2);
+    setBack(rows.top, false);
+    [rows.bottom, rows.top].forEach(row => row.tiles.forEach(t => {
+      t.redraw();
+      t.btn.classList.toggle("open", row === rows.bottom && t.navId === botSt.open);
+      if (t.cat) t.btn.disabled = catOff(t.cat);
+    }));
+    // Górny rząd odpowiada otwartej kategorii i jej poziomowi (z tego korzystają kafelki i kopiowanie)
+    scene.open = topSt.kind === "opts" ? topSt.cat : null;
+    scene.sub = topSt.kind === "opts" ? topSt.sub : null;
+    if (anim || fresh) {
+      scrollToTile(rows.bottom, rows.bottom.tiles.find(t => t.btn.classList.contains("open")));
+      scrollToTile(rows.top, rows.top.tiles.find(t => t.btn.getAttribute("aria-pressed") === "true"));
+    }
+    if (anim) {
+      navBusy = true;
+      setTimeout(() => { navBusy = false; }, NAV_MS - 120);
+    }
+    followThread(anim || fresh ? NAV_MS + 700 : 0);
+  }
+
+  // Linia łącząca: z otwartego kafelka dolnego rzędu w górę, pod kątem prostym, do wybranej opcji w górnym rzędzie
+  const threadPath = document.getElementById("threadPath");
+  function drawThread() {
+    if (phase !== "director" || !rows.bottom || !rows.top) { threadPath.setAttribute("d", ""); return; }
+    const box = rowsEl.getBoundingClientRect();
+    const from = rows.bottom.tiles.find(t => t.btn.classList.contains("open"));
+    if (!from) { threadPath.setAttribute("d", ""); return; }
+    const clampX = x => Math.max(10, Math.min(box.width - 10, x));
+    const fr = from.btn.getBoundingClientRect();
+    const x1 = clampX(fr.left + fr.width / 2 - box.left), y1 = fr.top - box.top;
+    const to = rows.top.tiles.find(t => t.btn.getAttribute("aria-pressed") === "true");
+    const topRect = rows.top.el.getBoundingClientRect();
+    let x2 = x1, y2 = topRect.top - box.top + topRect.height - 5;
+    if (to) { const tr = to.btn.getBoundingClientRect(); x2 = clampX(tr.left + tr.width / 2 - box.left); y2 = tr.bottom - box.top; }
+    if (y1 - y2 < 4) { threadPath.setAttribute("d", ""); return; }
+    const ym = (y1 + y2) / 2;
+    threadPath.setAttribute("d", `M${f(x1)} ${f(y1)} V${f(ym)} H${f(x2)} V${f(y2)}`);
+  }
+  let threadUntil = 0;
+  function followThread(ms) {
+    const start = !threadUntil;
+    threadUntil = Math.max(threadUntil, performance.now() + ms);
+    drawThread();
+    if (!start) return;
+    const step = () => { drawThread(); if (performance.now() < threadUntil) requestAnimationFrame(step); else threadUntil = 0; };
+    requestAnimationFrame(step);
+  }
+  addEventListener("resize", drawThread);
 
   // ---------- Animacja: jedna pętla dla Manikuna, kamery i światła ----------
   let shown = null;                          // widoczna poza i proporcje
@@ -2803,7 +2960,6 @@
   function render() {
     document.body.dataset.mode = scene.mode;
     document.querySelectorAll(".modes .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === scene.mode)));
-    if (phase === "director" && scene.open && !activeCats().some(c => c.id === scene.open)) scene.open = "format";
     // Dron tylko w plenerze (we wnętrzu kamera przechodzi na ujęcie z góry) i zawsze z całą sylwetką
     if (scene.camera === "D" && !isOutdoor(scene.background)) scene.camera = "T";
     if (scene.camera === "D" && scene.shot !== "full") scene.shot = "full";
@@ -2816,16 +2972,13 @@
     // Strefa, z której to światło nie może padać: przeskakuje do najbliższej dozwolonej
     const okZones = lightZones(scene);
     if (!okZones.includes(scene.lightZone)) scene.lightZone = nearestZone(ZONES[scene.lightZone].x, ZONES[scene.lightZone].y, 1, 1, okZones);
-    renderBar();
-    if (phase === "director") syncPanel();
+    if (phase === "director") syncNav();
     sceneChanged();
   }
 
   document.querySelectorAll(".modes .chip").forEach(b => b.addEventListener("click", () => {
     if (scene.mode === b.dataset.mode) return;
     scene.mode = b.dataset.mode;
-    // Format ma inne opcje w każdym trybie: panel formatu buduje się od nowa
-    if (panelCat === "format") panelCat = "__rebuild";
     render();
   }));
 
@@ -2880,19 +3033,26 @@
   menuBtn.addEventListener("click", () => setMenu(!document.body.classList.contains("menu-open")));
   document.getElementById("menuScrim").addEventListener("click", () => setMenu(false));
 
-  // Powrót do strony głównej: ustawienia sceny znikają, więc najpierw pytanie ("Start?"), potem powrót
-  const homeBtn = document.getElementById("home");
-  let homeArmed = null;
-  homeBtn.addEventListener("click", () => {
-    if (!homeArmed) {
-      homeBtn.classList.add("armed");
-      showToast("Stuknij domek jeszcze raz, aby wrócić na start (ustawienia znikną)");
-      homeArmed = setTimeout(() => { homeArmed = null; homeBtn.classList.remove("armed"); }, 3000);
-      return;
-    }
-    clearTimeout(homeArmed);
-    location.reload();
+  // Menu › Nowa scena: pierwsze stuknięcie pyta, drugie zaczyna od nowa (ustawienia znikają)
+  const menuNewLabel = document.getElementById("menuNewLabel");
+  let newArmed = null;
+  document.getElementById("menuNew").addEventListener("click", () => {
+    if (newArmed) { location.href = location.pathname; return; }
+    menuNewLabel.textContent = "Na pewno? Stuknij jeszcze raz";
+    newArmed = setTimeout(() => { newArmed = null; menuNewLabel.textContent = "Nowa scena"; }, 3000);
   });
+  // Dźwięk: na razie sam przełącznik (odgłosy dojdą później)
+  const soundBtn = document.getElementById("sound");
+  soundBtn.addEventListener("click", () => soundBtn.setAttribute("aria-pressed", String(soundBtn.getAttribute("aria-pressed") !== "true")));
+  // Narrator: głowa przechyla się przy stuknięciu (wyszukiwarka dojdzie w kolejnym etapie)
+  const narratorHead = document.querySelector("#narrator .head");
+  let nodTimer;
+  function nod(deg = -14) {
+    narratorHead.style.transform = `rotate(${deg}deg)`;
+    clearTimeout(nodTimer);
+    nodTimer = setTimeout(() => { narratorHead.style.transform = ""; }, 420);
+  }
+  document.getElementById("narrator").addEventListener("click", () => nod());
 
   // "Kopiuj" otwiera panel kopiowania; samo kopiowanie jest pod dużym przyciskiem w panelu
   const sheetEl = document.getElementById("copySheet"), faceSwitch = document.getElementById("faceSwitch");
@@ -3113,13 +3273,11 @@
 
     setTimeout(() => {
       dock.hidden = true;
-      barItems.forEach((it, i) => { it.b.style.transitionDelay = (i * STEP_MS) + "ms"; });
       phase = "director";
       appEl.dataset.phase = "director";
-      scene.open = "preset";
+      navInit();
       render();
     }, fast ? 0 : 480);
-    setTimeout(() => barItems.forEach(it => { it.b.style.transitionDelay = ""; }), fast ? 0 : 1400);
   }
 
   // Link ?intro: od razu reżyser ze sceną z intro (format 4:5, styl Cyberpunk); przełącz styl na Fantasy i skopiuj drugi prompt
@@ -3129,7 +3287,7 @@
     dock.hidden = true;
     phase = "director";
     appEl.dataset.phase = "director";
-    scene.open = "style";
+    navInit("style");
     render();
     showToast("Scena z intro. Skopiuj prompt, potem przełącz styl na Fantasy i skopiuj drugi.");
   } else {
