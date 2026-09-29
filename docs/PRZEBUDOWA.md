@@ -25,7 +25,7 @@ Wzorem wyglądu i tutoriala jest przykładowy plik użytkownika (układ ekranu, 
 | Dolny rząd | Górny rząd |
 |---|---|
 | Gotowe | gotowe sceny i zestawy |
-| Postać | Sylwetka, Twarz, Ubiór, Poza, Ręce |
+| Postać | Sylwetka, Głowa, Ubiór, Poza, Ręce |
 | Scena | Tło, Pora dnia, Światło |
 | Kamera | Kadr, Kamera, Format, Ruch (tylko wideo) |
 | Styl | od razu 10 stylów |
@@ -66,7 +66,7 @@ Manikun prowadzi rozmową: jedno pytanie w dymku, odpowiedzi w górnym rzędzie.
 
 Pytania:
 
-1. **Postać:** Kogo ustawiamy? → Jak go/ją ubierzemy? (Gotowy zestaw / Składam sam) → zestaw albo po kolei Góra, Okrycie, Dół, Buty, Nakrycie głowy → Zmieniamy kolory? (Którą część? → kolor → znowu wybór części, aż do „Kolory gotowe”) → Dopracujemy twarz? (fryzura, kolor włosów, mina, zarost i jego kolor, usta, okulary i oprawki)
+1. **Postać:** Kogo ustawiamy? → Jak go/ją ubierzemy? (Gotowy zestaw / Składam sam) → zestaw albo po kolei Góra, Okrycie, Dół, Buty, Nakrycie głowy → Zmieniamy kolory? (Którą część? → kolor → znowu wybór części, aż do „Kolory gotowe”) → Dopracujemy twarz? (fryzura, kolor włosów, mina i jej poziom, zarost i jego kolor, usta, okulary i oprawki)
 2. **Poza:** Co robi? (wszystkie pozy naraz, stojące i siedzące) → A ręce?
 3. **Miejsce:** Gdzie jesteśmy? (wszystkie tła naraz) → A dokładniej? (wariant i dodatki, np. mgła) → Pora dnia? → Jakie światło?
 4. **Kamera:** Jak blisko? → Z której strony patrzymy? → Jak rusza się kamera? → Format?
@@ -265,3 +265,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Drobiazgi leżą na swoim blacie: każdy ma numer mebla. W Ekspercie przy kilku blatach „Na blacie” najpierw pyta, który blat; w Kreatorze trafiają na blat, który właśnie ustawiamy. Usunięcie mebla usuwa jego drobiazgi.
 - Kreator: „Oparty” jest zawsze w pytaniu o pozę; gdy w scenie nic nie ma, następne pytanie brzmi „O co się opiera?” (w Ekspercie „Oparty potrzebuje czegoś za plecami. Dodajemy?”).
 - Gdy rzecz nie mieści się w kadrze, Manikun proponuje szerszy kadr (raz na scenę, na obu poziomach; stuknięcie w dymek zmienia format).
+
+## Manikun w kadrze: światło, ruch i miny
+
+- Postać w kadrze oświetla lampa ze sceny: jasna strona i odbłysk od lampy, przy świetle z tyłu jasna krawędź sylwetki (ciepła przy naturalnym, chłodna przy lampie). W kadrze na całą postać cień pod stopami i cień rzucany od lampy.
+- Ruch: kąty stawów dochodzą do pozy jak sprężyna (lekki przerzut), a w bezruchu Manikun ledwo widocznie oddycha. Przy ograniczeniu ruchu w systemie jedno i drugie jest wyłączone.
+- Na starcie Manikun jest uśmiechnięty (Radość · uśmiech).
+- Kategoria Twarz nazywa się teraz Głowa.
+- Mina ma emocje, a każda (poza Neutralną) dwa poziomy: Radość (Uśmiech, Śmiech), Złość (Irytacja, Wściekłość), Smutek (Smutek, Płacz), Zamyślenie (Zaduma, Głębokie zamyślenie), Zaskoczenie (Zdziwienie, Szok). W Swobodzie emocja otwiera drugi rząd z poziomami, w Kreatorze po „Jaka mina?” jest „Jak mocno?”. Poziom mocny mocniej przechyla głowę i tułów i ma własny opis w Maniscrypcie. Losowanie częściej wybiera poziom łagodny.
+- Komputer: rzędy kafelków przewija kółko myszy i przeciąganie.

@@ -245,17 +245,36 @@ function computeFigure(pose, RIG, cloth = null) {
       const ink = "stroke:#3B2616;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round";
       const line = d => shapes.push({ t: "deco", d, style: `fill:none;${ink}` });
       const fill = (d, c) => shapes.push({ t: "deco", d, style: `fill:${c};${ink}` });
-      const dot = (x, y, r) => fill(`M${P(x - r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x + r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x - r, y)} Z`, "#3B2616");
+      const blob = (x, y, r, c) => fill(`M${P(x - r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x + r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x - r, y)} Z`, c);
+      const dot = (x, y, r) => blob(x, y, r, "#3B2616");
+      // Owal od (x0, y0) do (x1, y1): otwarte usta
+      const oval = (x0, y0, x1, y1, c) => { const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+        fill(`M${P(x0, my)} Q${P(x0, y0)} ${P(mx, y0)} Q${P(x1, y0)} ${P(x1, my)} Q${P(x1, y1)} ${P(mx, y1)} Q${P(x0, y1)} ${P(x0, my)} Z`, c); };
       const brows = (nearIn, nearOut, farIn, farOut) => { line(`M${P(0.04, nearOut)} L${P(0.34, nearIn)}`); line(`M${P(0.6, farIn)} L${P(0.86, farOut)}`); };
+      // Brwi uniesione łukiem (zaskoczenie): h = wysokość
+      const arches = h => { line(`M${P(0.06, h)} Q${P(0.2, h + 0.12)} ${P(0.34, h + 0.02)}`); line(`M${P(0.6, h + 0.02)} Q${P(0.72, h + 0.12)} ${P(0.86, h)}`); };
       const e = look.expr;
-      if (e === "joy") {
+      if (e === "smile") {
+        // Uśmiech: spokojne oczy, łagodne brwi, zamknięte usta w łuk
+        dot(0.2, 0.1, 0.065); dot(0.72, 0.1, 0.05);
+        line(`M${P(0.06, 0.36)} Q${P(0.2, 0.42)} ${P(0.34, 0.37)}`); line(`M${P(0.6, 0.37)} Q${P(0.72, 0.42)} ${P(0.86, 0.36)}`);
+        line(`M${P(0.24, -0.52)} Q${P(0.47, -0.78)} ${P(0.7, -0.52)}`);
+      } else if (e === "joy") {
+        // Śmiech: oczy zmrużone w łuki, szeroko otwarte usta
         line(`M${P(0.08, 0.06)} Q${P(0.2, 0.24)} ${P(0.32, 0.06)}`); line(`M${P(0.63, 0.06)} Q${P(0.72, 0.21)} ${P(0.81, 0.06)}`);
         line(`M${P(0.04, 0.38)} Q${P(0.2, 0.48)} ${P(0.34, 0.4)}`); line(`M${P(0.6, 0.4)} Q${P(0.72, 0.48)} ${P(0.86, 0.38)}`);
         fill(`M${P(0.24, -0.42)} Q${P(0.47, -0.95)} ${P(0.72, -0.42)} Z`, "#6A2222");
       } else if (e === "anger") {
+        // Irytacja: brwi ściągnięte, usta zaciśnięte w kreskę
         dot(0.2, 0.1, 0.07); dot(0.72, 0.1, 0.055);
         brows(0.24, 0.42, 0.24, 0.42);
-        line(`M${P(0.28, -0.66)} Q${P(0.47, -0.5)} ${P(0.68, -0.66)}`);
+        line(`M${P(0.3, -0.64)} Q${P(0.47, -0.6)} ${P(0.66, -0.66)}`);
+      } else if (e === "fury") {
+        // Wściekłość: brwi mocno w „V”, usta otwarte do krzyku, widać zęby
+        dot(0.2, 0.08, 0.06); dot(0.72, 0.08, 0.048);
+        brows(0.16, 0.46, 0.16, 0.46);
+        oval(0.28, -0.46, 0.68, -0.9, "#6A2222");
+        shapes.push({ t: "deco", d: `M${P(0.33, -0.53)} L${P(0.63, -0.53)}`, style: "fill:none;stroke:#F2EDE4;stroke-width:2.2;stroke-linecap:round" });
       } else if (e === "sad" || e === "cry") {
         if (e === "sad") { dot(0.2, 0.06, 0.07); dot(0.72, 0.06, 0.055); }
         else { line(`M${P(0.08, 0.1)} Q${P(0.2, -0.02)} ${P(0.32, 0.1)}`); line(`M${P(0.63, 0.1)} Q${P(0.72, 0.0)} ${P(0.81, 0.1)}`); }
@@ -277,6 +296,22 @@ function computeFigure(pose, RIG, cloth = null) {
         dot(0.26, 0.14, 0.065); dot(0.78, 0.14, 0.05);
         line(`M${P(0.04, 0.36)} L${P(0.34, 0.36)}`); line(`M${P(0.6, 0.44)} Q${P(0.72, 0.56)} ${P(0.86, 0.46)}`);
         line(`M${P(0.36, -0.6)} L${P(0.62, -0.66)}`);
+      } else if (e === "deep") {
+        // Głębokie zamyślenie: oczy przymknięte, brwi nierówno, usta w małą kreskę
+        line(`M${P(0.1, 0.1)} Q${P(0.22, 0.03)} ${P(0.34, 0.1)}`); line(`M${P(0.64, 0.1)} Q${P(0.74, 0.04)} ${P(0.84, 0.1)}`);
+        line(`M${P(0.04, 0.34)} L${P(0.34, 0.37)}`); line(`M${P(0.6, 0.46)} Q${P(0.72, 0.6)} ${P(0.86, 0.5)}`);
+        line(`M${P(0.38, -0.62)} L${P(0.58, -0.66)}`);
+      } else if (e === "surprise") {
+        // Zdziwienie: większe oczy, brwi uniesione łukiem, małe „o”
+        dot(0.2, 0.12, 0.08); dot(0.72, 0.12, 0.062);
+        arches(0.42);
+        oval(0.4, -0.54, 0.55, -0.72, "#6A2222");
+      } else if (e === "shock") {
+        // Szok: szeroko otwarte oczy z małymi źrenicami, brwi wysoko, usta szeroko otwarte
+        blob(0.2, 0.12, 0.13, "#F4EFE6"); blob(0.72, 0.12, 0.1, "#F4EFE6");
+        dot(0.2, 0.12, 0.04); dot(0.72, 0.12, 0.032);
+        arches(0.54);
+        oval(0.34, -0.46, 0.6, -0.92, "#6A2222");
       }
     }
     // Okulary: dwie oprawki (dalsza węższa, bo widok 3/4), mostek i zausznik

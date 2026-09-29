@@ -855,7 +855,7 @@
       { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"], wear: { top: "tshirt", outer: "none", bottom: "dress", hat: "none", shoes: "formal" }, colors: { bottom: "burgundy", shoes: "black" } }
     ]},
     // Twarz: włosy, zarost, usta i okulary. Opcje są w LOOK niżej, kafelki buduje lookTiles()
-    { id: "look", label: "Twarz", subjects: ["person"], patch: "#C9A24A", options: [] },
+    { id: "look", label: "Głowa", subjects: ["person"], patch: "#C9A24A", options: [] },
     { id: "pose", label: "Poza", subjects: ["person"], patch: "#C29682", options: [
       { id: "standing", name: "Stoi", children: [
         { id: "stand", name: "Prosto", short: "Stoi", prompt: "standing upright, weight evenly on both feet" },
@@ -1079,11 +1079,11 @@
   const READOUT = { photo: "f/2.8 · 1/125 · ISO 100", video: "00:00:05:00 · 24 fps" };
 
   // ---------- Stan sceny ----------
-  // Manikun zaczyna uśmiechnięty (mina Radość)
+  // Manikun zaczyna uśmiechnięty (mina Radość · uśmiech)
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "joy", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1310,14 +1310,19 @@
       { id: "red", name: "Czerwone", hex: "#B3262E", prompt: "classic red lipstick" },
       { id: "berry", name: "Bordowe", hex: "#6E2233", prompt: "deep berry lipstick" }
     ],
-    // Mina: rysunek twarzy Manikuna, postawa głowy i opis w prompcie
+    // Mina: rysunek twarzy Manikuna, postawa głowy i opis w prompcie. Każda emocja (EXPR_GROUPS niżej) ma poziom łagodny i mocny.
     expr: [
       { id: "neutral", name: "Neutralna", prompt: "with a calm, neutral expression and a relaxed face" },
-      { id: "joy", name: "Radość", prompt: "with a big genuine joyful smile and bright happy eyes" },
-      { id: "anger", name: "Złość", prompt: "with an angry expression, furrowed brows, a clenched jaw and an intense glare" },
+      { id: "smile", name: "Uśmiech", prompt: "with a warm, natural closed-mouth smile and friendly eyes" },
+      { id: "joy", name: "Śmiech", prompt: "laughing out loud, mouth open in a big genuine laugh, eyes squinting with joy" },
+      { id: "anger", name: "Irytacja", prompt: "with an irritated expression, furrowed brows and tightly pressed lips" },
+      { id: "fury", name: "Wściekłość", prompt: "shouting in fury, mouth wide open, brows sharply lowered, an intense furious glare" },
       { id: "sad", name: "Smutek", prompt: "with a sad expression, a downturned mouth and glossy eyes looking slightly down" },
-      { id: "thought", name: "Zamyślenie", prompt: "with a thoughtful, pensive expression, eyes looking slightly away and lips gently pressed" },
-      { id: "cry", name: "Płacz", prompt: "crying, with tears running down the cheeks, trembling lips and reddened eyes" }
+      { id: "cry", name: "Płacz", prompt: "crying, with tears running down the cheeks, trembling lips and reddened eyes" },
+      { id: "thought", name: "Zaduma", prompt: "with a thoughtful, pensive expression, eyes looking slightly away and lips gently pressed" },
+      { id: "deep", name: "Głębokie zamyślenie", prompt: "lost in deep thought, eyes half closed, head tilted, completely absorbed in thinking" },
+      { id: "surprise", name: "Zdziwienie", prompt: "with a surprised expression, raised eyebrows, wide eyes and slightly parted lips" },
+      { id: "shock", name: "Szok", prompt: "with a shocked expression, eyes wide open, eyebrows raised high and mouth dropped wide open" }
     ],
     glasses: [
       { id: "none", name: "Bez okularów", prompt: null },
@@ -1337,6 +1342,20 @@
   // Zarost ma własny kolor, niezależny od włosów (ta sama paleta)
   LOOK.beardColor = LOOK.hairColor;
   const lookOpt = (key, id) => LOOK[key].find(o => o.id === id);
+  // Emocje i ich poziomy (łagodny, mocny). W rzędzie Mina są emocje, po wyborze drugi rząd z poziomami.
+  const EXPR_GROUPS = [
+    { id: "neutral", name: "Neutralna", levels: ["neutral"] },
+    { id: "happy", name: "Radość", levels: ["smile", "joy"] },
+    { id: "angry", name: "Złość", levels: ["anger", "fury"] },
+    { id: "sadness", name: "Smutek", levels: ["sad", "cry"] },
+    { id: "thinking", name: "Zamyślenie", levels: ["thought", "deep"] },
+    { id: "surprised", name: "Zaskoczenie", levels: ["surprise", "shock"] }
+  ];
+  const exprGroup = id => EXPR_GROUPS.find(g => g.levels.includes(id)) || EXPR_GROUPS[0];
+  // Podpis miny: "Radość · uśmiech" (Neutralna bez poziomu)
+  const exprLabel = id => { const g = exprGroup(id), n = lookOpt("expr", id).name; return g.levels.length > 1 ? `${g.name} · ${n.charAt(0).toLowerCase() + n.slice(1)}` : n; };
+  // Losowa mina: najpierw emocja, potem poziom (łagodny trzy razy częściej)
+  const randomExpr = (groups = EXPR_GROUPS) => { const g = groups[Math.floor(Math.random() * groups.length)]; return g.levels[g.levels.length > 1 && Math.random() < 0.25 ? 1 : 0]; };
   const DEFAULT_HAIR = "#3B2A20";
   // Domyślna fryzura zależy od postaci; zmienia się razem z nią, póki nie wybrano fryzury ręcznie
   const DEFAULT_HAIR_OF = { male: "short", female: "medium" };
@@ -1591,7 +1610,10 @@
   };
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
   // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)
-  const EXPR_POSE = { neutral: {}, joy: { head: 174, spine: 181 }, anger: { head: 188, spine: 175 }, sad: { head: 197, spine: 174 }, thought: { head: 166, spine: 179 }, cry: { head: 202, spine: 172 } };
+  // Poziom mocny przechyla mocniej: śmiech i szok do tyłu, wściekłość do przodu, płacz w dół
+  const EXPR_POSE = { neutral: {}, smile: { head: 177, spine: 180.5 }, joy: { head: 171, spine: 182 }, anger: { head: 185, spine: 177 }, fury: { head: 184, spine: 172 },
+    sad: { head: 197, spine: 174 }, cry: { head: 202, spine: 172 }, thought: { head: 166, spine: 179 }, deep: { head: 160, spine: 178 },
+    surprise: { head: 176, spine: 181 }, shock: { head: 172, spine: 183 } };
   const exprOf = st => st.look && st.look.expr ? st.look.expr : null;
   // Przy selfie obie dłonie na biodrach nie są możliwe: zostaje jedna
   const armsFor = st => {
@@ -3133,7 +3155,7 @@
     if (cat.id === "items") { const a = activeItems(scene); return a.length ? a.map(it => itemInfo(it).name).join(", ") : "Nic"; }
     if (cat.id === "look") {
       const lk = scene.look;
-      if (lk.expr !== "neutral") return lookOpt("expr", lk.expr).name;
+      if (lk.expr !== "neutral") return exprLabel(lk.expr);
       if (lk.glasses !== "none") return lookOpt("glasses", lk.glasses).name;
       if (scene.body === "male" && lk.beard !== "none") return lookOpt("beard", lk.beard).name;
       if (lk.lips !== "none") return "Usta: " + lookOpt("lips", lk.lips).name;
@@ -3151,7 +3173,7 @@
       { id: "street", name: "Moda uliczna nocą", set: { ...dressIn("street"), pose: "contra", arms: "hipOne", shot: "full", camera: "L3",
         light: "art-back", lightZone: "R1", background: "street", bgv: { street: "neon" }, time: "night", look: { ...LOOK0, hair: "medium", expr: "neutral", glasses: "sun" } } },
       { id: "beach", name: "Plaża o zachodzie", set: { ...dressIn("casual", { top: "white", bottom: "beige" }), pose: "stride", arms: "down", shot: "full", camera: "R2",
-        light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, time: "golden", look: { ...LOOK0, hair: "wavy", expr: "joy" } } },
+        light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, time: "golden", look: { ...LOOK0, hair: "wavy", expr: "smile" } } },
       { id: "mountains", name: "Górska wyprawa", set: { ...dressIn("sport"), pose: "wide", arms: "shade", shot: "full", camera: "D",
         light: "nat-front", lightZone: "L1", background: "mountains", bgv: { mountains: "lake" }, fx: ["fog"], time: "day", look: { ...LOOK0, hair: "short" } } },
       { id: "cafe", name: "Selfie w kawiarni", set: { ...dressIn("casual"), pose: "stand", arms: "down", shot: "portrait", camera: "SR",
@@ -3228,7 +3250,7 @@
       const male = scene.body === "male";
       scene.look = {
         hair: anyOf(LOOK.hair).id, hairPicked: true, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
-        expr: anyOf(LOOK.expr).id,
+        expr: randomExpr(),
         beard: male && Math.random() < 0.5 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.beardColor).id,
         lips: !male && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
         glasses: Math.random() < 0.3 ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id
@@ -3402,8 +3424,12 @@
       () => set({ beard: o.id }, o.id === "none" ? undefined : "beardColor"), svg => headTile(svg, with_({ beard: o.id })))));
     if (sub === "beardColor") return [backTile("beard")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.beardColor].map(o => tile("opt-beardColor-" + o.id, o.name,
       () => lk.beardColor === o.id, () => set({ beardColor: o.id }), svg => headTile(svg, with_({ beardColor: o.id })))));
-    if (sub === "expr") return [backTile(null)].concat(LOOK.expr.map(o => tile("opt-expr-" + o.id, o.name, () => lk.expr === o.id,
-      () => set({ expr: o.id }), svg => headTile(svg, with_({ expr: o.id })))));
+    // Mina: najpierw emocja (wybiera jej poziom łagodny albo zostawia bieżący), potem rząd z dwoma poziomami
+    const exprIn = g => exprGroup(lk.expr) === g ? lk.expr : g.levels[0];
+    if (sub === "expr") return [backTile(null)].concat(EXPR_GROUPS.map(g => tile("opt-exprg-" + g.id, g.name, () => exprGroup(lk.expr) === g,
+      () => set({ expr: exprIn(g) }, g.levels.length > 1 ? "exprLvl" : undefined), svg => headTile(svg, with_({ expr: exprIn(g) })))));
+    if (sub === "exprLvl") return [backTile("expr")].concat(exprGroup(lk.expr).levels.map(id => tile("opt-expr-" + id, lookOpt("expr", id).name,
+      () => lk.expr === id, () => set({ expr: id }), svg => headTile(svg, with_({ expr: id })))));
     if (sub === "lips") return [backTile(null)].concat(LOOK.lips.map(o => tile("opt-lips-" + o.id, o.name, () => lk.lips === o.id,
       () => set({ lips: o.id }), svg => headTile(svg, with_({ lips: o.id })))));
     if (sub === "glasses") return [backTile(null)].concat(LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
@@ -3413,7 +3439,7 @@
     const groups = [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
     // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
     const SAMPLE = { expr: { expr: "neutral" }, hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
-    const chosen = k => k === "expr" ? lk.expr !== "neutral" : k === "hair" ? lk.hairPicked : lk[k] !== "none";
+    const chosen = k => k === "expr" ? lk.expr !== SCENE0.look.expr : k === "hair" ? lk.hairPicked : lk[k] !== "none";
     return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => chosen(k),
       () => { scene.sub = k; render(); }, svg => headTile(svg, k === "hair" || lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
   }
@@ -3685,6 +3711,7 @@
     { id: "hair", say: "Jaka fryzura?", cat: "look", sub: "hair", when: face },
     { id: "hairColor", say: "Kolor włosów?", cat: "look", sub: "hairColor", when: () => face() && hasHairColor() },
     { id: "expr", say: "Jaka mina?", cat: "look", sub: "expr", when: face },
+    { id: "exprLvl", say: "Jak mocno?", cat: "look", sub: "exprLvl", when: () => face() && exprGroup(scene.look.expr).levels.length > 1 },
     { id: "beard", say: "Zarost?", cat: "look", sub: "beard", when: () => face() && scene.body === "male" },
     { id: "beardColor", say: "Kolor zarostu?", cat: "look", sub: "beardColor", when: () => face() && scene.body === "male" && scene.look.beard !== "none" },
     { id: "lips", say: "Usta?", cat: "look", sub: "lips", when: () => face() && scene.body === "female" },
@@ -3813,7 +3840,7 @@
       const male = scene.body === "male";
       scene.look = {
         hair: anyOf(LOOK.hair.filter(o => male || o.id !== "bald")).id, hairPicked: true, hairColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.hairColor).id,
-        expr: anyOf(["neutral", "neutral", "joy", "thought"]),
+        expr: anyOf(["smile", "smile", "neutral", "joy", "thought", "surprise"]),
         beard: male && Math.random() < 0.4 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: "auto",
         lips: !male && Math.random() < 0.3 ? anyOf(LOOK.lips.slice(1)).id : "none",
         glasses: Math.random() < 0.25 ? anyOf(["round", "rect"]) : "none", glassesColor: anyOf(LOOK.glassesColor).id
@@ -4841,7 +4868,9 @@
     back: "lezy lezenie plecy", side: "lezy bok", belly: "lezy brzuch", lying: "lezenie polozony", sprawl: "rozwalony wygodnie", edge: "brzeg krawedz przysiada",
     legsCrossed: "noga zalozona", leanOn: "opiera oparty",
     sit: "siedzenie siedzi", chair: "krzeslo", cross: "turecku", chin: "myslenie zamyslenie", shade: "oslania patrzy wypatruje",
-    hips: "rece na biodrach", D: "dron z gory lot", night: "wieczor ciemno", golden: "zachod wschod"
+    hips: "rece na biodrach", D: "dron z gory lot", night: "wieczor ciemno", golden: "zachod wschod",
+    happy: "wesoly szczesliwy", smile: "usmiechniety", joy: "smieje rechot", angry: "zly gniew", anger: "zirytowany zly", fury: "wsciekly krzyczy krzyk",
+    sadness: "smutny", cry: "placze lzy", thinking: "myslenie mysli", deep: "zaduma", surprised: "zaskoczony wow", surprise: "zdziwiony", shock: "przerazony oslupialy"
   };
   const EXAMPLES = ["dres", "noc", "okulary", "las", "selfie", "cyberpunk", "kucanie", "kanapa", "banan", "z drona"];
   EXAMPLES.forEach(w => {
@@ -4885,6 +4914,15 @@
       [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male").forEach(([k, name]) => {
         const lvl = [...base, opts(cat, null, "opt-look-" + k)];
         add(name, path, () => jump([...lvl, opts(cat, k)]));
+        if (k === "expr") {
+          // Emocja otwiera rząd emocji; poziom od razu ustawia minę i pokazuje rząd poziomów
+          EXPR_GROUPS.forEach(g => {
+            add(g.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-exprg-" + g.id), ALIAS[g.id]);
+            if (g.levels.length > 1) g.levels.forEach(id => add(lookOpt("expr", id).name, [...path, name, g.name],
+              () => jump([...lvl, opts(cat, k, "opt-exprg-" + g.id), opts(cat, "exprLvl")], "opt-expr-" + id, () => { scene.look = { ...scene.look, expr: id }; }), ALIAS[id]));
+          });
+          return;
+        }
         LOOK[k].forEach(o => add(o.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-" + k + "-" + o.id), ALIAS[o.id]));
       });
       LOOK.hairColor.forEach(o => add(o.name, [...path, "Włosy", "Kolor"], () => jump([...base, opts(cat, null, "opt-look-hair"), opts(cat, "hair", "opt-hair-" + scene.look.hair), opts(cat, "hairColor")], "opt-hairColor-" + o.id), "kolor wlosow"));
