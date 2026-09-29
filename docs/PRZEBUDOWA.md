@@ -79,6 +79,9 @@ Pełna nawigacja dwoma rzędami. Tylko tu są Gotowe.
 - Sukienka zastępuje Górę i Dół (te kategorie są wtedy zablokowane).
 - Nakrycie głowy chowa fryzurę tylko częściowo.
 - Z czasem dojdą kolejne opcje.
+- Nowy krój wchodzi w swoim domyślnym kolorze; kolor zmienia się kafelkiem „Kolor” w danej części.
+- Sukienka jest tylko w zestawach. Wybór dowolnej góry albo dołu zdejmuje sukienkę.
+- Maniscrypt opisuje ubiór z części i ich kolorów, tak jak widać na Manikunie (np. „wearing a caramel long wool coat over a cream knit sweater, charcoal grey chinos and brown ankle boots, with a mustard yellow beanie”).
 
 ### Kolory (20)
 

@@ -97,7 +97,10 @@ const HAIR_SHAPES = {
 // cloth (opcjonalnie): ubranko przypięte do tych samych stawów, więc porusza się razem z pozą.
 //   top: kolor góry, sleeve: "long" | "short" | "none", topLen: "waist" | "hip", loose: luźniejszy krój,
 //   pants: kolor spodni, shorts: krótkie nogawki, skirt: kolor spódnicy/poły, skirtLen: ułamek podudzia,
-//   collar: kolor koszuli w dekolcie, tie: kolor krawata, hood: kaptur
+//   collar: kolor koszuli w dekolcie, tie: kolor krawata, hood: kaptur,
+//   skirtTo: "knee" = krótka spódnica do kolan, cuffs: kolor ściągaczy nogawek (dres),
+//   outer: { color, coat } okrycie na wierzchu (kurtka; coat = płaszcz z połami),
+//   hat: { kind: "cap" | "beanie" | "hat", color }, shoes: { kind: "sneakers" | "formal" | "boots", color }
 function computeFigure(pose, RIG, cloth = null) {
   const P = [0, 0], u = dir(pose.spine), r = [-u[1], u[0]];
   const shapes = [], pts = [];
@@ -130,6 +133,11 @@ function computeFigure(pose, RIG, cloth = null) {
     } else if (cloth && cloth.top && cloth.sleeve === "short") {
       wear(cap(S, lerpP(S, E, 0.45), 6.8, 6.2), cloth.top);
     }
+    // Okrycie na wierzchu: szersze rękawy niż góra, kończą się tuż nad dłonią
+    if (cloth && cloth.outer) {
+      wear(cap(S, E, 7.6, 6.6), cloth.outer.color);
+      wear(cap(E, lerpP(E, W, 0.88), 6.6, 5.6), cloth.outer.color);
+    }
     push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] }, [Hc, 9]);
     hands[side] = Hc;
   }
@@ -151,9 +159,18 @@ function computeFigure(pose, RIG, cloth = null) {
       else {
         wear(cap(H, K, 8.4 * loose, 6.6 * loose), cloth.pants);
         wear(cap(K, lerpP(K, A, 0.94), 6.6 * loose, 5.2 * loose), cloth.pants);
+        // Dres: ściągacz nad kostką
+        if (cloth.cuffs) wear(cap(lerpP(K, A, 0.82), lerpP(K, A, 0.96), 5.4, 5), cloth.cuffs);
       }
     }
     push(cap(A, T, 4.5, 2.5), [T, 4]);
+    // Buty na stopie: sportowe pełniejsze, eleganckie smukłe, botki z cholewką za kostkę
+    if (cloth && cloth.shoes) {
+      const sh = cloth.shoes;
+      if (sh.kind === "boots") wear(cap(lerpP(K, A, 0.74), A, 5.8, 5.2), sh.color);
+      wear(sh.kind === "formal" ? cap(A, T, 4.9, 2.9) : cap(A, lerpP(A, T, 1.08), 5.5, 3.6), sh.color);
+      if (sh.kind === "sneakers") wear(cap(lerpP(A, T, -0.05), lerpP(A, T, 1.1), 2, 2), sh.sole || "#EEEAE2");
+    }
   }
 
   leg("far");
@@ -191,6 +208,15 @@ function computeFigure(pose, RIG, cloth = null) {
       if (cloth.tie) clothPoly([add(add(mid, u, -2), r, -1.4), add(add(mid, u, -2), r, 1.4), add(add(mid, u, -20), r, 2.2), add(mid, u, -23), add(add(mid, u, -20), r, -2.2)], cloth.tie);
       // Kaptur zsunięty na plecy: zgrubienie wokół szyi
       if (cloth.hood) wear({ t: "ellipse", cx: add(Ct, u, 2)[0], cy: add(Ct, u, 2)[1], rx: ctn * 0.75, ry: 5, rot: 180 - pose.spine }, cloth.top);
+    }
+    // Okrycie: tułów do bioder, rozpięte (pas góry widoczny pośrodku), z kołnierzem przy szyi
+    if (cloth.outer) {
+      const oc = cloth.outer.color, e = 2.6, low = add(pb, u, -2);
+      clothPoly([add(Ct, r, -ctn - e), add(Ct, r, ctf + e), add(Cb, r, cbf + e), add(low, r, pbf + 4), add(low, r, -pbn - 4), add(Cb, r, -cbn - e)], oc);
+      const mid = add(Ct, r, -(ctn - ctf) / 2), mlow = add(low, r, -(pbn - pbf) / 2);
+      if (cloth.top) clothPoly([add(mid, r, -3), add(mid, r, 3), add(mlow, r, 2.2), add(mlow, r, -2.2)], cloth.top);
+      clothPoly([add(mid, r, -ctn * 0.55), add(mid, r, -2.5), add(add(mid, u, -14), r, -2)], oc);
+      clothPoly([add(mid, r, 2.5), add(mid, r, ctf * 0.55), add(add(mid, u, -14), r, 2)], oc);
     }
   }
   // Pasmo długich włosów opadające z przodu po stronie twarzy
@@ -271,19 +297,39 @@ function computeFigure(pose, RIG, cloth = null) {
       shapes.push({ t: "deco", d: `M${f(b1[0])},${f(b1[1])} L${f(b2[0])},${f(b2[1])} M${f(t1[0])},${f(t1[1])} L${f(t2[0])},${f(t2[1])}`, style: `fill:none;${frame}` });
     }
   }
+  // Nakrycie głowy: na włosach, które częściowo spod niego wystają
+  if (cloth && cloth.hat) {
+    const hc = cloth.hat.color, band = shadeHex(hc, -0.22);
+    if (cloth.hat.kind === "beanie") {
+      clothPoly(arc(6, 174, 18, a => E(a, 1.1, 1.06, 0.14)), hc);
+      clothPoly([L(-1.1, 0.26), L(1.1, 0.26), L(1.05, 0.5), L(-1.05, 0.5)], band);
+    } else if (cloth.hat.kind === "cap") {
+      clothPoly(arc(8, 172, 18, a => E(a, 1.07, 1.02, 0.12)), hc);
+      clothPoly([L(0.5, 0.2), L(1.62, 0.1), L(1.66, 0.2), L(0.55, 0.36)], band);
+    } else {
+      clothPoly(arc(0, 360, 24, a => L(Math.cos(rad(a)) * 1.6, 0.46 + Math.sin(rad(a)) * 0.15)), band);
+      clothPoly([L(-0.8, 0.46), L(-0.72, 1.36), L(-0.22, 1.3), L(0, 1.2), L(0.22, 1.3), L(0.72, 1.36), L(0.8, 0.46)], hc);
+      clothPoly([L(-0.79, 0.5), L(0.79, 0.5), L(0.77, 0.7), L(-0.77, 0.7)], band);
+    }
+  }
   if (farFront) arm("far");
   leg("near");
   // Spódnica sukienki albo poły płaszcza: jedna tkanina rozpięta od bioder do obu kolan i trochę niżej.
   // To otoczka wypukła bioder i brzegów przy kolanach, więc w każdej pozie zakrywa uda bez prześwitów.
-  if (cloth && cloth.skirt) {
-    const ring = (c, rr) => Array.from({ length: 12 }, (_, k) => [c[0] + Math.cos(k * Math.PI / 6) * rr, c[1] + Math.sin(k * Math.PI / 6) * rr]);
-    const pts = [add(pt, r, -ptn - 2), add(pt, r, ptf + 2), add(pb, r, pbf + 3), add(pb, r, -pbn - 3)];
+  const ring = (c, rr) => Array.from({ length: 12 }, (_, k) => [c[0] + Math.cos(k * Math.PI / 6) * rr, c[1] + Math.sin(k * Math.PI / 6) * rr]);
+  const drape = (len, toKnee, extra = 0) => {
+    const pts = [add(pt, r, -ptn - 2 - extra), add(pt, r, ptf + 2 + extra), add(pb, r, pbf + 3 + extra), add(pb, r, -pbn - 3 - extra)];
     ["near", "far"].forEach(side => {
       const { H, K, A } = knees[side];
-      pts.push(...ring(H, 9), ...ring(lerpP(K, A, cloth.skirtLen || 0.2), 8.5), ...ring(K, 8.5));
+      pts.push(...ring(H, 9 + extra));
+      if (toKnee) pts.push(...ring(lerpP(H, K, 0.92), 8.5 + extra));
+      else pts.push(...ring(lerpP(K, A, len), 8.5 + extra), ...ring(K, 8.5 + extra));
     });
-    clothPoly(hull(pts), cloth.skirt);
-  }
+    return hull(pts);
+  };
+  if (cloth && cloth.skirt) clothPoly(drape(cloth.skirtLen || 0.2, cloth.skirtTo === "knee"), cloth.skirt);
+  // Poły płaszcza na wierzchu wszystkiego poniżej pasa
+  if (cloth && cloth.outer && cloth.outer.coat) clothPoly(drape(0.28, false, 1.5), cloth.outer.color);
   arm("near");
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

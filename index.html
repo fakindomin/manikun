@@ -597,13 +597,14 @@
       { id: "male", name: "Mężczyzna", short: "Mężczyz.", prompt: "of a single adult man" }
     ]},
     // Ubiór: prompt może zależeć od postaci; sukienka tylko dla kobiety
+    // Ubiór: zestawy (ustawiają wszystkie części naraz) oraz osobne części z WEAR niżej; kafelki buduje wearTiles()
     { id: "outfit", label: "Ubiór", subjects: ["person"], patch: "#5E7FA3", options: [
-      { id: "casual", name: "Codzienny", short: "Codzienny" },
-      { id: "elegant", name: "Elegancki", short: "Elegancki" },
-      { id: "sport", name: "Sportowy", short: "Sportowy" },
-      { id: "street", name: "Streetwear", short: "Street" },
-      { id: "coat", name: "Płaszcz", short: "Płaszcz" },
-      { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"] }
+      { id: "casual", name: "Codzienny", short: "Codzienny", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, colors: { top: "grey", bottom: "denim", shoes: "white" } },
+      { id: "elegant", name: "Elegancki", short: "Elegancki", wear: { top: "blazer", outer: "none", bottom: "suit", hat: "none", shoes: "formal" }, colors: { top: "graphite", bottom: "graphite", shoes: "black" } },
+      { id: "sport", name: "Sportowy", short: "Sportowy", wear: { top: "tshirt", outer: "none", bottom: "joggers", hat: "none", shoes: "sneakers" }, colors: { top: "bottle", bottom: "black", shoes: "white" } },
+      { id: "street", name: "Streetwear", short: "Street", wear: { top: "hoodie", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, colors: { top: "khaki", bottom: "denim", shoes: "white" } },
+      { id: "coat", name: "Płaszcz", short: "Płaszcz", wear: { top: "sweater", outer: "coat", bottom: "chinos", hat: "none", shoes: "boots" }, colors: { top: "cream", outer: "caramel", bottom: "graphite", shoes: "brown" } },
+      { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"], wear: { top: "tshirt", outer: "none", bottom: "dress", hat: "none", shoes: "formal" }, colors: { bottom: "burgundy", shoes: "black" } }
     ]},
     // Twarz: włosy, zarost, usta i okulary. Opcje są w LOOK niżej, kafelki buduje lookTiles()
     { id: "look", label: "Twarz", subjects: ["person"], patch: "#C9A24A", options: [] },
@@ -814,7 +815,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, pose: "stand", arms: "down", shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
 
@@ -903,33 +904,105 @@
   const selfieArm = () => `${scene.camera === "SR" ? "right" : "left"} arm extended toward the lens and out of frame, holding the phone that takes the picture`;
   const armsPrompt = () => isSelfie(scene.camera) ? selfieArm() + ", " + OTHER_HAND[scene.arms] : scene.pose === "crouch" && scene.arms === "down" ? "forearms resting on the knees" : optionOf("arms", scene.arms).prompt;
 
-  // Kolory ubrania: "auto" to kolory domyślne danego ubioru
+  // Kolory ubrań (20): neutralne, ziemiste, chłodne, ciepłe. Przygaszone, jak reszta sceny.
   const COLORS = [
     { id: "black", name: "Czarny", hex: "#2B2C30", word: "black" },
-    { id: "white", name: "Biały", hex: "#E6E3DC", word: "white" },
+    { id: "graphite", name: "Grafit", hex: "#474A52", word: "charcoal grey" },
     { id: "grey", name: "Szary", hex: "#8A8F96", word: "grey" },
+    { id: "white", name: "Biały", hex: "#E6E3DC", word: "white" },
+    { id: "cream", name: "Kremowy", hex: "#DDD2BB", word: "cream" },
+    { id: "beige", name: "Beż", hex: "#C8B79A", word: "beige" },
+    { id: "brown", name: "Brąz", hex: "#6E4F3A", word: "brown" },
+    { id: "caramel", name: "Karmel", hex: "#A8733F", word: "caramel" },
+    { id: "olive", name: "Oliwka", hex: "#6B7348", word: "olive green" },
+    { id: "khaki", name: "Khaki", hex: "#9A9168", word: "khaki" },
     { id: "navy", name: "Granat", hex: "#34425C", word: "navy blue" },
     { id: "denim", name: "Dżins", hex: "#4A6285", word: "denim blue" },
-    { id: "beige", name: "Beż", hex: "#C8B79A", word: "beige" },
-    { id: "brown", name: "Brąz", hex: "#7A5C44", word: "brown" },
-    { id: "olive", name: "Oliwka", hex: "#6B7348", word: "olive green" },
+    { id: "sky", name: "Błękit", hex: "#8FB0CF", word: "light blue" },
+    { id: "bottle", name: "Butelkowa zieleń", hex: "#2F5446", word: "bottle green" },
+    { id: "mint", name: "Miętowy", hex: "#A5CDB8", word: "mint green" },
     { id: "burgundy", name: "Bordo", hex: "#7E3B45", word: "burgundy" },
-    { id: "red", name: "Czerwony", hex: "#A8433C", word: "red" }
+    { id: "red", name: "Czerwony", hex: "#A8433C", word: "red" },
+    { id: "orange", name: "Pomarańczowy", hex: "#C9703A", word: "orange" },
+    { id: "mustard", name: "Musztardowy", hex: "#C49A3A", word: "mustard yellow" },
+    { id: "pink", name: "Różowy", hex: "#D69AA6", word: "pink" }
   ];
   const colorOf = id => COLORS.find(c => c.id === id);
-  // Opis ubioru w prompcie z kolorami góry (t) i dołu (b); bez wybranego koloru zostaje opis domyślny
-  const OUTFIT_PROMPTS = {
-    casual: (t, b) => !t && !b ? "wearing plain, neutral-coloured casual clothing" : `wearing a plain ${t || "neutral-coloured"} t-shirt and ${b || "dark"} jeans`,
-    elegant: (t, b, body) => {
-      if (!t && !b) return body === "female" ? "wearing an elegant tailored blazer and trousers" : "wearing a tailored dark suit with a crisp white shirt";
-      return `wearing an elegant tailored ${t || "dark"} blazer, ${b || "dark"} tailored trousers and a crisp white shirt` + (body === "female" ? "" : " with a tie");
-    },
-    sport: (t, b) => !t && !b ? "wearing fitted athletic sportswear and sneakers" : `wearing fitted athletic sportswear: a ${t || "neutral"} tank top, ${b || "dark"} joggers and sneakers`,
-    street: (t, b) => `wearing an oversized ${t ? t + " " : ""}hoodie, loose ${b ? b + " " : ""}trousers and sneakers`,
-    coat: (t, b) => `wearing a long ${t ? t + " " : ""}wool coat over a simple outfit` + (b ? ` with ${b} trousers` : ""),
-    dress: t => `wearing a simple, elegant ${t ? t + " " : ""}midi dress`
+  // Części garderoby. def: kolor, z którym część wchodzi, phrase: opis w Maniscrypcie, cloth: krój na Manikunie.
+  // Kolor zostaje przy zmianie kroju (np. szara koszulka → szara bluza), zmienia się tylko kafelkiem koloru.
+  const WEAR = {
+    top: { name: "Góra", icon: "top", options: [
+      { id: "tshirt", name: "T-shirt", def: "grey", phrase: "t-shirt", cloth: { sleeve: "short" } },
+      { id: "shirt", name: "Koszula", def: "sky", phrase: "button-up shirt", cloth: { sleeve: "long", collarShade: 0.28 } },
+      { id: "sweatshirt", name: "Bluza", def: "graphite", phrase: "crewneck sweatshirt", cloth: { sleeve: "long", topLen: "hip", loose: true } },
+      { id: "hoodie", name: "Bluza z kapturem", def: "khaki", phrase: "hoodie", cloth: { sleeve: "long", topLen: "hip", loose: true, hood: true } },
+      { id: "sweater", name: "Sweter", def: "cream", phrase: "knit sweater", cloth: { sleeve: "long", topLen: "hip" } },
+      { id: "blazer", name: "Marynarka", def: "graphite", phrase: "tailored blazer over a crisp white shirt", cloth: { sleeve: "long", topLen: "hip", collar: "#E9E6DF" } }
+    ]},
+    outer: { name: "Okrycie", icon: "outer", options: [
+      { id: "none", name: "Brak" },
+      { id: "jacket", name: "Kurtka", def: "black", phrase: "jacket" },
+      { id: "coat", name: "Płaszcz", def: "caramel", phrase: "long wool coat", coat: true },
+      { id: "denim", name: "Kurtka jeansowa", def: "denim", phrase: "denim jacket" }
+    ]},
+    bottom: { name: "Dół", icon: "bottom", options: [
+      { id: "jeans", name: "Jeansy", def: "denim", phrase: "jeans", cloth: {} },
+      { id: "joggers", name: "Dres", def: "graphite", phrase: "jogger sweatpants", cloth: { cuffs: true } },
+      { id: "chinos", name: "Chinosy", def: "beige", phrase: "chinos", cloth: {} },
+      { id: "suit", name: "Garniturowe", def: "graphite", phrase: "tailored trousers", cloth: {} },
+      { id: "shorts", name: "Szorty", def: "khaki", phrase: "shorts", cloth: { shorts: true } },
+      { id: "skirt", name: "Spódnica", def: "black", phrase: "knee-length skirt", bodies: ["female"], cloth: { skirt: true } },
+      // Sukienka tylko z zestawu: zastępuje górę i dół naraz
+      { id: "dress", name: "Sukienka", def: "burgundy", phrase: "midi dress", bodies: ["female"], hidden: true, cloth: {} }
+    ]},
+    hat: { name: "Nakrycie głowy", icon: "hat", options: [
+      { id: "none", name: "Brak" },
+      { id: "cap", name: "Czapka z daszkiem", def: "navy", phrase: "baseball cap" },
+      { id: "beanie", name: "Beanie", def: "mustard", phrase: "beanie" },
+      { id: "hat", name: "Kapelusz", def: "brown", phrase: "fedora hat" }
+    ]},
+    shoes: { name: "Buty", icon: "shoes", options: [
+      { id: "sneakers", name: "Sneakersy", def: "white", phrase: "sneakers" },
+      { id: "formal", name: "Eleganckie", def: "black", phrase: "leather dress shoes" },
+      { id: "boots", name: "Botki", def: "brown", phrase: "ankle boots" }
+    ]}
   };
-  const hasBottom = outfitId => outfitId !== "dress";
+  const PARTS = Object.keys(WEAR);
+  const wearOpt = (part, id) => WEAR[part].options.find(o => o.id === id);
+  const isDress = (st = scene) => st.wear.bottom === "dress";
+  // Zestaw: wszystkie części i ich kolory (brakujące kolory z domyślnych danej części)
+  function dressIn(setId, colors = {}) {
+    const set = CATEGORIES.find(c => c.id === "outfit").options.find(o => o.id === setId);
+    const wc = Object.fromEntries(PARTS.map(p => [p, colors[p] || (set.colors || {})[p] || wearOpt(p, set.wear[p]).def || WEAR[p].options.find(o => o.def).def]));
+    return { outfit: setId, wear: { ...set.wear }, wc };
+  }
+  // Zmiana pojedynczej części odznacza zestaw. Nowy krój wchodzi w swoim kolorze (zmienia się go kafelkiem Kolor).
+  // Góra zdejmuje sukienkę (wraca zwykły dół).
+  function pickPart(part, id) {
+    const wear = { ...scene.wear, [part]: id };
+    const wc = { ...scene.wc };
+    if (part === "top" && scene.wear.bottom === "dress") { wear.bottom = "jeans"; wc.bottom = "denim"; }
+    if (scene.wear[part] !== id) wc[part] = wearOpt(part, id).def || wc[part];
+    Object.assign(scene, { outfit: "custom", wear, wc });
+  }
+  // Opis ubioru w Maniscrypcie, z kolorami tak jak na Manikunie
+  const an = w => (/^[aeiou]/i.test(w) ? "an " : "a ") + w;
+  const andList = a => a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a[a.length - 1] : a[0];
+  function outfitPrompt(st = scene) {
+    // Dżinsowy kolor: przy jeansach i kurtce jeansowej po prostu "blue", przy innych rzeczach "mid blue"
+    const ph = p => wearOpt(p, w[p]).phrase, w = st.wear;
+    const word = p => st.wc[p] === "denim" ? (/jeans|denim/.test(ph(p)) ? "blue" : "mid blue") : colorOf(st.wc[p]).word;
+    const items = [];
+    if (isDress(st)) items.push(an(`${word("bottom")} ${ph("bottom")}`));
+    else {
+      items.push(an(`${word("top")} ${ph("top")}`) + (w.top === "blazer" && st.body === "male" ? " with a tie" : ""));
+      items.push(w.bottom === "skirt" ? an(`${word("bottom")} ${ph("bottom")}`) : `${word("bottom")} ${ph("bottom")}`);
+    }
+    items.push(`${word("shoes")} ${ph("shoes")}`);
+    let txt = "wearing " + (w.outer !== "none" ? an(`${word("outer")} ${ph("outer")}`) + " over " : "") + andList(items);
+    if (w.hat !== "none") txt += ", with " + an(`${word("hat")} ${ph("hat")}`);
+    return txt;
+  }
   // Wygląd twarzy: tylko proste, dobrze znane modelom elementy
   const LOOK = {
     hair: [
@@ -1029,10 +1102,6 @@
     // W stylach rysowanych twarz ma być rozpoznawalna, a nie skopiowana jak na zdjęciu
     if (styleOf(scene) && !styleOf(scene).photo) return `of the ${who} from the attached reference photo, drawn in this style while keeping ${pro} ${keep} clearly recognisable,`;
     return `of the ${who} from the attached reference photo, keeping ${pro} ${keep} exactly the same,`;
-  };
-  const outfitPrompt = () => {
-    const w = id => id === "auto" ? null : colorOf(id).word;
-    return OUTFIT_PROMPTS[scene.outfit](w(scene.topColor), hasBottom(scene.outfit) ? w(scene.bottomColor) : null, scene.body);
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
   // Czy opcja pasuje do reszty sceny: sylwetka, obiekt/postać, dron tylko w plenerze i bez zbliżeń
@@ -1212,36 +1281,35 @@
   }
 
   const figCache = {};
-  // Ubranko na Manikunie dla każdego ubioru: kolory przygaszone, jak reszta sceny
-  const CLOTHES = {
-    casual: { top: "#7D8A96", sleeve: "short", pants: "#3F4B5E" },
-    elegant: {
-      male: { top: "#2F3440", sleeve: "long", topLen: "hip", pants: "#2F3440", collar: "#E9E6DF", tie: "#7A3E3E" },
-      female: { top: "#3A3F4B", sleeve: "long", topLen: "hip", pants: "#3A3F4B", collar: "#E9E6DF" }
-    },
-    sport: { top: "#5E7F8F", sleeve: "none", pants: "#33373E" },
-    street: { top: "#8A7A66", sleeve: "long", topLen: "hip", loose: true, hood: true, pants: "#4A4F57" },
-    coat: { top: "#7A6450", sleeve: "long", topLen: "hip", pants: "#3C3F45", skirt: "#7A6450", skirtLen: 0.25 },
-    dress: { top: "#8E5A5E", sleeve: "short", skirt: "#8E5A5E", skirtLen: 0.35 }
-  };
-  // Ubranko z kolorami wybranymi przez użytkownika: góra (z połami płaszcza lub spódnicą sukienki) i dół
-  function clothOf(outfitId, bodyId, topId = scene.topColor, bottomId = scene.bottomColor) {
-    const o = outfitId === "dress" && bodyId !== "female" ? "casual" : outfitId;
-    let c = CLOTHES[o];
-    if (c && c.top === undefined) c = c[bodyId];
-    c = { ...c };
-    if (topId !== "auto") {
-      if (c.skirt) c.skirt = colorOf(topId).hex;
-      c.top = colorOf(topId).hex;
+  // Ubranko na Manikunie z części garderoby i ich kolorów
+  function clothOf(bodyId = scene.body, st = scene) {
+    const w = st.wear, hex = p => colorOf(st.wc[p]).hex, c = {};
+    if (w.bottom === "dress") Object.assign(c, { top: hex("bottom"), sleeve: "short", skirt: hex("bottom"), skirtLen: 0.35 });
+    else {
+      const t = wearOpt("top", w.top).cloth;
+      Object.assign(c, t, { top: hex("top") });
+      if (t.collarShade) c.collar = shadeHex(c.top, t.collarShade);
+      delete c.collarShade;
+      if (w.top === "blazer" && bodyId === "male") c.tie = "#7A3E3E";
+      const bo = wearOpt("bottom", w.bottom).cloth;
+      if (bo.skirt) Object.assign(c, { skirt: hex("bottom"), skirtTo: "knee" });
+      else {
+        c.pants = hex("bottom");
+        if (bo.shorts) c.shorts = true;
+        if (bo.cuffs) c.cuffs = shadeHex(c.pants, -0.22);
+      }
     }
-    if (bottomId !== "auto" && c.pants) c.pants = colorOf(bottomId).hex;
-    c.look = { ...lookDraw(scene.look, bodyId), expr: exprOf(scene) };
+    if (w.outer !== "none") c.outer = { color: hex("outer"), coat: !!wearOpt("outer", w.outer).coat };
+    if (w.hat !== "none") c.hat = { kind: w.hat, color: hex("hat") };
+    c.shoes = { kind: w.shoes, color: hex("shoes") };
+    c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st) };
     return c;
   }
 
-  function buildFigure(poseId, bodyId = "male", outfitId = null) {
-    const key = [poseId, bodyId, outfitId, outfitId && scene.topColor, outfitId && scene.bottomColor, outfitId && JSON.stringify(scene.look), outfitId && exprOf(scene)].join("/");
-    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], outfitId ? clothOf(outfitId, bodyId) : null));
+  // dressed: z ubraniem ze sceny (część kafelków rysuje samego manekina)
+  function buildFigure(poseId, bodyId = "male", dressed = null) {
+    const key = [poseId, bodyId, !!dressed, dressed && JSON.stringify([scene.wear, scene.wc, scene.look]), dressed && exprOf(scene)].join("/");
+    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], dressed ? clothOf(bodyId) : null));
   }
 
   // Wzorzec skali: stojący mężczyzna. Każda poza ma ten sam rozmiar ciała, kobieta jest nieco niższa.
@@ -2110,7 +2178,7 @@
     body: svg => miniFigure(svg, "stand", scene.body, scene.outfit),
     pose: svg => miniFigure(svg, "sit", scene.body, scene.outfit),
     arms: svg => miniFigure(svg, "stand+hips", scene.body, scene.outfit),
-    outfit: svg => outfitGlyph(svg, scene.outfit, 24),
+    outfit: svg => outfitGlyph(svg, isDress() ? "dress" : scene.wear.outer === "coat" ? "coat" : ({ blazer: "elegant", hoodie: "street", sweatshirt: "street", sweater: "street" })[scene.wear.top] || "casual", 24),
     style: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); [[8.5, 9.5], [12.5, 7.5], [15.5, 11]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.3, style: "fill:currentColor" }, svg)); el("path", { d: "M12 20.5c-1.5 0-2-1.5-1-2.5s2.5-.5 3-2" }, svg); },
     preset: svg => el("path", { d: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" }, svg),
     item: svg => drawItem(svg, el("defs", {}, svg), scene.item, 12, 23, 0.21, itemHex()),
@@ -2135,6 +2203,7 @@
     if (cat.id === "format") return currentFormat().short;
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
+    if (cat.id === "outfit") return setName();
     if (cat.id === "look") {
       const lk = scene.look;
       if (lk.expr !== "neutral") return lookOpt("expr", lk.expr).name;
@@ -2150,21 +2219,21 @@
   const LOOK0 = { hair: null, hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" };
   const PRESETS = {
     person: [
-      { id: "business", name: "Portret biznesowy", set: { outfit: "elegant", topColor: "auto", bottomColor: "auto", pose: "stand", arms: "down", shot: "portrait", camera: "L2",
+      { id: "business", name: "Portret biznesowy", set: { ...dressIn("elegant"), pose: "stand", arms: "down", shot: "portrait", camera: "L2",
         light: "art-front", lightZone: "L1", background: "studio", bgv: { studio: "grey" }, look: { ...LOOK0, hair: "short", glasses: "rect" } } },
-      { id: "street", name: "Moda uliczna nocą", set: { outfit: "street", pose: "contra", arms: "hipOne", shot: "full", camera: "L3",
+      { id: "street", name: "Moda uliczna nocą", set: { ...dressIn("street"), pose: "contra", arms: "hipOne", shot: "full", camera: "L3",
         light: "art-back", lightZone: "R1", background: "street", bgv: { street: "neon" }, time: "night", look: { ...LOOK0, hair: "medium", expr: "neutral", glasses: "sun" } } },
-      { id: "beach", name: "Plaża o zachodzie", set: { outfit: "casual", topColor: "white", bottomColor: "beige", pose: "stride", arms: "down", shot: "full", camera: "R2",
+      { id: "beach", name: "Plaża o zachodzie", set: { ...dressIn("casual", { top: "white", bottom: "beige" }), pose: "stride", arms: "down", shot: "full", camera: "R2",
         light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, time: "golden", look: { ...LOOK0, hair: "wavy", expr: "joy" } } },
-      { id: "mountains", name: "Górska wyprawa", set: { outfit: "sport", pose: "wide", arms: "shade", shot: "full", camera: "D",
+      { id: "mountains", name: "Górska wyprawa", set: { ...dressIn("sport"), pose: "wide", arms: "shade", shot: "full", camera: "D",
         light: "nat-front", lightZone: "L1", background: "mountains", bgv: { mountains: "lake" }, bgx: { mountains: ["fog"] }, time: "day", look: { ...LOOK0, hair: "short" } } },
-      { id: "cafe", name: "Selfie w kawiarni", set: { outfit: "casual", pose: "stand", arms: "down", shot: "portrait", camera: "SR",
+      { id: "cafe", name: "Selfie w kawiarni", set: { ...dressIn("casual"), pose: "stand", arms: "down", shot: "portrait", camera: "SR",
         light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "cafe" }, time: "day", look: { ...LOOK0, hair: "long", expr: "joy" } } },
-      { id: "forest", name: "Spacer po lesie", set: { outfit: "coat", pose: "stride", arms: "down", shot: "full", camera: "L2",
+      { id: "forest", name: "Spacer po lesie", set: { ...dressIn("coat"), pose: "stride", arms: "down", shot: "full", camera: "L2",
         light: "nat-front", lightZone: "R1", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "day", look: { ...LOOK0 } } },
-      { id: "window", name: "Zamyślenie przy oknie", set: { outfit: "casual", pose: "stand", arms: "chin", shot: "portrait", camera: "R2",
+      { id: "window", name: "Zamyślenie przy oknie", set: { ...dressIn("casual"), pose: "stand", arms: "chin", shot: "portrait", camera: "R2",
         light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "golden", look: { ...LOOK0, expr: "thought", hair: "short" } } },
-      { id: "athlete", name: "Sportowiec na dachu", set: { outfit: "sport", pose: "crouch", arms: "down", shot: "full", camera: "B",
+      { id: "athlete", name: "Sportowiec na dachu", set: { ...dressIn("sport"), pose: "crouch", arms: "down", shot: "full", camera: "B",
         light: "art-back", lightZone: "R1", background: "rooftop", bgv: { rooftop: "towers" }, time: "night", look: { ...LOOK0, expr: "anger", hair: "buzz" } } }
     ],
     object: [
@@ -2180,7 +2249,9 @@
   // (wersje Cyberpunk i Fantasy różnią się tylko stylem)
   const INTRO_SCENE = {
     mode: "photo", subject: "person", style: "cyber", body: "male",
-    outfit: "street", topColor: "auto", bottomColor: "auto", pose: "stride", arms: "shade", shot: "full", camera: "L3",
+    // Stan końcowy tutoriala: streetwear (bluza z kapturem), w którym jeansy zamieniono na dres
+    outfit: "custom", wear: { ...dressIn("street").wear, bottom: "joggers" }, wc: { ...dressIn("street").wc, bottom: "graphite" },
+    pose: "stride", arms: "shade", shot: "full", camera: "L3",
     light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "night",
     look: { ...LOOK0, hair: "short" }
   };
@@ -2221,9 +2292,12 @@
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     } else {
       scene.body = anyOf(optionsOf("body")).id;
-      scene.outfit = anyOf(optionsOf("outfit").filter(fit)).id;
-      scene.topColor = Math.random() < 0.5 ? "auto" : anyOf(COLORS).id;
-      scene.bottomColor = Math.random() < 0.5 ? "auto" : anyOf(COLORS).id;
+      // Losowy zestaw, czasem z innymi kolorami góry i dołu oraz z nakryciem głowy
+      const d = dressIn(anyOf(optionsOf("outfit").filter(fit)).id);
+      if (Math.random() < 0.5) d.wc.top = anyOf(COLORS).id;
+      if (Math.random() < 0.5) d.wc.bottom = anyOf(COLORS).id;
+      if (Math.random() < 0.25) { d.wear.hat = anyOf(WEAR.hat.options.slice(1)).id; d.wc.hat = anyOf(COLORS).id; d.outfit = "custom"; }
+      Object.assign(scene, d);
       const male = scene.body === "male";
       scene.look = {
         hair: anyOf(LOOK.hair).id, hairPicked: true, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
@@ -2290,38 +2364,69 @@
     motion: ["ground", "motion"]
   };
 
-  // Kafelki kolorów ubrania: "Domyślny" i próbki z palety
-  function colorTiles(key) {
-    const list = [tile("opt-back", "Wróć", () => false, () => { scene.sub = null; render(); }, svg => {
-      svg.setAttribute("viewBox", "0 0 64 64");
-      el("path", { d: "M36 20 L24 32 L36 44 M24 32 H46" }, svg);
-    })];
-    list[0].btn.classList.add("back");
-    list.push(tile("opt-" + key + "-auto", "Domyślny", () => scene[key] === "auto", () => { scene[key] = "auto"; render(); }, svg => {
-      svg.setAttribute("viewBox", "0 0 64 64");
-      const c = clothOf(scene.outfit, scene.body, "auto", "auto");
-      swatch(svg, key === "topColor" ? c.top : c.pants || c.top, true);
-    }));
-    COLORS.forEach(col => list.push(tile("opt-" + key + "-" + col.id, col.name, () => scene[key] === col.id,
-      () => { scene[key] = col.id; render(); }, svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, col.hex); })));
-    return list;
-  }
   function swatch(svg, hex, dashed = false) {
     el("circle", { cx: 32, cy: 32, r: 20, style: `fill:${hex};stroke:rgba(255,255,255,0.25)` + (dashed ? ";stroke-dasharray:3 3" : "") }, svg);
   }
-  // Kafelek grupy otwierający wybór koloru góry lub dołu
-  function colorGroupTile(key, name) {
-    const t = tile("opt-outfit-" + key, name, () => false, () => { scene.sub = key; render(); }, svg => {
-      svg.setAttribute("viewBox", "0 0 64 64");
-      const c = clothOf(scene.outfit, scene.body);
-      swatch(svg, key === "topColor" ? c.top : c.pants);
-    });
-    t.btn.classList.add("group");
-    const badge = document.createElement("span");
-    badge.className = "badge";
-    badge.setAttribute("aria-hidden", "true");
-    t.btn.appendChild(badge);
-    return t;
+  // Miniatura ubrania: Manikun w danym ubraniu, przycięty do części ciała (cała postać, góra, dół, głowa, stopy)
+  function wearThumb(svg, patch, region) {
+    const saved = { wear: scene.wear, wc: scene.wc };
+    Object.assign(scene, patch);
+    const fig = computeFigure(POSES.stand, BODIES[scene.body], clothOf(scene.body));
+    Object.assign(scene, saved);
+    const b = fig.box, cx = (b.minX + b.maxX) / 2;
+    if (region === "head") {
+      const [hx, hy] = fig.head, r = 34;
+      svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r - 4)} ${f(r * 2)} ${f(r * 2)}`);
+    } else {
+      const [y0, y1] = { full: [0, 1], top: [0.13, 0.5], bottom: [0.46, 0.98], shoes: [0.84, 1.02] }[region];
+      const side = region === "full" ? Math.max(b.w, b.h) + 8 : (y1 - y0) * b.h;
+      const top = region === "full" ? b.minY - 4 : b.minY + y0 * b.h;
+      svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(top)} ${f(side)} ${f(side)}`);
+    }
+    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+  }
+  const PART_REGION = { top: "top", outer: "top", bottom: "bottom", hat: "head", shoes: "shoes" };
+  const OUTFIT_SUBS = [["sets", "Zestawy"], ...PARTS.map(p => [p, WEAR[p].name])];
+  const setName = () => scene.outfit === "custom" ? "Własny" : optionOf("outfit", scene.outfit).name;
+  const partValue = p => (p === "top" || p === "bottom") && isDress() ? "Sukienka" : wearOpt(p, scene.wear[p]).name;
+  // Ubiór: najpierw grupy (Zestawy i części), w części kafelek koloru i kroje, w kolorze paleta 20 barw
+  function wearTiles() {
+    const sub = scene.sub;
+    if (sub && sub.startsWith("c:")) {
+      const part = sub.slice(2);
+      return COLORS.map(col => tile("opt-wc-" + part + "-" + col.id, col.name, () => scene.wc[part] === col.id,
+        () => { scene.wc = { ...scene.wc, [part]: col.id }; render(); },
+        svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, col.hex); }));
+    }
+    if (sub === "sets") {
+      return optionsOf("outfit").filter(o => fitsBody(o, scene)).map(o => tile("opt-outfit-" + o.id, o.name, () => scene.outfit === o.id,
+        () => { Object.assign(scene, dressIn(o.id)); render(); }, svg => wearThumb(svg, dressIn(o.id), "full")));
+    }
+    if (sub && WEAR[sub]) {
+      const part = sub, list = [];
+      // Kolor części (nie ma go przy "Brak" i przy górze/dole zakrytych sukienką)
+      const hidden = scene.wear[part] === "none" || ((part === "top" || part === "bottom") && isDress() && part === "top");
+      if (!hidden) {
+        const colorPart = part === "bottom" || !isDress() || part !== "top" ? part : "bottom";
+        list.push(groupMark(tile("opt-wear-color-" + part, isDress() && part === "bottom" ? "Kolor sukienki" : "Kolor", () => false,
+          () => { scene.sub = "c:" + colorPart; render(); },
+          svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, colorOf(scene.wc[colorPart]).hex); },
+          () => colorOf(scene.wc[colorPart]).name)));
+      }
+      WEAR[part].options.filter(o => !o.hidden && fitsBody(o, scene)).forEach(o => list.push(tile("opt-wear-" + part + "-" + o.id, o.name,
+        () => !(isDress() && (part === "top" || part === "bottom")) && scene.wear[part] === o.id,
+        () => { pickPart(part, o.id); render(); },
+        svg => {
+          if (o.id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
+          const wear = { ...scene.wear, [part]: o.id };
+          if (part === "top" && isDress()) wear.bottom = "jeans";
+          wearThumb(svg, { wear, wc: { ...scene.wc, [part]: scene.wear[part] === "none" ? o.def : scene.wc[part] } }, PART_REGION[part]);
+        })));
+      return list;
+    }
+    return OUTFIT_SUBS.map(([k, name]) => groupMark(tile("opt-outfit-grp-" + k, name, () => false, () => { scene.sub = k; render(); },
+      svg => wearThumb(svg, {}, k === "sets" ? "full" : PART_REGION[k]),
+      () => k === "sets" ? setName() : partValue(k))));
   }
 
   // Znak twarzy ze zdjęcia: ramka zdjęcia z głową w środku
@@ -2337,7 +2442,7 @@
   function headTile(svg, lk) {
     const saved = scene.look;
     scene.look = lk;
-    const fig = computeFigure(POSES.stand, BODIES[scene.body], clothOf(scene.outfit, scene.body));
+    const fig = computeFigure(POSES.stand, BODIES[scene.body], clothOf(scene.body));
     scene.look = saved;
     const [hx, hy] = fig.head, r = 30;
     svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r + 2)} ${f(r * 2)} ${f(r * 2)}`);
@@ -2436,7 +2541,7 @@
         }, svg => drawOption("body", o.id, svg)));
       return list;
     }
-    if (catId === "outfit" && (scene.sub === "topColor" || scene.sub === "bottomColor")) return colorTiles(scene.sub);
+    if (catId === "outfit") return wearTiles();
     if (catId === "format") {
       return FORMATS[scene.mode].map(fmt => tile("opt-format-" + fmt.id, fmt.name,
         () => scene.format[scene.mode] === fmt.id,
@@ -2460,13 +2565,6 @@
         () => pickLeaf(catId, c.id),
         svg => drawOption(catId, c.id, svg))));
       return list;
-    }
-    if (catId === "outfit") {
-      // Najpierw kolory bieżącego ubioru, potem same ubiory
-      const extra = [colorGroupTile("topColor", scene.outfit === "dress" ? "Kolor sukienki" : "Kolor góry")];
-      if (hasBottom(scene.outfit)) extra.push(colorGroupTile("bottomColor", "Kolor dołu"));
-      return extra.concat(optionsOf(catId).filter(o => fitsBody(o, scene)).map(o => tile("opt-outfit-" + o.id, o.name,
-        () => scene.outfit === o.id, () => { scene.outfit = o.id; render(); }, svg => drawOption("outfit", o.id, svg))));
     }
     let opts = optionsOf(catId).filter(o => fitsBody(o, scene));
     if (catId === "light" && !lampAllowed(scene)) opts = opts.filter(o => o.id !== "artificial");
@@ -2575,7 +2673,7 @@
     nav = [{ kind: "groups", open: g }, childOf(g)];
   }
   // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
-  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, hasBottom(scene.outfit), lampAllowed(scene)].join("|");
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene)].join("|");
 
   const iconDraw = id => svg => { svg.setAttribute("viewBox", "0 0 24 24"); CAT_ICONS[id](svg); };
   function groupTile(g) {
@@ -2933,7 +3031,7 @@
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
     if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
-      st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.outfit, scene.body));
+      st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
     const grabbed = drag && drag.grabbed ? drag.what : null;
     previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null });
@@ -3008,7 +3106,7 @@
     if (poseKey(prev) !== poseKey(scene) || prev.body !== scene.body) playFrames([{ pose: curPose(), dur: 950 }]);
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
-    else if (prev.outfit !== scene.outfit || prev.topColor !== scene.topColor || prev.bottomColor !== scene.bottomColor || prev.look !== scene.look) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
+    else if (prev.outfit !== scene.outfit || prev.wear !== scene.wear || prev.wc !== scene.wc || prev.look !== scene.look) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
     else if (prev.camera !== scene.camera) startGaze("camera");
     else if (prev.light !== scene.light || prev.lightZone !== scene.lightZone) startGaze("light");
     if (prev.background !== scene.background && !reduceMotion.matches) {
@@ -3028,7 +3126,9 @@
     // Selfie tylko z postacią
     if (scene.subject === "object" && isSelfie(scene.camera)) scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
-    if (!fitsBody(optionOf("outfit", scene.outfit), scene)) scene.outfit = "casual";
+    // Sukienka i spódnica tylko dla kobiety: po zmianie postaci wraca zestaw codzienny albo zwykłe spodnie
+    if (scene.body !== "female" && isDress()) Object.assign(scene, dressIn("casual"));
+    else if (scene.body !== "female" && scene.wear.bottom === "skirt") pickPart("bottom", "jeans");
     // Lampa w pełnym słońcu na zewnątrz nie ma sensu: przechodzimy na naturalne w tym samym kierunku
     if (!lampAllowed(scene) && !isNaturalLight(scene.light)) scene.light = scene.light.replace("art-", "nat-");
     // Strefa, z której to światło nie może padać: przeskakuje do najbliższej dozwolonej
