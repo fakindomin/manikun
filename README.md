@@ -14,8 +14,8 @@ a przycisk Maniscryptu kopiuje gotowy angielski opis ujęcia (prompt) do generat
 - `manikun.js` – manekin: proporcje ciała, geometria z kątów stawów, ubrania, materiały
 - `head3d.js` – trójwymiarowa głowa Manikuna na przycisku narratora (three.js z CDN jsDelivr; bez WebGL zostaje rysowana głowa)
 - `assets/manikun3d.glb` – model głowy: „Wooden Mannequin (Rigged)”, zionmuoria, CC BY 4.0
-- `tutorial/cyberpunk.jpg`, `tutorial/fantasy.jpg` – zdjęcia do tutoriala (do dodania; do tego czasu plansze zastępcze).
-  Scena do ich wygenerowania: link `?intro` (Cyberpunk, potem przełączenie na Fantasy)
+- `tutorial/cyberpunk.jpg`, `tutorial/fantasy.jpg` – zdjęcia do tutoriala, wygenerowane ze sceny pod linkiem `?intro`
+  (Cyberpunk, potem przełączenie na Fantasy). Brak pliku: tutorial pokazuje planszę zastępczą
 
 ## Wdrożenie
 
