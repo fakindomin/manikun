@@ -746,6 +746,21 @@
   const ALL_ITEMS = [...DRAWN_ITEMS, ...SIGN_ITEMS];
   const ITEM = Object.fromEntries(ALL_ITEMS.map(t => [t.id, t]));
 
+  // Elementy miejsca: dodatki do dowolnego tła (Podstawowy: jeden, Ekspert: kilka). excl: czego nie da się mieć naraz.
+  const FX_LIST = [
+    { id: "river", name: "Rzeka", en: "a river flowing past" },
+    { id: "pond", name: "Staw", en: "a small pond nearby" },
+    { id: "fog", name: "Mgła", en: "soft mist drifting over the scene" },
+    { id: "rain", name: "Deszcz", en: "falling rain", excl: ["snow"] },
+    { id: "snow", name: "Śnieg", en: "falling snow and snow on the ground", excl: ["rain"] },
+    { id: "fire", name: "Ognisko", en: "a crackling campfire nearby" },
+    { id: "puddles", name: "Kałuże", en: "puddles on the ground reflecting the light" },
+    { id: "leaves", name: "Spadające liście", en: "autumn leaves falling through the air" },
+    { id: "neon", name: "Neony", en: "glowing neon signs" },
+    { id: "lamp", name: "Latarnia uliczna", en: "a glowing street lamp" }
+  ];
+  const FX = Object.fromEntries(FX_LIST.map(x => [x.id, x]));
+
   const CATEGORIES = [
     // Gotowe schematy: zestawy ustawień do szybkiego startu (osobne dla postaci i obiektu), kafelki buduje presetTiles()
     { id: "preset", label: "Gotowe", patch: "#C9A24A", options: [] },
@@ -874,6 +889,8 @@
         { id: "cafe", name: "Kawiarnia", short: "Kawiarnia", prompt: "cosy café interior with warm pendant lights in the background, softly out of focus" }
       ]}
     ]},
+    // Elementy miejsca: kafelki buduje makeTiles (scene.fx to lista), tu nazwy dla wyszukiwarki
+    { id: "fx", label: "Elementy", patch: "#6B8FA3", options: [{ id: "none", name: "Brak", short: "Brak" }, ...FX_LIST.map(x => ({ id: x.id, name: x.name, short: x.name }))] },
     { id: "time", label: "Pora dnia", patch: "#D9A441", options: [
       { id: "day", name: "Dzień", short: "Dzień", prompt: "in daylight" },
       { id: "golden", name: "Złota godzina", short: "Złota g.", prompt: "at golden hour" },
@@ -940,28 +957,24 @@
     mountains: [
       { id: "peaks", name: "Szczyty", prompt: "misty mountain landscape in the background, softly out of focus" },
       { id: "lake", name: "Jezioro", prompt: "calm mountain lake with peaks reflected in the water in the background, softly out of focus" },
-      { id: "alp", name: "Hala", prompt: "green alpine meadow with mountains behind in the background, softly out of focus" },
-      { id: "fog", name: "Mgła", extra: true }
+      { id: "alp", name: "Hala", prompt: "green alpine meadow with mountains behind in the background, softly out of focus" }
     ],
     lake: [
       { id: "calm", name: "Spokojne", prompt: "calm lake with a tree-lined far shore in the background, softly out of focus" },
       { id: "jetty", name: "Pomost", prompt: "calm lake with a wooden jetty reaching into the water in the background, softly out of focus" },
-      { id: "reeds", name: "Trzciny", prompt: "calm lake with tall reeds along the shore in the background, softly out of focus" },
-      { id: "fog", name: "Mgła", extra: true }
+      { id: "reeds", name: "Trzciny", prompt: "calm lake with tall reeds along the shore in the background, softly out of focus" }
     ],
     river: [
       { id: "calm", name: "Spokojna", prompt: "calm river winding through green banks in the background, softly out of focus" },
       { id: "rocky", name: "Kamienista", prompt: "rocky river with small rapids and white water in the background, softly out of focus" },
-      { id: "bridge", name: "Mostek", prompt: "river with a small wooden footbridge across it in the background, softly out of focus" },
-      { id: "fog", name: "Mgła", extra: true }
+      { id: "bridge", name: "Mostek", prompt: "river with a small wooden footbridge across it in the background, softly out of focus" }
     ],
     forest: [
       { id: "conifer", name: "Iglasty", prompt: "quiet pine forest in the background, softly out of focus" },
       { id: "leafy", name: "Liściasty", prompt: "leafy deciduous forest in the background, softly out of focus" },
       { id: "clearing", name: "Polana", prompt: "sunny forest clearing surrounded by trees in the background, softly out of focus" },
       { id: "stream", name: "Rzeczka", prompt: "small forest stream winding between the trees in the background, softly out of focus" },
-      { id: "path", name: "Ścieżka", prompt: "forest path leading into the trees in the background, softly out of focus" },
-      { id: "fog", name: "Mgła", extra: true }
+      { id: "path", name: "Ścieżka", prompt: "forest path leading into the trees in the background, softly out of focus" }
     ],
     beach: [
       { id: "sand", name: "Piaszczysta", prompt: "calm sandy beach with the sea on the horizon in the background, softly out of focus" },
@@ -973,8 +986,7 @@
       { id: "green", name: "Zielona", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" },
       { id: "flowers", name: "Kwiaty", prompt: "meadow full of colourful wildflowers in the background, softly out of focus" },
       { id: "wheat", name: "Zboże", prompt: "golden wheat field in the background, softly out of focus" },
-      { id: "tree", name: "Samotne drzewo", prompt: "open meadow with a single lone tree on a hill in the background, softly out of focus" },
-      { id: "fog", name: "Mgła", extra: true }
+      { id: "tree", name: "Samotne drzewo", prompt: "open meadow with a single lone tree on a hill in the background, softly out of focus" }
     ],
     room: [
       { id: "living", name: "Salon", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
@@ -991,9 +1003,8 @@
   };
   // Wariant główny (jeden) i dodatki (mgła), które łączą się z każdym wariantem
   const bgVariant = (st, bg = st.background) => (st.bgv && st.bgv[bg]) || BG_VARIANTS[bg][0].id;
-  const bgExtras = (st, bg = st.background) => (st.bgx && st.bgx[bg]) || [];
-  const EXTRA_PROMPT = { fog: "with soft mist drifting over the scene" };
-  const bgPrompt = () => [BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).prompt, ...bgExtras(scene).map(x => EXTRA_PROMPT[x])].join(", ");
+  const bgExtras = st => (st.fx || []).filter(x => FX[x]);
+  const bgPrompt = () => BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).prompt + (bgExtras(scene).length ? ", with " + andList(bgExtras(scene).map(x => FX[x].en)) : "");
   const ENDING = {
     photo: "50mm lens, photorealistic photograph, natural skin texture, high detail",
     video: "50mm lens, cinematic photorealistic video, natural skin texture, high detail"
@@ -1004,7 +1015,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1703,6 +1714,21 @@
   }
   const itemsPrompt = st => { const items = activeItems(st); return items.length ? " with " + andList(items.map(it => itemInfo(it).en)) + " on it" : ""; };
 
+  // Element miejsca: w Podstawowym jeden (wybór zastępuje poprzedni), w Ekspercie kilka naraz.
+  // Wykluczające się (deszcz i śnieg) zdejmują się nawzajem, a Manikun mówi dlaczego.
+  function pickFx(id) {
+    const cur = bgExtras(scene);
+    if (id === "none") { scene.fx = []; return; }
+    const on = cur.includes(id);
+    if (level !== "expert") { scene.fx = on ? [] : [id]; return; }
+    let fx = on ? cur.filter(x => x !== id) : [...cur, id];
+    const gone = on ? [] : fx.filter(x => (FX[id].excl || []).includes(x));
+    if (gone.length) {
+      fx = fx.filter(x => !gone.includes(x));
+      say(`${FX[id].name} i ${FX[gone[0]].name.toLowerCase()} naraz się nie da. Zostawiam: ${FX[id].name.toLowerCase()}.`, 4000);
+    }
+    scene.fx = fx;
+  }
   // Wybór drobiazgu (z kafelka albo z wyszukiwarki). Bez blatu: pusta scena dostaje stół, inaczej Manikun prosi o blat.
   function pickItem(it) {
     if (!surfaceOf(scene)) {
@@ -1901,10 +1927,79 @@
   // Tło z dodatkami: najpierw wariant, potem nakładki (mgła leży pasami nad horyzontem i przy ziemi)
   function drawBackground(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null, extras = []) {
     drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod, cel, skyX, v);
-    if (extras.includes("fog")) {
-      [[-0.14, 0.24], [-0.07, 0.2], [0.0, 0.15], [0.06, 0.11], [0.14, 0.07]].forEach(([dy, op], k) => {
+    drawFxBack(g, defs, uid, extras, W, H, hz, gy, u);
+  }
+  // Elementy miejsca za postacią: woda, śnieg na ziemi, kałuże, ognisko, neony, latarnia, mgła (na końcu, przykrywa resztę)
+  const WATER = "#5F81A3";
+  function drawFxBack(g, defs, uid, fx, W, H, hz, gy, u) {
+    if (!fx.length) return;
+    const glow = (x, y, r, color, op, key) => {
+      const gid = uid + "fx" + key;
+      const gr = el("radialGradient", { id: gid }, defs);
+      el("stop", { offset: "0", "stop-color": color, "stop-opacity": op }, gr);
+      el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
+      paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
+    };
+    const gd = Math.max(gy - hz, H * 0.1);
+    if (fx.includes("snow")) {
+      paint("path", { d: `M0,${f(hz + gd * 0.12)} C${f(W * 0.3)},${f(hz + gd * 0.02)} ${f(W * 0.7)},${f(hz + gd * 0.2)} ${f(W)},${f(hz + gd * 0.08)} L${f(W)},${f(H)} L0,${f(H)} Z` }, "#E8EDF2", g, 0.55);
+    }
+    if (fx.includes("river")) {
+      const y = hz + gd * 0.34, t = gd * 0.16;
+      paint("path", { d: `M0,${f(y)} C${f(W * 0.35)},${f(y - t * 0.6)} ${f(W * 0.6)},${f(y + t * 0.5)} ${f(W)},${f(y - t * 0.2)} L${f(W)},${f(y + t)} C${f(W * 0.6)},${f(y + t * 1.6)} ${f(W * 0.35)},${f(y + t * 0.5)} 0,${f(y + t * 1.1)} Z` }, WATER, g, 0.85);
+      [[0.15, 0.3], [0.45, 0.55], [0.75, 0.35]].forEach(([x, dy]) => el("line", { x1: f(W * x), y1: f(y + t * dy), x2: f(W * x + u * 6), y2: f(y + t * dy), style: "stroke:#CFE0EE;stroke-width:0.8;opacity:0.7" }, g));
+    }
+    if (fx.includes("pond")) {
+      const cy = hz + gd * 0.5;
+      paint("ellipse", { cx: f(W * 0.2), cy: f(cy), rx: f(W * 0.2), ry: f(gd * 0.11) }, WATER, g, 0.85);
+      el("line", { x1: f(W * 0.12), y1: f(cy), x2: f(W * 0.24), y2: f(cy), style: "stroke:#CFE0EE;stroke-width:0.8;opacity:0.7" }, g);
+    }
+    if (fx.includes("puddles")) {
+      [[0.16, 0.82, 0.1], [0.78, 0.9, 0.08], [0.55, 0.72, 0.06]].forEach(([x, dy, rx]) => {
+        paint("ellipse", { cx: f(W * x), cy: f(hz + gd * dy), rx: f(W * rx), ry: f(gd * 0.025 + u * 0.4) }, "#7D97B3", g, 0.6);
+      });
+    }
+    if (fx.includes("neon")) {
+      [[0.06, "#FF4FD8", 0.3, 0.1], [0.66, "#4FE3FF", 0.24, 0.13]].forEach(([x, c, w, h], k) => {
+        const y = hz - H * (0.3 + k * 0.06), attrs = { x: f(W * x), y: f(y), width: f(W * w), height: f(H * h), rx: f(u * 1.5) };
+        el("rect", { ...attrs, style: `fill:none;stroke:${c};stroke-width:${f(u * 1.6)};opacity:0.25` }, g);
+        el("rect", { ...attrs, style: `fill:none;stroke:${c};stroke-width:${f(u * 0.5)}` }, g);
+        el("line", { x1: f(W * x + u * 2.5), y1: f(y + H * h / 2), x2: f(W * (x + w) - u * 2.5), y2: f(y + H * h / 2), style: `stroke:${c};stroke-width:${f(u * 0.5)};stroke-dasharray:${f(u * 2)} ${f(u)}` }, g);
+      });
+    }
+    if (fx.includes("lamp")) {
+      const x = W * 0.86, top = gy - H * 0.52;
+      glow(x - u * 3, top + u * 2, H * 0.16, "#FFD68A", 0.45, "lamp");
+      el("path", { d: `M${f(x)},${f(gy)} L${f(x)},${f(top)} Q${f(x)},${f(top - u * 2)} ${f(x - u * 2)},${f(top - u * 2)} L${f(x - u * 3)},${f(top - u * 2)}`, style: `fill:none;stroke:#1B1C20;stroke-width:${f(u * 0.9)}` }, g);
+      paint("path", { d: `M${f(x - u * 5)},${f(top + u * 0.5)} L${f(x - u * 1)},${f(top + u * 0.5)} L${f(x - u * 1.8)},${f(top - u * 2)} L${f(x - u * 4.2)},${f(top - u * 2)} Z` }, "#FFE3A8", g);
+    }
+    if (fx.includes("fire")) {
+      const x = W * 0.2, y = gy;
+      glow(x, y - u * 3, H * 0.14, "#FF9A3C", 0.5, "fire");
+      el("line", { x1: f(x - u * 4), y1: f(y), x2: f(x + u * 4), y2: f(y - u * 1.4), style: `stroke:#5A3A22;stroke-width:${f(u * 1.3)};stroke-linecap:round` }, g);
+      el("line", { x1: f(x - u * 4), y1: f(y - u * 1.4), x2: f(x + u * 4), y2: f(y), style: `stroke:#6B4428;stroke-width:${f(u * 1.3)};stroke-linecap:round` }, g);
+      paint("path", { d: `M${f(x - u * 3)},${f(y - u)} Q${f(x - u * 3.5)},${f(y - u * 6)} ${f(x)},${f(y - u * 10)} Q${f(x + u * 0.5)},${f(y - u * 6)} ${f(x + u * 2)},${f(y - u * 7)} Q${f(x + u * 3.8)},${f(y - u * 4)} ${f(x + u * 3)},${f(y - u)} Z` }, "#F08A2E", g);
+      paint("path", { d: `M${f(x - u * 1.5)},${f(y - u)} Q${f(x - u * 1.5)},${f(y - u * 4)} ${f(x)},${f(y - u * 6)} Q${f(x + u * 1.6)},${f(y - u * 3.5)} ${f(x + u * 1.5)},${f(y - u)} Z` }, "#FFD36B", g);
+    }
+    if (fx.includes("fog")) {
+      [[-0.14, 0.24], [-0.07, 0.2], [0.0, 0.15], [0.06, 0.11], [0.14, 0.07]].forEach(([dy, op]) => {
         const y = hz + dy * H;
         paint("path", { d: `M0,${f(y)} C${f(W * 0.3)},${f(y - H * 0.03)} ${f(W * 0.6)},${f(y + H * 0.03)} ${f(W)},${f(y - H * 0.01)} L${f(W)},${f(y + H * 0.07)} C${f(W * 0.6)},${f(y + H * 0.1)} ${f(W * 0.3)},${f(y + H * 0.04)} 0,${f(y + H * 0.08)} Z` }, "#D2D7DC", g, op);
+      });
+    }
+  }
+  // Elementy miejsca przed postacią: deszcz, płatki śniegu, liście (stałe, „losowe” rozmieszczenie)
+  function drawFxFront(g, fx, W, H, u) {
+    const pts = (n, a, b) => Array.from({ length: n }, (_, k) => [((k * 0.618034 + a) % 1) * W, ((k * 0.414214 + b) % 1) * H]);
+    if (fx.includes("rain")) {
+      el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: "fill:#1A2433;stroke:none;opacity:0.12" }, g);
+      pts(70, 0.13, 0.29).forEach(([x, y]) => el("line", { x1: f(x), y1: f(y), x2: f(x - u * 1.2), y2: f(y + u * 4.5), style: "stroke:#B9CCE0;stroke-width:0.7;opacity:0.55" }, g));
+    }
+    if (fx.includes("snow")) pts(60, 0.37, 0.71).forEach(([x, y], k) => paint("circle", { cx: f(x), cy: f(y), r: f(u * (k % 3 ? 0.35 : 0.6)) }, "#F4F7FA", g, 0.85));
+    if (fx.includes("leaves")) {
+      pts(16, 0.71, 0.19).forEach(([x, y], k) => {
+        const c = ["#C8643A", "#D9A441", "#A8433C"][k % 3], r = u * 1.1;
+        paint("ellipse", { cx: f(x), cy: f(y), rx: f(r), ry: f(r * 0.5), transform: `rotate(${(k * 47) % 180} ${f(x)} ${f(y)})` }, c, g, 0.9);
       });
     }
   }
@@ -2540,6 +2635,7 @@
       drawFigureAt(fg, A.pl, "fig");
       A.things.filter(o => o.front).forEach(o => drawThingWithItems(tg, st, o));
     }
+    if (layers.has("background") && reveal > 0 && bgExtras(st).length) drawFxFront(layer(), bgExtras(st), W, H, u);
     if (subj > 0) {
       const og = subj < 1 ? el("g", { opacity: f(subj) }, g) : g;
       drawBase(og, st.base, W, H, ob.gy, u, false);
@@ -2614,6 +2710,7 @@
   // ---------- Ikony paska kategorii ----------
   const CAT_ICONS = {
     things: svg => { el("path", { d: "M6 4v16 M6 12h11 M17 12v8 M6 16h11" }, svg); el("path", { d: "M14 8h6" }, svg); },
+    fx: svg => { el("path", { d: "M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.5 1.5 3.3 3.3 0 0 1-.5 6.5z" }, svg); el("path", { d: "M8 18l-1 2.5 M12 18l-1 2.5 M16 18l-1 2.5" }, svg); },
     items: svg => { el("path", { d: "M3 17h18 M7 17v4 M17 17v4" }, svg); el("path", { d: "M8 17v-5h5v5 M13 14h2a1.5 1.5 0 0 1 0 3" }, svg); el("circle", { cx: 17.5, cy: 15, r: 2 }, svg); },
     format: svg => el("rect", { x: 6, y: 3, width: 12, height: 18, rx: 1.5 }, svg),
     shot: svg => el("path", { d: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5" }, svg),
@@ -2656,6 +2753,7 @@
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "outfit") return setName();
     if (cat.id === "things") return scene.things.length ? THING[scene.things[0].id].name : "Nic";
+    if (cat.id === "fx") return bgExtras(scene).length ? bgExtras(scene).map(x => FX[x].name).join(", ") : "Brak";
     if (cat.id === "items") return activeItems(scene).length ? itemInfo(activeItems(scene)[0]).name : "Nic";
     if (cat.id === "look") {
       const lk = scene.look;
@@ -2679,11 +2777,11 @@
       { id: "beach", name: "Plaża o zachodzie", set: { ...dressIn("casual", { top: "white", bottom: "beige" }), pose: "stride", arms: "down", shot: "full", camera: "R2",
         light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, time: "golden", look: { ...LOOK0, hair: "wavy", expr: "joy" } } },
       { id: "mountains", name: "Górska wyprawa", set: { ...dressIn("sport"), pose: "wide", arms: "shade", shot: "full", camera: "D",
-        light: "nat-front", lightZone: "L1", background: "mountains", bgv: { mountains: "lake" }, bgx: { mountains: ["fog"] }, time: "day", look: { ...LOOK0, hair: "short" } } },
+        light: "nat-front", lightZone: "L1", background: "mountains", bgv: { mountains: "lake" }, fx: ["fog"], time: "day", look: { ...LOOK0, hair: "short" } } },
       { id: "cafe", name: "Selfie w kawiarni", set: { ...dressIn("casual"), pose: "stand", arms: "down", shot: "portrait", camera: "SR",
         light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "cafe" }, time: "day", look: { ...LOOK0, hair: "long", expr: "joy" } } },
       { id: "forest", name: "Spacer po lesie", set: { ...dressIn("coat"), pose: "stride", arms: "down", shot: "full", camera: "L2",
-        light: "nat-front", lightZone: "R1", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "day", look: { ...LOOK0 } } },
+        light: "nat-front", lightZone: "R1", background: "forest", bgv: { forest: "path" }, fx: ["fog"], time: "day", look: { ...LOOK0 } } },
       { id: "window", name: "Zamyślenie przy oknie", set: { ...dressIn("casual"), pose: "stand", arms: "chin", shot: "portrait", camera: "R2",
         light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "golden", look: { ...LOOK0, expr: "thought", hair: "short" } } },
       { id: "athlete", name: "Sportowiec na dachu", set: { ...dressIn("sport"), pose: "crouch", arms: "down", shot: "full", camera: "B",
@@ -2693,7 +2791,7 @@
       { id: "perfume", name: "Kosmetyk na cokole", set: { item: "serum", base: "pedestal", itemColor: "beige", camera: "L2", light: "art-back", lightZone: "R1", background: "studio", bgv: { studio: "black" } } },
       { id: "coffee", name: "Kawa o poranku", set: { item: "mug", base: "table", itemColor: "auto", camera: "L1", light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "golden" } },
       { id: "sneaker", name: "But w locie", set: { item: "sneaker", base: "float", itemColor: "red", camera: "B", light: "art-front", lightZone: "R1", background: "studio", bgv: { studio: "color" } } },
-      { id: "watch", name: "Zegarek nad wodą", set: { item: "watch", base: "water", itemColor: "brown", camera: "L3", light: "nat-back", lightZone: "R2", background: "lake", bgv: { lake: "calm" }, bgx: { lake: ["fog"] }, time: "golden" } },
+      { id: "watch", name: "Zegarek nad wodą", set: { item: "watch", base: "water", itemColor: "brown", camera: "L3", light: "nat-back", lightZone: "R2", background: "lake", bgv: { lake: "calm" }, fx: ["fog"], time: "golden" } },
       { id: "dessert", name: "Deser w piekarni", set: { item: "food", base: "table", itemColor: "white", camera: "T", light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "bakery" } } },
       { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "rocks" }, time: "golden" } }
     ]
@@ -2705,7 +2803,7 @@
     // Stan końcowy tutoriala: streetwear (bluza z kapturem), w którym jeansy zamieniono na dres
     outfit: "custom", wear: { ...dressIn("street").wear, bottom: "joggers" }, wc: { ...dressIn("street").wc, bottom: "graphite" }, wcPicked: {},
     pose: "stride", arms: "shade", things: [], items: [], shot: "full", camera: "L3",
-    light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "night",
+    light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, fx: ["fog"], time: "night",
     look: { ...LOOK0, hair: "short" }
   };
   let lastPreset = null;
@@ -2713,14 +2811,14 @@
     const set = { ...pr.set };
     // Gotowiec bez fryzury dostaje domyślną dla postaci
     if (set.look) set.look = { ...set.look, hair: set.look.hair || DEFAULT_HAIR_OF[scene.body], hairPicked: !!set.look.hair };
-    Object.assign(scene, { things: [], items: [], ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
+    Object.assign(scene, { things: [], items: [], fx: [], ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) } });
     lastPreset = pr.id;
     render();
   }
   function presetTiles() {
     return PRESETS[scene.subject].map(pr => tile("opt-preset-" + pr.id, pr.name, () => lastPreset === pr.id, () => applyPreset(pr), svg => {
       // Na czas rysowania miniatury scena przyjmuje ustawienia gotowca (wygląd i kolory ubrania czytane są ze sceny)
-      const st = { ...scene, ...pr.set, ...(pr.set.look ? { look: { ...pr.set.look, hair: pr.set.look.hair || DEFAULT_HAIR_OF[scene.body] } } : {}), bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, bgx: { ...(pr.set.bgx || {}) } };
+      const st = { ...scene, ...pr.set, ...(pr.set.look ? { look: { ...pr.set.look, hair: pr.set.look.hair || DEFAULT_HAIR_OF[scene.body] } } : {}), bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, fx: pr.set.fx || [] };
       const saved = { ...scene };
       Object.assign(scene, st);
       renderScene(svg, st, 100, 100, new Set(["ground", "background", "camera", "light"]));
@@ -2736,7 +2834,7 @@
     scene.background = anyOf(leavesOf("background")).id;
     const vars = BG_VARIANTS[scene.background];
     scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars.filter(v => !v.extra)).id };
-    scene.bgx = { ...scene.bgx, [scene.background]: vars.some(v => v.extra) && Math.random() < 0.25 ? ["fog"] : [] };
+    scene.fx = Math.random() < 0.3 ? [anyOf(FX_LIST).id] : [];
     scene.time = anyOf(optionsOf("time")).id;
     scene.light = anyOf(leavesOf("light")).id;
     if (scene.subject === "object") {
@@ -2981,6 +3079,10 @@
     if (catId === "style") return optionsOf("style").map(o => tile("opt-style-" + o.id, o.name, () => scene.style === o.id,
       () => { scene.style = o.id; render(); }, svg => renderScene(svg, { ...scene, style: o.id }, 100, 100, new Set(["ground"]), { styleFrame: true, corners: false })));
     if (catId === "look") return lookTiles();
+    if (catId === "fx") return [{ id: "none", name: "Brak" }, ...FX_LIST].map(o => tile("opt-fx-" + o.id, o.name,
+      () => o.id === "none" ? !bgExtras(scene).length : bgExtras(scene).includes(o.id),
+      () => { pickFx(o.id); render(); },
+      svg => o.id === "none" ? thingTile(svg, "none") : renderScene(svg, { ...scene, fx: [o.id], shot: "full" }, 100, 100, new Set(["ground", "background"]))));
     if (catId === "items") {
       // Nic, znaleziony wcześniej drobiazg spoza rysunków, 18 z rysunkiem, na końcu wyszukiwanie w słowniku
       const cur = (scene.items || [])[0], extra = cur && (cur.id === "custom" || ITEM[cur.id].sign) ? [cur] : [];
@@ -3121,7 +3223,7 @@
     { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["things", "items"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
-    { id: "scene", label: "Scena", cats: ["background", "time", "light"], icon: "background" },
+    { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
     { id: "style", label: "Styl", cat: "style", icon: "style" },
     { id: "random", label: "Losuj", action: true },
@@ -3198,6 +3300,7 @@
     { id: "items", say: () => `Co leży na ${surfaceOf(scene).on}? Szukaj znajdzie też banana.`, cat: "items", when: () => !!surfaceOf(scene) },
     { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
     { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
+    { id: "fx", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, deszcz…", cat: "fx" },
     { id: "time", say: "Pora dnia?", cat: "time", when: () => timeApplies(scene) },
     { id: "light", say: "Jakie światło?", cat: "light", flat: true },
     { id: "shot", ch: "camera", say: "Jak blisko?", cat: "shot" },
@@ -3286,7 +3389,7 @@
   const CH_SUMMARY = {
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
     pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(nameOf("arms")) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
-    place: () => nameOf("background") + ", " + low(BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).name) + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
+    place: () => nameOf("background") + ", " + low(BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).name) + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
     camera: () => `${nameOf("shot")}, ${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
     style: () => "Styl " + nameOf("style")
   };
@@ -3322,7 +3425,7 @@
       scene.background = anyOf(leavesOf("background")).id;
       const vars = BG_VARIANTS[scene.background];
       scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars.filter(v => !v.extra)).id };
-      scene.bgx = { ...scene.bgx, [scene.background]: vars.some(v => v.extra) && Math.random() < 0.35 ? ["fog"] : [] };
+      scene.fx = Math.random() < 0.35 ? [anyOf(FX_LIST).id] : [];
       scene.time = anyOf(optionsOf("time")).id;
       scene.light = anyOf(leavesOf("light").filter(o => lampAllowed(scene) || !o.id.startsWith("art"))).id;
       scene.lightZone = anyOf(lightZones(scene));
@@ -4196,7 +4299,7 @@
   }
   // Reakcja na każdy wybór: kiwnięcie albo przechył, bez dymków; styl i gotowce dostają wyraźne kiwnięcie
   const sceneFP = () => JSON.stringify([scene.mode, scene.style, scene.body, scene.wear, scene.wc, scene.look, scene.pose, scene.arms, scene.things, scene.items, scene.shot, scene.camera,
-    scene.light, scene.lightZone, scene.background, scene.bgv, scene.bgx, scene.time, scene.motion, scene.format]);
+    scene.light, scene.lightZone, scene.background, scene.bgv, scene.fx, scene.time, scene.motion, scene.format]);
   let lastReact = 0;
   function react(big = false) {
     const now = performance.now();
@@ -4219,6 +4322,7 @@
   const norm = str => str.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "");
   // Słowa, pod którymi ludzie szukają danej kategorii
   const ALIAS = {
+    fx: "pogoda dodatki efekty", fire: "ogien", neon: "reklama", lamp: "latarnia", leaves: "jesien lisc", rain: "pada ulewa", snow: "zima", river: "woda", pond: "jezioro woda", puddles: "kaluza",
     body: "plec kobieta mezczyzna", look: "twarz glowa", outfit: "ubranie stroj ciuchy", pose: "pozycja", arms: "dlonie gest",
     background: "miejsce lokacja otoczenie", time: "godzina", light: "oswietlenie lampa slonce", shot: "kadrowanie zblizenie plan",
     camera: "obiektyw kat ujecie", format: "proporcje rozmiar", motion: "ruch kamery", style: "wyglad",
@@ -4794,7 +4898,7 @@
     setSheet(false);
     closeInfo();
     Object.assign(scene, { ...INTRO_SCENE, ...dressIn("street"), format: { ...scene.format, photo: "4x5" }, look: { ...INTRO_SCENE.look },
-      bgv: { ...INTRO_SCENE.bgv }, bgx: { forest: [...INTRO_SCENE.bgx.forest] } });
+      bgv: { ...INTRO_SCENE.bgv }, fx: [...INTRO_SCENE.fx] });
     dock.hidden = true;
     phase = "director";
     appEl.dataset.phase = "director";
@@ -4902,7 +5006,7 @@
   // Link ?intro: od razu reżyser ze sceną z intro (format 4:5, styl Cyberpunk); przełącz styl na Fantasy i skopiuj drugi prompt
   if (new URLSearchParams(location.search).has("intro")) {
     Object.assign(scene, { ...INTRO_SCENE, format: { ...scene.format, photo: "4x5" }, look: { ...INTRO_SCENE.look },
-      bgv: { ...INTRO_SCENE.bgv }, bgx: { forest: [...INTRO_SCENE.bgx.forest] } });
+      bgv: { ...INTRO_SCENE.bgv }, fx: [...INTRO_SCENE.fx] });
     dock.hidden = true;
     phase = "director";
     appEl.dataset.phase = "director";

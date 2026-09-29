@@ -239,6 +239,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
    - Ekspert: „Dodaj: „…”” w wynikach. Słowo ze słownika dostaje angielski opis, nieznane idzie jako „an object described as "…"”, a Manikun podpowiada wpisanie po angielsku. Podstawowy: w pustych wynikach informacja o trybie Ekspert.
    - Kreator: po pytaniu o rzecz, gdy ma blat: „Co leży na stole?”.
    - Maniscrypt: „…with a wooden table with a banana on it in front of them”.
-4. Elementy miejsca (10, kilka naraz, deszcz/śnieg się wykluczają).
+4. Elementy miejsca (10, kilka naraz, deszcz/śnieg się wykluczają). **Gotowe.**
+   - Elementy: Rzeka, Staw, Mgła, Deszcz, Śnieg, Ognisko, Kałuże, Spadające liście, Neony, Latarnia uliczna. Pasują do każdego tła (także studia i wnętrz). Dotychczasowa „+ Mgła” z wariantów tła przeszła do elementów.
+   - Podstawowy: jeden element (wybór zastępuje poprzedni, ponowne stuknięcie zdejmuje). Ekspert: kilka naraz; Deszcz i Śnieg zdejmują się nawzajem z krótkim komentarzem Manikuna.
+   - W kadrze: woda, śnieg na ziemi, kałuże, ognisko, neony, latarnia i mgła za postacią; deszcz, płatki śniegu i liście przed nią.
+   - Swoboda: Scena › Elementy (Brak + 10). Kreator: w rozdziale Miejsce po „A dokładniej?” pytanie „Dodać coś do miejsca?” (w Ekspercie „Coś jeszcze w miejscu? Możesz wybrać kilka.”).
+   - Maniscrypt: „quiet pine forest in the background…, with a river flowing past, soft mist drifting over the scene and autumn leaves falling through the air”.
 5. Ekspert: rozdział „Rzeczy”, wskazywanie punktu w kadrze, propozycje zmiany kadru, kolory rzeczy, ostrzeżenie przy więcej niż 6 rzeczach.
 6. Nowe pozy: Rozparty, Na brzegu, Noga na nogę, grupa Leży, Oparty.
