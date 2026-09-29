@@ -218,6 +218,26 @@
     display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: -0.01em;
   }
   .sheet-copy svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  /* Szybki podgląd: przycisk w panelu Maniscryptu i osobny panel z obrazem */
+  .sheet-preview {
+    font: inherit; color: var(--ink); text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2); border: 1px solid var(--accent-line); border-radius: 16px; padding: 12px 14px;
+  }
+  .sheet-preview svg { width: 24px; height: 24px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .sheet-preview .sp-text { display: grid; gap: 2px; }
+  .sheet-preview b { font-size: 15px; }
+  .sheet-preview small { font-size: 12px; color: var(--muted); }
+  body.tutorial #copySheet .sheet-preview { display: none; }
+  body.preview-open #previewSheet { transform: none; }
+  body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
+  .preview-frame { position: relative; width: min(100%, 48dvh); aspect-ratio: 1; margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
+  .preview-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .preview-wait, .preview-error { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 18px; text-align: center; font-size: 14px; line-height: 1.4; }
+  .preview-wait small { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .preview-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: previewSpin 0.9s linear infinite; }
+  @keyframes previewSpin { to { transform: rotate(360deg); } }
+  .preview-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  #previewLeft { color: var(--ink); }
   .sheet-copy .done-ico, .sheet-copy.done .copy-ico { display: none; }
   .sheet-copy.done .done-ico { display: block; }
 
@@ -631,6 +651,11 @@
     </ol>
     <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
     <div class="gens" id="gens" role="list" aria-label="Generatory"></div>
+    <!-- Szybki podgląd: darmowy szkic kadru bez wychodzenia z aplikacji -->
+    <button class="sheet-preview" type="button" id="sheetPreview">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
+      <span class="sp-text"><b>Szybki podgląd kadru</b><small id="sheetPreviewNote">darmowy szkic, ok. 10 s</small></span>
+    </button>
     <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
     <button class="sheet-copy" type="button" id="sheetCopy">
       <span id="sheetCopyLabel">Kopiuj Maniscrypt</span>
@@ -647,6 +672,27 @@
       <button class="icon-btn" type="button" id="infoClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="info-body" id="infoBody"></div>
+  </section>
+  <!-- Podgląd kadru: obraz z darmowego modelu FLUX przez Workera Cloudflare (worker/podglad.js) -->
+  <div class="sheet-scrim" id="previewScrim"></div>
+  <section class="sheet preview" id="previewSheet" aria-label="Podgląd kadru" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2>Podgląd kadru</h2>
+      <button class="icon-btn" type="button" id="previewClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="preview-frame">
+      <img id="previewImg" alt="Podgląd kadru z generatora AI" hidden>
+      <div class="preview-wait" id="previewWait" role="status"><span class="preview-spin" aria-hidden="true"></span><b id="previewWaitText"></b><small id="previewTime"></small></div>
+      <div class="preview-error" id="previewError" role="alert" hidden></div>
+    </div>
+    <p class="sheet-lead">Szybki, darmowy szkic (FLUX), zawsze kwadratowy. Pełną jakość i Twój format da generator z listy w panelu Maniscryptu. <span id="previewLeft"></span></p>
+    <div class="preview-actions">
+      <button class="chip" type="button" id="previewCancel">Anuluj</button>
+      <button class="chip" type="button" id="previewSave" hidden>Zapisz obraz</button>
+      <button class="chip" type="button" id="previewAgain" hidden>Jeszcze raz</button>
+      <button class="chip" type="button" id="previewCopy">Kopiuj Maniscrypt</button>
+    </div>
   </section>
 
   <div class="stage">
@@ -5203,6 +5249,99 @@
     sheetCopy.classList.toggle("done", ok);
     if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz zdjęcie twarzy" : ""));
   }));
+
+  // ---------- Szybki podgląd kadru ----------
+  // Pełny Maniscrypt (bez akapitu o zdjęciu twarzy) idzie w treści zapytania do Workera Cloudflare (worker/podglad.js),
+  // który zwraca obraz z darmowego modelu FLUX. Limit na urządzenie chroni wspólną dzienną pulę.
+  const PREVIEW_URL = "https://manikun-podglad.fakindomin.workers.dev";
+  const PREVIEW_DAILY = 10, PREVIEW_TIMEOUT = 60000;
+  const WAIT_LINES = ["Manikun ustawia światła…", "Kamera w pozycji…", "Poprawiam kostium…", "Ostatnie szlify…"];
+  const pvEl = id => document.getElementById(id);
+  let previewRun = null, previewUrl = null, previewPrompt = null;
+  const previewDay = () => new Date().toISOString().slice(0, 10);
+  function previewCount() {
+    try { const d = JSON.parse(localStorage.getItem("manikun-preview") || "{}"); return d.day === previewDay() ? d.n : 0; } catch (e) { return 0; }
+  }
+  function previewCountUp() {
+    try { localStorage.setItem("manikun-preview", JSON.stringify({ day: previewDay(), n: previewCount() + 1 })); } catch (e) {}
+  }
+  function previewState(st, text) {
+    pvEl("previewWait").hidden = st !== "wait";
+    pvEl("previewError").hidden = st !== "error";
+    pvEl("previewImg").hidden = st !== "done";
+    pvEl("previewCancel").hidden = st !== "wait";
+    pvEl("previewSave").hidden = st !== "done";
+    pvEl("previewAgain").hidden = st === "wait";
+    if (st === "error") pvEl("previewError").textContent = text;
+    const left = Math.max(0, PREVIEW_DAILY - previewCount());
+    pvEl("previewLeft").textContent = `Dziś zostało: ${left} z ${PREVIEW_DAILY}.`;
+  }
+  function setPreview(open) {
+    if (!open && previewRun) { previewRun.cancelled = true; previewRun.abort(); }
+    document.body.classList.toggle("preview-open", open);
+    pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
+  }
+  async function runPreview() {
+    if (previewRun) return;
+    if (previewCount() >= PREVIEW_DAILY) { previewState("error", `Na dziś to już ${PREVIEW_DAILY} podglądów. Wróć jutro albo skopiuj Maniscrypt do generatora z listy.`); return; }
+    const ctrl = new AbortController(), t0 = performance.now(), prompt = buildPrompt(false);
+    previewRun = ctrl;
+    previewState("wait");
+    const waitTick = () => {
+      const s = Math.floor((performance.now() - t0) / 1000);
+      pvEl("previewTime").textContent = s + " s";
+      pvEl("previewWaitText").textContent = WAIT_LINES[Math.min(WAIT_LINES.length - 1, Math.floor(s / 5))];
+    };
+    waitTick();
+    const timer = setInterval(waitTick, 500), timeout = setTimeout(() => ctrl.abort(), PREVIEW_TIMEOUT);
+    try {
+      const res = await fetch(PREVIEW_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }), signal: ctrl.signal });
+      if (!res.ok) {
+        let msg = "";
+        try { msg = (await res.json()).error; } catch (e) {}
+        throw new Error(msg || "Generator nie odpowiedział. Spróbuj ponownie.");
+      }
+      const blob = await res.blob();
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(blob);
+      previewPrompt = prompt;
+      pvEl("previewImg").src = previewUrl;
+      previewCountUp();
+      previewState("done");
+      sfx("klap");
+      nod("nod");
+    } catch (err) {
+      previewState("error", err.name === "AbortError" ? (ctrl.cancelled ? "Anulowano. Stuknij Jeszcze raz, żeby spróbować ponownie." : "Generator nie zdążył. Spróbuj ponownie za chwilę.")
+        : err instanceof TypeError ? "Brak połączenia z generatorem. Sprawdź internet i spróbuj ponownie." : err.message);
+    } finally {
+      clearInterval(timer);
+      clearTimeout(timeout);
+      previewRun = null;
+    }
+  }
+  // Otwarcie: ta sama scena pokazuje ostatni obraz bez ponownego generowania
+  pvEl("sheetPreview").addEventListener("click", () => {
+    setSheet(false);
+    setPreview(true);
+    sfx("tok");
+    if (previewUrl && previewPrompt === buildPrompt(false)) previewState("done"); else runPreview();
+  });
+  pvEl("previewCancel").addEventListener("click", () => { if (previewRun) { previewRun.cancelled = true; previewRun.abort(); } });
+  pvEl("previewAgain").addEventListener("click", () => { sfx("tik"); runPreview(); });
+  pvEl("previewSave").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = previewUrl;
+    a.download = "manikun-podglad.jpg";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+  pvEl("previewCopy").addEventListener("click", () => copyManiscrypt(ok => {
+    if (ok) sfx("klap");
+    showToast(ok ? "Skopiowano. Otwórz generator i wklej" : "Nie udało się skopiować");
+  }));
+  pvEl("previewClose").addEventListener("click", () => setPreview(false));
+  pvEl("previewScrim").addEventListener("click", () => setPreview(false));
 
   // ---------- Start: Manikun wita się w kadrze, potem kadr zostaje, a dół zamienia się w opcje ----------
   const appEl = document.getElementById("app");
