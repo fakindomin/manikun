@@ -5487,13 +5487,14 @@
   const tutorialSeen = () => { try { return localStorage.getItem("manikun-tutorial") === "done"; } catch (e) { return false; } };
   const topOpts = () => nav[nav.length - 1];
   const TUT_STEPS = [
-    { say: "Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej opis dla generatora AI.", tap: true },
-    { say: "Zmieńmy mu spodnie na dres. Stuknij Dół.", target: () => document.getElementById("opt-outfit-grp-bottom"),
+    { say: "Cześć, jestem Manikun. Reżyseruję sceny filmowe.", tap: true },
+    { say: "Ty pokazujesz, co potrzebujesz, a ja przygotowuję Ci opis dla AI.", tap: true },
+    { say: "W tej scenie jeansy za bardzo nie pasują. Założysz mu dres? Stuknij Dół.", target: () => document.getElementById("opt-outfit-grp-bottom"),
       done: () => topOpts().cat === "outfit" && topOpts().sub === "bottom" },
     { say: "Teraz wybierz Dres.", target: () => document.getElementById("opt-wear-bottom-joggers"), done: () => scene.wear.bottom === "joggers" },
     { say: "Świetnie. Stwórzmy Maniscrypt dla tej sceny: stuknij zielony przycisk.", target: () => document.getElementById("copy"),
       done: () => document.body.classList.contains("sheet-open") },
-    { say: "Skopiuj Maniscrypt.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
+    { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
       after: () => { setSheet(false); tutPhoto("cyber"); } },
     { say: "Hmm… cyberpunk w lesie? Chyba nie mój klimat.", tap: true, after: () => tutPhoto(null) },
     { say: "Przełączmy styl. Wróć strzałką do głównych grup.", target: () => rows.bottom && rows.bottom.back,
@@ -5502,10 +5503,10 @@
     { say: "Wybierz Fantasy.", target: () => document.getElementById("opt-style-fantasy"), done: () => scene.style === "fantasy" },
     { say: "Stwórzmy Maniscrypt dla stylu Fantasy.", target: () => document.getElementById("copy"),
       done: () => document.body.classList.contains("sheet-open"), before: () => { tut.copied = false; } },
-    { say: "Skopiuj Maniscrypt.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
+    { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
       after: () => { setSheet(false); tutPhoto("fantasy"); } },
-    { say: "No, teraz to gra. Klimat siedzi.", tap: true, after: () => tutPhoto(null) },
-    { say: "A Ty? Zrobisz lepszy kadr?", tap: true, after: () => tutFinish() }
+    { say: "I to rozumiem! Fantasy jak trzeba!", tap: true, after: () => tutPhoto(null) },
+    { say: "A Ty? Masz jakiś pomysł na scenę?", tap: true, after: () => tutFinish() }
   ];
   // Scena startowa tutoriala: streetwear z jeansami, las ze ścieżką i mgłą, noc, Cyberpunk, 4:5; rzędy otwarte na Postać › Ubiór
   function startTutorial() {
