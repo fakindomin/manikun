@@ -283,6 +283,7 @@
     color: rgba(244, 244, 245, 0.78);
     --halo: rgba(14, 14, 17, 0.62);
   }
+  .ink .shade path, .ink .shade circle, .ink .shade ellipse { fill: #000; stroke: none; }
   #preview { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   [data-phase="start"] #preview { cursor: pointer; }
   /* Podpis przy przeciąganiu kamery lub lampy: unosi się nad dołem kadru, nie zajmuje miejsca */
@@ -645,6 +646,30 @@
   <div class="stage">
     <svg id="preview" class="ink" role="img" aria-label="Podgląd kadru z Manikunem" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="readout" id="readout" hidden></div>
+    <!-- Filtry Manikuna w kadrze: światło lampy na bryłach, kontra na krawędzi i miękkie cienie (jednostki Manikuna) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="figLit" x="-15%" y="-10%" width="130%" height="120%" color-interpolation-filters="sRGB">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="bump"/>
+          <feDiffuseLighting id="figDiff" in="bump" surfaceScale="3.5" diffuseConstant="1.28" lighting-color="#FFFFFF" result="diff"><feDistantLight id="figDL" azimuth="220" elevation="52"/></feDiffuseLighting>
+          <feComposite in="diff" in2="SourceAlpha" operator="in" result="diffIn"/>
+          <feBlend in="SourceGraphic" in2="diffIn" mode="multiply" result="shaded"/>
+          <feSpecularLighting id="figSpec" in="bump" surfaceScale="3.5" specularConstant="0.32" specularExponent="26" lighting-color="#FFF1D6" result="spec"><feDistantLight id="figSL" azimuth="220" elevation="40"/></feSpecularLighting>
+          <feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/>
+          <feComposite in="shaded" in2="specIn" operator="arithmetic" k2="1" k3="0.9"/>
+        </filter>
+        <filter id="figRim" x="-15%" y="-10%" width="130%" height="120%" color-interpolation-filters="sRGB">
+          <feOffset id="figRimOff" in="SourceAlpha" dx="-1.6" dy="0" result="off"/>
+          <feComposite in="SourceAlpha" in2="off" operator="out" result="edge"/>
+          <feGaussianBlur in="edge" stdDeviation="0.45" result="edgeB"/>
+          <feFlood id="figRimFlood" flood-color="#A9D4FF" flood-opacity="0.5"/>
+          <feComposite in2="edgeB" operator="in" result="rimC"/>
+          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
+        </filter>
+        <filter id="figBlur" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="1.6"/></filter>
+        <filter id="figSoft" x="-30%" y="-300%" width="160%" height="700%"><feGaussianBlur stdDeviation="2.2"/></filter>
+      </defs>
+    </svg>
     <!-- Tutorial: przykładowe zdjęcie z generatora na miejscu kadru (tutorial/cyberpunk.jpg, tutorial/fantasy.jpg);
          bez pliku pokazuje planszę w kolorach stylu -->
     <figure class="tut-photo" id="tutPhoto" hidden>
@@ -2112,13 +2137,42 @@
     return { fig, scale, x, y, w: b.w * scale, h: b.h * scale, groundY, head: toScene(fig.head), hip: toScene([0, 0]), hand: fig.hands && fig.hands.far ? toScene(fig.hands.far) : null, handNear: fig.hands && fig.hands.near ? toScene(fig.hands.near) : null };
   }
 
-  function drawFigureAt(parent, pl, cls) {
+  // lit: Manikun w kadrze dostaje światło lampy i kontrę (filtry figLit i figRim)
+  function drawFigureAt(parent, pl, cls, lit = false) {
     const b = pl.fig.box;
     const holder = el("svg", {
       viewBox: `${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}`,
       x: f(pl.x), y: f(pl.y), width: f(pl.w), height: f(pl.h), overflow: "visible"
     }, parent);
-    paintFigure(el("g", { class: cls }, holder), pl.fig.shapes, cls === "fig" ? material : null);
+    const host = lit ? el("g", { filter: "url(#figLit)" }, el("g", { filter: "url(#figRim)" }, holder)) : holder;
+    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? material : null);
+  }
+
+  // Światło na Manikunie: kierunek od środka postaci do lampy. Światło z tyłu przygasza przód i rozświetla krawędź,
+  // naturalne jest ciepłe, lampa chłodna.
+  const setAttr = (id, k, v) => { const n = document.getElementById(id); if (n) n.setAttribute(k, v); };
+  function figLight(litPt, target, lightT, kindT) {
+    const az = Math.atan2(litPt[1] - target[1], litPt[0] - target[0]) * 180 / Math.PI;
+    const a = az * Math.PI / 180, warm = kindT < 0.5;
+    setAttr("figDL", "azimuth", f(az)); setAttr("figSL", "azimuth", f(az));
+    setAttr("figDiff", "diffuseConstant", f(1.28 - 0.3 * lightT));
+    setAttr("figSpec", "specularConstant", f(0.32 * (1 - lightT)));
+    setAttr("figSpec", "lighting-color", warm ? "#FFE6BF" : "#E4ECFF");
+    setAttr("figRimOff", "dx", f(-Math.cos(a) * 1.8)); setAttr("figRimOff", "dy", f(-Math.sin(a) * 1.8));
+    setAttr("figRimFlood", "flood-color", warm ? "#FFD9A0" : "#A9D4FF");
+    setAttr("figRimFlood", "flood-opacity", f(0.2 + 0.75 * lightT));
+  }
+  // Cień rzucany (spłaszczona sylwetka odchylona od lampy) i miękki cień kontaktowy pod stopami.
+  // Lampa z przodu kładzie cień za postacią (nad linią podłoża), lampa z tyłu do przodu (pod linią).
+  function drawShadows(g, st, pl, litPt, lightT) {
+    const G = pl.groundY, cxF = pl.x + pl.w / 2;
+    const lx = litPt[0] - cxF, ly = litPt[1] - (pl.y + pl.h * 0.3), n = Math.hypot(lx, ly) || 1;
+    if (!LYING.includes(st.pose)) {
+      const k = clamp(-(lx / n) * (1.1 + 0.6 * lightT), -1.8, 1.8), d = 0.24 - 0.5 * lightT;
+      const cg = el("g", { transform: `matrix(1 0 ${f(-k)} ${f(d)} ${f(k * G)} ${f((1 - d) * G)})`, opacity: f(0.3 + 0.08 * lightT), filter: "url(#figBlur)" }, g);
+      drawFigureAt(cg, pl, "shade");
+    }
+    el("ellipse", { cx: f(cxF), cy: f(G + 0.8), rx: f(Math.max(pl.w * 0.42, 8)), ry: f(Math.max(2.4, pl.h * 0.018)), filter: "url(#figSoft)", style: "fill:#000;stroke:none;opacity:0.62" }, g);
   }
 
   function arrow(parent, x1, y1, x2, y2, size, cls = "") {
@@ -2929,8 +2983,10 @@
       const fg = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
       // Rzeczy za postacią (i siedzisko pod nią), postać, potem rzeczy przed nią
       const tg = reveal >= 1 ? fg : el("g", { opacity: f(reveal) }, fg);
+      if (opts.lit && st.shot === "full" && layers.has("ground")) drawShadows(fg, st, A.pl, litPt, lightT);
       A.things.filter(o => !o.front).forEach(o => drawThingWithItems(tg, st, o));
-      drawFigureAt(fg, A.pl, "fig");
+      if (opts.lit) figLight(litPt, target, lightT, kindT);
+      drawFigureAt(fg, A.pl, "fig", !!opts.lit);
       A.things.filter(o => o.front).forEach(o => drawThingWithItems(tg, st, o));
     }
     if (layers.has("background") && reveal > 0 && bgExtras(st).length) drawFxFront(layer(), bgExtras(st), W, H, u);
@@ -4299,8 +4355,10 @@
       if (e >= 140 + PANEL_MS) bgTrans = null; else active = true;
     }
     if (gaze && followGaze(now, dt)) active = true;
-    renderPreview();
-    if (active) ensureLoop(); else lastTick = 0;
+    // Oddech trwa cały czas: poza animacjami wystarczy ok. 30 klatek na sekundę
+    const breathing = !reduceMotion.matches;
+    if (active || !breathing || now - lastIdleDraw > 32) { renderPreview(); lastIdleDraw = now; }
+    if (active || breathing) ensureLoop(); else lastTick = 0;
   }
 
   // Fokus na aparacie lub świetle: głowa płynnie, z lekkim opóźnieniem, śledzi obiekt, dopóki się rusza.
@@ -4351,15 +4409,45 @@
     if (scene.mode === "video" && !isSelfie(scene.camera)) layers.push("motion");
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
-    if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
+    if (!reduceMotion.matches && scene.subject !== "object") {
+      const base = shown || baseShown();
+      st.fig = computeFigure(livePose(base.pose, performance.now()), base.rig, clothOf(scene.body));
+    } else if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
       st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
     const grabbed = drag && drag.grabbed ? drag.what : null;
-    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null, pick: pickIndex() });
+    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, lit: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null, pick: pickIndex() });
     // Podpis tylko przy przeciąganiu kamery lub lampy
     const ro = document.getElementById("readout");
     ro.hidden = !grabbed;
     if (grabbed) ro.textContent = (grabbed === "camera" ? "Kamera" : "Światło") + " → " + camZone(drag.near).name;
+  }
+
+  // Sprężysty ruch: każdy kąt goni cel jak tłumiona sprężyna (lekki przerzut i dociągnięcie).
+  // W trakcie animacji celem jest klatka docelowa, z tym samym opóźnieniem części ciała co blendPose.
+  // Na to oddech: kręgosłup, głowa i ramiona falują w różnych fazach, ledwo widocznie.
+  let spring = {}, springT = 0, lastIdleDraw = 0;
+  function livePose(pose, now) {
+    const dt = springT ? Math.min(0.05, Math.max(0, (now - springT) / 1000)) : 0.016;
+    springT = now;
+    let goal = pose, t0 = 0, dur = 1;
+    if (figAnim) { const fr = figAnim.frames[figAnim.k]; goal = fr.pose; t0 = figAnim.start; dur = fr.dur; }
+    const out = {};
+    for (const k in { ...pose, ...goal }) {
+      const def = k.endsWith("Len") ? 1 : 0, g = goal[k] ?? def;
+      const s = spring[k] || (spring[k] = { x: pose[k] ?? def, v: 0 });
+      if (!figAnim || now - t0 >= (STAGGER[k] || 0) * dur) {
+        s.v += (190 * (g - s.x) - 17 * s.v) * dt;
+        s.x += s.v * dt;
+      }
+      out[k] = s.x;
+    }
+    const ts = now / 1000, w = 2 * Math.PI / 3.8;
+    if (out.spine != null) out.spine += 0.8 * Math.sin(w * ts);
+    if (out.head != null) out.head += 1.4 * Math.sin(w * ts - 0.9) + 0.7 * Math.sin(ts * 0.37);
+    if (out.nearUpper != null) { out.nearUpper += 1.2 * Math.sin(w * ts - 0.5); out.farUpper -= 1.2 * Math.sin(w * ts - 0.5); }
+    if (out.nearFore != null) { out.nearFore += 0.9 * Math.sin(w * ts - 1.1); out.farFore -= 0.9 * Math.sin(w * ts - 1.1); }
+    return out;
   }
 
   // Poza bazowa z nałożonymi zmianami: abs podmienia kąty, rel je dodaje
