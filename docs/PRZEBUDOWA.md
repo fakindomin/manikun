@@ -48,7 +48,8 @@ W trybie Obiekt grupa Postać zamienia się na Obiekt (Rodzaj, Podstawa, Kolor),
   - Zwierzę: „Kot miał tu być o dziewiątej. Szukamy go od rana.”
   - Dowolne: „Dowolne? Ambitnie. Najpierw muszę się nauczyć rysować.”
   - Drugi klik: „Ta opcja będzie dostępna wkrótce. Na razie zróbmy świetną postać!”
-- Po wybraniu Postaci kafelki zmieniają się na **Kreator** i **Swoboda**.
+- Po wybraniu Postaci kafelki zmieniają się na **Podstawowy** i **Ekspert** (poziom), a potem na **Kreator** i **Swoboda**.
+- Poziom obowiązuje w Kreatorze i w Swobodzie naraz. Ostatni wybór jest zapamiętany (podświetlony na starcie) i można go zmienić w menu (Poziom) w każdej chwili, bez utraty wyborów.
 
 ### Kreator
 
@@ -133,6 +134,7 @@ Dopasowanie wyszukiwarki: każde wpisane słowo musi zaczynać słowo nazwy, śc
 |---|---|
 | Obejrzyj tutorial | działa |
 | Nowa scena | działa |
+| Poziom (Podstawowy / Ekspert) | działa |
 | Jak używać Maniscryptu | działa |
 | O Manikunie (w tym podpis autorów) | działa |
 | Moje ujęcia | wkrótce |
@@ -172,3 +174,59 @@ Każdy etap powstaje na gałęzi `claude/manikun-przebudowa` i jest pokazywany d
 5. Narrator: reakcje, wyszukiwarka, dźwięki.
 6. Menu.
 7. Tutorial.
+
+# Rozbudowa: scena z klocków
+
+Cel: Kreator i Swoboda „nieograniczone”. Da się np. posadzić kogoś w lesie nad rzeką, na kanapie, przed stołem, na którym leży banan.
+
+## Warstwy sceny
+
+| Warstwa | Przykłady | Ile naraz |
+|---|---|---|
+| Miejsce | las, góry, plaża, kawiarnia, studio | jedno |
+| Elementy miejsca | rzeka, mgła, deszcz, ognisko | kilka |
+| Obiekty (siedziska, meble) | krzesło, kanapa, stół, lada | kilka |
+| Drobiazgi na blacie | kubek, laptop, banan | kilka na mebel |
+
+- Najpierw poza, potem obiekt (dowolny z katalogu, bez filtrowania). Położenie wobec obiektu: w Podstawowym automatyczne, w Ekspercie do wyboru.
+- Pozy siedzące tracą siedzisko w nazwie: Siedzi prosto, Pochylony, Po turecku, Kolano pod brodą. Bez obiektu Manikun siedzi na ziemi, z obiektem na nim (jeśli da się usiąść) albo obok.
+- Maniscrypt składa zdanie z warstw według gramatyki („…sitting on a sofa in a forest by a river, in front of a table with a banana on it”).
+
+## Ustalenia
+
+1. **Rysunek małych rzeczy:** 15–20 popularnych drobiazgów ma pełny rysunek, reszta dostaje wspólny znak z podpisem.
+2. **Poziomy:** Postać → Podstawowy / Ekspert → Kreator / Swoboda.
+3. **Elementy miejsca:** wolno wszystko poza fizycznymi sprzecznościami (deszcz i śnieg się wykluczają, Manikun krótko wyjaśnia).
+4. **Limit:** miękki. Od 7. rzeczy Manikun ostrzega, że generator może coś zgubić; najważniejsze rzeczy idą na początek Maniscryptu.
+5. **Brak w katalogu (Ekspert):** kafelek „Dodaj: …”, wbudowany słownik pl → en; nieznane słowo idzie w oryginale, a Manikun podpowiada wpisanie po angielsku.
+6. **Podstawowy a Ekspert:**
+
+| | Podstawowy | Ekspert |
+|---|---|---|
+| Obiekty | jeden główny („Przy czym?”) | wiele, pętla „Coś jeszcze?” |
+| Położenie | automatyczne | wskazywane w kadrze |
+| Drobiazgi na blacie | jeden („Co na nim leży?”) | wiele, z wyszukiwarką |
+| Elementy miejsca | jeden | kilka |
+| Kolory rzeczy | domyślne | do wyboru |
+
+Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejsce › Kamera › Styl) z bramką i pętlą, jak przy kolorach. Kreator Podstawowy zostaje przy 5 rozdziałach: w Pozie dochodzi „Przy czym?” (pierwszy kafelek „Nic”), przy meblu z blatem „Co na nim leży?”.
+
+7. **Punkty zaczepienia w kadrze:** pod postacią, przed, za, obok z lewej (blisko, dalej), obok z prawej (blisko, dalej), w tle, na blacie. Każdy punkt ma swoje słowa w Maniscrypcie. Zajęte punkty są wygaszone. Podstawowy zajmuje punkty sam; w Ekspercie użytkownik wskazuje punkt w kadrze, a Kreator pyta: „Wskaż na ekranie, gdzie chcesz umieścić ten obiekt”.
+8. **Propozycja zmiany kadru:** gdy obie strony są zajęte, Manikun proponuje szerszy kadr (3:2, w wideo 16:9); gdy rzeczy są nad sobą, wyższy (4:5, w wideo 9:16). Szerszy kadr daje dodatkowe punkty po bokach, wyższy dodatkowe punkty w tle i przed.
+
+## Katalog startowy
+
+- **Obiekty do siedzenia i opierania (10):** Krzesło, Fotel, Kanapa, Hoker barowy, Ławka, Pufa, Kamień, Pień drzewa, Schody, Skrzynia
+- **Meble i duże obiekty (10):** Stół, Stolik kawowy, Lada barowa, Biurko, Lampa stojąca, Regał z książkami, Roślina w donicy, Parasol plażowy, Rower, Samochód
+- **Drobiazgi z rysunkiem (18):** Kubek, Filiżanka, Szklanka, Butelka wina, Kieliszek, Talerz z jedzeniem, Misa owoców, Laptop, Telefon, Książka, Gazeta, Wazon z kwiatami, Świeca, Aparat fotograficzny, Słuchawki, Gitara, Torba, Parasolka
+- **Drobiazgi ze znakiem:** bez ograniczeń (banan, ananas, zegarek, klucze…)
+- **Elementy miejsca (10):** Rzeka, Staw, Mgła, Deszcz, Śnieg, Ognisko, Kałuże, Spadające liście, Neony, Latarnia uliczna
+
+## Etapy
+
+1. Poziomy: Podstawowy / Ekspert na starcie i w menu (fundament, oba działają jeszcze tak samo). **Gotowe.**
+2. Obiekty i meble z rysunkiem, przerobione pozy siedzące, grupa „Rzeczy” w Swobodzie, „Przy czym?” w Kreatorze, automatyczne punkty zaczepienia, gramatyka Maniscryptu.
+3. Drobiazgi (rysunek i znak), „Co na nim leży?”, słownik pl → en, własne rzeczy, wyszukiwarka.
+4. Elementy miejsca (10, kilka naraz, deszcz/śnieg się wykluczają).
+5. Ekspert: rozdział „Rzeczy”, wskazywanie punktu w kadrze, propozycje zmiany kadru, kolory rzeczy, ostrzeżenie przy więcej niż 6 rzeczach.
+6. Nowe pozy: Rozparty, Na brzegu, Noga na nogę, grupa Leży, Oparty.
