@@ -458,14 +458,32 @@
   /* Przycisk, na który Manikun wskazuje (np. Maniscrypt po Kreatorze) */
   .square.pulse { animation: pulse 1.2s ease-in-out 5; }
   @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft), 0 0 22px var(--accent); transform: scale(1.06); } }
-  /* Kreator: rząd mieści się bez przewijania; Wstecz i Swoboda to małe przyciski z ikoną, krok się rozciąga */
-  .row.wizard { overflow: hidden; }
+  /* Kreator, dolny rząd: Wstecz, 5 rozdziałów, Swoboda, bez przewijania. Bieżący rozdział się rozciąga i ma nazwę,
+     pozostałe to same ikony (ukończone z ptaszkiem, przyszłe wygaszone). */
+  .row.wizard { overflow: hidden; gap: 5px; }
   .row.wizard .tile { max-width: none; }
-  .row.wizard #wiz-step { flex: 1 1 0; min-width: 0; }
-  .row.wizard #wiz-next { flex: 0 0 auto; width: 88px; min-width: 0; padding: 0 10px; grid-template-columns: 1fr; justify-items: center; }
-  .row.wizard #wiz-next > svg { display: none; }
-  .row.wizard #wiz-next .name { font-size: 14px; }
-  @media (max-width: 379px) { .row.wizard #wiz-step { grid-template-columns: minmax(0, 1fr); padding-left: 12px; } .row.wizard #wiz-step > svg { display: none; } }
+  .row.wizard .tile.ch { min-width: 0; width: 38px; padding: 0; grid-template-columns: 1fr; justify-items: center; }
+  .row.wizard .tile.ch > svg { width: 32px; height: 32px; padding: 7px; background: none; }
+  .row.wizard .tile.ch .txt { display: none; }
+  .row.wizard .tile.ch.open { flex: 1 1 0; width: auto; padding: 0 8px; }
+  .row.wizard .tile.ch.open > svg { display: none; }
+  .row.wizard .tile.ch.open .txt { display: grid; text-align: center; justify-items: center; }
+  .row.wizard .tile.ch.done::after { content: "✓"; position: absolute; top: 3px; right: 5px; font-size: 10px; font-weight: 700; color: var(--accent); }
+  .row.wizard .tile.mini { width: 40px; }
+  @media (max-width: 379px) {
+    .row.wizard { gap: 4px; }
+    .row.wizard .tile.ch { width: 28px; }
+    .row.wizard .tile.ch > svg { width: 26px; height: 26px; padding: 5px; }
+    .row.wizard .tile.mini { width: 34px; }
+  }
+  /* Kreator, górny rząd: odpowiedzi przewijają się pod przypiętym po prawej "Zostaw" / "Dalej" */
+  .row.question #wiz-next { position: sticky; right: 0; z-index: 2; min-width: 0; width: 92px; padding: 0 8px; grid-template-columns: 1fr; justify-items: center; text-align: center;
+    background: #1A1B20; box-shadow: -12px 0 14px -4px #0F1013; }
+  .row.question #wiz-next.accent { background: var(--accent); }
+  .row.question #wiz-next > svg { display: none; }
+  .row.question #wiz-next .name { font-size: 14px; }
+  .row.question #wiz-next .txt { justify-items: center; }
+  .row.question #wiz-auto { border: 1px dashed var(--accent); min-width: 0; max-width: 128px; }
   .tile.mini { min-width: 0; width: 46px; padding: 0; grid-template-columns: 1fr; justify-items: center; }
   .tile.mini > svg { width: 36px; height: 36px; padding: 8px; background: none; }
   .tile.mini .txt { display: none; }
@@ -2450,6 +2468,7 @@
         if (v) v.textContent = value();
       }
     };
+    b.__tile = t;
     b.addEventListener("click", () => navTileClick(t, onClick));
     t.redraw();
     return t;
@@ -2770,7 +2789,7 @@
 
   let nav = [], rows = { top: null, bottom: null }, pendingNav = null, navAnim = null, navBusy = false;
   // Tryb pracy: "free" (Swoboda, pełna nawigacja) albo "wizard" (Kreator, krok po kroku)
-  let flow = "free", wizStep = 0;
+  let flow = "free";
   const NAV_MS = 460, TILE_STEP = 35;
   // Czasy przejścia tła w kadrze (takie same jak wymiana kafelków): wyjście 280 ms, wejście 420 ms
   const PANEL_MS = 420, OUT_MS = 280;
@@ -2779,63 +2798,307 @@
     nav = [{ kind: "groups", open: g }, childOf(g)];
   }
   // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
-  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene), st.kind === "wizard" ? wizStep : ""].join("|");
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene), st.kind === "q" ? st.q + ":" + (wiz && wiz.part) : ""].join("|");
 
-  // ---------- Kreator: jeden krok to jedna kategoria w górnym rzędzie ----------
-  // Dolny rząd: Wstecz, bieżący krok (np. "Twarz · Krok 3 z 12"), Dalej, Swoboda.
-  // Kroki, które w tej scenie nic nie zmieniają (np. pora dnia w studiu), są pomijane.
-  const WIZ_STEPS = () => ["body", "outfit", "look", "pose", "arms", "background", "time", "light", "shot", "camera", ...(scene.mode === "video" ? ["motion"] : []), "style", "format"];
-  const wizCat = () => WIZ_STEPS()[wizStep];
+  // ---------- Kreator: Manikun pyta, odpowiedzi są w górnym rzędzie ----------
+  // Jedno pytanie = jeden dymek = jeden rząd odpowiedzi. Dolny rząd: Wstecz, 5 rozdziałów, Swoboda.
+  // Pytania Tak / Nie (bramki) i wybory drogi przechodzą dalej same; wszystko, co zmienia wygląd, ma "Dalej".
+  // "Zostaw" pomija pytanie, "Zdaj się na mnie" ustawia cały rozdział. Pytania bez sensu w tej scenie znikają.
+  let wiz = null;
+  const CHAPTERS = [
+    { id: "person", name: "Postać", icon: "body", done: "Postać gotowa." },
+    { id: "pose", name: "Poza", icon: "pose", done: "Poza jest." },
+    { id: "place", name: "Miejsce", icon: "background", done: "Miejsce mamy." },
+    { id: "camera", name: "Kamera", icon: "camera", done: "Kamera ustawiona." },
+    { id: "style", name: "Styl", icon: "style", done: "" }
+  ];
+  const him = () => scene.body === "female" ? "ją" : "go";
+  const own = () => wiz.ans.dress === "own";
+  const face = () => wiz.ans.face === true;
+  const hasHairColor = () => !(LOOK.hair.find(o => o.id === scene.look.hair) || {}).noColor;
+  const wornParts = () => PARTS.filter(p => scene.wear[p] !== "none" && !(p === "top" && isDress()));
+  const partLabel = p => p === "bottom" && isDress() ? "Sukienka" : WEAR[p].name;
+  const WIZ_Q = [
+    { id: "body", ch: "person", say: "Kogo ustawiamy?", cat: "body" },
+    { id: "dress", say: () => `Jak ${him()} ubierzemy?`, choice: [["set", "Gotowy zestaw", "gotowe"], ["own", "Składam sam", "część po części"]] },
+    { id: "set", say: "Który zestaw?", cat: "outfit", sub: "sets", when: () => wiz.ans.dress === "set" },
+    { id: "top", say: "Jaka góra?", cat: "outfit", sub: "top", when: own },
+    { id: "outer", say: "Coś na wierzch?", cat: "outfit", sub: "outer", when: own },
+    { id: "bottom", say: "A na dół?", cat: "outfit", sub: "bottom", when: own },
+    { id: "shoes", say: "Jakie buty?", cat: "outfit", sub: "shoes", when: own },
+    { id: "hat", say: "Coś na głowę?", cat: "outfit", sub: "hat", when: own },
+    { id: "colors", say: "Zmieniamy kolory?", yesno: true },
+    { id: "cpart", say: "Którą część?", parts: true, when: () => wiz.ans.colors === true },
+    { id: "cpick", say: () => `Jaki kolor? ${partLabel(wiz.part)}.`, cat: "outfit", sub: () => "c:" + wiz.part, when: () => wiz.ans.colors === true && !!wiz.part },
+    { id: "cmore", say: "Coś jeszcze?", yesno: true, yes: "cpart", when: () => wiz.ans.colors === true },
+    { id: "face", say: "Dopracujemy twarz?", yesno: true },
+    { id: "hair", say: "Jaka fryzura?", cat: "look", sub: "hair", when: face },
+    { id: "hairColor", say: "Kolor włosów?", cat: "look", sub: "hairColor", when: () => face() && hasHairColor() },
+    { id: "expr", say: "Jaka mina?", cat: "look", sub: "expr", when: face },
+    { id: "beard", say: "Zarost?", cat: "look", sub: "beard", when: () => face() && scene.body === "male" },
+    { id: "beardColor", say: "Kolor zarostu?", cat: "look", sub: "beardColor", when: () => face() && scene.body === "male" && scene.look.beard !== "none" },
+    { id: "lips", say: "Usta?", cat: "look", sub: "lips", when: () => face() && scene.body === "female" },
+    { id: "glasses", say: "Okulary?", cat: "look", sub: "glasses", when: face },
+    { id: "glassesColor", say: "Jakie oprawki?", cat: "look", sub: "glassesColor", when: () => face() && scene.look.glasses !== "none" },
+    { id: "pose", ch: "pose", say: "Co robi?", cat: "pose", flat: true },
+    { id: "arms", say: "A ręce?", cat: "arms", when: () => armsApply(scene) },
+    { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
+    { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
+    { id: "time", say: "Pora dnia?", cat: "time", when: () => timeApplies(scene) },
+    { id: "light", say: "Jakie światło?", cat: "light", flat: true },
+    { id: "shot", ch: "camera", say: "Jak blisko?", cat: "shot" },
+    { id: "camera", say: "Z której strony patrzymy?", cat: "camera", flat: true },
+    { id: "motion", say: "Jak rusza się kamera?", cat: "motion", when: () => scene.mode === "video" && !isSelfie(scene.camera) },
+    { id: "format", say: () => scene.mode === "video" ? "Format? 9:16 to rolka na telefon." : "Format? 4:5 pasuje do posta.", cat: "format" },
+    { id: "style", ch: "style", say: "W jakim klimacie?", cat: "style" }
+  ];
+  // Rozdział każdego pytania: ten z najbliższego pytania wyżej, które go podaje
+  WIZ_Q.reduce((ch, q) => (q.ch = q.ch || ch), "person");
+  const AUTO_Q = { id: "auto" };
+  const qById = id => id === "auto" ? { ...AUTO_Q, ch: wiz.autoCh } : WIZ_Q.find(q => q.id === id);
+  const qIndex = id => id === "auto" ? WIZ_Q.findIndex(q => q.ch === wiz.autoCh) : WIZ_Q.findIndex(q => q.id === id);
+  const qOn = q => !q.when || q.when();
+  const qText = q => q.id === "auto" ? wiz.autoText : typeof q.say === "function" ? q.say() : q.say;
+  const qSub = q => typeof q.sub === "function" ? q.sub() : q.sub || null;
+  const chIndex = id => CHAPTERS.findIndex(c => c.id === id);
+  const firstOn = ch => { const q = WIZ_Q.find(x => x.ch === ch && qOn(x)); return q && q.id; };
+  const isFirstOfCh = q => q.id !== "auto" && firstOn(q.ch) === q.id;
+  function qAfter(id) {
+    for (let i = qIndex(id) + 1; i < WIZ_Q.length; i++) if (qOn(WIZ_Q[i])) return WIZ_Q[i].id;
+    return null;
+  }
+  const wizLast = () => wiz.q !== "auto" && !qAfter(wiz.q);
+
   function wizardStart() {
     flow = "wizard";
-    wizStep = 0;
-    nav = [{ kind: "wizard", open: "wiz-step" }, { kind: "opts", cat: wizCat(), sub: null }];
+    wiz = { q: "body", hist: [], ans: {}, chosen: false, far: "body", part: null, seen: {}, autoCh: null, autoText: "" };
+    nav = [{ kind: "wizard", open: "wiz-ch-person" }, { kind: "q", q: "body" }];
   }
-  const wizNext = d => { const st = WIZ_STEPS(); let i = wizStep + d; while (i >= 0 && i < st.length && catOff(st[i])) i += d; return i; };
-  function wizGo(d) {
-    const i = wizNext(d);
-    if (i < 0) return;
-    if (i >= WIZ_STEPS().length) { wizFinish(); return; }
-    wizStep = i;
-    nav = [nav[0], { kind: "opts", cat: wizCat(), sub: null }];
+  function wizSay(prefix = "") {
+    if (!wiz || phase !== "director") return;
+    say((prefix ? prefix + " " : "") + qText(qById(wiz.q)), 0);
+  }
+  // Przejście do pytania (z zapisem w historii dla strzałki wstecz)
+  function wizGoTo(id, { push = true, prefix = "" } = {}) {
+    if (push) wiz.hist.push(wiz.q);
+    wiz.q = id;
+    wiz.chosen = false;
+    if (qIndex(id) > qIndex(wiz.far)) wiz.far = id;
+    nav = [nav[0], { kind: "q", q: id }];
+    nav[0].open = "wiz-ch-" + qById(id).ch;
     navAnim = "swap";
     render();
+    wizSay(prefix);
+  }
+  // Dalej: następne pytanie; przy zmianie rozdziału Manikun zamyka poprzedni jednym zdaniem
+  function wizAdvance(from = wiz.q) {
+    const next = from === "auto" ? firstOn((CHAPTERS[chIndex(wiz.autoCh) + 1] || {}).id) : qAfter(from);
+    if (!next) { wizFinish(); return; }
+    const ch = qById(from).ch, nch = qById(next).ch;
+    wizGoTo(next, { prefix: ch !== nch ? CHAPTERS[chIndex(ch)].done : "" });
+  }
+  function wizBack() {
+    while (wiz.hist.length) {
+      const id = wiz.hist.pop();
+      if (id === "auto" || qOn(qById(id))) { wizGoTo(id, { push: false }); return; }
+    }
   }
   // Swoboda z zachowaniem wyborów: rzędy wjeżdżają od nowa
   function toFree(group = "person") {
     flow = "free";
+    wiz = null;
     [rows.top, rows.bottom].forEach(r => r && r.el.remove());
     rows = { top: null, bottom: null };
     navInit(group);
     render();
   }
   function wizFinish() {
+    const text = wizSummary();
     toFree();
     const btn = document.getElementById("copy");
     btn.classList.remove("pulse");
     btn.offsetWidth;
     btn.classList.add("pulse");
     setTimeout(() => btn.classList.remove("pulse"), 6200);
-    say("Gotowe! Stuknij zielony przycisk po prawej i skopiuj Maniscrypt. Poprawki zrobisz tutaj, w Swobodzie.", 7000);
+    say(`Gotowe! ${text}. Stuknij zielony przycisk i skopiuj Maniscrypt. Poprawki zrobisz tu, w Swobodzie.`, 8000);
   }
+
+  // Krótkie opisy do podsumowań Manikuna
+  const low = s => s.charAt(0).toLowerCase() + s.slice(1);
+  const partText = p => scene.wear[p] === "suit" ? "spodnie garniturowe" : low(partValue(p));
+  const nameOf = cat => optionOf(cat, scene[cat]).name;
+  const CH_SUMMARY = {
+    person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
+    pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(nameOf("arms")) : ""),
+    place: () => nameOf("background") + ", " + low(BG_VARIANTS[scene.background].find(v => v.id === bgVariant(scene)).name) + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
+    camera: () => `${nameOf("shot")}, ${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
+    style: () => "Styl " + nameOf("style")
+  };
+  const wizSummary = () => [CH_SUMMARY.person(), low(CH_SUMMARY.pose()), CH_SUMMARY.place().split(", światło")[0], nameOf("style")].join(" · ");
+
+  // "Zdaj się na mnie": Manikun ustawia cały rozdział z sensem (w nocy bez okularów słonecznych itp.)
+  const CH_RANDOM = {
+    person() {
+      scene.body = anyOf(optionsOf("body")).id;
+      const d = dressIn(anyOf(optionsOf("outfit").filter(o => fitsBody(o, scene))).id);
+      if (Math.random() < 0.4) d.wc.top = anyOf(COLORS).id;
+      if (Math.random() < 0.3) d.wc.bottom = anyOf(COLORS).id;
+      if (Math.random() < 0.25) { d.wear.hat = anyOf(WEAR.hat.options.slice(1)).id; d.wc.hat = anyOf(COLORS).id; d.outfit = "custom"; }
+      Object.assign(scene, d);
+      const male = scene.body === "male";
+      scene.look = {
+        hair: anyOf(LOOK.hair.filter(o => male || o.id !== "bald")).id, hairPicked: true, hairColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.hairColor).id,
+        expr: anyOf(["neutral", "neutral", "joy", "thought"]),
+        beard: male && Math.random() < 0.4 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: "auto",
+        lips: !male && Math.random() < 0.3 ? anyOf(LOOK.lips.slice(1)).id : "none",
+        glasses: Math.random() < 0.25 ? anyOf(["round", "rect"]) : "none", glassesColor: anyOf(LOOK.glassesColor).id
+      };
+    },
+    pose() {
+      scene.pose = anyOf(leavesOf("pose")).id;
+      if (armsApply(scene)) scene.arms = anyOf(optionsOf("arms")).id;
+    },
+    place() {
+      scene.background = anyOf(leavesOf("background")).id;
+      const vars = BG_VARIANTS[scene.background];
+      scene.bgv = { ...scene.bgv, [scene.background]: anyOf(vars.filter(v => !v.extra)).id };
+      scene.bgx = { ...scene.bgx, [scene.background]: vars.some(v => v.extra) && Math.random() < 0.35 ? ["fog"] : [] };
+      scene.time = anyOf(optionsOf("time")).id;
+      scene.light = anyOf(leavesOf("light").filter(o => lampAllowed(scene) || !o.id.startsWith("art"))).id;
+      scene.lightZone = anyOf(lightZones(scene));
+      if (scene.time === "night" && scene.look.glasses === "sun") scene.look = { ...scene.look, glasses: "none" };
+    },
+    camera() {
+      scene.shot = anyOf(["full", "full", "portrait", "face"]);
+      scene.camera = anyOf(leavesOf("camera").filter(o => fitsBody(o, scene))).id;
+      if (scene.camera === "D") scene.shot = "full";
+      if (scene.mode === "video") scene.motion = anyOf(optionsOf("motion")).id;
+      scene.format[scene.mode] = anyOf(FORMATS[scene.mode]).id;
+    },
+    style() {
+      const cur = scene.style;
+      scene.style = anyOf(optionsOf("style").filter(o => o.id !== cur)).id;
+    }
+  };
+  function wizAuto(ch) {
+    CH_RANDOM[ch]();
+    lastPreset = null;
+    const fromAuto = wiz.q === "auto";
+    wiz.autoCh = ch;
+    wiz.autoText = CH_SUMMARY[ch]() + ". Pasuje?";
+    if (fromAuto) { render(); wizSay(); return; }
+    wizGoTo("auto");
+  }
+
+  // Komentarze Manikuna: tylko przy wyborach wartych uwagi (mocny kolor, nietypowe zestawienie)
+  const BOLD_COLORS = { red: "Czerwień? Odważnie.", pink: "Róż? Lubię to.", orange: "Pomarańcz, widać z daleka.", mustard: "Musztarda. Klasa.", mint: "Mięta, świeżo.", burgundy: "Bordo, elegancko." };
+  const NATURE = ["forest", "mountains", "beach", "meadow", "lake", "river"];
+  function wizComment(q) {
+    let text = "";
+    if (q.id === "cpick") text = BOLD_COLORS[scene.wc[wiz.part]] || "";
+    else if (q.id === "style" && scene.style === "cyber" && NATURE.includes(scene.background)) text = "Cyberpunk w naturze? Odważnie.";
+    else if (q.id === "background" && scene.background === "beach" && (scene.wear.top === "blazer" || scene.wear.outer === "coat")) text = "Elegancko na plaży? Ciekawie.";
+    else if (q.id === "time" && scene.time === "night" && scene.look.glasses === "sun") text = "Słoneczne okulary w nocy? Jak gwiazda.";
+    else if (q.id === "camera" && scene.camera === "D") text = "Dron! Będzie widać całą okolicę.";
+    if (!text || wiz.seen[text]) return;
+    wiz.seen[text] = true;
+    const at = wiz.q;
+    say(text, 0);
+    setTimeout(() => { if (wiz && wiz.q === at) wizSay(); }, 2400);
+  }
+
+  const glyph = d => svg => { svg.setAttribute("viewBox", "0 0 24 24"); el("path", { d }, svg); };
+  const DICE = svg => {
+    svg.setAttribute("viewBox", "0 0 24 24");
+    el("rect", { x: 4, y: 4, width: 16, height: 16, rx: 3.5 }, svg);
+    [[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.1, style: "fill:currentColor" }, svg));
+  };
+  // Odpowiedź bez zmiany wyglądu (Tak / Nie, wybór drogi): od razu dalej
+  const answer = (id, name, value, draw, fn) => {
+    const t = tile(id, name, () => false, fn, draw, value ? () => value : null);
+    t.action = true;
+    t.btn.classList.add("cat");
+    return t;
+  };
+  function questionTiles(q) {
+    const list = [];
+    if (q.id === "auto") {
+      list.push(answer("wiz-ok", "Pasuje", "dalej", glyph("M5 12.5l4.5 4.5L19 7.5"), () => wizAdvance("auto")));
+      list.push(answer("wiz-again", "Inaczej", "losuj jeszcze", DICE, () => wizAuto(wiz.autoCh)));
+      return list;
+    }
+    if (isFirstOfCh(q)) {
+      const t = answer("wiz-auto", "Zdaj się na mnie", null, DICE, () => wizAuto(q.ch));
+      t.btn.classList.add("auto");
+    }
+    if (q.yesno) {
+      answer("wiz-yes", "Tak", null, glyph("M5 12.5l4.5 4.5L19 7.5"), () => { wiz.ans[q.id] = true; if (q.yes) wizGoTo(q.yes); else wizAdvance(); });
+      answer("wiz-no", "Nie", null, glyph("M6 6l12 12M18 6L6 18"), () => { wiz.ans[q.id] = false; if (q.id === "cmore") wiz.part = null; wizAdvance(); });
+    } else if (q.choice) {
+      q.choice.forEach(([id, name, value]) => answer("wiz-" + q.id + "-" + id, name, value,
+        id === "set" ? svg => wearThumb(svg, {}, "full") : svg => wearThumb(svg, {}, "top"),
+        () => { wiz.ans[q.id] = id; wizAdvance(); }).btn.classList.remove("cat"));
+    } else if (q.parts) {
+      wornParts().forEach(p => answer("wiz-part-" + p, partLabel(p), colorOf(scene.wc[p]).name, svg => wearThumb(svg, {}, PART_REGION[p]),
+        () => { wiz.part = p; wizAdvance(); }).btn.classList.remove("cat"));
+    } else if (q.flat) {
+      // Całe drzewo opcji naraz (bez rozwijania grup): Stoi i Siedzi, Miasto i Natura w jednym rzędzie
+      const lampOK = lampAllowed(scene);
+      optionsOf(q.cat).filter(o => fitsBody(o, scene) && (q.cat !== "light" || lampOK || o.id !== "artificial"))
+        .flatMap(o => o.children || [o]).filter(o => fitsBody(o, scene))
+        .forEach(o => tile("opt-" + q.cat + "-" + o.id, o.name, () => scene[q.cat] === o.id,
+          () => { scene[q.cat] = o.id; render(); }, svg => drawOption(q.cat, o.id, svg)));
+    } else {
+      const saved = [scene.open, scene.sub];
+      scene.open = q.cat;
+      scene.sub = qSub(q);
+      // Kafelki z istniejących kategorii, bez "Wróć" i bez przejść głębiej (kolor jest osobnym pytaniem)
+      makeTiles(q.cat).forEach(t => { if (t.btn.classList.contains("back") || t.btn.classList.contains("group")) t.btn.remove(); });
+      [scene.open, scene.sub] = saved;
+    }
+    // Przypięty po prawej: "Zostaw" przed wyborem, "Dalej" po wyborze
+    if (!q.yesno && !q.choice && !q.parts) {
+      const pin = tile("wiz-next", "Zostaw", () => false, () => wizAdvance(), glyph("M10 6l6 6-6 6 M16 12H5"), () => wiz.chosen ? "następne" : "bez zmian");
+      pin.action = true;
+      pin.btn.classList.add("pin");
+      const draw = pin.redraw;
+      pin.redraw = () => {
+        draw();
+        pin.btn.querySelector(".name").textContent = wiz.chosen ? (wizLast() ? "Gotowe" : "Dalej") : "Zostaw";
+        pin.btn.classList.toggle("accent", wiz.chosen);
+      };
+      pin.redraw();
+    }
+    return [...tileHost.querySelectorAll(".tile")].map(b => b.__tile).filter(Boolean);
+  }
+  // Dolny rząd: Wstecz, rozdziały (ukończone i bieżący można stuknąć, przyszłe są wygaszone), Swoboda
   function wizardTiles() {
-    const steps = WIZ_STEPS(), cat = catById(wizCat()), last = wizNext(1) >= steps.length;
-    const shown = steps.filter(id => !catOff(id)), pos = shown.indexOf(wizCat()) + 1;
-    const arrow = d => svg => { svg.setAttribute("viewBox", "0 0 24 24"); el("path", { d }, svg); };
-    const prev = tile("wiz-prev", "Wstecz", () => false, () => wizGo(-1), arrow("M14 6l-6 6 6 6 M8 12h11"), () => "krok wcześniej");
+    const prev = tile("wiz-prev", "Wstecz", () => false, wizBack, glyph("M14 6l-6 6 6 6 M8 12h11"), () => "pytanie wcześniej");
     prev.action = true;
     prev.btn.classList.add("mini");
-    prev.btn.setAttribute("aria-label", "Poprzedni krok");
-    const step = tile("wiz-step", cat.label, () => false, null, iconDraw(cat.id), () => `krok ${pos} / ${shown.length}`);
-    step.navId = "wiz-step";
-    const next = tile("wiz-next", last ? "Gotowe ✓" : "Dalej →", () => false, () => wizGo(1), arrow(last ? "M5 12.5l4.5 4.5L19 7.5" : "M10 6l6 6-6 6 M16 12H5"));
-    next.action = true;
-    next.btn.classList.add("accent");
-    const free = tile("wiz-free", "Swoboda", () => false, () => { toFree(); say("Swoboda: wszystkie opcje pod ręką. Wybory z Kreatora zostają.", 4500); }, svg => { svg.setAttribute("viewBox", "0 0 24 24"); svg.innerHTML = ICON.free; }, () => "wszystkie opcje");
+    prev.btn.setAttribute("aria-label", "Poprzednie pytanie");
+    prev.disabledIf = () => !wiz.hist.length;
+    const list = [prev];
+    CHAPTERS.forEach((c, i) => {
+      const farCh = () => chIndex(qById(wiz.far).ch);
+      const t = tile("wiz-ch-" + c.id, c.name, () => false, () => {
+        if (qById(wiz.q).ch === c.id && i === farCh()) return;
+        wizGoTo(i === farCh() ? wiz.far : firstOn(c.id));
+      }, iconDraw(c.icon), () => `${i + 1} z 5`);
+      t.btn.classList.add("ch");
+      t.navId = "wiz-ch-" + c.id;
+      t.disabledIf = () => i > farCh();
+      const draw = t.redraw;
+      t.redraw = () => { draw(); t.btn.classList.toggle("done", i < farCh()); };
+      t.redraw();
+      list.push(t);
+    });
+    const free = tile("wiz-free", "Swoboda", () => false, () => { hush(); toFree(); say("Swoboda: wszystkie opcje pod ręką. Wybory z Kreatora zostają.", 4500); }, svg => { svg.setAttribute("viewBox", "0 0 24 24"); svg.innerHTML = ICON.free; }, () => "wszystkie opcje");
     free.action = true;
     free.btn.classList.add("mini");
     free.btn.setAttribute("aria-label", "Przejdź do Swobody");
-    return [prev, step, next, free];
+    list.push(free);
+    return list;
   }
 
   const iconDraw = id => svg => { svg.setAttribute("viewBox", "0 0 24 24"); CAT_ICONS[id](svg); };
@@ -2876,13 +3139,14 @@
 
   function buildRow(st, pos) {
     const div = document.createElement("div");
-    div.className = "row" + (st.kind === "wizard" ? " wizard" : "");
+    div.className = "row" + (st.kind === "wizard" ? " wizard" : st.kind === "q" ? " question" : "");
     div.dataset.pos = pos;
     const row = { el: div, st, key: rowKey(st), tiles: [], back: null };
     tileHost = div;
     tileRow = row;
     if (st.kind === "groups") row.tiles = activeGroups().map(groupTile);
     else if (st.kind === "wizard") row.tiles = wizardTiles();
+    else if (st.kind === "q") row.tiles = questionTiles(qById(st.q));
     else if (st.kind === "cats") row.tiles = groupCats(GROUPS.find(g => g.id === st.group)).map(catTile);
     else {
       const saved = [scene.open, scene.sub];
@@ -2895,7 +3159,7 @@
     row.tiles.forEach(t => {
       t.row = row;
       if (t.navId === undefined) t.navId = t.id;
-      if (st.kind !== "opts") t.btn.classList.add("cat");
+      if (st.kind !== "opts" && st.kind !== "q") t.btn.classList.add("cat");
     });
     tileHost = null;
     tileRow = null;
@@ -2936,8 +3200,9 @@
   function scrollToTile(row, t) {
     if (!t) return;
     const r = row.el, x = t.btn.offsetLeft, w = t.btn.offsetWidth, pad = row.back ? 64 : 8;
+    const pin = r.querySelector("#wiz-next"), right = pin ? pin.offsetWidth + 16 : 8;
     if (x < r.scrollLeft + pad) r.scrollLeft = x - pad;
-    else if (x + w > r.scrollLeft + r.clientWidth - 8) r.scrollLeft = x + w - r.clientWidth + 8;
+    else if (x + w > r.scrollLeft + r.clientWidth - right) r.scrollLeft = x + w - r.clientWidth + right;
   }
 
   function navPop() {
@@ -2951,6 +3216,22 @@
     if (navBusy) return;
     const row = t.row;
     if (!row || phase !== "director") { if (handler) handler(); return; }
+    // Kreator: rozdziały, strzałka i odpowiedzi obsługują się same; wybór zmieniający wygląd odblokowuje "Dalej"
+    if (row.st.kind === "wizard") { sfx(t.id === "wiz-prev" ? "puk" : "tok"); handler(); return; }
+    if (row.st.kind === "q") {
+      if (t.action) { sfx(t.id === "wiz-auto" || t.id === "wiz-again" ? "tuk" : "tik"); handler(); return; }
+      const q = qById(wiz.q), fp = sceneFP(), style = scene.style;
+      handler();
+      // Stuknięcie w bieżącą opcję to też odpowiedź: "Zostaw" zmienia się w "Dalej"
+      if (sceneFP() === fp) { sfx("tik"); if (!wiz.chosen) { wiz.chosen = true; render(); } return; }
+      const big = scene.style !== style;
+      sfx(big ? "tuk" : "tik");
+      react(big);
+      wiz.chosen = true;
+      render();
+      wizComment(q);
+      return;
+    }
     const n = nav.length, isBottom = row === rows.bottom;
     // Stuknięcie w otwarty kafelek dolnego rzędu cofa o poziom
     if (isBottom && t.navId === nav[n - 2].open) { navPop(); return; }
@@ -2984,11 +3265,15 @@
   // Grupa lub kategoria, której już nie ma (np. Ruch po przejściu na zdjęcie): wracamy do poziomu, który jeszcze istnieje
   function validateNav() {
     if (flow === "wizard" && nav[0] && nav[0].kind === "wizard") {
-      // Kreator: krok, którego już nie ma (np. Ruch po przejściu na zdjęcie), przechodzi na najbliższy istniejący
-      const steps = WIZ_STEPS();
-      if (!steps.includes(nav[1].cat) || nav.some((st, i) => i > 0 && st.kind === "opts" && !activeCats().some(c => c.id === st.cat))) {
-        wizStep = Math.min(wizStep, steps.length - 1);
-        nav = [nav[0], { kind: "opts", cat: wizCat(), sub: null }];
+      // Kreator: pytanie, które straciło sens (np. Ruch po przejściu na zdjęcie), ustępuje następnemu
+      const q = qById(wiz.q);
+      if (q.id !== "auto" && !qOn(q)) {
+        const next = qAfter(q.id) || "style";
+        wiz.q = next;
+        wiz.chosen = false;
+        nav = [nav[0], { kind: "q", q: next }];
+        nav[0].open = "wiz-ch-" + qById(next).ch;
+        setTimeout(() => wizSay(), 0);
       }
       return;
     }
@@ -3065,11 +3350,12 @@
       t.redraw();
       t.btn.classList.toggle("open", row === rows.bottom && t.navId === botSt.open);
       if (t.cat) t.btn.disabled = catOff(t.cat);
-      if (t.id === "wiz-prev") t.btn.disabled = wizNext(-1) < 0;
+      if (t.disabledIf) t.btn.disabled = t.disabledIf();
     }));
     // Górny rząd odpowiada otwartej kategorii i jej poziomowi (z tego korzystają kafelki i kopiowanie)
-    scene.open = topSt.kind === "opts" ? topSt.cat : null;
-    scene.sub = topSt.kind === "opts" ? topSt.sub : null;
+    const topQ = topSt.kind === "q" ? qById(topSt.q) : null;
+    scene.open = topSt.kind === "opts" ? topSt.cat : topQ ? topQ.cat || null : null;
+    scene.sub = topSt.kind === "opts" ? topSt.sub : topQ ? qSub(topQ) : null;
     if (anim || fresh) {
       scrollToTile(rows.bottom, rows.bottom.tiles.find(t => t.btn.classList.contains("open")));
       scrollToTile(rows.top, rows.top.tiles.find(t => t.btn.getAttribute("aria-pressed") === "true"));
@@ -3375,6 +3661,7 @@
   const menuBtn = document.getElementById("menuBtn"), menuEl = document.getElementById("menu");
   function setMenu(open) {
     if (open) hush();
+    else if (wiz && document.body.classList.contains("menu-open")) wizSay();
     document.body.classList.toggle("menu-open", open);
     menuBtn.setAttribute("aria-expanded", String(open));
     menuEl.setAttribute("aria-hidden", String(!open));
@@ -3385,6 +3672,7 @@
   // Nowa scena: strona zaczyna od nowa, ale Manikun już się nie przedstawia (użytkownik go zna)
   // Nowa scena bez przeładowania strony: powrót do siatki 2×2, bez ponownego powitania
   function newScene() {
+    wiz = null;
     setMenu(false);
     setSearch(false);
     closeInfo();
@@ -3688,6 +3976,7 @@
     if (e.key === "Escape") setSearch(false);
   });
   function setSearch(open) {
+    const was = document.body.classList.contains("search-open");
     document.body.classList.toggle("search-open", open);
     searchEl.setAttribute("aria-hidden", String(!open));
     if (open) {
@@ -3696,7 +3985,10 @@
       searchResults.replaceChildren();
       setTimeout(() => searchInput.focus(), 60);
       nod("tilt");
-    } else searchInput.blur();
+    } else {
+      searchInput.blur();
+      if (wiz && was) wizSay();
+    }
   }
   document.getElementById("searchScrim").addEventListener("click", () => setSearch(false));
   document.getElementById("searchClose").addEventListener("click", () => setSearch(false));
@@ -3705,6 +3997,7 @@
     setSearch(false);
     if (before) { before(); }
     flow = "free";
+    wiz = null;
     [rows.top, rows.bottom].forEach(r => r && r.el.remove());
     rows = { top: null, bottom: null };
     nav = navArr.map(st => ({ ...st }));
@@ -3944,7 +4237,8 @@
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(() => { bubbleEl.hidden = true; }, 320);
   }
-  bubbleEl.addEventListener("click", () => { if (tut) tutTap(); else hush(); });
+  // W Kreatorze dymek to bieżące pytanie, więc zostaje na miejscu
+  bubbleEl.addEventListener("click", () => { if (tut) tutTap(); else if (!wiz) hush(); });
 
   // ---------- Start: temat (2×2), potem Kreator albo Swoboda ----------
   // Na razie działa tylko Postać. Inne tematy: za pierwszym razem żart, potem informacja, że będą wkrótce.
@@ -4031,7 +4325,7 @@
       appEl.dataset.phase = "director";
       if (how === "wizard") wizardStart(); else { flow = "free"; navInit(); }
       render();
-      if (how === "wizard") setTimeout(() => say("Zaczynamy! Wybieraj na górze, a potem stuknij Dalej. Każdy krok możesz pominąć.", 6000), fast ? 0 : 700);
+      if (how === "wizard") setTimeout(() => wizSay("Zaczynamy! Wybieraj na górze."), fast ? 0 : 700);
     }, fast ? 0 : 480);
   }
 
@@ -4064,6 +4358,7 @@
   ];
   // Scena startowa tutoriala: streetwear z jeansami, las ze ścieżką i mgłą, noc, Cyberpunk, 4:5; rzędy otwarte na Postać › Ubiór
   function startTutorial() {
+    wiz = null;
     setMenu(false);
     setSearch(false);
     setSheet(false);
@@ -4157,7 +4452,7 @@
     rows = { top: null, bottom: null };
     nav = [];
     flow = "free";
-    wizStep = 0;
+    wiz = null;
     startStep = "subject";
     phase = "start";
     appEl.dataset.phase = "start";

@@ -52,12 +52,24 @@ W trybie Obiekt grupa Postać zamienia się na Obiekt (Rodzaj, Podstawa, Kolor),
 
 ### Kreator
 
-Prowadzi krok po kroku: Sylwetka → Ubiór → Twarz → Poza → Ręce → Tło → Pora dnia → Światło → Kadr → Kamera → Styl → Format.
+Manikun prowadzi rozmową: jedno pytanie w dymku, odpowiedzi w górnym rzędzie. Figura zmienia się w kadrze na bieżąco.
 
-- Każdy krok można pominąć („Dalej”, zostaje ustawienie domyślne).
-- Na górze widać postęp (krok X z 12).
-- Na końcu Manikun proponuje skopiowanie Maniscryptu, potem wszystko przechodzi w Swobodę.
+- **Dolny rząd:** strzałka wstecz, 5 rozdziałów (Postać › Poza › Miejsce › Kamera › Styl), Swoboda. Bieżący rozdział ma nazwę i numer, ukończone mają ptaszek, przyszłe są wygaszone. Stuknięcie w ukończony rozdział wraca do jego pierwszego pytania (odpowiedzi zostają), stuknięcie w najdalszy rozdział wraca tam, gdzie się skończyło.
+- **Przejście dalej:** pytania Tak / Nie i wybór drogi (zestaw czy składam sam, która część) przechodzą dalej same. Pytania zmieniające wygląd mają przypięty po prawej przycisk: „Zostaw” przed wyborem, „Dalej” po wyborze (na końcu „Gotowe”).
+- **Bramki Tak / Nie** tylko przy długich gałęziach: kolory ubioru i twarz.
+- **„Zdaj się na mnie”** w pierwszym pytaniu każdego rozdziału: Manikun ustawia cały rozdział z sensem i pyta „Pasuje?” (Pasuje / Inaczej).
+- **Komentarze** tylko przy wyborach wartych uwagi: mocny kolor, nietypowe zestawienie (cyberpunk w naturze, elegancko na plaży, słoneczne okulary w nocy, dron), zamknięcie rozdziału. Poza tym tylko ruch głowy.
+- Pytania bez sensu w danej scenie znikają (broda tylko u mężczyzny, usta tylko u kobiety, kolor włosów nie przy łysej głowie, pora dnia nie w studiu, ręce nie na siedząco, ruch kamery tylko w wideo i nie przy selfie).
+- Na końcu Manikun podsumowuje scenę jednym zdaniem, pulsuje Maniscrypt, wszystko przechodzi w Swobodę.
 - W każdej chwili można przejść do Swobody z zachowaniem wyborów.
+
+Pytania:
+
+1. **Postać:** Kogo ustawiamy? → Jak go/ją ubierzemy? (Gotowy zestaw / Składam sam) → zestaw albo po kolei Góra, Okrycie, Dół, Buty, Nakrycie głowy → Zmieniamy kolory? (Którą część? → kolor → Coś jeszcze?) → Dopracujemy twarz? (fryzura, kolor włosów, mina, zarost i jego kolor, usta, okulary i oprawki)
+2. **Poza:** Co robi? (wszystkie pozy naraz, stojące i siedzące) → A ręce?
+3. **Miejsce:** Gdzie jesteśmy? (wszystkie tła naraz) → A dokładniej? (wariant i dodatki, np. mgła) → Pora dnia? → Jakie światło?
+4. **Kamera:** Jak blisko? → Z której strony patrzymy? → Jak rusza się kamera? → Format?
+5. **Styl:** W jakim klimacie?
 
 ### Swoboda
 
