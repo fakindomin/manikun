@@ -484,6 +484,7 @@
   .row.question #wiz-next .name { font-size: 14px; }
   .row.question #wiz-next .txt { justify-items: center; }
   .row.question #wiz-auto { border: 1px dashed var(--accent); min-width: 0; max-width: 128px; }
+  .row.question #wiz-colors-done { min-width: 0; max-width: 124px; }
   .tile.mini { min-width: 0; width: 46px; padding: 0; grid-template-columns: 1fr; justify-items: center; }
   .tile.mini > svg { width: 36px; height: 36px; padding: 8px; background: none; }
   .tile.mini .txt { display: none; }
@@ -2828,9 +2829,9 @@
     { id: "shoes", say: "Jakie buty?", cat: "outfit", sub: "shoes", when: own },
     { id: "hat", say: "Coś na głowę?", cat: "outfit", sub: "hat", when: own },
     { id: "colors", say: "Zmieniamy kolory?", yesno: true },
-    { id: "cpart", say: "Którą część?", parts: true, when: () => wiz.ans.colors === true },
-    { id: "cpick", say: () => `Jaki kolor? ${partLabel(wiz.part)}.`, cat: "outfit", sub: () => "c:" + wiz.part, when: () => wiz.ans.colors === true && !!wiz.part },
-    { id: "cmore", say: "Coś jeszcze?", yesno: true, yes: "cpart", when: () => wiz.ans.colors === true },
+    { id: "cpart", say: () => Object.keys(scene.wcPicked || {}).length ? "Coś jeszcze? Wybierz część albo stuknij Kolory gotowe." : "Którą część?", parts: true, when: () => wiz.ans.colors === true },
+    // Po kolorze wraca wybór części; kafelek "Kolory gotowe" kończy zmiany kolorów
+    { id: "cpick", say: () => `Jaki kolor? ${partLabel(wiz.part)}.`, cat: "outfit", sub: () => "c:" + wiz.part, next: "cpart", when: () => wiz.ans.colors === true && !!wiz.part },
     { id: "face", say: "Dopracujemy twarz?", yesno: true },
     { id: "hair", say: "Jaka fryzura?", cat: "look", sub: "hair", when: face },
     { id: "hairColor", say: "Kolor włosów?", cat: "look", sub: "hairColor", when: () => face() && hasHairColor() },
@@ -2891,7 +2892,9 @@
     wizSay(prefix);
   }
   // Dalej: następne pytanie; przy zmianie rozdziału Manikun zamyka poprzedni jednym zdaniem
-  function wizAdvance(from = wiz.q) {
+  function wizAdvance(from = wiz.q, jump = true) {
+    const q = qById(from);
+    if (jump && q.next) { wizGoTo(q.next); return; }
     const next = from === "auto" ? firstOn((CHAPTERS[chIndex(wiz.autoCh) + 1] || {}).id) : qAfter(from);
     if (!next) { wizFinish(); return; }
     const ch = qById(from).ch, nch = qById(next).ch;
@@ -3033,14 +3036,19 @@
     }
     if (q.yesno) {
       answer("wiz-yes", "Tak", null, glyph("M5 12.5l4.5 4.5L19 7.5"), () => { wiz.ans[q.id] = true; if (q.yes) wizGoTo(q.yes); else wizAdvance(); });
-      answer("wiz-no", "Nie", null, glyph("M6 6l12 12M18 6L6 18"), () => { wiz.ans[q.id] = false; if (q.id === "cmore") wiz.part = null; wizAdvance(); });
+      answer("wiz-no", "Nie", null, glyph("M6 6l12 12M18 6L6 18"), () => { wiz.ans[q.id] = false; wizAdvance(); });
     } else if (q.choice) {
       q.choice.forEach(([id, name, value]) => answer("wiz-" + q.id + "-" + id, name, value,
         id === "set" ? svg => wearThumb(svg, {}, "full") : svg => wearThumb(svg, {}, "top"),
         () => { wiz.ans[q.id] = id; wizAdvance(); }).btn.classList.remove("cat"));
     } else if (q.parts) {
-      wornParts().forEach(p => answer("wiz-part-" + p, partLabel(p), colorOf(scene.wc[p]).name, svg => wearThumb(svg, {}, PART_REGION[p]),
-        () => { wiz.part = p; wizAdvance(); }).btn.classList.remove("cat"));
+      // Na początku "Kolory gotowe" (koniec zmian kolorów), potem części; przemalowane są zaznaczone
+      const done = answer("wiz-colors-done", "Kolory gotowe", null, glyph("M5 12.5l4.5 4.5L19 7.5"), () => { wiz.part = null; wizAdvance("cpick", false); });
+      done.btn.classList.add("accent");
+      wornParts().forEach(p => {
+        const t = tile("wiz-part-" + p, partLabel(p), () => colorPicked(p), () => { wiz.part = p; wizAdvance(); }, svg => wearThumb(svg, {}, PART_REGION[p]), () => colorOf(scene.wc[p]).name);
+        t.action = true;
+      });
     } else if (q.flat) {
       // Całe drzewo opcji naraz (bez rozwijania grup): Stoi i Siedzi, Miasto i Natura w jednym rzędzie
       const lampOK = lampAllowed(scene);
