@@ -227,7 +227,22 @@
   .sheet-preview .sp-text { display: grid; gap: 2px; }
   .sheet-preview b { font-size: 15px; }
   .sheet-preview small { font-size: 12px; color: var(--muted); }
-  body.tutorial #copySheet .sheet-preview { display: none; }
+  body.tutorial #copySheet .sheet-preview, body.tutorial #copySheet .scene-tree { display: none; }
+  /* Drzewko sceny */
+  .scene-tree { background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 0 14px; }
+  .scene-tree summary { cursor: pointer; padding: 12px 0; font-size: 14px; font-weight: 700; list-style: none; display: flex; align-items: baseline; gap: 8px; }
+  .scene-tree summary::-webkit-details-marker { display: none; }
+  .scene-tree summary::before { content: "▸"; color: var(--accent); transition: transform 200ms ease; display: inline-block; }
+  .scene-tree[open] summary::before { transform: rotate(90deg); }
+  .scene-tree summary small { font-weight: 500; font-size: 12px; color: var(--muted); }
+  .tree { font-family: var(--mono); font-size: 12px; line-height: 1.55; overflow-x: auto; padding-bottom: 4px; }
+  .tree-line { white-space: nowrap; color: var(--muted); }
+  .tree-line .tree-pre { color: var(--line-strong); }
+  .tree-line b { font-weight: 500; color: var(--ink); }
+  .tree-line.group b { font-weight: 700; color: var(--accent); }
+  .tree-line .tree-mine { color: var(--accent); }
+  .tree-legend { margin: 6px 0 12px; font-size: 11.5px; color: var(--muted); }
+  .tree-legend .tree-mine { color: var(--accent); font-weight: 600; }
   body.preview-open #previewSheet { transform: none; }
   body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
   .preview-frame { position: relative; width: min(100%, 48dvh); aspect-ratio: 1; margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
@@ -652,6 +667,12 @@
     </ol>
     <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
     <div class="gens" id="gens" role="list" aria-label="Generatory"></div>
+    <!-- Drzewko sceny: wszystkie wybory ułożone jak nawigacja, tylko do obejrzenia -->
+    <details class="scene-tree" id="sceneTree">
+      <summary>Drzewko sceny <small>wszystkie Twoje wybory</small></summary>
+      <div class="tree" id="sceneTreeBody"></div>
+      <p class="tree-legend"><span class="tree-mine">Wyróżnione</span> to Twoje zmiany, przygaszone są domyślne.</p>
+    </details>
     <!-- Szybki podgląd: darmowy szkic kadru bez wychodzenia z aplikacji -->
     <button class="sheet-preview" type="button" id="sheetPreview">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
@@ -5168,6 +5189,91 @@
     stepPaste.textContent = withFace() ? "Wklej i dołącz zdjęcie" : "Wklej";
     if (withFace()) drawGuidePhoto();
     renderGens();
+    renderSceneTree();
+  }
+
+  // ---------- Drzewko sceny: wybory ułożone jak nawigacja (grupa › kategoria › wybór), tylko do obejrzenia ----------
+  // Węzeł: [etykieta, wartość albo null, dzieci]. Gałęzie bez sensu w tej scenie (ręce na siedząco, pora dnia w studiu) są pominięte.
+  const parentName = (catId, id) => ((optionsOf(catId).find(o => o.children && o.children.some(c => c.id === id)) || {}).name);
+  const treePath = (...parts) => parts.filter(Boolean).join(" › ");
+  function sceneTreeOf(st) {
+    const lk = st.look, male = st.body === "male";
+    const color = (part) => colorOf(st.wc[part]).name;
+    const g = exprGroup(lk.expr), exprName = lookOpt("expr", lk.expr).name;
+    const hair = lookOpt("hair", lk.hair);
+    const head = [
+      ["Mina", g.levels.length > 1 ? treePath(g.name, exprName) : exprName],
+      ["Włosy", treePath(hair.name, !hair.noColor && "Kolor: " + (lk.hairColor === "auto" ? "Domyślny" : lookOpt("hairColor", lk.hairColor).name))],
+      male && ["Zarost", treePath(lookOpt("beard", lk.beard).name, lk.beard !== "none" && "Kolor: " + (lk.beardColor === "auto" ? "Domyślny" : lookOpt("beardColor", lk.beardColor).name))],
+      !male && ["Usta", lookOpt("lips", lk.lips).name],
+      ["Okulary", treePath(lookOpt("glasses", lk.glasses).name, lk.glasses !== "none" && "Oprawki: " + lookOpt("glassesColor", lk.glassesColor).name)]
+    ].filter(Boolean);
+    const wear = PARTS.filter(p => !(p === "top" && isDress(st))).map(p => {
+      const w = st.wear[p];
+      if (p === "bottom" && isDress(st)) return ["Dół", treePath("Sukienka", color("bottom"))];
+      return [WEAR[p].name, w === "none" ? "Brak" : treePath(wearOpt(p, w).name, color(p))];
+    });
+    const anchors = resolveAnchors(st);
+    const things = (st.things || []).filter(it => THING[it.id]).map((it, i) => {
+      const items = itemsOn(st, i).map(x => itemInfo(x).name);
+      return [THING[it.id].name, treePath(it.color && colorOf(it.color).name, anchors[i] && ANCHORS[anchors[i]] ? ANCHORS[anchors[i]].name : anchors[i] === "lean" ? "Za plecami" : null, items.length && "Na blacie: " + items.join(", "))];
+    });
+    const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
+    return [
+      ["Postać", null, [
+        ["Sylwetka", optionOf("body", st.body).name],
+        ["Głowa", null, head],
+        ["Ubiór", st.outfit === "custom" ? "Własny" : "Zestaw " + optionOf("outfit", st.outfit).name, wear],
+        ["Poza", treePath(parentName("pose", st.pose), optionOf("pose", st.pose).name)],
+        armsApply(st) && ["Ręce", optionOf("arms", armsFor(st)).name]
+      ].filter(Boolean)],
+      ["Rzeczy", things.length ? null : "Nic", things],
+      ["Scena", null, [
+        ["Tło", treePath(parentName("background", st.background), optionOf("background", st.background).name, bgLook(st).map(id => bgVar(st.background, id).name).join(" + "))],
+        ["Elementy", bgExtras(st).length ? bgExtras(st).map(x => FX[x].name).join(", ") : "Brak"],
+        timeApplies(st) && ["Pora dnia", optionOf("time", st.time).name],
+        ["Światło", treePath(parentName("light", st.light), optionOf("light", st.light).name) + " · " + ZONES[st.lightZone].name]
+      ].filter(Boolean)],
+      ["Kamera", null, [
+        ["Kadr", optionOf("shot", st.shot).name],
+        ["Kamera", treePath(parentName("camera", st.camera), optionOf("camera", st.camera).name)],
+        ["Format", fmt.name],
+        st.mode === "video" && !isSelfie(st.camera) && ["Ruch", optionOf("motion", st.motion).name]
+      ].filter(Boolean)],
+      ["Styl", optionOf("style", st.style).name]
+    ];
+  }
+  function renderSceneTree() {
+    const box = document.getElementById("sceneTreeBody");
+    box.replaceChildren();
+    if (scene.subject !== "person") return;
+    // Wartości sceny domyślnej (ta sama ścieżka) pozwalają przygasić to, czego użytkownik nie zmieniał
+    const base = {};
+    const walk = (nodes, key, fn) => nodes.forEach(([label, value, kids]) => { const k = key + "/" + label; fn(k, value); if (kids) walk(kids, k, fn); });
+    walk(sceneTreeOf({ ...SCENE0, mode: scene.mode, format: SCENE0.format }), "", (k, v) => { base[k] = v; });
+    const line = (pre, label, value, key, group) => {
+      const d = document.createElement("div");
+      d.className = "tree-line" + (group ? " group" : "");
+      const p = document.createElement("span");
+      p.className = "tree-pre";
+      p.textContent = pre;
+      const b = document.createElement("b");
+      b.textContent = label;
+      d.append(p, b);
+      if (value) {
+        const v = document.createElement("span");
+        v.textContent = " ─ " + value;
+        if (base[key] !== value) v.className = "tree-mine";
+        d.appendChild(v);
+      }
+      box.appendChild(d);
+    };
+    const draw = (nodes, pre, key, top) => nodes.forEach(([label, value, kids], i) => {
+      const last = i === nodes.length - 1, k = key + "/" + label;
+      line(top ? "" : pre + (last ? "└─ " : "├─ "), label, value, k, top);
+      if (kids && kids.length) draw(kids, top ? "" : pre + (last ? "   " : "│  "), k, false);
+    });
+    draw(sceneTreeOf(scene), "", "", true);
   }
   function renderGens() {
     gensEl.replaceChildren();
