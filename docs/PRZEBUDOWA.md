@@ -252,4 +252,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
    - Kreator (Ekspert): rozdział Rzeczy: „Dodajemy coś do sceny?” → „Co dodajemy?” → „Wskaż na ekranie, gdzie ma stać” (stuknięcie w punkt przechodzi dalej; są też kafelki z punktami) → „Co leży na stole?” (gdy blat) → „Jaki kolor?” → znowu „Co dodajemy?”, aż do „Rzeczy gotowe”. W Podstawowym pytania o rzeczy zostają w rozdziale Poza.
    - Propozycje Manikuna (raz na scenę): obie strony zajęte → szerszy kadr (3:2, w wideo 16:9); rzeczy nad sobą (za postacią albo w tle, a do tego drobiazgi albo coś przed) → wyższy kadr (4:5, w wideo 9:16). Propozycję wykonuje stuknięcie w dymek. Powyżej 6 rzeczy (obiekty, drobiazgi, elementy miejsca) ostrzeżenie.
    - Maniscrypt: kolor przed nazwą („a red comfortable sofa”), położenie z punktu („further away on the right”, „in the foreground, close to the camera”).
-6. Nowe pozy: Rozparty, Na brzegu, Noga na nogę, grupa Leży, Oparty.
+6. Nowe pozy: Rozparty, Na brzegu, Noga na nogę, grupa Leży, Oparty. **Gotowe.**
+   - Siedzi: Rozparty, Na brzegu, Noga na nogę. Na wysokim siedzisku siedzą „jak na krześle”, na niskim z kolanami w górze. Bez siedziska: Rozparty i Noga na nogę odchylają się na rękach z nogami skrzyżowanymi w kostkach, Na brzegu siada zwyczajnie.
+   - Leży (nowa grupa): Na plecach (głowa po lewej, twarz w górę), Na boku (głowa wsparta na dłoni), Na brzuchu (głowa na dłoniach, łydki w górze). Na ziemi albo na wierzchu siedziska (kanapa, ławka).
+   - Stoi: Oparty, tylko gdy w scenie jest rzecz. Postać opiera się plecami o pierwszą rzecz, która staje tuż za nią (działa dla lady, samochodu, regału, stołu). Bez rzeczy kafelek znika, a postać stoi prosto.
+   - Mina przechyla głowę i tułów względem pozy, więc działa też na leżąco.

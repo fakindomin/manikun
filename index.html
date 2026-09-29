@@ -827,14 +827,25 @@
         { id: "contra", name: "Kontrapost", short: "Kontrapost", prompt: "standing in a relaxed contrapposto, weight shifted onto one leg, hip slightly out to the side" },
         { id: "wide", name: "Rozkrok", short: "Rozkrok", prompt: "standing in a wide, stable stance with feet planted firmly apart" },
         { id: "stride", name: "W pół kroku", short: "Pół kroku", prompt: "caught mid-stride as if walking, one foot in front of the other" },
-        { id: "crouch", name: "Kuca", short: "Kuca", prompt: "crouching low in a deep squat, knees bent, heels close to the hips" }
+        { id: "crouch", name: "Kuca", short: "Kuca", prompt: "crouching low in a deep squat, knees bent, heels close to the hips" },
+        // Oparty: tylko gdy w scenie jest rzecz, o którą można się oprzeć
+        { id: "leanOn", name: "Oparty", short: "Oparty", needsThing: true, prompt: "leaning back casually, legs crossed at the ankles, hands relaxed, facing the camera" }
       ]},
       // Siedzi: poza opisuje ciało; na czym siedzi, wynika z Rzeczy (bez siedziska na ziemi)
       { id: "sitting", name: "Siedzi", children: [
         { id: "sit", name: "Siedzi prosto", short: "Siedzi", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
         { id: "lean", name: "Pochylony", short: "Pochylony", prompt: "sitting on the ground, leaning forward with the forearms resting on the knees, facing the camera" },
         { id: "cross", name: "Po turecku", short: "Po turecku", prompt: "sitting cross-legged on the ground, back straight, hands resting on the knees, facing the camera" },
-        { id: "kneeUp", name: "Kolano pod brodą", short: "Kolano", prompt: "sitting on the ground with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera" }
+        { id: "kneeUp", name: "Kolano pod brodą", short: "Kolano", prompt: "sitting on the ground with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera" },
+        { id: "sprawl", name: "Rozparty", short: "Rozparty", prompt: "sitting on the ground leaning back on the hands, legs stretched out and crossed at the ankles, relaxed, facing the camera" },
+        { id: "edge", name: "Na brzegu", short: "Na brzegu", prompt: "sitting on the ground with knees bent, forearms resting on the knees, back straight, facing the camera" },
+        { id: "legsCrossed", name: "Noga na nogę", short: "Noga na nogę", prompt: "sitting on the ground leaning back on the hands, legs stretched out and crossed at the ankles, facing the camera" }
+      ]},
+      // Leży: na ziemi albo na siedzisku (kanapa, ławka)
+      { id: "lying", name: "Leży", children: [
+        { id: "back", name: "Na plecach", short: "Na plecach", prompt: "lying on their back on the ground, arms relaxed along the body" },
+        { id: "side", name: "Na boku", short: "Na boku", prompt: "lying on their side on the ground, head propped up on one hand, legs slightly bent" },
+        { id: "belly", name: "Na brzuchu", short: "Na brzuchu", prompt: "lying on their stomach on the ground, chin resting on the hands, lower legs raised behind them" }
       ]}
     ]},
     // Ręce tylko przy postawach stojących; siedząc ręce opiera na kolanach lub udach
@@ -1323,7 +1334,7 @@
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
   // Czy opcja pasuje do reszty sceny: sylwetka, obiekt/postać, dron tylko w plenerze i bez zbliżeń
-  const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject))
+  const fitsBody = (o, st) => (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject)) && (!o.needsThing || (st.things || []).length > 0)
     && (!o.noDrone || st.camera !== "D") && (!o.outdoor || isOutdoor(st.background));
 
   // Własne zdjęcie twarzy: wybór tylko na czas kopiowania (panel "Kopiuj"), nie jest częścią sceny
@@ -1443,8 +1454,66 @@
     nearFoot: 70, farFoot: 70
   };
 
+  // Rozparty: tułów odchylony do tyłu, nogi wysunięte do przodu, ręce luźno na boki (na kanapie, w fotelu)
+  POSES.sprawl = {
+    spine: 197, head: 186,
+    nearUpper: -32, nearFore: 8, farUpper: 30, farFore: 60,
+    nearThigh: 84, nearShin: 42, farThigh: 88, farShin: 46,
+    nearFoot: 110, farFoot: 110
+  };
+  // Na brzegu: przysiada na krawędzi, tułów lekko do przodu, stopy cofnięte pod siedzisko, dłonie na kolanach
+  POSES.edge = {
+    spine: 172, head: 182,
+    nearUpper: 22, nearFore: 88, farUpper: 24, farFore: 92,
+    nearThigh: 112, nearShin: -14, farThigh: 115, farShin: -10,
+    nearFoot: 75, farFoot: 75
+  };
+  // Noga na nogę: bliższa noga założona na dalszą, dłonie splecione na kolanie
+  POSES.legsCrossed = {
+    spine: 182, head: 180,
+    nearUpper: 22, nearFore: 96, farUpper: 26, farFore: 100,
+    nearThigh: 112, nearShin: 28, farThigh: 97, farShin: 0,
+    nearFoot: 95, farFoot: 70
+  };
+  // Na ziemi bez siedziska: odchylony na rękach, nogi wyprostowane i skrzyżowane w kostkach
+  POSES.lounge = {
+    spine: 205, head: 190,
+    nearUpper: -24, nearFore: -30, farUpper: -18, farFore: -24,
+    nearThigh: 86, nearShin: 92, farThigh: 88, farShin: 90,
+    nearFoot: 160, farFoot: 150
+  };
+  // Leży na plecach: głowa po lewej (twarz do góry), ręce wzdłuż ciała, nogi po prawej
+  POSES.back = {
+    spine: -90, head: -94,
+    nearUpper: 92, nearFore: 90, farUpper: 88, farFore: 92,
+    nearThigh: 90, nearShin: 90, farThigh: 92, farShin: 88,
+    nearFoot: 178, farFoot: 175
+  };
+  // Leży na boku: głowa po lewej wsparta na dłoni (łokieć na ziemi), nogi lekko ugięte
+  POSES.side = {
+    spine: -112, head: -136,
+    nearUpper: -8, nearFore: -172, farUpper: 70, farFore: 118,
+    nearThigh: 92, nearShin: 78, farThigh: 88, farShin: 86,
+    nearFoot: 160, farFoot: 150
+  };
+  // Leży na brzuchu: głowa po prawej uniesiona na dłoniach, łokcie na ziemi, łydki w górze
+  POSES.belly = {
+    spine: 102, head: 146,
+    nearUpper: 6, nearFore: 158, farUpper: 12, farFore: 162,
+    nearThigh: -92, nearShin: -150, farThigh: -88, farShin: -128,
+    nearFoot: -80, farFoot: -60
+  };
+  // Oparty plecami o rzecz tuż za nim: tułów odchylony do tyłu, stopy wysunięte i skrzyżowane w kostkach, dłonie luźno
+  POSES.leanOn = {
+    spine: 190, head: 182,
+    nearUpper: -12, nearFore: 6, farUpper: 6, farFore: 20,
+    nearThigh: 16, nearShin: 4, farThigh: 8, farShin: 20,
+    nearFoot: 62, farFoot: 70
+  };
+
   // Układ rąk nakładany na postawę stojącą. Bliższa ręka (lewa na ekranie) jest rysowana przed tułowiem.
-  const STANDING = ["stand", "contra", "wide", "stride", "crouch"];
+  const STANDING = ["stand", "contra", "wide", "stride", "crouch", "leanOn"];
+  const LYING = ["back", "side", "belly"];
   const ARMS = {
     down: {},
     hipOne: { nearUpper: -38, nearFore: 48 },
@@ -1455,7 +1524,7 @@
     selfie: { farUpper: 142, farFore: 172, head: 186 },
     selfieR: { nearUpper: -142, nearFore: -172, head: 174 }
   };
-  const armsApply = st => STANDING.includes(st.pose);
+  const armsApply = st => STANDING.includes(st.pose) && st.pose !== "leanOn";
   // Te same gesty wykonane dalszą ręką
   const ARMS_FAR = {
     hipOne: { farUpper: 36, farFore: -50 },
@@ -1476,7 +1545,8 @@
     // Telefon w bliższej ręce: gest wykonuje dalsza ręka (dłoń przy twarzy rysowana przed głową)
     let p = arms ? { ...POSES[base], ...(selfie === "selfieR" ? ARMS_FAR[arms] : ARMS[arms]) } : POSES[base];
     if (selfie) p = { ...p, ...ARMS[selfie] };
-    if (expr) p = { ...p, ...EXPR_POSE[expr] };
+    // Mina przechyla głowę i tułów względem pozy (także leżącej)
+    if (expr) { const E = EXPR_POSE[expr]; p = { ...p }; if (E.head) p.head += E.head - 180; if (E.spine) p.spine += E.spine - 180; }
     return (poseCache[key] = p);
   }
   const curPose = () => poseOf(poseKey(scene));
@@ -1507,9 +1577,12 @@
   // reszta w swoim zwykłym miejscu albo w pierwszym wolnym). Dwie rzeczy nie dzielą jednego punktu, póki są wolne.
   function resolveAnchors(st) {
     const list = st.things || [], out = list.map(() => null), used = new Set();
+    // Oparty: pierwsza rzecz stoi tuż za plecami postaci (punkt „lean”)
+    const li = leanIndex(st);
+    if (li >= 0) out[li] = "lean";
     list.forEach((it, i) => {
       const t = THING[it.id];
-      if (t && it.anchor && anchorOK(st, it.anchor, t) && !used.has(it.anchor)) { out[i] = it.anchor; used.add(it.anchor); }
+      if (!out[i] && t && it.anchor && anchorOK(st, it.anchor, t) && !used.has(it.anchor)) { out[i] = it.anchor; used.add(it.anchor); }
     });
     list.forEach((it, i) => {
       const t = THING[it.id];
@@ -1524,19 +1597,29 @@
   const thingAnchor = (st, it) => resolveAnchors(st)[(st.things || []).indexOf(it)];
   const seatOf = st => { const i = resolveAnchors(st).indexOf("under"); return i >= 0 ? THING[st.things[i].id] : null; };
   // Geometria pozy: na siedzisku wysokim prosto i pochylony siedzi jak na krześle, na niskim jak na kamieniu
+  // Pozy „jak na krześle” (stopy na ziemi, siedzisko pod biodrami); na niskim siedzisku wszystkie siedzą jak na kamieniu.
+  // Bez siedziska: rozparty i noga na nogę odchylają się na rękach, na brzegu siada zwyczajnie. Oparty bez rzeczy stoi prosto.
+  const CHAIRLIKE = ["chair", "lean", "edge", "sprawl", "legsCrossed"];
+  const GROUND_OF = { sprawl: "lounge", legsCrossed: "lounge", edge: "sit" };
   function poseGeom(st) {
+    if (st.pose === "leanOn") return (st.things || []).length ? "leanOn" : "stand";
     const seat = seatOf(st);
-    if (!seat) return st.pose;
-    if (st.pose === "sit") return seat.seat === "low" ? "stone" : "chair";
-    if (st.pose === "lean") return seat.seat === "low" ? "stone" : "lean";
+    if (!seat) return GROUND_OF[st.pose] || st.pose;
+    const low = seat.seat === "low";
+    if (st.pose === "sit") return low ? "stone" : "chair";
+    if (["lean", "edge", "sprawl", "legsCrossed"].includes(st.pose)) return low ? "stone" : st.pose;
     return st.pose;
   }
-  // Uniesienie postaci nad ziemię (np. na hokerze stopy na podnóżku, po turecku na kanapie)
-  const GEOM_SEAT = { chair: 42, lean: 42, stone: 21 };
+  // Uniesienie postaci nad ziemię: siedzisko wyższe niż zwykłe krzesło (hoker), albo poza z ziemi na wierzchu siedziska
+  // (po turecku, leżąc na kanapie). Wysokość siedziska pozy „jak na krześle” liczy się z samej figury.
   function poseLift(st) {
     const seat = seatOf(st);
-    return seat ? seat.top - (GEOM_SEAT[poseGeom(st)] || 0) : 0;
+    if (!seat) return 0;
+    const g = poseGeom(st);
+    return CHAIRLIKE.includes(g) || g === "stone" ? seat.top - (buildFigure(g, st.body).box.maxY - 6) : seat.top;
   }
+  // Rzecz, o którą opiera się postać (pierwsza w scenie)
+  const leanIndex = st => st.pose === "leanOn" && (st.things || []).length ? 0 : -1;
 
   // Proste rysunki w stylu rekwizytów Manikuna: x = punkt odniesienia, G = linia podłoża, s = skala, wysokości w górę od podłoża
   // fill: kolor rzeczy (Ekspert) zamiast domyślnego ciemnego wypełnienia rekwizytów
@@ -1663,6 +1746,8 @@
       // Dalej: za miejscem „obok”, trochę mniejsza i głębiej
       const figL = pl.x + 8 * s, figR = pl.x + pl.w - 8 * s, fs = s * 0.85;
       if (anchor === "left") return { ...base, x: Math.min(cx - 22 * s, figL) - x1 * s, G, s };
+      // Rzecz, o którą się opiera: tuż za plecami, w tej samej skali
+      if (anchor === "lean") return { ...base, x: cx - 30 * s - (x0 + x1) / 2 * s, G, s };
       if (anchor === "leftFar") return { ...base, x: Math.min(cx - 22 * s, figL) - 95 * s - x1 * fs, G: G - 10 * s, s: fs };
       if (anchor === "rightFar") return { ...base, x: Math.max(cx + 22 * s, figR) + 95 * s - x0 * fs, G: G - 10 * s, s: fs };
       return { ...base, x: Math.max(cx + 22 * s, figR) - x0 * s, G, s };
@@ -1701,6 +1786,7 @@
   const ANCHOR_WORDS = Object.fromEntries(Object.entries(ANCHORS).map(([k, v]) => [k, v.words]));
   const thingPhrase = it => { const t = THING[it.id]; return it.color ? an(colorOf(it.color).word + " " + t.phrase.replace(/^(an?|the) /, "")) : t.phrase; };
   function sitPrompt(st) {
+    if (st.pose === "leanOn") return (st.things || []).length ? `leaning back casually against ${thingPhrase(st.things[0])}, legs crossed at the ankles, hands relaxed, facing the camera` : optionOf("pose", "stand").prompt;
     const seat = seatOf(st);
     if (!seat) return optionOf("pose", st.pose).prompt;
     const it = st.things[resolveAnchors(st).indexOf("under")], on = seat.sitOn ? seat.sitOn(thingPhrase(it)) : thingPhrase(it);
@@ -1708,11 +1794,17 @@
     if (st.pose === "sit") return seat.seat === "low" ? `sitting on ${on} with knees bent, forearms resting on the knees, back straight, facing the camera` : `sitting upright on ${on}, feet flat on the floor, hands resting on the thighs, facing the camera`;
     if (st.pose === "lean") return `sitting on ${on}, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera`;
     if (st.pose === "cross") return `sitting cross-legged on ${on}, back straight, hands resting on the knees, facing the camera`;
+    if (st.pose === "sprawl") return `lounging back on ${on}, legs stretched out in front, arms resting loosely at the sides, facing the camera`;
+    if (st.pose === "edge") return `perched on the very edge of ${on}, leaning slightly forward, feet tucked back, hands on the knees, facing the camera`;
+    if (st.pose === "legsCrossed") return `sitting on ${on} with one leg crossed over the other, hands clasped on the knee, facing the camera`;
+    if (st.pose === "back") return `lying on their back on ${on}, arms relaxed along the body`;
+    if (st.pose === "side") return `lying on their side on ${on}, head propped up on one hand, legs slightly bent`;
+    if (st.pose === "belly") return `lying on their stomach on ${on}, chin resting on the hands, lower legs raised behind them`;
     return `sitting on ${on} with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera`;
   }
   function thingsPrompt(st) {
     const anchors = resolveAnchors(st), si = surfaceIndex(st);
-    const items = (st.things || []).map((it, i) => THING[it.id] && anchors[i] !== "under"
+    const items = (st.things || []).map((it, i) => THING[it.id] && anchors[i] !== "under" && i !== leanIndex(st)
       ? thingPhrase(it) + (i === si ? itemsPrompt(st) : "") + " " + ANCHOR_WORDS[anchors[i]] : null).filter(Boolean);
     return items.length ? ", with " + andList(items) : "";
   }
@@ -3009,7 +3101,7 @@
         lips: !male && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
         glasses: Math.random() < 0.3 ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id
       };
-      scene.pose = anyOf(leavesOf("pose")).id;
+      scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
       scene.arms = anyOf(optionsOf("arms")).id;
       scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : [];
       scene.items = surfaceOf(scene) && Math.random() < 0.6 ? [{ id: anyOf(ALL_ITEMS).id }] : [];
@@ -3308,7 +3400,7 @@
         el("path", { d: "M36 20 L24 32 L36 44 M24 32 H46" }, svg);
       })];
       list[0].btn.classList.add("back");
-      grp.children.forEach(c => list.push(tile("opt-" + catId + "-" + c.id, c.name,
+      grp.children.filter(c => fitsBody(c, scene)).forEach(c => list.push(tile("opt-" + catId + "-" + c.id, c.name,
         () => scene[catId] === c.id,
         () => pickLeaf(catId, c.id),
         svg => drawOption(catId, c.id, svg))));
@@ -3363,9 +3455,9 @@
     if (catId === "pose" || catId === "body" || catId === "arms") {
       // Jedna skala dla wszystkich kafelków z postacią: liczona z każdej pozy, układu rąk i sylwetki
       const boxes = [];
-      Object.keys(POSES).forEach(pk => Object.keys(ARMS).forEach(ak => Object.keys(BODIES).forEach(bk =>
+      Object.keys(POSES).filter(pk => !LYING.includes(pk)).forEach(pk => Object.keys(ARMS).forEach(ak => Object.keys(BODIES).forEach(bk =>
         boxes.push(buildFigure(poseKey({ pose: pk, arms: ak }), bk).box))));
-      const side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
+      let side = Math.max(...boxes.map(b => b.w), ...boxes.map(b => b.h)) + 12;
       const poseId = catId === "pose" ? leafId : scene.pose;
       // Siedzisko z Rzeczy: kafelek pokazuje, jak postać na nim siedzi
       const stT = { ...scene, pose: poseId, arms: catId === "arms" ? leafId : scene.arms, look: { ...scene.look, expr: "neutral" } };
@@ -3375,6 +3467,8 @@
       if (catId === "body" && !scene.look.hairPicked) scene.look = { ...scene.look, hair: DEFAULT_HAIR_OF[leafId] };
       const fig = buildFigure(key, catId === "body" ? leafId : scene.body, scene.outfit), b = fig.box;
       scene.look = savedLook;
+      // Leżąca postać jest szeroka: kafelek dopasowuje się do niej
+      if (b.w + 12 > side) side = b.w + 12;
       const G = b.maxY + lift, x = b.minX - (side - b.w) / 2, y = G + 6 - side;
       svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
       el("line", { x1: f(x), y1: f(G), x2: f(x + side), y2: f(G), class: "thin" }, svg);
@@ -3601,7 +3695,7 @@
       };
     },
     pose() {
-      scene.pose = anyOf(leavesOf("pose")).id;
+      scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
       if (armsApply(scene)) scene.arms = anyOf(optionsOf("arms")).id;
       // Siedząc zwykle na czymś, stojąc czasem coś obok (w Ekspercie rzeczy ma osobny rozdział)
       if (level === "expert") return;
@@ -4552,6 +4646,8 @@
     stand: "stanie stoi", stride: "chod idzie spacer krok", crouch: "kucanie kucnij przysiad", wide: "rozkrok",
     things: "przedmiot rekwizyt meble obiekt", sofa: "sofa", stool: "stolek", floorLamp: "lampa", shelf: "polka ksiazki", umbrella: "parasol",
     car: "auto", bike: "rowerek", crate: "pudlo", stump: "pieniek", table: "stolik",
+    back: "lezy lezenie plecy", side: "lezy bok", belly: "lezy brzuch", lying: "lezenie polozony", sprawl: "rozwalony wygodnie", edge: "brzeg krawedz przysiada",
+    legsCrossed: "noga zalozona", leanOn: "opiera oparty",
     sit: "siedzenie siedzi", chair: "krzeslo", cross: "turecku", chin: "myslenie zamyslenie", shade: "oslania patrzy wypatruje",
     hips: "rece na biodrach", D: "dron z gory lot", night: "wieczor ciemno", golden: "zachod wschod"
   };
