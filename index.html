@@ -684,6 +684,7 @@
   // seat: da się na tym usiąść ("high" jak krzesło, "low" jak kamień), top: wysokość siedziska w jednostkach Manikuna
   // (stojący mężczyzna = 205). at: gdzie staje obok stojącej postaci, seatedAt: obok siedzącej (gdy nie da się usiąść).
   // box: [lewa krawędź, prawa krawędź, wysokość] względem punktu odniesienia rysunku (przy siedziskach to biodro).
+  // surf: wysokość blatu, na którym kładzie się drobiazgi; on: nazwa blatu w miejscowniku ("na stole").
   // phrase: opis w Maniscrypcie.
   const THINGS = [
     { id: "chair", name: "Krzesło", seat: "high", top: 42, at: "right", phrase: "a simple wooden chair", box: [-26, 34, 104] },
@@ -696,10 +697,10 @@
     { id: "stump", name: "Pień drzewa", seat: "low", top: 21, at: "right", phrase: "a tree stump", box: [-30, 36, 21] },
     { id: "stairs", name: "Schody", seat: "low", top: 21, at: "behind", phrase: "a short flight of stairs", sitPhrase: "the bottom step of a short flight of stairs", box: [-120, 44, 63] },
     { id: "crate", name: "Skrzynia", seat: "low", top: 30, at: "right", phrase: "a wooden crate", box: [-26, 30, 30] },
-    { id: "table", name: "Stół", surface: true, at: "front", seatedAt: "right", phrase: "a wooden table", box: [-65, 65, 78] },
-    { id: "coffeeTable", name: "Stolik kawowy", surface: true, at: "front", phrase: "a low coffee table", box: [-55, 55, 38] },
-    { id: "bar", name: "Lada barowa", surface: true, at: "right", phrase: "a bar counter", box: [-88, 88, 112] },
-    { id: "desk", name: "Biurko", surface: true, at: "front", seatedAt: "right", phrase: "a desk", box: [-70, 70, 76] },
+    { id: "table", name: "Stół", surf: 78, on: "stole", at: "front", seatedAt: "right", phrase: "a wooden table", box: [-65, 65, 78] },
+    { id: "coffeeTable", name: "Stolik kawowy", surf: 38, on: "stoliku", at: "front", phrase: "a low coffee table", box: [-55, 55, 38] },
+    { id: "bar", name: "Lada barowa", surf: 112, on: "ladzie", at: "right", phrase: "a bar counter", box: [-88, 88, 112] },
+    { id: "desk", name: "Biurko", surf: 76, on: "biurku", at: "front", seatedAt: "right", phrase: "a desk", box: [-70, 70, 76] },
     { id: "floorLamp", name: "Lampa stojąca", at: "left", phrase: "a floor lamp", box: [-20, 20, 176] },
     { id: "shelf", name: "Regał z książkami", at: "behind", phrase: "a tall bookshelf full of books", box: [-45, 45, 190] },
     { id: "plant", name: "Roślina w donicy", at: "left", phrase: "a large potted plant", box: [-36, 36, 110] },
@@ -708,6 +709,42 @@
     { id: "car", name: "Samochód", at: "background", phrase: "a car", box: [-212, 212, 138] }
   ];
   const THING = Object.fromEntries(THINGS.map(t => [t.id, t]));
+
+  // ---------- Drobiazgi na blacie ----------
+  // 18 z rysunkiem (box: [lewo, prawo, wysokość] w jednostkach Manikuna, rysowane 1,6× większe, żeby były czytelne)
+  const DRAWN_ITEMS = [
+    { id: "mug", name: "Kubek", en: "a mug of coffee", box: [-5, 10, 11] },
+    { id: "cup", name: "Filiżanka", en: "a cup of coffee on a saucer", box: [-9, 9, 9] },
+    { id: "glass", name: "Szklanka", en: "a glass of water", box: [-4, 4, 12] },
+    { id: "wine", name: "Butelka wina", en: "a bottle of red wine", box: [-4, 4, 30] },
+    { id: "wineGlass", name: "Kieliszek", en: "a glass of red wine", box: [-5, 5, 16] },
+    { id: "plate", name: "Talerz z jedzeniem", en: "a plate of food", box: [-14, 14, 9] },
+    { id: "fruit", name: "Misa owoców", en: "a bowl of fruit", box: [-11, 11, 17] },
+    { id: "laptop", name: "Laptop", en: "an open laptop", box: [-12, 12, 17] },
+    { id: "phone", name: "Telefon", en: "a smartphone", box: [-6, 6, 2] },
+    { id: "book", name: "Książka", en: "a couple of books", box: [-10, 10, 6] },
+    { id: "newspaper", name: "Gazeta", en: "a folded newspaper", box: [-11, 11, 3] },
+    { id: "vase", name: "Wazon z kwiatami", en: "a vase of fresh flowers", box: [-7, 7, 27] },
+    { id: "candle", name: "Świeca", en: "a lit candle", box: [-3, 3, 16] },
+    { id: "camera", name: "Aparat fotograficzny", en: "a camera", box: [-9, 9, 12] },
+    { id: "headphones", name: "Słuchawki", en: "a pair of headphones", box: [-9, 9, 13] },
+    { id: "guitar", name: "Gitara", en: "an acoustic guitar", box: [-8, 8, 48] },
+    { id: "bag", name: "Torba", en: "a bag", box: [-8, 8, 15] },
+    { id: "umbrellaS", name: "Parasolka", en: "a folded umbrella", box: [-4, 6, 36] }
+  ];
+  // Słownik pozostałych rzeczy (polska nazwa | angielski opis | rodzaj znaku). Nowe rzeczy dopisuje się tutaj.
+  const TEXT_ITEMS = `banan|a banana|food;jabłko|an apple|food;gruszka|a pear|food;pomarańcza|an orange|food;cytryna|a lemon|food;ananas|a pineapple|food;arbuz|a watermelon|food;winogrona|a bunch of grapes|food;truskawki|a bowl of strawberries|food;wiśnie|a bowl of cherries|food;śliwka|a plum|food;brzoskwinia|a peach|food;kiwi|a kiwi fruit|food;kokos|a coconut|food;awokado|an avocado|food;chleb|a loaf of bread|food;bagietka|a baguette|food;croissant|a croissant|food;rogalik|a croissant|food;pizza|a pizza|food;hamburger|a hamburger|food;kanapka|a sandwich|food;tort|a birthday cake|food;ciasto|a cake|food;ciastko|a cookie|food;pączek|a doughnut|food;donut|a doughnut|food;lody|an ice cream cone|food;czekolada|a bar of chocolate|food;ser|a wedge of cheese|food;jajko|an egg|food;sushi|a plate of sushi|food;makaron|a plate of pasta|food;zupa|a bowl of soup|food;sałatka|a bowl of salad|food;frytki|a portion of fries|food;popcorn|a bucket of popcorn|food;cukierki|a bowl of sweets|food;orzechy|a bowl of nuts|food;marchewka|a carrot|food;pomidor|a tomato|food;ogórek|a cucumber|food;dynia|a pumpkin|food;` +
+    `kawa|a cup of coffee|drink;herbata|a cup of tea|drink;sok|a glass of juice|drink;woda|a glass of water|drink;mleko|a glass of milk|drink;piwo|a glass of beer|drink;koktajl|a cocktail|drink;szampan|a glass of champagne|drink;lemoniada|a jug of lemonade|drink;dzbanek|a jug|drink;termos|a thermos flask|drink;puszka|a soda can|drink;kakao|a mug of hot chocolate|drink;butelka|a bottle|drink;kielich|a goblet|drink;` +
+    `miska|a bowl|dish;garnek|a pot|dish;patelnia|a frying pan|dish;czajnik|a kettle|dish;łyżka|a spoon|dish;widelec|a fork|dish;nóż|a knife|dish;pałeczki|a pair of chopsticks|dish;deska do krojenia|a chopping board|dish;słoik|a jar|dish;taca|a tray|dish;serwetka|a napkin|dish;obrus|a tablecloth|dish;` +
+    `tablet|a tablet|tech;klawiatura|a keyboard|tech;myszka|a computer mouse|tech;monitor|a computer monitor|tech;głośnik|a speaker|tech;radio|a vintage radio|tech;gramofon|a record player|tech;płyta winylowa|a vinyl record|tech;pad|a game controller|tech;konsola|a game console|tech;mikrofon|a microphone|tech;zegar|a clock|tech;budzik|an alarm clock|tech;zegarek|a wristwatch|tech;lampka|a desk lamp|tech;ładowarka|a phone charger|tech;dron|a small drone|tech;kamera|a video camera|tech;projektor|a projector|tech;kalkulator|a calculator|tech;maszyna do pisania|a typewriter|tech;telewizor|a small TV|tech;` +
+    `zeszyt|a notebook|paper;notes|a notepad|paper;długopis|a pen|paper;ołówek|a pencil|paper;mapa|a map|paper;list|a letter|paper;koperta|an envelope|paper;kartka|a sheet of paper|paper;kalendarz|a calendar|paper;album|a photo album|paper;zdjęcie|a framed photo|paper;ramka|a picture frame|paper;pocztówka|a postcard|paper;bilet|a ticket|paper;komiks|a comic book|paper;magazyn|a magazine|paper;karty|a deck of cards|paper;puzzle|a jigsaw puzzle|paper;szachy|a chessboard|paper;kostki do gry|a pair of dice|paper;globus|a globe|paper;` +
+    `doniczka|a small potted plant|decor;kaktus|a small cactus|decor;kwiat|a single flower|decor;bukiet|a bouquet of flowers|decor;róża|a red rose|decor;świecznik|a candlestick|decor;lampion|a lantern|decor;figurka|a small figurine|decor;rzeźba|a small sculpture|decor;lusterko|a hand mirror|decor;klepsydra|an hourglass|decor;szkatułka|a jewellery box|decor;muszla|a seashell|decor;kamyk|a pebble|decor;kryształ|a crystal|decor;miś|a teddy bear|decor;pluszak|a plush toy|decor;lalka|a doll|decor;balon|a balloon|decor;prezent|a wrapped gift|decor;kula śnieżna|a snow globe|decor;dzwonek|a small bell|decor;akwarium|a small fish tank|decor;klatka dla ptaków|a birdcage|decor;` +
+    `klucz|a key|tool;klucze|a bunch of keys|tool;młotek|a hammer|tool;śrubokręt|a screwdriver|tool;nożyczki|a pair of scissors|tool;taśma|a roll of tape|tool;latarka|a flashlight|tool;lupa|a magnifying glass|tool;kompas|a compass|tool;lornetka|a pair of binoculars|tool;pędzel|a paintbrush|tool;farby|a set of paints|tool;linijka|a ruler|tool;apteczka|a first aid kit|tool;` +
+    `okulary|a pair of glasses|wear;kapelusz|a hat|wear;czapka|a cap|wear;rękawiczki|a pair of gloves|wear;szalik|a scarf|wear;portfel|a wallet|wear;plecak|a backpack|wear;walizka|a suitcase|wear;torebka|a handbag|wear;perfumy|a bottle of perfume|wear;szminka|a lipstick|wear;grzebień|a comb|wear;szczotka|a hairbrush|wear;pierścionek|a ring|wear;naszyjnik|a necklace|wear;buty|a pair of shoes|wear;krawat|a tie|wear;` +
+    `skrzypce|a violin|other;trąbka|a trumpet|other;flet|a flute|other;bęben|a small drum|other;ukulele|an ukulele|other;piłka|a ball|other;piłka nożna|a football|other;piłka do koszykówki|a basketball|other;rakieta tenisowa|a tennis racket|other;hantle|a pair of dumbbells|other;deskorolka|a skateboard|other;kask|a helmet|other;czaszka|a skull|other;miecz|a sword|other;tarcza|a shield|other;korona|a crown|other;różdżka|a magic wand|other;księga|an old spellbook|other;fiolka|a small potion bottle|other;zwój|a scroll|other;skarb|a small treasure chest|other`;
+  const SIGN_ITEMS = TEXT_ITEMS.split(";").map(r => { const [name, en, kind] = r.split("|"); return { id: "t:" + name, name: name.charAt(0).toUpperCase() + name.slice(1), en, kind, sign: true }; });
+  const ALL_ITEMS = [...DRAWN_ITEMS, ...SIGN_ITEMS];
+  const ITEM = Object.fromEntries(ALL_ITEMS.map(t => [t.id, t]));
 
   const CATEGORIES = [
     // Gotowe schematy: zestawy ustawień do szybkiego startu (osobne dla postaci i obiektu), kafelki buduje presetTiles()
@@ -782,7 +819,9 @@
       { id: "shade", name: "Osłania oczy", short: "Osłania", prompt: "one hand raised to the forehead, shading the eyes" }
     ]},
     // Rzeczy przy postaci; kafelki buduje makeTiles (scene.things to lista), tu nazwy dla wyszukiwarki
-    { id: "things", label: "Rzeczy", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
+    { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
+    // Drobiazgi na blacie: kafelki i wyszukiwarkę buduje kod (katalog ALL_ITEMS, słownik pl → en)
+    { id: "items", label: "Na blacie", subjects: ["person"], patch: "#A88A5B", options: [] },
     { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
       { id: "portrait", name: "Portret", short: "Portret", noDrone: true, prompt: "Close-up portrait, head and shoulders in frame" },
@@ -965,7 +1004,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bgx: {}, time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1451,6 +1490,7 @@
       line: (pts, cls = "prop-line") => el("path", { d: pts.map(([a, h], i) => (i ? "L" : "M") + X(a) + "," + Y(h)).join(" "), class: cls }, g),
       poly: (pts, cls = "prop") => el("path", { d: "M" + pts.map(([a, h]) => X(a) + "," + Y(h)).join(" L") + " Z", class: cls }, g),
       path: (d, cls = "prop") => el("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), class: cls }, g),
+      styled: (d, style) => el("path", { d: d.replace(/(-?[\d.]+),(-?[\d.]+)/g, (_, a, h) => X(+a) + "," + Y(+h)), style }, g),
       circle: (a, h, r, cls = "prop") => el("circle", { cx: X(a), cy: Y(h), r: f(r * s), class: cls }, g),
       ellipse: (a, h, rx, ry, cls = "prop") => el("ellipse", { cx: X(a), cy: Y(h), rx: f(rx * s), ry: f(ry * s), class: cls }, g)
     };
@@ -1588,9 +1628,98 @@
     return `sitting on ${on} with one knee pulled up to the chest and the arms wrapped around it, the other leg stretched out, facing the camera`;
   }
   function thingsPrompt(st) {
-    const items = (st.things || []).filter(it => THING[it.id] && thingAnchor(st, it) !== "under").map(it => THING[it.id].phrase + " " + ANCHOR_WORDS[thingAnchor(st, it)]);
+    const items = (st.things || []).filter(it => THING[it.id] && thingAnchor(st, it) !== "under")
+      .map(it => THING[it.id].phrase + (surfaceOf(st) === THING[it.id] ? itemsPrompt(st) : "") + " " + ANCHOR_WORDS[thingAnchor(st, it)]);
     return items.length ? ", with " + andList(items) : "";
   }
+  // ---------- Drobiazgi: rysunki, znak z podpisem, położenie na blacie ----------
+  const ITEM_SCALE = 1.6;
+  const FLAME = "fill:#F2C46B;stroke:#F2C46B";
+  const ITEM_DRAW = {
+    mug: p => { p.path("M5,8 Q10,8 10,5 Q10,2 5,2", "prop-line"); p.rect(-5, 5, 11, 0, 1.5); },
+    cup: p => { p.ellipse(0, 1, 9, 1.5); p.path("M5,7 Q8,7 8,5 Q8,3 4.5,3", "prop-line"); p.poly([[-5, 9], [5, 9], [4, 2], [-4, 2]]); },
+    glass: p => { p.poly([[-4, 12], [4, 12], [3, 0], [-3, 0]], "prop-line"); p.line([[-3.6, 8], [3.6, 8]]); },
+    wine: p => { p.rect(-1.3, 1.3, 30, 19, 0.5); p.rect(-3.5, 3.5, 21, 0, 1.5); },
+    wineGlass: p => { p.path("M-5,16 Q-5,9 0,9 Q5,9 5,16 Z"); p.line([[0, 9], [0, 0.5]]); p.line([[-4, 0.5], [4, 0.5]]); },
+    plate: p => { p.path("M-8,2.5 Q0,11 8,2.5 Z"); p.ellipse(0, 1.5, 14, 2); },
+    fruit: p => { p.circle(-5, 9, 4); p.circle(4, 10, 4.5); p.circle(-1, 13, 3.5); p.path("M-11,7 Q-10,0 0,0 Q10,0 11,7 Z"); },
+    laptop: p => { p.rect(-11, 11, 17, 2, 1); p.rect(-12, 12, 1.8, 0, 0.5); },
+    phone: p => p.rect(-6, 6, 1.6, 0, 0.5),
+    book: p => { p.rect(-10, 10, 3, 0, 0.5); p.rect(-8, 9, 6, 3, 0.5); },
+    newspaper: p => { p.rect(-11, 11, 1.5, 0, 0.3); p.rect(-10, 8, 3, 1.5, 0.3); },
+    vase: p => {
+      [[-4, 22], [0, 25], [4, 21]].forEach(([a, h]) => { p.line([[0, 11], [a, h]]); p.circle(a, h, 2.6); });
+      p.path("M-4,0 Q-7,7 -3,11 L3,11 Q7,7 4,0 Z");
+    },
+    candle: p => { p.rect(-2.5, 2.5, 10, 0, 0.5); p.styled("M0,11 Q-2,13.5 0,16 Q2,13.5 0,11 Z", FLAME); },
+    camera: p => { p.rect(-3, 2, 12, 9, 0.5); p.rect(-9, 9, 10, 0, 1.5); p.circle(1, 5, 3.5, "prop-line"); },
+    headphones: p => { p.path("M-7,3 Q-7,13 0,13 Q7,13 7,3", "prop-line"); p.rect(-9, -5, 5, 0, 1.5); p.rect(5, 9, 5, 0, 1.5); },
+    guitar: p => { p.rect(-1.3, 1.3, 42, 24, 0.5); p.rect(-2.2, 2.2, 48, 42, 1); p.circle(0, 8, 8); p.circle(0, 19, 6); p.circle(0, 13.5, 2, "prop-line"); },
+    bag: p => { p.path("M-3,10 Q0,15 3,10", "prop-line"); p.poly([[-8, 0], [8, 0], [6, 10], [-6, 10]]); },
+    umbrellaS: p => { p.line([[0, 0], [0, 31]]); p.poly([[0, 3], [3.8, 24], [-3.8, 24]]); p.path("M0,31 Q0,36 3,36 Q6,36 6,33", "prop-line"); }
+  };
+  // Znak z podpisem: pastylka z nazwą (kropka w kolorze rodzaju rzeczy)
+  const SIGN_DOT = { food: "#D98B4A", drink: "#7FB2D9", dish: "#C9C4B8", tech: "#8E9BD9", paper: "#E6DFC8", decor: "#D98BB5", tool: "#B8B36A", wear: "#A98BD9", other: "#9AD9B0", custom: "#F2C46B" };
+  function drawSign(g, name, kind, x, y, s) {
+    const fs = 6.2 * s, w = (name.length * 3.5 + 13) * s, h = 10 * s;
+    el("rect", { x: f(x - w / 2), y: f(y - h), width: f(w), height: f(h), rx: f(h / 2), style: "fill:#1E1F24;stroke:#8E8A80;stroke-width:1" }, g);
+    el("circle", { cx: f(x - w / 2 + 5 * s), cy: f(y - h / 2), r: f(2 * s), style: `fill:${SIGN_DOT[kind] || SIGN_DOT.other};stroke:none` }, g);
+    const t = el("text", { x: f(x + 3 * s), y: f(y - h / 2 + fs * 0.36), "text-anchor": "middle", style: `fill:#F4F4F5;stroke:none;font:600 ${f(fs)}px var(--font)` }, g);
+    t.textContent = name;
+  }
+  // Rzecz w scenie: z katalogu albo własna (Ekspert) z nazwą i angielskim opisem
+  const itemInfo = it => it.id === "custom" ? { name: it.name, en: it.known ? it.en : `an object described as "${it.name}"`, kind: "custom", sign: true } : ITEM[it.id];
+  function drawSmall(g, it, x, y, s) {
+    const info = itemInfo(it);
+    if (!info) return;
+    if (info.sign) { drawSign(g, info.name, info.kind, x, y, s); return; }
+    const pen = thingPen(g, x, y, s * ITEM_SCALE);
+    ITEM_DRAW[it.id](pen);
+  }
+  function itemTile(svg, id) {
+    if (id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
+    if (id === "search") { svg.setAttribute("viewBox", "0 0 24 24"); el("circle", { cx: 10.5, cy: 10.5, r: 6 }, svg); el("path", { d: "M15 15l5 5" }, svg); return; }
+    const info = itemInfo(id === "custom" ? scene.items[0] : { id });
+    if (info.sign) {
+      // Znak: metka z kropką w kolorze rodzaju
+      svg.setAttribute("viewBox", "0 0 64 64");
+      el("path", { d: "M14 22h26l10 10-10 10H14z" }, svg);
+      el("circle", { cx: 22, cy: 32, r: 3.2, style: `fill:${SIGN_DOT[info.kind] || SIGN_DOT.other};stroke:none` }, svg);
+      return;
+    }
+    const [x0, x1, h] = info.box, side = Math.max(x1 - x0, h) + 8, cx = (x0 + x1) / 2;
+    svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(-h / 2 - side / 2)} ${f(side)} ${f(side)}`);
+    ITEM_DRAW[id](thingPen(svg, 0, 0, 1));
+  }
+  // Blat, na którym leżą drobiazgi (pierwsza rzecz z blatem w scenie)
+  const surfaceOf = st => { const it = (st.things || []).find(x => THING[x.id] && THING[x.id].surf); return it ? THING[it.id] : null; };
+  const activeItems = st => surfaceOf(st) ? (st.items || []).filter(it => itemInfo(it)) : [];
+  // Rysuje rzecz, a jeśli ma blat, to drobiazgi na nim (na środku blatu, obok siebie)
+  function drawThingWithItems(g, st, o) {
+    drawThing(g, o.t.id, o.x, o.G, o.s);
+    if (!o.t.surf || surfaceOf(st) !== o.t) return;
+    const items = activeItems(st), top = o.G - o.t.surf * o.s;
+    items.forEach((it, i) => drawSmall(g, it, o.x + (i - (items.length - 1) / 2) * 30 * o.s, top, o.s));
+  }
+  const itemsPrompt = st => { const items = activeItems(st); return items.length ? " with " + andList(items.map(it => itemInfo(it).en)) + " on it" : ""; };
+
+  // Wybór drobiazgu (z kafelka albo z wyszukiwarki). Bez blatu: pusta scena dostaje stół, inaczej Manikun prosi o blat.
+  function pickItem(it) {
+    if (!surfaceOf(scene)) {
+      if ((scene.things || []).length) { say("Najpierw wybierz stół, ladę albo biurko, żeby było na czym położyć.", 4500); return false; }
+      scene.things = [{ id: "table" }];
+      say("Postawiłem stół, żeby było na czym położyć.", 3500);
+    }
+    scene.items = it ? [it] : [];
+    return true;
+  }
+  // Słownik: wpisana nazwa → rzecz z katalogu albo własna (angielski opis, jeśli słowo jest znane)
+  function lookupItem(text) {
+    const n = norm(text.trim());
+    const hit = ALL_ITEMS.find(o => norm(o.name) === n || norm(o.en).replace(/^(an?|the) /, "") === n.replace(/^(an?|the) /, ""));
+    return hit ? { id: hit.id } : null;
+  }
+
 
   const figCache = {};
   // Ubranko na Manikunie z części garderoby i ich kolorów
@@ -2407,9 +2536,9 @@
       const fg = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
       // Rzeczy za postacią (i siedzisko pod nią), postać, potem rzeczy przed nią
       const tg = reveal >= 1 ? fg : el("g", { opacity: f(reveal) }, fg);
-      A.things.filter(o => !o.front).forEach(o => drawThing(tg, o.t.id, o.x, o.G, o.s));
+      A.things.filter(o => !o.front).forEach(o => drawThingWithItems(tg, st, o));
       drawFigureAt(fg, A.pl, "fig");
-      A.things.filter(o => o.front).forEach(o => drawThing(tg, o.t.id, o.x, o.G, o.s));
+      A.things.filter(o => o.front).forEach(o => drawThingWithItems(tg, st, o));
     }
     if (subj > 0) {
       const og = subj < 1 ? el("g", { opacity: f(subj) }, g) : g;
@@ -2485,6 +2614,7 @@
   // ---------- Ikony paska kategorii ----------
   const CAT_ICONS = {
     things: svg => { el("path", { d: "M6 4v16 M6 12h11 M17 12v8 M6 16h11" }, svg); el("path", { d: "M14 8h6" }, svg); },
+    items: svg => { el("path", { d: "M3 17h18 M7 17v4 M17 17v4" }, svg); el("path", { d: "M8 17v-5h5v5 M13 14h2a1.5 1.5 0 0 1 0 3" }, svg); el("circle", { cx: 17.5, cy: 15, r: 2 }, svg); },
     format: svg => el("rect", { x: 6, y: 3, width: 12, height: 18, rx: 1.5 }, svg),
     shot: svg => el("path", { d: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5" }, svg),
     camera: svg => { el("rect", { x: 3, y: 7, width: 13, height: 11, rx: 1.5 }, svg); el("path", { d: "M16 10l5-3v11l-5-3z" }, svg); },
@@ -2526,6 +2656,7 @@
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "outfit") return setName();
     if (cat.id === "things") return scene.things.length ? THING[scene.things[0].id].name : "Nic";
+    if (cat.id === "items") return activeItems(scene).length ? itemInfo(activeItems(scene)[0]).name : "Nic";
     if (cat.id === "look") {
       const lk = scene.look;
       if (lk.expr !== "neutral") return lookOpt("expr", lk.expr).name;
@@ -2573,7 +2704,7 @@
     mode: "photo", subject: "person", style: "cyber", body: "male",
     // Stan końcowy tutoriala: streetwear (bluza z kapturem), w którym jeansy zamieniono na dres
     outfit: "custom", wear: { ...dressIn("street").wear, bottom: "joggers" }, wc: { ...dressIn("street").wc, bottom: "graphite" }, wcPicked: {},
-    pose: "stride", arms: "shade", things: [], shot: "full", camera: "L3",
+    pose: "stride", arms: "shade", things: [], items: [], shot: "full", camera: "L3",
     light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "path" }, bgx: { forest: ["fog"] }, time: "night",
     look: { ...LOOK0, hair: "short" }
   };
@@ -2582,7 +2713,7 @@
     const set = { ...pr.set };
     // Gotowiec bez fryzury dostaje domyślną dla postaci
     if (set.look) set.look = { ...set.look, hair: set.look.hair || DEFAULT_HAIR_OF[scene.body], hairPicked: !!set.look.hair };
-    Object.assign(scene, { things: [], ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
+    Object.assign(scene, { things: [], items: [], ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bgx: { ...scene.bgx, [set.background]: (set.bgx || {})[set.background] || [] } });
     lastPreset = pr.id;
     render();
   }
@@ -2631,6 +2762,7 @@
       scene.pose = anyOf(leavesOf("pose")).id;
       scene.arms = anyOf(optionsOf("arms")).id;
       scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : [];
+      scene.items = surfaceOf(scene) && Math.random() < 0.6 ? [{ id: anyOf(ALL_ITEMS).id }] : [];
       scene.shot = anyOf(["full", "full", "portrait", "face"]);
     }
     scene.camera = anyOf(leavesOf("camera").filter(fit)).id;
@@ -2849,6 +2981,18 @@
     if (catId === "style") return optionsOf("style").map(o => tile("opt-style-" + o.id, o.name, () => scene.style === o.id,
       () => { scene.style = o.id; render(); }, svg => renderScene(svg, { ...scene, style: o.id }, 100, 100, new Set(["ground"]), { styleFrame: true, corners: false })));
     if (catId === "look") return lookTiles();
+    if (catId === "items") {
+      // Nic, znaleziony wcześniej drobiazg spoza rysunków, 18 z rysunkiem, na końcu wyszukiwanie w słowniku
+      const cur = (scene.items || [])[0], extra = cur && (cur.id === "custom" || ITEM[cur.id].sign) ? [cur] : [];
+      const list = [{ id: "none", name: "Nic" }, ...extra.map(it => ({ id: it.id, name: itemInfo(it).name, it })), ...DRAWN_ITEMS];
+      const tiles = list.map(o => tile("opt-items-" + (o.id === "custom" ? "custom" : o.id.replace(/[^a-z0-9]/gi, "_")), o.name,
+        () => ((scene.items || [])[0] || { id: "none" }).id === o.id,
+        () => { pickItem(o.id === "none" ? null : o.it || { id: o.id }); render(); }, svg => itemTile(svg, o.id)));
+      const find = tile("opt-items-search", "Szukaj…", () => false, () => openItemSearch(), svg => itemTile(svg, "search"), () => "banan, kaktus…");
+      find.action = true;
+      find.btn.classList.add("cat");
+      return tiles.concat(find);
+    }
     if (catId === "things") return [{ id: "none", name: "Nic" }, ...THINGS].map(o => tile("opt-things-" + o.id, o.name,
       () => ((scene.things || [])[0] || { id: "none" }).id === o.id,
       () => { scene.things = o.id === "none" ? [] : [{ id: o.id }]; render(); }, svg => thingTile(svg, o.id)));
@@ -2975,7 +3119,7 @@
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms"], subjects: ["person"], icon: "body" },
-    { id: "things", label: "Rzeczy", cat: "things", subjects: ["person"], icon: "things" },
+    { id: "stuff", label: "Rzeczy", cats: ["things", "items"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "scene", label: "Scena", cats: ["background", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
@@ -2986,9 +3130,9 @@
   const catById = id => CATEGORIES.find(c => c.id === id);
   const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
-  const GROUP_VALUE = { preset: "preset", person: "body", things: "things", object: "item", scene: "background", camera: "camera", style: "style" };
+  const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
-  const catOff = id => (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
+  const catOff = id => (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   const childOf = id => {
     const g = GROUPS.find(x => x.id === id);
     if (g) return g.cat ? { kind: "opts", cat: g.cat, sub: null } : { kind: "cats", group: g.id };
@@ -3051,6 +3195,7 @@
     { id: "pose", ch: "pose", say: "Co robi?", cat: "pose", flat: true },
     { id: "arms", say: "A ręce?", cat: "arms", when: () => armsApply(scene) },
     { id: "things", say: () => seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things" },
+    { id: "items", say: () => `Co leży na ${surfaceOf(scene).on}? Szukaj znajdzie też banana.`, cat: "items", when: () => !!surfaceOf(scene) },
     { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
     { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
     { id: "time", say: "Pora dnia?", cat: "time", when: () => timeApplies(scene) },
@@ -3171,6 +3316,7 @@
       // Siedząc zwykle na czymś, stojąc czasem coś obok
       const seats = THINGS.filter(t => t.seat);
       scene.things = seated(scene) ? (Math.random() < 0.75 ? [{ id: anyOf(seats).id }] : []) : (Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : []);
+      scene.items = surfaceOf(scene) && Math.random() < 0.7 ? [{ id: anyOf(DRAWN_ITEMS).id }] : [];
     },
     place() {
       scene.background = anyOf(leavesOf("background")).id;
@@ -4049,7 +4195,7 @@
     nodTimer = setTimeout(() => { narratorHead.style.transform = ""; }, 420);
   }
   // Reakcja na każdy wybór: kiwnięcie albo przechył, bez dymków; styl i gotowce dostają wyraźne kiwnięcie
-  const sceneFP = () => JSON.stringify([scene.mode, scene.style, scene.body, scene.wear, scene.wc, scene.look, scene.pose, scene.arms, scene.things, scene.shot, scene.camera,
+  const sceneFP = () => JSON.stringify([scene.mode, scene.style, scene.body, scene.wear, scene.wc, scene.look, scene.pose, scene.arms, scene.things, scene.items, scene.shot, scene.camera,
     scene.light, scene.lightZone, scene.background, scene.bgv, scene.bgx, scene.time, scene.motion, scene.format]);
   let lastReact = 0;
   function react(big = false) {
@@ -4068,6 +4214,7 @@
 
   // ---------- Wyszukiwarka: kategorie i opcje, wynik przeskakuje rzędami i podświetla kafelek ----------
   const searchEl = document.getElementById("search"), searchInput = document.getElementById("searchInput");
+  const searchPlaceholder = searchInput.placeholder;
   const searchResults = document.getElementById("searchResults"), searchMore = document.getElementById("searchMore"), searchExamples = document.getElementById("searchExamples");
   const norm = str => str.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "");
   // Słowa, pod którymi ludzie szukają danej kategorii
@@ -4082,7 +4229,7 @@
     sit: "siedzenie siedzi", chair: "krzeslo", cross: "turecku", chin: "myslenie zamyslenie", shade: "oslania patrzy wypatruje",
     hips: "rece na biodrach", D: "dron z gory lot", night: "wieczor ciemno", golden: "zachod wschod"
   };
-  const EXAMPLES = ["dres", "noc", "okulary", "las", "selfie", "cyberpunk", "kucanie", "mgła", "kapelusz", "z drona"];
+  const EXAMPLES = ["dres", "noc", "okulary", "las", "selfie", "cyberpunk", "kucanie", "kanapa", "banan", "z drona"];
   EXAMPLES.forEach(w => {
     const b = document.createElement("button");
     b.type = "button";
@@ -4129,6 +4276,8 @@
       LOOK.hairColor.forEach(o => add(o.name, [...path, "Włosy", "Kolor"], () => jump([...base, opts(cat, null, "opt-look-hair"), opts(cat, "hair", "opt-hair-" + scene.look.hair), opts(cat, "hairColor")], "opt-hairColor-" + o.id), "kolor wlosow"));
       return;
     }
+    // Drobiazgi: cały katalog, także po angielsku ("banana" znajdzie banana)
+    if (cat === "items") { ALL_ITEMS.forEach(o => add(o.name, path, () => searchPickItem({ id: o.id }), o.en)); return; }
     if (cat === "outfit") {
       OUTFIT_SUBS.forEach(([k, name]) => {
         const lvl = [...base, opts(cat, null, "opt-outfit-grp-" + k)];
@@ -4171,14 +4320,18 @@
     const hits = searchIndex().filter(e => words.every(w => e.words.some(k => k.startsWith(w))))
       .map(e => ({ e, rank: e.nk.startsWith(q) ? 0 : e.nk.includes(q) ? 1 : 2 }))
       .sort((a, b) => a.rank - b.rank || a.e.path.length - b.e.path.length).slice(0, 8);
-    if (!hits.length) {
+    // Ekspert: własna rzecz na blat, gdy nie ma jej w katalogu pod dokładnie tą nazwą
+    const raw = searchInput.value.trim();
+    const own = level === "expert" && raw.length >= 2 && !hits.some(({ e }) => e.nk === q) && scene.subject === "person"
+      ? { e: { name: `Dodaj: „${raw}”`, path: ["Rzeczy", "Na blacie"], go: () => addOwnItem(raw) } } : null;
+    if (!hits.length && !own) {
       const p = document.createElement("p");
       p.className = "search-empty";
-      p.textContent = "Nic nie znalazłem. Spróbuj innego słowa albo zajrzyj do przykładów.";
+      p.textContent = "Nic nie znalazłem. Spróbuj innego słowa albo zajrzyj do przykładów." + (level === "basic" ? " Własne rzeczy dopiszesz w trybie Ekspert (menu › Poziom)." : "");
       searchResults.appendChild(p);
       return;
     }
-    hits.forEach(({ e }) => {
+    (own ? hits.concat(own) : hits).forEach(({ e }) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "search-hit";
@@ -4192,6 +4345,25 @@
     });
   }
   searchInput.addEventListener("input", runSearch);
+  // Drobiazg z wyszukiwarki: w Kreatorze zostajemy przy pytaniu, w Swobodzie rzędy przeskakują do Rzeczy › Na blacie
+  const itemTileId = it => "opt-items-" + (it.id === "custom" ? "custom" : it.id.replace(/[^a-z0-9]/gi, "_"));
+  function searchPickItem(it) {
+    setSearch(false);
+    if (!pickItem(it)) return;
+    if (wiz) { if (wiz.q === "items") wiz.chosen = true; render(); react(); if (it.id !== "custom") wizSay(); return; }
+    jump([{ kind: "groups", open: "stuff" }, { kind: "cats", group: "stuff", open: "items" }, { kind: "opts", cat: "items", sub: null }], itemTileId(it));
+  }
+  // Własna rzecz (Ekspert): słownik zamienia polską nazwę na angielską, nieznane słowo idzie w oryginale
+  function addOwnItem(text) {
+    const known = lookupItem(text);
+    if (known) { searchPickItem(known); return; }
+    searchPickItem({ id: "custom", name: text, en: text, known: false });
+    setTimeout(() => say("Nie znam tego słowa po angielsku. Jeśli możesz, wpisz je po angielsku, generator zrozumie pewniej.", 5500), 500);
+  }
+  function openItemSearch() {
+    setSearch(true);
+    searchInput.placeholder = "Co położyć? np. banan, kaktus";
+  }
   searchInput.addEventListener("keydown", e => {
     if (e.key === "Enter") { const first = searchResults.querySelector(".search-hit"); if (first) first.click(); }
     if (e.key === "Escape") setSearch(false);
@@ -4203,6 +4375,7 @@
     if (open) {
       toast.classList.remove("show");
       searchInput.value = "";
+      searchInput.placeholder = searchPlaceholder;
       searchResults.replaceChildren();
       setTimeout(() => searchInput.focus(), 60);
       nod("tilt");
