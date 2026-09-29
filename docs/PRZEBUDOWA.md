@@ -274,3 +274,18 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Kategoria Twarz nazywa się teraz Głowa.
 - Mina ma emocje, a każda (poza Neutralną) dwa poziomy: Radość (Uśmiech, Śmiech), Złość (Irytacja, Wściekłość), Smutek (Smutek, Płacz), Zamyślenie (Zaduma, Głębokie zamyślenie), Zaskoczenie (Zdziwienie, Szok). W Swobodzie emocja otwiera drugi rząd z poziomami, w Kreatorze po „Jaka mina?” jest „Jak mocno?”. Poziom mocny mocniej przechyla głowę i tułów i ma własny opis w Maniscrypcie. Losowanie częściej wybiera poziom łagodny.
 - Komputer: rzędy kafelków przewija kółko myszy i przeciąganie.
+- Warianty tła dzielą się na rodzaj (jeden do wyboru) i dodatki (kilka naraz, kafelek z podpisem „dodatek”). Dodatki trafiają do Maniscryptu po podstawie („…, with a small wooden footbridge across the river and …”), razem z elementami miejsca.
+
+  | Tło | Rodzaj (jeden) | Dodatki (kilka naraz) |
+  |---|---|---|
+  | Studio | Szare, Białe, Czarne, Kolorowe | – |
+  | Ulica | Kamienice, Nowoczesna | Neony, Po deszczu |
+  | Dach | Panorama, Wieżowce | Taras |
+  | Góry | Szczyty | Jezioro, Hala |
+  | Jezioro | Spokojne | Pomost, Trzciny |
+  | Rzeka | Spokojna, Kamienista | Mostek |
+  | Las | Iglasty, Liściasty | Polana, Rzeczka albo Ścieżka (wykluczają się: rysunki leżą w tym samym miejscu) |
+  | Plaża | Piaszczysta | Skały, Palmy, Molo |
+  | Łąka | Zielona, Zboże | Kwiaty, Samotne drzewo |
+  | Pokój | Salon, Sypialnia, Biuro | Loft (ceglane ściany) |
+  | Kawiarnia | Kawiarnia, Bar, Restauracja, Piekarnia | – |
