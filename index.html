@@ -323,6 +323,23 @@
   .ink .shade path, .ink .shade circle, .ink .shade ellipse { fill: #000; stroke: none; }
   #preview { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   [data-phase="start"] #preview { cursor: pointer; }
+  /* Widok 3D (Ekspert, Swoboda): przełącznik 2D | 3D w rogu kadru, scena 3D na miejscu rysunku */
+  .viewsw { position: absolute; top: 12px; right: 12px; z-index: 6; display: flex; padding: 3px; gap: 2px; border-radius: 999px; background: rgba(9, 9, 11, 0.72); border: 1px solid var(--line); }
+  .viewsw button { font: 700 12px/1 var(--mono); letter-spacing: 0.04em; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+  .viewsw button[aria-pressed="true"] { color: var(--on-accent); background: var(--accent); }
+  .view3d { position: absolute; inset: 5px; z-index: 4; display: grid; place-items: center; border-radius: 18px; overflow: hidden; background: var(--stage); }
+  .v3-canvas { position: relative; border-radius: 16px; overflow: hidden; touch-action: none; }
+  .v3-canvas canvas { display: block; width: 100%; height: 100%; }
+  .v3-tag { position: absolute; left: 12px; top: 12px; max-width: calc(100% - 120px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+    font: 500 11px/1 var(--mono); color: #fff; background: rgba(9, 9, 11, 0.62); border-radius: 999px; padding: 7px 10px; }
+  .v3-bar { position: absolute; left: 8px; right: 8px; top: 46px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; justify-content: safe center; }
+  .v3-bar::-webkit-scrollbar { display: none; }
+  .v3-bar .chip { flex: none; background: rgba(20, 20, 24, 0.9); padding: 8px 12px; }
+  .v3-bar .chip.on { border-color: var(--accent); background: var(--accent-soft); }
+  .v3-bar .chip.danger { color: #FF9A8A; }
+  .v3-bar .chip.ghost { color: var(--muted); }
+  .cast-badge { position: absolute; left: 14px; top: 14px; z-index: 3; pointer-events: none; white-space: nowrap;
+    font: 500 11px/1 var(--mono); color: var(--ink); background: rgba(9, 9, 11, 0.72); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; }
   /* Podpis przy przeciąganiu kamery lub lampy: unosi się nad dołem kadru, nie zajmuje miejsca */
   .readout {
     position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); pointer-events: none;
@@ -723,6 +740,10 @@
 
   <div class="stage">
     <svg id="preview" class="ink" role="img" aria-label="Podgląd kadru z Manikunem" preserveAspectRatio="xMidYMid meet"></svg>
+    <!-- Widok 3D (Ekspert, Swoboda): scene3d.js wczytywany przy pierwszym przełączeniu -->
+    <div class="view3d" id="view3d" hidden></div>
+    <div class="viewsw" id="viewSw" role="group" aria-label="Widok kadru" hidden><button type="button" data-v="2d">2D</button><button type="button" data-v="3d">3D</button></div>
+    <div class="cast-badge" id="castBadge" hidden>+ Postać 2 · widok 3D</div>
     <div class="readout" id="readout" hidden></div>
     <!-- Filtry Manikuna w kadrze: światło lampy na bryłach, kontra na krawędzi i miękkie cienie (jednostki Manikuna) -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -1177,7 +1198,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", turn: "camera", cast: [], things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1546,9 +1567,17 @@
   // Poza z rękami i zwrotem ciała (zamiast stałego „facing the camera” w opisach póz)
   function posePrompt() {
     const raw = sitPrompt(scene) + (standArms(scene) ? ", " + armsPrompt() : isSelfie(scene.camera) ? ", " + selfieArm() : "");
-    if (LYING.includes(scene.pose)) return raw;
+    const side = castOn() && scene.mainSide ? ", " + scene.mainSide : "";
+    if (LYING.includes(scene.pose)) return raw + side;
     const tp = turnPrompt();
-    return raw.replace(/, facing the camera/g, "") + (tp ? ", " + tp : "");
+    return raw.replace(/, facing the camera/g, "") + (tp ? ", " + tp : "") + side;
+  }
+  // Druga postać (Ekspert, ustawiana w widoku 3D): osobny opis, żeby generator nie mieszał cech obu osób
+  const castOn = () => level === "expert" && (scene.cast || []).length > 0;
+  function castPrompt() {
+    if (!castOn()) return "";
+    return scene.cast.map(c => `also in the frame: a second person, ${c.body === "female" ? "a woman" : "a man"}, ${optionOf("pose", c.pose).prompt.replace(/, facing the camera/g, "")}`
+      + (c.side ? ", " + c.side : "") + (c.facing ? ", " + c.facing : "")).join("; ");
   }
   function buildPromptBody() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
@@ -1558,12 +1587,12 @@
       (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt()
     ] : [
-      shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) && scene.turn !== "back" ? ", " + lookOpt("expr", exprOf(scene)).prompt : "") + (gazePrompt() ? ", " + gazePrompt() : ""),
+      shot.prompt + " " + (castOn() ? bodyPrompt().replace("a single ", "an ") : bodyPrompt()) + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) && scene.turn !== "back" ? ", " + lookOpt("expr", exprOf(scene)).prompt : "") + (gazePrompt() ? ", " + gazePrompt() : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
       ...(faceShot
         // Przy zbliżeniu na twarz zostaje tylko to, co widać przy twarzy: telefon lub dłoń przy brodzie albo czole
         ? [...(isSelfie(scene.camera) || (standArms(scene) && ["chin", "shade"].includes(scene.arms)) ? [standArms(scene) ? armsPrompt() : selfieArm()] : []), ...(turnOf(scene) !== "camera" ? [turnPrompt()] : [])]
-        : [posePrompt() + thingsPrompt(scene)]),
+        : [posePrompt() + thingsPrompt(scene), ...(castOn() ? [castPrompt()] : [])]),
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
@@ -2163,7 +2192,7 @@
   }
   // Rzecz staje w punkcie; rzecz, która tam stała, wraca do automatu (znajdzie sobie wolne miejsce)
   function placeThing(i, a) {
-    scene.things = scene.things.map((it, j) => j === i ? { ...it, anchor: a } : it.anchor === a ? { id: it.id, ...(it.color ? { color: it.color } : {}) } : it);
+    scene.things = scene.things.map((it, j) => j === i ? { ...it, anchor: a, pos3d: undefined } : it.anchor === a ? { id: it.id, ...(it.color ? { color: it.color } : {}) } : it);
     sfx("tok");
     react();
     if (wiz) {
@@ -4809,6 +4838,7 @@
   };
 
   function sceneChanged() {
+    updateView();
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
     const tp = targetProps();
@@ -5363,7 +5393,8 @@
         ["Ubiór", st.outfit === "custom" ? "Własny" : "Zestaw " + optionOf("outfit", st.outfit).name, wear],
         ["Poza", treePath(parentName("pose", st.pose), optionOf("pose", st.pose).name)],
         armsApply(st) && ["Ręce", optionOf("arms", armsFor(st)).name],
-        turnOf(st) !== "camera" && ["Zwrot", optionOf("turn", turnOf(st)).name]
+        turnOf(st) !== "camera" && ["Zwrot", optionOf("turn", turnOf(st)).name],
+        level === "expert" && (st.cast || []).length && ["Postać 2", treePath(st.cast[0].body === "female" ? "Kobieta" : "Mężczyzna", optionOf("pose", st.cast[0].pose).name)]
       ].filter(Boolean)],
       ["Rzeczy", things.length ? null : "Nic", things],
       ["Scena", null, [
@@ -5894,6 +5925,7 @@
     try { localStorage.setItem("manikun-level", id); } catch (e) {}
     document.body.dataset.level = id;
     menuLevelVal.textContent = LEVEL_NAME[id];
+    updateView();
   }
   setLevel(level);
   document.getElementById("menuLevel").addEventListener("click", () => {
@@ -6190,4 +6222,53 @@
     startIdle();
     setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
   }
+
+  // ---------- Widok 3D: przełącznik 2D | 3D (Ekspert, Swoboda, domyślnie 2D) ----------
+  // Ta sama scena w obu widokach. Z 3D wracają do sceny: strefa kamery, zwrot, kadr, punkty zaczepienia rzeczy
+  // (najbliższe w słowach kadru), dokładne położenia (pos3d, cam3d) i druga postać.
+  var viewReady = true;
+  let view = "2d", m3d = null, m3dLoading = false;
+  try { if (localStorage.getItem("manikun-view") === "3d") view = "3d"; } catch (e) {}
+  const viewSw = document.getElementById("viewSw"), view3dEl = document.getElementById("view3d"), castBadge = document.getElementById("castBadge");
+  const view3dAllowed = () => level === "expert" && flow === "free" && phase === "director" && !tut && scene.subject === "person";
+  const api3d = {
+    scene: () => scene, commit: () => render(), level: () => level, sfx, say: t => say(t),
+    turnOf, isSelfie, poseAngles: st => poseOf(poseKey(st)), resolveAnchors, anchorOK, thing: id => THING[id],
+    standing: st => STANDING.includes(st.pose), lying: st => LYING.includes(st.pose), bgVariant: st => bgVariant(st),
+    colorHex: id => colorOf(id).hex, itemsOn: (st, i) => itemsOn(st, i), format: () => currentFormat(),
+    anchorName: a => ANCHORS[a] ? ANCHORS[a].name : "Pod postacią",
+    camLabel: st => "Kamera: " + (optionOf("camera", st.camera) || {}).name + (turnOf(st) !== "camera" ? " · " + optionOf("turn", turnOf(st)).name : ""),
+    itemChoices: () => DRAWN_ITEMS.slice(0, 12).map(o => ({ id: o.id, name: o.name })),
+    addItem: (i, id) => { scene.items = [...(scene.items || []), { id, on: i }]; render(); },
+    thingChoices: a => THINGS.filter(t => a === "under" ? !!t.seat : true).filter(t => anchorOK(scene, a, t)).map(t => ({ id: t.id, name: t.name })),
+    addThing: (id, a, pos3d) => { scene.things = [...scene.things, { id, anchor: a, ...(pos3d ? { pos3d } : {}) }]; render(); },
+    removeThing: i => { removeThingAt(i); render(); },
+    castPoses: () => ["stand", "contra", "stride", "crouch", "cross"].map(id => ({ id, name: optionOf("pose", id).name }))
+  };
+  function updateView() {
+    if (!viewReady) return;
+    const ok = view3dAllowed(), on = ok && view === "3d";
+    viewSw.hidden = !ok;
+    viewSw.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (on ? "3d" : "2d"))));
+    view3dEl.hidden = !on;
+    preview.style.visibility = on ? "hidden" : "";
+    castBadge.hidden = on || !(phase === "director" && level === "expert" && (scene.cast || []).length);
+    if (!on) return;
+    if (m3d) { m3d.update(); return; }
+    if (m3dLoading) return;
+    m3dLoading = true;
+    view3dEl.textContent = "Ustawiam scenę 3D…";
+    import("./scene3d.js").then(mod => { view3dEl.textContent = ""; return mod.mount(view3dEl, api3d); })
+      .then(api => { m3d = api; window.__m3d = api; m3dLoading = false; if (view === "3d") m3d.update(); })
+      .catch(() => { m3dLoading = false; view = "2d"; view3dEl.textContent = ""; say("Widok 3D nie działa na tym urządzeniu. Zostajemy przy 2D.", 5000); updateView(); });
+  }
+  viewSw.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    if (view === b.dataset.v) return;
+    view = b.dataset.v;
+    try { localStorage.setItem("manikun-view", view); } catch (e) {}
+    sfx("tok");
+    if (view === "3d" && !m3d) say("Widok 3D: obracaj scenę palcem, stuknij postać albo zielone kółko, żeby coś wstawić.", 6000);
+    updateView();
+  }));
+  updateView();
 </script>

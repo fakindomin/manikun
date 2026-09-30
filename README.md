@@ -12,6 +12,8 @@ a przycisk Maniscryptu kopiuje gotowy angielski opis ujęcia (prompt) do generat
 
 - `index.html` – cała aplikacja: interfejs, sceny, rzeczy, Kreator, tutorial, Maniscrypt
 - `manikun.js` – manekin: proporcje ciała, geometria z kątów stawów, ubrania, materiały
+- `scene3d.js` – widok 3D sceny (Ekspert, Swoboda, przełącznik 2D | 3D nad kadrem, domyślnie 2D): szkic z modelu manekina,
+  pozy przeliczane z kątów stawów rysunku 2D, kamera palcem, punkty zaczepienia, przestawianie, druga postać; wczytywany przy pierwszym przełączeniu
 - `head3d.js` – trójwymiarowa głowa Manikuna na przycisku narratora (three.js z CDN jsDelivr; bez WebGL zostaje rysowana głowa)
 - `assets/manikun3d.glb` – model głowy: „Wooden Mannequin (Rigged)”, zionmuoria, CC BY 4.0
 - `worker/podglad.js` – nieużywany Worker Cloudflare z dawnego podglądu FLUX. Zastąpił go Próbny kadr (makieta ujęcia
