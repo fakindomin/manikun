@@ -495,12 +495,8 @@
   .tut-photo.show { opacity: 1; }
   .tut-photo img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .tut-ph { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; text-align: center; color: #fff; }
-  .tut-ph b { font-size: 26px; letter-spacing: 0.08em; text-transform: uppercase; }
-  .tut-ph span { font-size: 13px; opacity: 0.8; }
   .tut-photo[data-style="cyber"] .tut-ph { background: radial-gradient(120% 90% at 30% 20%, #3B1A5E, transparent 60%), radial-gradient(100% 80% at 80% 90%, #0E4B5E, transparent 60%), #0B0A16; }
-  .tut-photo[data-style="cyber"] .tut-ph b { color: #FF4FD8; text-shadow: 0 0 18px #FF4FD8; }
   .tut-photo[data-style="fantasy"] .tut-ph { background: radial-gradient(120% 90% at 50% 20%, #6B4E1A, transparent 60%), radial-gradient(100% 80% at 30% 90%, #1E4A30, transparent 60%), #0D120C; }
-  .tut-photo[data-style="fantasy"] .tut-ph b { color: #F4D27A; text-shadow: 0 0 18px #F4D27A; }
   .tut-photo.has-img .tut-ph { display: none; }
   .tut-photo figcaption {
     position: absolute; left: 50%; top: 14px; transform: translateX(-50%); white-space: nowrap;
@@ -757,7 +753,7 @@
     <div class="tut-gen" id="tutGen" hidden aria-hidden="true"><div class="tut-gen-logo" id="tutGenLogo"></div><span class="tut-gen-name" id="tutGenName"></span></div>
     <figure class="tut-photo" id="tutPhoto" hidden>
       <img id="tutImg" alt="">
-      <div class="tut-ph" id="tutPh"><b id="tutPhName"></b><span>Tu będzie zdjęcie z generatora</span></div>
+      <div class="tut-ph" id="tutPh"></div>
       <figcaption>Tak to może wyjść w generatorze</figcaption>
     </figure>
   </div>
@@ -6019,7 +6015,8 @@
   // Scena startowa tutoriala: streetwear z jeansami, las ze ścieżką i mgłą, noc, Cyberpunk, 4:5; rzędy otwarte na Postać › Ubiór
   function startTutorial() {
     wiz = null;
-    // Ikonki generatorów wczytane zawczasu, żeby w trakcie kręcenia nie mrugały
+    // Zdjęcia i ikonki generatorów wczytane zawczasu, żeby w trakcie tutoriala nic nie mrugało
+    ["cyberpunk", "fantasy"].forEach(n => { new Image().src = "tutorial/" + n + ".jpg"; });
     TUT_GENS().forEach(g => { const im = new Image(); im.referrerPolicy = "no-referrer"; im.src = `https://www.google.com/s2/favicons?domain=${g.site}&sz=64`; });
     setMenu(false);
     setSearch(false);
@@ -6119,14 +6116,19 @@
     const fig = document.getElementById("tutPhoto"), img = document.getElementById("tutImg");
     if (!style) { fig.classList.remove("show"); setTimeout(() => { fig.hidden = true; }, 500); return; }
     fig.dataset.style = style;
-    document.getElementById("tutPhName").textContent = style === "cyber" ? "Cyberpunk" : "Fantasy";
-    fig.classList.remove("has-img");
-    img.onload = () => fig.classList.add("has-img");
-    img.onerror = () => fig.classList.remove("has-img");
+    fig.classList.remove("has-img", "show");
+    // Kadr pokazuje się dopiero, gdy zdjęcie jest wczytane (bez pliku: sama plansza w kolorach stylu, bez napisów)
+    const reveal = ok => {
+      if (!tut) return;
+      fig.classList.toggle("has-img", ok);
+      fig.hidden = false;
+      requestAnimationFrame(() => fig.classList.add("show"));
+      sfx("tuk");
+    };
+    img.removeAttribute("src");
+    img.onload = () => reveal(true);
+    img.onerror = () => reveal(false);
     img.src = "tutorial/" + (style === "cyber" ? "cyberpunk" : "fantasy") + ".jpg";
-    fig.hidden = false;
-    requestAnimationFrame(() => fig.classList.add("show"));
-    sfx("tuk");
   }
   // Koniec (albo Pomiń): zapamiętaj i zacznij od siatki tematów, bez ponownego powitania
   function tutFinish() {
