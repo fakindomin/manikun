@@ -248,6 +248,11 @@
   /* Próbny kadr: makieta ujęcia w wybranym formacie, rysowana silnikiem Manikuna */
   .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
   .preview-frame > svg { width: 100%; height: 100%; display: block; }
+  /* Włączenie świateł: szkic roboczy leży na pełnym kadrze i gaśnie z krótkim mrugnięciem jak lampy na planie */
+  .preview-frame > svg.trial-draft { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+  .preview-frame > svg.trial-draft.on { opacity: 1; }
+  .preview-frame > svg.trial-draft.go { animation: lightsOn 1100ms ease-out 250ms both; }
+  @keyframes lightsOn { 0% { opacity: 1; } 22% { opacity: 1; } 30% { opacity: 0.45; } 38% { opacity: 0.95; } 52% { opacity: 0.25; } 100% { opacity: 0; } }
   .preview-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .preview-better { color: var(--ink); font-weight: 600; }
   .sheet-copy .done-ico, .sheet-copy.done .copy-ico { display: none; }
@@ -701,6 +706,7 @@
     </div>
     <div class="preview-frame" id="previewFrame">
       <svg id="trialSvg" class="ink" role="img" aria-label="Próbny kadr: makieta ujęcia z Manikunem"></svg>
+      <svg id="trialDraft" class="ink trial-draft" aria-hidden="true"></svg>
     </div>
     <p class="sheet-lead">To makieta: kadr, poza, światło i klimat na drewnianym Manikunie. <b class="preview-better">Prawdziwe ujęcie zrobi generator z listy, np. ChatGPT, Gemini, Midjourney czy Kling:</b> skopiuj Maniscrypt i wklej go tam. Zapisany kadr możesz też dołączyć jako szkic kompozycji.</p>
     <div class="preview-actions">
@@ -2248,7 +2254,7 @@
       x: f(pl.x), y: f(pl.y), width: f(pl.w), height: f(pl.h), overflow: "visible"
     }, parent);
     const host = lit ? el("g", { filter: "url(#figLit)" }, el("g", { filter: "url(#figRim)" }, holder)) : holder;
-    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? material : null);
+    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : material) : null);
   }
 
   // Światło na Manikunie: kierunek od środka postaci do lampy. Światło z tyłu przygasza przód i rozświetla krawędź,
@@ -2269,6 +2275,11 @@
   // Lampa z przodu kładzie cień za postacią (nad linią podłoża), lampa z tyłu do przodu (pod linią).
   function drawShadows(g, st, pl, litPt, lightT) {
     const G = pl.groundY, cxF = pl.x + pl.w / 2;
+    // Szkic roboczy: tylko płaski owal pod stopami, żeby Manikun nie wisiał w powietrzu
+    if (flatDraw) {
+      el("ellipse", { cx: f(cxF), cy: f(G + 0.8), rx: f(Math.max(pl.w * 0.4, 8)), ry: f(Math.max(2, pl.h * 0.014)), style: "fill:#000;stroke:none;opacity:0.28" }, g);
+      return;
+    }
     const lx = litPt[0] - cxF, ly = litPt[1] - (pl.y + pl.h * 0.3), n = Math.hypot(lx, ly) || 1;
     if (!LYING.includes(st.pose)) {
       const k = clamp(-(lx / n) * (1.1 + 0.6 * lightT), -1.8, 1.8), d = 0.24 - 0.5 * lightT;
@@ -2327,9 +2338,13 @@
   }
 
   // ---------- Tła ----------
+  // Szkic roboczy (ustawianie sceny): płaskie kolory, bez poświat, cieni i światła na postaci.
+  // Pełne wykończenie ma ekran startowy, tutorial i Próbny kadr. Ustawia go renderScene na czas rysowania.
+  let flatDraw = false;
   const paint = (tag, attrs, fill, parent, op) =>
     el(tag, { ...attrs, style: `fill:${fill};stroke:none${op !== undefined ? `;opacity:${op}` : ""}` }, parent);
   function vGrad(defs, id, stops) {
+    if (flatDraw) return stops[Math.floor(stops.length / 2)][1];
     const gr = el("linearGradient", { id, x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
     stops.forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, gr));
     return `url(#${id})`;
@@ -2364,16 +2379,18 @@
     if (sunW > 0) {
       const r = u * (3.8 + 2.4 * t), color = t < 0.5 ? "#FFF1C9" : "#FFB866";
       const gid = uid + "sun";
-      const gr = el("radialGradient", { id: gid }, defs);
-      el("stop", { offset: "0", "stop-color": color, "stop-opacity": "0.5" }, gr);
-      el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
-      paint("circle", { cx: f(x), cy: f(y), r: f(r * 3.2) }, `url(#${gid})`, g, f(sunW));
+      if (!flatDraw) {
+        const gr = el("radialGradient", { id: gid }, defs);
+        el("stop", { offset: "0", "stop-color": color, "stop-opacity": "0.5" }, gr);
+        el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
+        paint("circle", { cx: f(x), cy: f(y), r: f(r * 3.2) }, `url(#${gid})`, g, f(sunW));
+      }
       paint("circle", { cx: f(x), cy: f(y), r: f(r) }, color, g, f(sunW * 0.95));
     }
     const moonW = nightW * alpha;
     if (moonW > 0) {
       const r = u * 3.6;
-      paint("circle", { cx: f(x), cy: f(y), r: f(r * 2.6) }, "#C9D2F0", g, f(moonW * 0.12));
+      if (!flatDraw) paint("circle", { cx: f(x), cy: f(y), r: f(r * 2.6) }, "#C9D2F0", g, f(moonW * 0.12));
       paint("circle", { cx: f(x), cy: f(y), r: f(r) }, "#E8E6DA", g, f(moonW * 0.95));
       paint("circle", { cx: f(x + r * 0.45), cy: f(y - r * 0.25), r: f(r * 0.85) }, "#141A33", g, f(moonW * 0.9));
     }
@@ -2389,6 +2406,7 @@
   function drawFxBack(g, defs, uid, fx, W, H, hz, gy, u) {
     if (!fx.length) return;
     const glow = (x, y, r, color, op, key) => {
+      if (flatDraw) return;
       const gid = uid + "fx" + key;
       const gr = el("radialGradient", { id: gid }, defs);
       el("stop", { offset: "0", "stop-color": color, "stop-opacity": op }, gr);
@@ -2463,6 +2481,7 @@
     // v: podstawa tła i jego dodatki
     const is = id => !!v && v.includes(id);
     const glowAt = (x, y, r, color, op) => {
+      if (flatDraw) return;
       const gid = uid + "l" + Math.round(x) + "_" + Math.round(y);
       const gr = el("radialGradient", { id: gid }, defs);
       el("stop", { offset: "0", "stop-color": color, "stop-opacity": op }, gr);
@@ -2476,6 +2495,7 @@
       paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, SC[0]], [1, SC[1]]]), g);
       const fy = Math.min(gy, H * 0.92) - H * 0.12;
       paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, SC[2]], [0.25, SC[3]], [1, SC[4]]]), g);
+      if (flatDraw) return;
       const spot = el("radialGradient", { id: uid + "s" }, defs);
       el("stop", { offset: "0", "stop-color": "#FFFFFF", "stop-opacity": "0.09" }, spot);
       el("stop", { offset: "1", "stop-color": "#FFFFFF", "stop-opacity": "0" }, spot);
@@ -2903,7 +2923,7 @@
     const id = "itm" + (++itemSeq);
     const lg = el("linearGradient", { id, x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
     [[0, shadeHex(color, -0.28)], [0.35, shadeHex(color, 0.18)], [0.7, color], [1, shadeHex(color, -0.35)]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lg));
-    const FILL = { main: `url(#${id})`, dark: shadeHex(color, -0.45), light: shadeHex(color, 0.35), sole: "#EDEAE3", metal: "#BFC3C8",
+    const FILL = { main: flatDraw ? color : `url(#${id})`, dark: shadeHex(color, -0.45), light: shadeHex(color, 0.35), sole: "#EDEAE3", metal: "#BFC3C8",
       face: "#F1EFEA", screen: "#15161A", food: "#B8743C", green: "#6E8B4A", red: "#B3262E" };
     ITEMS[kind].parts.forEach(([d, kindOf]) => {
       const style = kindOf === "line" ? "fill:none;stroke:#2A2622;stroke-width:1.4"
@@ -2982,7 +3002,14 @@
 
   let clipSeq = 0;
   // Składa szkic sceny. layers: które warstwy narysować (kafelek pokazuje tylko swoją).
+  // draft: szkic roboczy; domyślnie włączony w reżyserowaniu, poza tutorialem (ekran startowy zostaje w pełnej jakości)
+  const workDraft = () => document.getElementById("app").dataset.phase !== "start" && !document.body.classList.contains("tutorial");
   function renderScene(svg, st, W, H, layers, opts = {}) {
+    const was = flatDraw;
+    flatDraw = opts.draft ?? workDraft();
+    try { return drawScene(svg, st, W, H, layers, { ...opts, lit: opts.lit && !flatDraw }); } finally { flatDraw = was; }
+  }
+  function drawScene(svg, st, W, H, layers, opts) {
     svg.replaceChildren();
     svg.setAttribute("viewBox", `0 0 ${f(W)} ${f(H)}`);
     const id = "clip" + (++clipSeq);
@@ -3051,8 +3078,8 @@
       }
       // Rodzaj i kierunek światła zabarwia tło: słońce ociepla, lampa chłodzi, kontra przyciemnia
       const tint = kindT < 0.5 ? "#FFB45C" : "#7FA6FF";
-      el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:${tint};stroke:none;opacity:0.07` }, layer());
-      if (lightT > 0) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:#000;stroke:none;opacity:${f(0.22 * lightT)}` }, layer());
+      if (!flatDraw) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:${tint};stroke:none;opacity:0.07` }, layer());
+      if (lightT > 0 && !flatDraw) el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:#000;stroke:none;opacity:${f(0.22 * lightT)}` }, layer());
     }
 
     // Słońce lub księżyc jako źródło światła: na niebie, za Manikunem; chwycone lekko rośnie
@@ -3077,7 +3104,7 @@
       grab: opts.grab === "light", icon: 1 - skyT
     } : null;
     if (lamp && lamp.behind) drawLamp(layer(), lamp, u, kindT);
-    if (lamp && lamp.glow > 0 && subj < 1) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal * (1 - subj)) }, g), A.pl, "glow");
+    if (lamp && lamp.glow > 0 && subj < 1 && !flatDraw) drawFigureAt(el("g", { opacity: f(lamp.glow * reveal * (1 - subj)) }, g), A.pl, "glow");
 
     // Ruch: tylna połowa orbity za postacią
     const orbit = { cx, cy: pl.y + pl.h * 0.62, rx: Math.max(pl.w * 0.75, W * 0.3), ry: u * 6 };
@@ -3089,7 +3116,7 @@
       const fg = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
       // Rzeczy za postacią (i siedzisko pod nią), postać, potem rzeczy przed nią
       const tg = reveal >= 1 ? fg : el("g", { opacity: f(reveal) }, fg);
-      if (opts.lit && st.shot === "full" && layers.has("ground")) drawShadows(fg, st, A.pl, litPt, lightT);
+      if ((opts.lit || flatDraw) && st.shot === "full" && layers.has("ground")) drawShadows(fg, st, A.pl, litPt, lightT);
       A.things.filter(o => !o.front).forEach(o => drawThingWithItems(tg, st, o));
       if (opts.lit) figLight(litPt, target, lightT, kindT);
       drawFigureAt(fg, A.pl, "fig", !!opts.lit);
@@ -5373,8 +5400,8 @@
   function renderTrial() {
     const fmt = currentFormat(), H = 600, W = H * fmt.w / fmt.h;
     pvEl("previewFrame").style.setProperty("--ar", `${fmt.w} / ${fmt.h}`);
-    const st = { ...scene, props: { reveal: 1 } };
-    const G = renderScene(trialSvg, st, W, H, new Set(["ground", "background", "things"]), { lit: true });
+    const st = { ...scene, props: { reveal: 1 } }, layers = new Set(["ground", "background", "things"]);
+    const G = renderScene(trialSvg, st, W, H, layers, { lit: true, draft: false });
     const look = TRIAL[scene.style] || TRIAL.real, u = G.u, NS = "http://www.w3.org/2000/svg";
     trialSvg.setAttribute("width", f(W));
     trialSvg.setAttribute("height", f(H));
@@ -5427,9 +5454,19 @@
     document.body.classList.toggle("preview-open", open);
     pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
   }
+  // Szkic roboczy tej samej sceny na wierzchu; po otwarciu „zapalają się światła” i widać pełny kadr
+  function lightsOn() {
+    const d = pvEl("trialDraft"), { W, H } = renderTrial();
+    d.classList.remove("go", "on");
+    if (reduceMotion.matches) return;
+    renderScene(d, { ...scene, props: { reveal: 1 } }, W, H, new Set(["ground", "background", "things"]), { draft: true });
+    d.querySelector(":scope > .frame")?.remove();
+    d.classList.add("on");
+    requestAnimationFrame(() => requestAnimationFrame(() => d.classList.add("go")));
+  }
   pvEl("sheetPreview").addEventListener("click", () => {
     setSheet(false);
-    renderTrial();
+    lightsOn();
     setPreview(true);
     sfx("klap");
     nod("nod");
@@ -5446,6 +5483,8 @@
     });
     copy.removeAttribute("class");
     copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    // Filtry światła na Manikunie (figLit, figRim, cienie) leżą w osobnym SVG strony: kopia musi mieć je u siebie
+    copy.appendChild(document.getElementById("figLit").parentNode.cloneNode(true));
     const bg = getComputedStyle(pvEl("previewFrame")).backgroundColor;
     const img = new Image(), scale = 1600 / Math.max(W, H);
     img.onload = () => {

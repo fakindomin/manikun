@@ -384,6 +384,7 @@ const MATERIALS = [
 let gradSeq = 0;
 
 // Rysuje kształty manekina do grupy g. Bez materiału rysuje zwykłe kształty (styl z CSS).
+// Materiał z flat: true rysuje uproszczonego Manikuna (szkic roboczy podczas ustawiania sceny).
 function paintFigure(g, shapes, m) {
   const shape = (tag, attrs, fill) => el(tag, m ? { ...attrs, style: `fill:${fill};stroke:${m.line}` } : attrs, g);
   if (!m) {
@@ -392,6 +393,17 @@ function paintFigure(g, shapes, m) {
       if (s.t === "cap" || s.t === "poly") shape("path", { d: s.d });
       else if (s.t === "circle") shape("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r });
       else shape("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` });
+    });
+    return;
+  }
+  // Szkic roboczy: płaskie drewno z konturem, stawy odrobinę jaśniejsze, ubranie w płaskim kolorze, bez słojów
+  if (m.flat) {
+    shapes.forEach(s => {
+      if (s.t === "deco") { el("path", { d: s.d, style: s.style }, g); return; }
+      const fill = s.cloth || (s.t === "circle" ? m.light : m.mid);
+      if (s.t === "cap" || s.t === "poly") shape("path", { d: s.d }, fill);
+      else if (s.t === "circle") shape("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r }, fill);
+      else shape("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` }, fill);
     });
     return;
   }

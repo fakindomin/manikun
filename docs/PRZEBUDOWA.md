@@ -297,3 +297,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Styl daje tylko klimat: gradacja koloru (Noir czarno-biały, Vintage sepia, Komiks mniej odcieni, Akwarela lekko rozmyta), poświata w kolorach stylu (Cyberpunk magenta i cyjan, Fantasy złoto i fiolet), przy Filmowym w poziomie pasy kinowe. Do tego blask od strony światła, winieta, ziarno i podpis „PRÓBNY KADR · MANIKUN · format”.
 - Działa od razu, bez internetu i bez limitu. „Zapisz kadr” zapisuje PNG (1600 px na dłuższym boku), który można dołączyć w generatorze jako szkic kompozycji.
 - Worker `manikun-podglad` na Cloudflare nie jest już wywoływany; kod w `worker/podglad.js` zostaje.
+
+## Szkic roboczy i włączenie świateł
+
+- Podczas ustawiania sceny (Kreator i Swoboda) kadr jest szkicem roboczym: Manikun w płaskim drewnie z konturem (stawy odrobinę jaśniejsze, ubranie w płaskim kolorze, bez słojów i cieniowania), bez światła lampy na postaci i kontry, bez cienia rzucanego; zostaje tylko płaski owal pod stopami. Tło w płaskich kolorach, bez poświat słońca, księżyca, latarni i plamy światła w studiu. Pora dnia dalej zmienia kolory. Mina i kolory ubrań są czytelne.
+- Pełna jakość zostaje na ekranie startowym, w tutorialu i w Próbnym kadrze.
+- Otwarcie Próbnego kadru: najpierw szkic roboczy, potem po krótkim mrugnięciu, jak lampy na planie, pełny kadr z cieniem, światłem i klimatem stylu. Przy ograniczeniu ruchu w systemie od razu pełny kadr.
+- Trzy stopnie: szkic przy pracy, Próbny kadr jako sprawdzenie kompozycji, prawdziwe ujęcie z generatora.
