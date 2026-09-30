@@ -304,3 +304,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Pełna jakość zostaje na ekranie startowym, w tutorialu i w Próbnym kadrze.
 - Otwarcie Próbnego kadru: najpierw szkic roboczy, potem po krótkim mrugnięciu, jak lampy na planie, pełny kadr z cieniem, światłem i klimatem stylu. Przy ograniczeniu ruchu w systemie od razu pełny kadr.
 - Trzy stopnie: szkic przy pracy, Próbny kadr jako sprawdzenie kompozycji, prawdziwe ujęcie z generatora.
+- Postprodukcja Próbnego kadru: głębia ostrości (tło rozmyte, mocniej przy portrecie i twarzy), poświata jasnych miejsc (neony, lampy, słońce) i miękkie smugi światła od lampy w stronę Manikuna (bez nich przy świetle z tyłu i przy Obiekcie).
