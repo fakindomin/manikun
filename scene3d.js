@@ -155,7 +155,7 @@ export function mount(host, api) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 0.8, 0.05, 400);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.enablePan = false;
+  controls.enableDamping = true; controls.dampingFactor = 0.14; controls.enablePan = false;
   controls.minDistance = 0.7; controls.maxDistance = 12; controls.maxPolarAngle = 89 * D;
   const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8a8a, 1.2); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(3, 6, 4); scene.add(sun);
@@ -339,6 +339,8 @@ export function mount(host, api) {
   // ----- Budowanie całej sceny z danych aplikacji -----
   function rebuild() {
     const st = api.scene();
+    // Postać usiadła, a siedzisko już stoi w jej miejscu: siada na nim
+    if (people.length && snapSeat()) return;
     // Tło i pora dnia
     const bgKey = st.background + "/" + api.bgVariant(st) + "/" + st.time;
     if (bgKey !== lastBg) {
@@ -483,6 +485,7 @@ export function mount(host, api) {
     } else if (sel.kind === "thing") {
       const it = st.things[sel.i], res = api.resolveAnchors(st)[sel.i], free = res !== "under" && res !== "lean";
       if (free) bar.append(btn("↺", () => turnThing(sel.i, 30)), btn("↻", () => turnThing(sel.i, -30)), btn("Przestaw", () => startMove({ kind: "thing", i: sel.i })));
+      else if (res === "under") bar.append(btn("Wysuń spod postaci", () => startMove({ kind: "thing", i: sel.i })));
       bar.append(btn("Usuń", () => { api.removeThing(sel.i); sel = null; }, "danger"));
     }
   }
@@ -518,16 +521,37 @@ export function mount(host, api) {
     if (m.kind === "person") {
       const q = people[m.k];
       slide(q.holder, new THREE.Vector3(p.x, 0, p.z), () => {
-        if (m.k === 0) { st.pos3d = { x: +p.x.toFixed(3), z: +p.z.toFixed(3), yaw: (st.pos3d || {}).yaw || 0 }; recenter(); }
+        if (m.k === 0) { st.pos3d = { x: +p.x.toFixed(3), z: +p.z.toFixed(3), yaw: (st.pos3d || {}).yaw || 0 }; recenter(); if (snapSeat()) return; }
         else st.cast[m.k - 1].pos3d = { ...st.cast[m.k - 1].pos3d, x: +p.x.toFixed(3), z: +p.z.toFixed(3) };
         relayout();
       });
     } else {
       const it = st.things[m.i];
-      slide(thingObjs[m.i], new THREE.Vector3(p.x, 0, p.z), () => { it.pos3d = { ...(it.pos3d || {}), x: +p.x.toFixed(3), z: +p.z.toFixed(3), yaw: it.pos3d ? it.pos3d.yaw : 0 }; relayout(); });
+      const wasUnder = api.resolveAnchors(st)[m.i] === "under";
+      slide(thingObjs[m.i], new THREE.Vector3(p.x, 0, p.z), () => {
+        it.pos3d = { ...(it.pos3d || {}), x: +p.x.toFixed(3), z: +p.z.toFixed(3), yaw: it.pos3d ? it.pos3d.yaw : main().holder.rotation.y };
+        // Siedzisko wysunięte spod postaci: zwykły punkt w kadrze zamiast „pod postacią”
+        if (wasUnder) it.anchor = anchorOf(new THREE.Vector3(p.x, 0, p.z), api.thing(it.id));
+        if (!wasUnder && snapSeat()) return;
+        relayout();
+      });
     }
     api.say("Przestawione.");
     toolbar();
+  }
+  // Siedząca postać i siedzisko w tym samym miejscu: siedzisko wskakuje pod postać (w 3D i w 2D postać na nim siada)
+  function snapSeat() {
+    const st = api.scene();
+    if (api.standing(st) || api.lying(st)) return false;
+    const res = api.resolveAnchors(st), P = main().holder.position;
+    if (res.includes("under")) return false;
+    const i = (st.things || []).findIndex(it => api.thing(it.id) && api.thing(it.id).seat && it.pos3d && Math.hypot(it.pos3d.x - P.x, it.pos3d.z - P.z) < 0.55);
+    if (i < 0) return false;
+    const it = st.things[i];
+    delete it.pos3d; it.anchor = "under";
+    api.say(`Siada na: ${api.thing(it.id).name.toLowerCase()}.`);
+    relayout();
+    return true;
   }
   function recenter() { const t = targetFor(api.scene().shot); controls.target.lerp(t, 1); controls.update(); }
 
@@ -559,9 +583,11 @@ export function mount(host, api) {
     refreshAnchors(); toolbar(); dirty = true;
   });
   // Po puszczeniu palca kamera jeszcze chwilę wyhamowuje: zapis do sceny, gdy stanie
-  let lastMove = 0, syncAfterStop = false;
-  controls.addEventListener("change", () => { dirty = true; lastMove = performance.now(); });
-  controls.addEventListener("end", () => { if (!fly) syncAfterStop = true; });
+  let syncAfterStop = false, still = 0;
+  const lastCam = new THREE.Vector3();
+  controls.addEventListener("change", () => { dirty = true; });
+  // Zapis od razu po puszczeniu palca i jeszcze raz, gdy kamera wyhamuje
+  controls.addEventListener("end", () => { if (!fly) { sceneFromCam(); syncAfterStop = true; } });
 
   // ----- Rozmiar w formacie kadru i pętla -----
   function size() {
@@ -586,7 +612,12 @@ export function mount(host, api) {
       if (t >= 1) { tweens.splice(k, 1); if (tw.done) tw.done(); }
     }
     controls.update();
-    if (syncAfterStop && now - lastMove > 220) { syncAfterStop = false; sceneFromCam(); refreshAnchors(); }
+    // Zapis, gdy kamera prawie stoi (kilka klatek z ruchem poniżej 3 mm)
+    if (syncAfterStop) {
+      still = camera.position.distanceTo(lastCam) < 0.003 ? still + 1 : 0;
+      if (still >= 5) { syncAfterStop = false; still = 0; sceneFromCam(); refreshAnchors(); }
+    }
+    lastCam.copy(camera.position);
     if (!reduce.matches && anchorGroup.children.length) { anchorGroup.children.forEach((g, k) => { const s = 1 + 0.12 * Math.sin(now / 260 + k); g.scale.set(s, 1, s); }); dirty = true; }
     if (dirty) {
       renderer.render(scene, camera); dirty = false;
@@ -621,6 +652,8 @@ export function mount(host, api) {
         show(on) { if (on) { size(); dirty = true; } },
         // Do testów: kółka na ekranie (x, y w pikselach strony) i ich znaczenie
         marks: () => { const r = renderer.domElement.getBoundingClientRect(); return anchorGroup.children.map(g => { const v = g.position.clone().project(camera); return { pick: g.children[0].userData.pick, x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }); },
+        debug: () => { const q = main(), toe = wp(q, "LeftToeBase"), heel = wp(q, "LeftFoot"), head = wp(q, "Head"), hip = wp(q, "Hips"); return { toe: toe.toArray(), heel: heel.toArray(), head: head.toArray(), hip: hip.toArray(), cam: camera.position.toArray(), yaw: q.holder.rotation.y, baseYaw, rel: relCam() }; },
+        screen: (x, y, z) => { const r = renderer.domElement.getBoundingClientRect(), v = new THREE.Vector3(x, y, z).project(camera); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; },
         snapshot: () => { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
         destroy() { alive = false; ro.disconnect(); renderer.dispose(); host.replaceChildren(); }
       });
