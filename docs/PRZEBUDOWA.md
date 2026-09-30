@@ -289,3 +289,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
   | Łąka | Zielona, Zboże | Kwiaty, Samotne drzewo |
   | Pokój | Salon, Sypialnia, Biuro | Loft (ceglane ściany) |
   | Kawiarnia | Kawiarnia, Bar, Restauracja, Piekarnia | – |
+
+## Próbny kadr zamiast podglądu FLUX
+
+- Cel: podgląd w aplikacji nie może zastąpić generatora. Szkic z FLUX był „prawie gotowym zdjęciem”, więc część osób na nim poprzestawała.
+- Przycisk „Próbny kadr” w panelu Maniscryptu otwiera makietę ujęcia rysowaną silnikiem Manikuna: wybrany format, plan, poza, rzeczy, tło, pora dnia i cień od lampy, bez ikon aparatu i lampy.
+- Styl daje tylko klimat: gradacja koloru (Noir czarno-biały, Vintage sepia, Komiks mniej odcieni, Akwarela lekko rozmyta), poświata w kolorach stylu (Cyberpunk magenta i cyjan, Fantasy złoto i fiolet), przy Filmowym w poziomie pasy kinowe. Do tego blask od strony światła, winieta, ziarno i podpis „PRÓBNY KADR · MANIKUN · format”.
+- Działa od razu, bez internetu i bez limitu. „Zapisz kadr” zapisuje PNG (1600 px na dłuższym boku), który można dołączyć w generatorze jako szkic kompozycji.
+- Worker `manikun-podglad` na Cloudflare nie jest już wywoływany; kod w `worker/podglad.js` zostaje.

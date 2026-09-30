@@ -218,7 +218,7 @@
     display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: -0.01em;
   }
   .sheet-copy svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  /* Szybki podgląd: przycisk w panelu Maniscryptu i osobny panel z obrazem */
+  /* Próbny kadr: przycisk w panelu Maniscryptu i osobny panel z makietą */
   .sheet-preview {
     font: inherit; color: var(--ink); text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px;
     background: var(--surface-2); border: 1px solid var(--accent-line); border-radius: 16px; padding: 12px 14px;
@@ -245,14 +245,10 @@
   .tree-legend .tree-mine { color: var(--accent); font-weight: 600; }
   body.preview-open #previewSheet { transform: none; }
   body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
-  .preview-frame { position: relative; width: min(100%, 48dvh); aspect-ratio: 1; margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
-  .preview-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .preview-wait, .preview-error { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 18px; text-align: center; font-size: 14px; line-height: 1.4; }
-  .preview-wait small { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-  .preview-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: previewSpin 0.9s linear infinite; }
-  @keyframes previewSpin { to { transform: rotate(360deg); } }
+  /* Próbny kadr: makieta ujęcia w wybranym formacie, rysowana silnikiem Manikuna */
+  .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
+  .preview-frame > svg { width: 100%; height: 100%; display: block; }
   .preview-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-  #previewLeft { color: var(--ink); }
   .preview-better { color: var(--ink); font-weight: 600; }
   .sheet-copy .done-ico, .sheet-copy.done .copy-ico { display: none; }
   .sheet-copy.done .done-ico { display: block; }
@@ -673,10 +669,10 @@
       <div class="tree" id="sceneTreeBody"></div>
       <p class="tree-legend"><span class="tree-mine">Wyróżnione</span> to Twoje zmiany, przygaszone są domyślne.</p>
     </details>
-    <!-- Szybki podgląd: darmowy szkic kadru bez wychodzenia z aplikacji -->
+    <!-- Próbny kadr: makieta ujęcia od razu, bez AI -->
     <button class="sheet-preview" type="button" id="sheetPreview">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
-      <span class="sp-text"><b>Szybki podgląd kadru</b><small id="sheetPreviewNote">darmowy szkic w kilka sekund; generatory z listy dadzą lepszy efekt</small></span>
+      <span class="sp-text"><b>Próbny kadr</b><small>makieta ujęcia od razu; prawdziwe zdjęcie zrobi generator</small></span>
     </button>
     <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
     <button class="sheet-copy" type="button" id="sheetCopy">
@@ -695,24 +691,20 @@
     </div>
     <div class="info-body" id="infoBody"></div>
   </section>
-  <!-- Podgląd kadru: obraz z darmowego modelu FLUX przez Workera Cloudflare (worker/podglad.js) -->
+  <!-- Próbny kadr: scena narysowana silnikiem Manikuna w klimacie stylu (bez AI, od razu, bez limitu) -->
   <div class="sheet-scrim" id="previewScrim"></div>
-  <section class="sheet preview" id="previewSheet" aria-label="Podgląd kadru" aria-hidden="true">
+  <section class="sheet preview" id="previewSheet" aria-label="Próbny kadr" aria-hidden="true">
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
-      <h2>Podgląd kadru</h2>
+      <h2>Próbny kadr</h2>
       <button class="icon-btn" type="button" id="previewClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <div class="preview-frame">
-      <img id="previewImg" alt="Podgląd kadru z generatora AI" hidden>
-      <div class="preview-wait" id="previewWait" role="status"><span class="preview-spin" aria-hidden="true"></span><b id="previewWaitText"></b><small id="previewTime"></small></div>
-      <div class="preview-error" id="previewError" role="alert" hidden></div>
+    <div class="preview-frame" id="previewFrame">
+      <svg id="trialSvg" class="ink" role="img" aria-label="Próbny kadr: makieta ujęcia z Manikunem"></svg>
     </div>
-    <p class="sheet-lead">To tylko szybki, darmowy szkic (FLUX), zawsze kwadratowy. <b class="preview-better">Generatory z listy, np. ChatGPT, Gemini, Midjourney czy Kling, dadzą dużo lepszy efekt i Twój format:</b> skopiuj Maniscrypt i wklej go tam. <span id="previewLeft"></span></p>
+    <p class="sheet-lead">To makieta: kadr, poza, światło i klimat na drewnianym Manikunie. <b class="preview-better">Prawdziwe ujęcie zrobi generator z listy, np. ChatGPT, Gemini, Midjourney czy Kling:</b> skopiuj Maniscrypt i wklej go tam. Zapisany kadr możesz też dołączyć jako szkic kompozycji.</p>
     <div class="preview-actions">
-      <button class="chip" type="button" id="previewCancel">Anuluj</button>
-      <button class="chip" type="button" id="previewSave" hidden>Zapisz obraz</button>
-      <button class="chip" type="button" id="previewAgain" hidden>Jeszcze raz</button>
+      <button class="chip" type="button" id="previewSave">Zapisz kadr</button>
       <button class="chip" type="button" id="previewCopy">Kopiuj Maniscrypt</button>
     </div>
   </section>
@@ -5357,92 +5349,128 @@
     if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz zdjęcie twarzy" : ""));
   }));
 
-  // ---------- Szybki podgląd kadru ----------
-  // Pełny Maniscrypt (bez akapitu o zdjęciu twarzy) idzie w treści zapytania do Workera Cloudflare (worker/podglad.js),
-  // który zwraca obraz z darmowego modelu FLUX. Limit na urządzenie chroni wspólną dzienną pulę.
-  const PREVIEW_URL = "https://manikun-podglad.fakindomin.workers.dev";
-  const PREVIEW_DAILY = 10, PREVIEW_TIMEOUT = 60000;
-  const WAIT_LINES = ["Manikun ustawia światła…", "Kamera w pozycji…", "Poprawiam kostium…", "Ostatnie szlify…"];
+  // ---------- Próbny kadr ----------
+  // Scena bez aparatu i ikony lampy, w wybranym formacie, z „gradacją” stylu, blaskiem światła, winietą i ziarnem.
+  // Celowo zostaje makietą na drewnianym Manikunie: pokazuje, co będzie w kadrze, a nie jak pięknie to wyjdzie.
+  // m: macierz koloru (feColorMatrix), glow: kolory poświaty, wash: kolor na całość, post: liczba poziomów (komiks), soft: rozmycie (akwarela)
+  const GRADE_ID = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0];
+  const sat = k => { const r = 0.2126, g = 0.7152, b = 0.0722; return [r + (1 - r) * k, g - g * k, b - b * k, 0, 0, r - r * k, g + (1 - g) * k, b - b * k, 0, 0, r - r * k, g - g * k, b + (1 - b) * k, 0, 0]; };
+  const con = (m, c, add = [0, 0, 0]) => m.map((v, i) => i % 5 === 4 ? v : v * c).map((v, i) => i % 5 === 4 ? (0.5 - 0.5 * c) + add[(i - 4) / 5] : v);
+  const TRIAL = {
+    real: { m: con(sat(1.08), 1.08) },
+    cinema: { m: con(sat(0.9), 1.18, [0.03, 0, -0.04]), glow: ["#FFB45C", "#2B8C9E"], bars: true },
+    anime: { m: con(sat(1.45), 1.05, [0.02, 0.02, 0.04]), glow: ["#FF9AD0"] },
+    toon: { m: con(sat(1.3), 1, [0.05, 0.04, 0.02]), glow: ["#FFD27A"] },
+    cyber: { m: con(sat(1.2), 1.2, [0.02, -0.04, 0.06]), glow: ["#FF3FD2", "#35E0FF"], wash: "#1B0B3A" },
+    comic: { m: con(sat(1.4), 1.15), post: 6 },
+    water: { m: con(sat(0.9), 0.95, [0.05, 0.04, 0.02]), soft: 0.7, wash: "#F4E9D2" },
+    vintage: { m: [0.45, 0.72, 0.16, 0, 0.02, 0.38, 0.66, 0.14, 0, 0.0, 0.3, 0.52, 0.12, 0, -0.02], glow: ["#E8B070"] },
+    noir: { m: con(sat(0), 1.45) },
+    fantasy: { m: con(sat(1.2), 1.08, [0.05, 0.03, -0.01]), glow: ["#FFD27A", "#B08CFF"], wash: "#2A1640" }
+  };
   const pvEl = id => document.getElementById(id);
-  let previewRun = null, previewUrl = null, previewPrompt = null;
-  const previewDay = () => new Date().toISOString().slice(0, 10);
-  function previewCount() {
-    try { const d = JSON.parse(localStorage.getItem("manikun-preview") || "{}"); return d.day === previewDay() ? d.n : 0; } catch (e) { return 0; }
-  }
-  function previewCountUp() {
-    try { localStorage.setItem("manikun-preview", JSON.stringify({ day: previewDay(), n: previewCount() + 1 })); } catch (e) {}
-  }
-  function previewState(st, text) {
-    pvEl("previewWait").hidden = st !== "wait";
-    pvEl("previewError").hidden = st !== "error";
-    pvEl("previewImg").hidden = st !== "done";
-    pvEl("previewCancel").hidden = st !== "wait";
-    pvEl("previewSave").hidden = st !== "done";
-    pvEl("previewAgain").hidden = st === "wait";
-    if (st === "error") pvEl("previewError").textContent = text;
-    const left = Math.max(0, PREVIEW_DAILY - previewCount());
-    pvEl("previewLeft").textContent = `Dziś zostało: ${left} z ${PREVIEW_DAILY}.`;
+  const trialSvg = pvEl("trialSvg");
+  function renderTrial() {
+    const fmt = currentFormat(), H = 600, W = H * fmt.w / fmt.h;
+    pvEl("previewFrame").style.setProperty("--ar", `${fmt.w} / ${fmt.h}`);
+    const st = { ...scene, props: { reveal: 1 } };
+    const G = renderScene(trialSvg, st, W, H, new Set(["ground", "background", "things"]), { lit: true });
+    const look = TRIAL[scene.style] || TRIAL.real, u = G.u, NS = "http://www.w3.org/2000/svg";
+    trialSvg.setAttribute("width", f(W));
+    trialSvg.setAttribute("height", f(H));
+    trialSvg.querySelector(":scope > .frame")?.remove();
+    const defs = trialSvg.querySelector("defs"), body = trialSvg.querySelector(":scope > g");
+    // Gradacja koloru całej sceny
+    const flt = el("filter", { id: "trialGrade", x: 0, y: 0, width: 1, height: 1, "color-interpolation-filters": "sRGB" }, defs);
+    let last = "SourceGraphic";
+    if (look.soft) { el("feGaussianBlur", { in: last, stdDeviation: f(look.soft * u * 0.35), result: "soft" }, flt); last = "soft"; }
+    el("feColorMatrix", { in: last, type: "matrix", values: [...(look.m || GRADE_ID).slice(0, 15), 0, 0, 0, 1, 0].join(" "), result: "graded" }, flt);
+    if (look.post) {
+      const tr = el("feComponentTransfer", { in: "graded" }, flt), tv = Array.from({ length: look.post }, (_, i) => f(i / (look.post - 1))).join(" ");
+      ["feFuncR", "feFuncG", "feFuncB"].forEach(n => el(n, { type: "discrete", tableValues: tv }, tr));
+    }
+    body.setAttribute("filter", "url(#trialGrade)");
+    const over = el("g", { "pointer-events": "none" }, trialSvg);
+    const full = (fill, op) => el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:${fill};stroke:none;opacity:${op}` }, over);
+    if (look.wash) full(look.wash, look.wash === "#F4E9D2" ? 0.1 : 0.14);
+    // Blask od strony światła i poświata w kolorach stylu
+    const lx = G.litPt[0], ly = G.litPt[1];
+    const glow = (id, cx, cy, r, color, op) => {
+      const rg = el("radialGradient", { id, cx: f(cx), cy: f(cy), r: f(r), gradientUnits: "userSpaceOnUse" }, defs);
+      el("stop", { offset: 0, style: `stop-color:${color};stop-opacity:${op}` }, rg);
+      el("stop", { offset: 1, style: `stop-color:${color};stop-opacity:0` }, rg);
+      el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: `fill:url(#${id});stroke:none` }, over);
+    };
+    const R = Math.max(W, H);
+    glow("trialLit", lx, ly, R * 0.6, isNaturalLight(scene.light) ? "#FFE3B0" : "#EAF2FF", 0.16);
+    if (look.glow) look.glow.forEach((c, i) => glow("trialGlow" + i, i ? W * 0.95 : W * 0.05, H * (i ? 0.35 : 0.7), R * 0.5, c, 0.2));
+    // Ziarno i winieta
+    const gr = el("filter", { id: "trialGrain", x: 0, y: 0, width: 1, height: 1 }, defs);
+    el("feTurbulence", { type: "fractalNoise", baseFrequency: 0.9, numOctaves: 2, seed: 7, stitchTiles: "stitch" }, gr);
+    el("feColorMatrix", { type: "saturate", values: 0 }, gr);
+    el("rect", { x: 0, y: 0, width: f(W), height: f(H), filter: "url(#trialGrain)", style: `stroke:none;opacity:${scene.style === "noir" || scene.style === "vintage" ? 0.16 : 0.08}` }, over);
+    const vg = el("radialGradient", { id: "trialVig", cx: "50%", cy: "50%", r: "75%" }, defs);
+    el("stop", { offset: 0.55, style: "stop-color:#000;stop-opacity:0" }, vg);
+    el("stop", { offset: 1, style: "stop-color:#000;stop-opacity:0.55" }, vg);
+    el("rect", { x: 0, y: 0, width: f(W), height: f(H), style: "fill:url(#trialVig);stroke:none" }, over);
+    // Filmowy: czarne pasy kinowe
+    if (look.bars && fmt.w >= fmt.h) { const bh = H * 0.07; full("#000", 1).setAttribute("height", f(bh)); el("rect", { x: 0, y: f(H - bh), width: f(W), height: f(bh), style: "fill:#000;stroke:none" }, over); }
+    // Podpis jak na klapsie
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("x", f(u * 3)); t.setAttribute("y", f(H - u * 3));
+    t.setAttribute("style", `font:700 ${f(u * 2.6)}px var(--mono), monospace;fill:#fff;stroke:none;opacity:0.75;letter-spacing:0.08em`);
+    t.textContent = `PRÓBNY KADR · MANIKUN · ${fmt.short}`;
+    over.appendChild(t);
+    return { W, H };
   }
   function setPreview(open) {
-    if (!open && previewRun) { previewRun.cancelled = true; previewRun.abort(); }
     document.body.classList.toggle("preview-open", open);
     pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
   }
-  async function runPreview() {
-    if (previewRun) return;
-    if (previewCount() >= PREVIEW_DAILY) { previewState("error", `Na dziś to już ${PREVIEW_DAILY} podglądów. Wróć jutro albo skopiuj Maniscrypt do generatora z listy.`); return; }
-    const ctrl = new AbortController(), t0 = performance.now(), prompt = buildPrompt(false);
-    previewRun = ctrl;
-    previewState("wait");
-    const waitTick = () => {
-      const s = Math.floor((performance.now() - t0) / 1000);
-      pvEl("previewTime").textContent = s + " s";
-      pvEl("previewWaitText").textContent = WAIT_LINES[Math.min(WAIT_LINES.length - 1, Math.floor(s / 5))];
-    };
-    waitTick();
-    const timer = setInterval(waitTick, 500), timeout = setTimeout(() => ctrl.abort(), PREVIEW_TIMEOUT);
-    try {
-      const res = await fetch(PREVIEW_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }), signal: ctrl.signal });
-      if (!res.ok) {
-        let msg = "";
-        try { msg = (await res.json()).error; } catch (e) {}
-        throw new Error(msg || "Generator nie odpowiedział. Spróbuj ponownie.");
-      }
-      const blob = await res.blob();
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      previewUrl = URL.createObjectURL(blob);
-      previewPrompt = prompt;
-      pvEl("previewImg").src = previewUrl;
-      previewCountUp();
-      previewState("done");
-      sfx("klap");
-      nod("nod");
-    } catch (err) {
-      previewState("error", err.name === "AbortError" ? (ctrl.cancelled ? "Anulowano. Stuknij Jeszcze raz, żeby spróbować ponownie." : "Generator nie zdążył. Spróbuj ponownie za chwilę.")
-        : err instanceof TypeError ? "Brak połączenia z generatorem. Sprawdź internet i spróbuj ponownie." : err.message);
-    } finally {
-      clearInterval(timer);
-      clearTimeout(timeout);
-      previewRun = null;
-    }
-  }
-  // Otwarcie: ta sama scena pokazuje ostatni obraz bez ponownego generowania
   pvEl("sheetPreview").addEventListener("click", () => {
     setSheet(false);
+    renderTrial();
     setPreview(true);
-    sfx("tok");
-    if (previewUrl && previewPrompt === buildPrompt(false)) previewState("done"); else runPreview();
+    sfx("klap");
+    nod("nod");
   });
-  pvEl("previewCancel").addEventListener("click", () => { if (previewRun) { previewRun.cancelled = true; previewRun.abort(); } });
-  pvEl("previewAgain").addEventListener("click", () => { sfx("tik"); runPreview(); });
-  pvEl("previewSave").addEventListener("click", () => {
+  // Zapis: kopia SVG z wpisanymi stylami (klasy i zmienne CSS strony nie działają poza nią), potem PNG przez canvas
+  const TRIAL_PROPS = ["fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity", "display", "visibility", "font-family", "font-size", "font-weight", "letter-spacing", "stop-color", "stop-opacity", "mix-blend-mode", "paint-order"];
+  function trialPng(done) {
+    const { W, H } = renderTrial();
+    const copy = trialSvg.cloneNode(true), src = trialSvg.querySelectorAll("*"), dst = copy.querySelectorAll("*");
+    src.forEach((n, i) => {
+      const cs = getComputedStyle(n);
+      dst[i].setAttribute("style", TRIAL_PROPS.map(k => `${k}:${cs.getPropertyValue(k)}`).join(";"));
+      dst[i].removeAttribute("class");
+    });
+    copy.removeAttribute("class");
+    copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const bg = getComputedStyle(pvEl("previewFrame")).backgroundColor;
+    const img = new Image(), scale = 1600 / Math.max(W, H);
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = Math.round(W * scale); c.height = Math.round(H * scale);
+      const x = c.getContext("2d");
+      x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(done, "image/png");
+    };
+    img.onerror = () => done(null);
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(copy));
+  }
+  pvEl("previewSave").addEventListener("click", () => trialPng(blob => {
+    if (!blob) { showToast("Nie udało się zapisać kadru"); return; }
     const a = document.createElement("a");
-    a.href = previewUrl;
-    a.download = "manikun-podglad.jpg";
+    a.href = URL.createObjectURL(blob);
+    a.download = "manikun-probny-kadr.png";
     document.body.appendChild(a);
     a.click();
     a.remove();
-  });
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    sfx("tik");
+    showToast("Zapisano próbny kadr");
+  }));
   pvEl("previewCopy").addEventListener("click", () => copyManiscrypt(ok => {
     if (ok) sfx("klap");
     showToast(ok ? "Skopiowano. Otwórz generator i wklej" : "Nie udało się skopiować");
