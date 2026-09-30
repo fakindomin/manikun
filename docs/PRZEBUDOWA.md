@@ -308,3 +308,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Rzeczy w Próbnym kadrze: bryła od strony światła (jak na Manikunie), miękki cień w miejscu styku z podłogą i naturalny materiał, gdy nie wybrano koloru (drewniane krzesło, stół i hoker, tapicerowana kanapa i fotel, kamień). W szkicu roboczym zostają szare.
 - Manikun: dłoń z kciukiem zamiast „rękawicy”; stopa z piętą pod kostką, śródstopiem i palcami, podeszwa pozioma w typowych pozach. Buty mają profil z noskiem i podeszwą: sportowe pełniejsze z jasną grubą podeszwą, eleganckie smukłe z cienką ciemną.
 - Tło w Próbnym kadrze jest żywsze niż w szkicu: mocniejsze nasycenie i kontrast, na zewnątrz niebo w kolorach pory dnia (dzień błękit, złota godzina pomarańcz i róż, noc granat z fioletem przy horyzoncie) i cienka mgiełka nad horyzontem.
+
+## Kierunek postaci: lustro, zwrot i spojrzenie
+
+- Lustro: kamera po lewej stronie postaci oznacza postać zwróconą w lewą stronę kadru (tak rozumieją to generatory), więc przy kamerach „Lewo” Manikun jest rysowany odbity. Odbijają się z nim rzeczy związane z postacią (siedzisko, rzecz za plecami, rzecz przed i za nią); rzeczy „z lewej / z prawej” zostają po swojej stronie kadru. Światło na odbitym Manikunie pada z prawdziwej strony lampy. Ekran startowy się nie odbija.
+- Zwrot (kategoria w grupie Postać, tylko Ekspert): Do kamery, Bokiem, W głąb kadru (półtyłem), Tyłem. W głąb i Tyłem odwracają Manikuna od kamery i chowają twarz (włosy na tyle głowy). Wyłączony przy selfie i pozach leżących.
+- Maniscrypt: zamiast stałego „facing the camera” w opisach póz zdanie o zwrocie, zawsze z kierunkiem w kadrze („facing the left side of the frame”). Przy kamerze na wprost i zwrocie Do kamery zostaje „facing the camera”. Tyłem pomija minę.
+- Spojrzenie (Głowa): Naturalnie (bez opisu), W obiektyw, Przed siebie, W dal; w Ekspercie także W dół i Na rzecz ze sceny („looking at the wooden table”). W obiektyw przy postaci odwróconej: spojrzenie przez ramię. Na rysunku spojrzenie przechyla głowę.
+- Kreator: po rękach „Jak stoi względem kamery?” (Ekspert) i „Gdzie patrzy?” (oba poziomy). Drzewko sceny pokazuje Spojrzenie i Zwrot (gdy inny niż Do kamery).

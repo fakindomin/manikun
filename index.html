@@ -964,6 +964,13 @@
       { id: "propped", name: "Podpiera głowę", short: "Podpiera", prompt: "head propped up on one hand", poses: ["side"] },
       { id: "onArm", name: "Głowa na ramieniu", short: "Na ramieniu", prompt: "head resting on the outstretched lower arm", poses: ["side"] }
     ]},
+    // Zwrot ciała względem kamery (Ekspert); opis w Maniscrypcie składa turnPrompt, z kierunkiem w kadrze
+    { id: "turn", label: "Zwrot", subjects: ["person"], levels: ["expert"], patch: "#B98A6E", options: [
+      { id: "camera", name: "Do kamery", short: "Do kamery" },
+      { id: "side", name: "Bokiem", short: "Bokiem" },
+      { id: "away", name: "W głąb kadru", short: "W głąb" },
+      { id: "back", name: "Tyłem", short: "Tyłem" }
+    ]},
     // Rzeczy przy postaci; kafelki buduje makeTiles (scene.things to lista), tu nazwy dla wyszukiwarki
     { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
     // Drobiazgi na blacie: kafelki i wyszukiwarkę buduje kod (katalog ALL_ITEMS, słownik pl → en)
@@ -1163,7 +1170,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1209,6 +1216,14 @@
   const isNaturalLight = id => id.startsWith("nat");
   // Na zewnątrz jest niebo: naturalne światło to słońce albo księżyc. We wnętrzu i studiu to okno.
   const isOutdoor = bg => !["studio", "room", "cafe"].includes(bg);
+  // Strona kamery i zwrot ciała. Manikun jest rysowany przodem w prawo. Kamera po lewej stronie postaci oznacza postać
+  // zwróconą w lewą stronę kadru (tak zrobi generator), więc wtedy rysunek się odbija; odwrócenie się od kamery odbija z powrotem.
+  const camSide = st => /^L/.test(st.camera) ? "L" : /^R/.test(st.camera) ? "R" : "C";
+  const turnOf = st => st.subject === "person" && !isSelfie(st.camera) && !LYING.includes(st.pose) ? (st.turn || "camera") : "camera";
+  const turnedAway = st => ["away", "back"].includes(turnOf(st));
+  const facesLeft = st => st.subject === "person" && !isSelfie(st.camera) && (camSide(st) === "L") !== turnedAway(st);
+  // Na ekranie startowym Manikun wita się zawsze tak samo
+  const mirrored = st => facesLeft(st) && document.getElementById("app").dataset.phase !== "start";
   // Lampa ma sens tylko we wnętrzu, o złotej godzinie i nocą; w pełnym słońcu model i tak jej nie pokaże
   const lampAllowed = st => !isOutdoor(st.background) || st.time !== "day";
   // Opis naturalnego światła wynika z pory dnia: [z przodu, pod światło]
@@ -1422,6 +1437,34 @@
   // Zarost ma własny kolor, niezależny od włosów (ta sama paleta)
   LOOK.beardColor = LOOK.hairColor;
   const lookOpt = (key, id) => LOOK[key].find(o => o.id === id);
+  // Spojrzenie: dokąd patrzy postać, niezależnie od zwrotu ciała. tilt: przechył głowy na rysunku (w dół > 0).
+  // Ekspert ma też „W dół” i patrzenie na rzecz ze sceny (id "t0", "t1"… = numer rzeczy).
+  const GAZE = [
+    { id: "auto", name: "Naturalnie", prompt: null },
+    { id: "lens", name: "W obiektyw", prompt: "looking straight into the camera lens" },
+    { id: "ahead", name: "Przed siebie", prompt: "looking straight ahead in the direction the body is facing, not at the camera", tilt: 2 },
+    { id: "far", name: "W dal", prompt: "gazing into the far distance toward the horizon", tilt: -7 },
+    { id: "down", name: "W dół", prompt: "looking down with the eyes lowered", tilt: 17, expert: true }
+  ];
+  const gazeThings = st => (st.things || []).map((it, i) => ({ id: "t" + i, name: "Na: " + THING[it.id].name.toLowerCase(), thing: i, tilt: 9, expert: true }))
+    .filter(o => THING[st.things[o.thing].id]);
+  const gazeList = (st = scene) => [...GAZE, ...gazeThings(st)].filter(o => !o.expert || level === "expert");
+  const gazeOpt = (st = scene) => { const id = (st.look && st.look.gaze) || "auto"; return [...GAZE, ...gazeThings(st)].find(o => o.id === id) || GAZE[0]; };
+  function gazePrompt(st = scene) {
+    const g = gazeOpt(st);
+    if (g.thing != null) return "looking at " + thingPhrase(st.things[g.thing]).replace(/^an? /, "the ");
+    if (g.id === "lens" && turnedAway(st)) return "glancing back over the shoulder straight into the camera lens";
+    return g.prompt;
+  }
+  // Zwrot ciała w Maniscrypcie: zawsze też kierunek w kadrze, bo lewo i prawo kadru modele rozumieją pewniej niż strony postaci
+  function turnPrompt(st = scene) {
+    if (isSelfie(st.camera) || LYING.includes(st.pose)) return "";
+    const t = turnOf(st), side = camSide(st), dir = facesLeft(st) ? "left" : "right";
+    if (t === "camera") return side === "C" ? "facing the camera" : `body turned toward the camera, facing the ${dir} side of the frame`;
+    if (t === "side") return `seen in side profile, body and face turned toward the ${dir} side of the frame`;
+    if (t === "away") return `turned away from the camera in a three-quarter back view, facing into the scene toward the ${dir} side of the frame`;
+    return "seen from behind with the back to the camera, facing away into the scene, face not visible";
+  }
   // Emocje i ich poziomy (łagodny, mocny). W rzędzie Mina są emocje, po wyborze drugi rząd z poziomami.
   const EXPR_GROUPS = [
     { id: "neutral", name: "Neutralna", levels: ["neutral"] },
@@ -1493,6 +1536,13 @@
     withPhoto = photo && scene.subject === "person";
     try { return (withPhoto ? photoBlock() : "") + buildPromptBody(); } finally { withPhoto = false; }
   }
+  // Poza z rękami i zwrotem ciała (zamiast stałego „facing the camera” w opisach póz)
+  function posePrompt() {
+    const raw = sitPrompt(scene) + (standArms(scene) ? ", " + armsPrompt() : isSelfie(scene.camera) ? ", " + selfieArm() : "");
+    if (LYING.includes(scene.pose)) return raw;
+    const tp = turnPrompt();
+    return raw.replace(/, facing the camera/g, "") + (tp ? ", " + tp : "");
+  }
   function buildPromptBody() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
     const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
@@ -1501,12 +1551,12 @@
       (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt()
     ] : [
-      shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) ? ", " + lookOpt("expr", exprOf(scene)).prompt : ""),
+      shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) && scene.turn !== "back" ? ", " + lookOpt("expr", exprOf(scene)).prompt : "") + (gazePrompt() ? ", " + gazePrompt() : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
       ...(faceShot
         // Przy zbliżeniu na twarz zostaje tylko to, co widać przy twarzy: telefon lub dłoń przy brodzie albo czole
-        ? (isSelfie(scene.camera) || (standArms(scene) && ["chin", "shade"].includes(scene.arms)) ? [standArms(scene) ? armsPrompt() : selfieArm()] : [])
-        : [sitPrompt(scene) + (standArms(scene) ? ", " + armsPrompt() + ", facing the camera" : isSelfie(scene.camera) ? ", " + selfieArm() : "") + thingsPrompt(scene)]),
+        ? [...(isSelfie(scene.camera) || (standArms(scene) && ["chin", "shade"].includes(scene.arms)) ? [standArms(scene) ? armsPrompt() : selfieArm()] : []), ...(turnOf(scene) !== "camera" ? [turnPrompt()] : [])]
+        : [posePrompt() + thingsPrompt(scene)]),
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
@@ -1702,16 +1752,18 @@
     const a = isSelfie(st.camera) && st.arms === "hips" ? "hipOne" : st.arms;
     return ["down", "hipOne", "hips", "chin", "shade"].includes(a) ? a : "down";
   };
-  const poseKey = st => poseGeom(st) + (armsApply(st) && armsFor(st) !== armsDefault(st) ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "");
+  const poseKey = st => poseGeom(st) + (armsApply(st) && armsFor(st) !== armsDefault(st) ? "+" + armsFor(st) : "") + (st.camera === "S" ? "~selfie" : st.camera === "SR" ? "~selfieR" : "") + (exprOf(st) ? "!" + exprOf(st) : "") + (st.look && gazeOpt(st).tilt ? "^" + gazeOpt(st).tilt : "");
   const poseCache = {};
   function poseOf(key) {
     if (poseCache[key]) return poseCache[key];
-    const [main, expr] = key.split("!"), [body, selfie] = main.split("~"), [base, arms] = body.split("+");
+    const [key0, tilt] = key.split("^"), [main, expr] = key0.split("!"), [body, selfie] = main.split("~"), [base, arms] = body.split("+");
     // Telefon w bliższej ręce: gest wykonuje dalsza ręka (dłoń przy twarzy rysowana przed głową)
     let p = arms ? { ...POSES[base], ...(selfie === "selfieR" ? ARMS_FAR[arms] : ARMS[arms]) } : POSES[base];
     if (selfie) p = { ...p, ...ARMS[selfie] };
     // Mina przechyla głowę i tułów względem pozy (także leżącej)
     if (expr) { const E = EXPR_POSE[expr]; p = { ...p }; if (E.head) p.head += E.head - 180; if (E.spine) p.spine += E.spine - 180; }
+    // Spojrzenie przechyla głowę: w dół, w dal (lekko w górę), na rzecz
+    if (tilt) p = { ...p, head: p.head + +tilt };
     return (poseCache[key] = p);
   }
   const curPose = () => poseOf(poseKey(scene));
@@ -1944,6 +1996,7 @@
       left: [L - 34 * s, G - 30 * s], right: [R + 34 * s, G - 30 * s], leftFar: [L - 130 * s, G - 44 * s], rightFar: [R + 130 * s, G - 44 * s],
       background: [cx + 72 * s, G - 70 * s], foreground: [cx - 70 * s, G + 6 * s]
     };
+    if (pl.mir != null) { P.under[0] = A.plBase.hip[0] - 4 * s; ["front", "behind"].forEach(k => { P[k][0] = 2 * pl.mir - P[k][0]; }); }
     return Object.fromEntries(Object.entries(P).filter(([a]) => anchorOK(st, a, t)));
   }
   // Maniscrypt: siedzenie na rzeczy i rzeczy wokół postaci (z kolorem, jeśli wybrany w Ekspercie)
@@ -2050,7 +2103,8 @@
     stool: "#5A3E2B", stump: "#6A4B33", armchair: "#7E5F4C", sofa: "#56677A", pouf: "#8C7563", rock: "#75736C", stairs: "#8A8780" };
   let trialMat = false;
   function drawThingWithItems(g, st, o) {
-    drawThing(g, o.t.id, o.x, o.G, o.s, o.color ? colorOf(o.color).hex : trialMat ? TRIAL_MAT[o.t.id] || null : null);
+    // Rzecz odbita razem z postacią; drobiazgi na blacie (też z napisami) rysowane normalnie
+    drawThing(o.flip ? el("g", { transform: `translate(${f(2 * o.x)} 0) scale(-1 1)` }, g) : g, o.t.id, o.x, o.G, o.s, o.color ? colorOf(o.color).hex : trialMat ? TRIAL_MAT[o.t.id] || null : null);
     const items = o.t.surf ? itemsOn(st, o.i) : [], top = o.G - (o.t.surf || 0) * o.s;
     if (!items.length) return;
     items.forEach((it, i) => drawSmall(g, it, o.x + (i - (items.length - 1) / 2) * 30 * o.s, top, o.s));
@@ -2204,13 +2258,13 @@
     if (w.outer !== "none") c.outer = { color: hex("outer"), coat: !!wearOpt("outer", w.outer).coat };
     if (w.hat !== "none") c.hat = { kind: w.hat, color: hex("hat") };
     c.shoes = { kind: w.shoes, color: hex("shoes") };
-    c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st) };
+    c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st), view: turnedAway(st) ? turnOf(st) : null };
     return c;
   }
 
   // dressed: z ubraniem ze sceny (część kafelków rysuje samego manekina)
   function buildFigure(poseId, bodyId = "male", dressed = null) {
-    const key = [poseId, bodyId, !!dressed, dressed && JSON.stringify([scene.wear, scene.wc, scene.look]), dressed && exprOf(scene)].join("/");
+    const key = [poseId, bodyId, !!dressed, dressed && JSON.stringify([scene.wear, scene.wc, scene.look, turnOf(scene)]), dressed && exprOf(scene)].join("/");
     return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], dressed ? clothOf(bodyId) : null));
   }
 
@@ -2253,11 +2307,15 @@
   // lit: Manikun w kadrze dostaje światło lampy i kontrę (filtry figLit i figRim)
   function drawFigureAt(parent, pl, cls, lit = false) {
     const b = pl.fig.box;
+    // Odbicie wokół osi pl.mir: ramka przesunięta, a rysunek odbity wewnątrz niej. Filtry światła leżą poza odbiciem
+    // (na odbitej grafice Chrome liczy światło błędnie), więc padają z prawdziwej strony lampy.
+    const mx = pl.mir != null ? 2 * (pl.mir - (pl.x + pl.w / 2)) : 0;
     const holder = el("svg", {
       viewBox: `${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}`,
-      x: f(pl.x), y: f(pl.y), width: f(pl.w), height: f(pl.h), overflow: "visible"
+      x: f(pl.x + mx), y: f(pl.y), width: f(pl.w), height: f(pl.h), overflow: "visible"
     }, parent);
-    const host = lit ? el("g", { filter: "url(#figLit)" }, el("g", { filter: "url(#figRim)" }, holder)) : holder;
+    let host = lit ? el("g", { filter: "url(#figLit)" }, el("g", { filter: "url(#figRim)" }, holder)) : holder;
+    if (pl.mir != null) host = el("g", { transform: `translate(${f(2 * b.minX + b.w)} 0) scale(-1 1)` }, host);
     paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : material) : null);
   }
 
@@ -2338,6 +2396,16 @@
     const things = withThings ? thingLayout(st, pl, plBase, W) : { list: [], shift: 0 };
     plBase = shiftPl(plBase, things.shift);
     pl = st.fig ? shiftPl(pl, things.shift) : plBase;
+    // Odbicie (kamera z lewej albo postać odwrócona od kamery): postać i rzeczy związane z nią (siedzisko, oparcie, przed nią, za nią)
+    // odbite wokół środka postaci; rzeczy „z lewej / z prawej” zostają po swojej stronie kadru
+    if (mirrored(st)) {
+      const a = plBase.x + plBase.w / 2, mx = p => p && [2 * a - p[0], p[1]];
+      const mir = q => ({ ...q, mir: a, hip: mx(q.hip), head: mx(q.head), hand: mx(q.hand), handNear: mx(q.handNear) });
+      const same = pl === plBase;
+      plBase = mir(plBase);
+      pl = same ? plBase : mir(pl);
+      things.list.forEach(o => { if (["under", "lean", "front", "behind"].includes(o.anchor)) { o.x = 2 * a - o.x; o.flip = true; } });
+    }
     return { pl, plBase, things: things.list, u: H / 100, cx: pl.x + pl.w / 2 };
   }
 
@@ -3213,7 +3281,8 @@
         el("path", { d: `M${f(x)},${f(y + sy * c)} L${f(x)},${f(y)} L${f(x + sx * c)},${f(y)}`, class: "corner", style: sty ? `stroke:${sty.frame}` : "" }, svg);
       });
     }
-    const thingBoxes = A.things.map(o => ({ i: o.i, box: [o.x + o.t.box[0] * o.s, o.G - o.t.box[2] * o.s, o.x + o.t.box[1] * o.s, o.G] }));
+    const thingBoxes = A.things.map(o => ({ i: o.i, box: o.flip ? [o.x - o.t.box[1] * o.s, o.G - o.t.box[2] * o.s, o.x - o.t.box[0] * o.s, o.G]
+      : [o.x + o.t.box[0] * o.s, o.G - o.t.box[2] * o.s, o.x + o.t.box[1] * o.s, o.G] }));
     return { camPt, litPt, zonePts, u, W, H, hz, head: A.plBase.head, pickPts, thingBoxes };
   }
 
@@ -3236,6 +3305,8 @@
     motion: svg => { el("ellipse", { cx: 12, cy: 15, rx: 9, ry: 3.5 }, svg); el("circle", { cx: 12, cy: 5, r: 2 }, svg); el("path", { d: "M12 7v8 M15 19.4l2.4-0.8-1.4-2" }, svg); },
     body: svg => miniFigure(svg, "stand", scene.body, scene.outfit),
     pose: svg => miniFigure(svg, "sit", scene.body, scene.outfit),
+    // Zwrot: głowa z góry i strzałka obrotu
+    turn: svg => { el("circle", { cx: 12, cy: 12, r: 3.2 }, svg); el("path", { d: "M12 3.5a8.5 8.5 0 1 1-7.4 4.3" }, svg); el("path", { d: "M3.6 4.2l1 3.7 3.7-1" }, svg); },
     arms: svg => miniFigure(svg, "stand+hips", scene.body, scene.outfit),
     outfit: svg => outfitGlyph(svg, isDress() ? "dress" : scene.wear.outer === "coat" ? "coat" : ({ blazer: "elegant", hoodie: "street", sweatshirt: "street", sweater: "street" })[scene.wear.top] || "casual", 24),
     style: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); [[8.5, 9.5], [12.5, 7.5], [15.5, 11]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.3, style: "fill:currentColor" }, svg)); el("path", { d: "M12 20.5c-1.5 0-2-1.5-1-2.5s2.5-.5 3-2" }, svg); },
@@ -3278,7 +3349,7 @@
   }
 
   // ---------- Gotowe schematy ----------
-  const LOOK0 = { hair: null, hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black" };
+  const LOOK0 = { hair: null, hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" };
   const PRESETS = {
     person: [
       { id: "business", name: "Portret biznesowy", set: { ...dressIn("elegant"), pose: "stand", arms: "down", shot: "portrait", camera: "L2",
@@ -3503,6 +3574,23 @@
   }
 
   // Głowa Manikuna z danym wyglądem, powiększona na kafelek
+  // Kafelek spojrzenia: głowa z przechyłem i strzałka kierunku (w obiektyw: znak obiektywu przed twarzą)
+  function gazeTile(svg, o) {
+    const fig = computeFigure({ ...POSES.stand, head: 180 + (o.tilt || 0) }, BODIES[scene.body], clothOf(scene.body));
+    const [hx, hy] = fig.head, r = 30;
+    svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r + 2)} ${f(r * 2)} ${f(r * 2)}`);
+    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+    const st = "fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round";
+    const arrowTo = (x1, y1, x2, y2) => {
+      const a = Math.atan2(y2 - y1, x2 - x1), k = 4.5;
+      el("path", { d: `M${f(x1)},${f(y1)} L${f(x2)},${f(y2)} M${f(x2 - k * Math.cos(a - 0.5))},${f(y2 - k * Math.sin(a - 0.5))} L${f(x2)},${f(y2)} L${f(x2 - k * Math.cos(a + 0.5))},${f(y2 - k * Math.sin(a + 0.5))}`, style: st }, svg);
+    };
+    const x0 = hx + 13, y0 = hy - 1;
+    if (o.id === "lens") { el("circle", { cx: f(hx + 22), cy: f(hy), r: 5.5, style: st }, svg); el("circle", { cx: f(hx + 22), cy: f(hy), r: 2.2, style: st }, svg); }
+    else if (o.id === "ahead") arrowTo(x0, y0, x0 + 14, y0);
+    else if (o.id === "far") arrowTo(x0, y0 - 2, x0 + 13, y0 - 12);
+    else if (o.id === "down" || o.thing != null) arrowTo(x0, y0 + 2, x0 + 10, y0 + 14);
+  }
   function headTile(svg, lk) {
     const saved = scene.look;
     scene.look = lk;
@@ -3555,12 +3643,15 @@
       () => set({ glasses: o.id }, o.id === "none" ? undefined : "glassesColor"), svg => headTile(svg, with_({ glasses: o.id === "none" ? "none" : o.id })))));
     if (sub === "glassesColor") return [backTile("glasses")].concat(LOOK.glassesColor.map(o => tile("opt-glassesColor-" + o.id, o.name,
       () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), svg => headTile(svg, with_({ glassesColor: o.id })))));
-    const groups = [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
+    if (sub === "gaze") return [backTile(null)].concat(gazeList().map(o => tile("opt-gaze-" + o.id, o.name, () => gazeOpt(scene).id === o.id,
+      () => set({ gaze: o.id }), svg => gazeTile(svg, o))));
+    const groups = [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
     // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
     const SAMPLE = { expr: { expr: "neutral" }, hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
-    const chosen = k => k === "expr" ? lk.expr !== SCENE0.look.expr : k === "hair" ? lk.hairPicked : lk[k] !== "none";
+    const chosen = k => k === "expr" ? lk.expr !== SCENE0.look.expr : k === "hair" ? lk.hairPicked : k === "gaze" ? gazeOpt(scene).id !== "auto" : lk[k] !== "none";
     return groups.map(([k, name]) => groupMark(tile("opt-look-" + k, name, () => chosen(k),
-      () => { scene.sub = k; render(); }, svg => headTile(svg, k === "hair" || lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
+      () => { scene.sub = k; render(); }, svg => k === "gaze" ? gazeTile(svg, gazeOpt(scene).id === "auto" ? GAZE[1] : gazeOpt(scene))
+        : headTile(svg, k === "hair" || lk[k] !== "none" ? scene.look : with_(SAMPLE[k])))));
   }
 
   // Wybór opcji z listy; tło od razu otwiera swoje warianty (opcjonalne, można wrócić strzałką)
@@ -3728,6 +3819,13 @@
       outfitGlyph(svg, leafId);
       return;
     }
+    // Zwrot: scena z kamerą, żeby było widać, jak postać stoi względem obiektywu
+    if (catId === "turn") {
+      const saved = scene.turn;
+      scene.turn = leafId;
+      try { renderScene(svg, { ...scene, turn: leafId, things: [], items: [] }, 100, 100, new Set(["ground", "camera"])); } finally { scene.turn = saved; }
+      return;
+    }
     if (catId === "pose" || catId === "body" || catId === "arms") {
       // Jedna skala dla wszystkich kafelków z postacią: liczona z każdej pozy, układu rąk i sylwetki
       const boxes = [];
@@ -3764,7 +3862,7 @@
   // Powrót: strzałka przypięta po lewej w dolnym rzędzie albo stuknięcie w otwarty kafelek.
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
-    { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms"], subjects: ["person"], icon: "body" },
+    { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["things", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
@@ -3778,7 +3876,7 @@
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
   const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
-  const catOff = id => (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
+  const catOff = id => (id === "turn" && (isSelfie(scene.camera) || LYING.includes(scene.pose))) || (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   const childOf = id => {
     const g = GROUPS.find(x => x.id === id);
     if (g) return g.cat ? { kind: "opts", cat: g.cat, sub: null } : { kind: "cats", group: g.id };
@@ -3844,6 +3942,8 @@
     { id: "glassesColor", say: "Jakie oprawki?", cat: "look", sub: "glassesColor", when: () => face() && scene.look.glasses !== "none" },
     { id: "pose", ch: "pose", say: "Co robi?", cat: "pose", flat: true },
     { id: "arms", say: "A ręce?", cat: "arms", when: () => armsApply(scene) },
+    { id: "turn", say: "Jak stoi względem kamery?", cat: "turn", when: () => level === "expert" && !catOff("turn") },
+    { id: "gaze", say: "Gdzie patrzy?", cat: "look", sub: "gaze" },
     { id: "things", say: () => scene.pose === "leanOn" && !(scene.things || []).length ? "O co się opiera? Lada, samochód, regał…" : seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things", when: () => level !== "expert" },
     { id: "items", say: () => `Co leży na ${surfaceOf(scene).on}? Szukaj znajdzie też banana.`, cat: "items", when: () => level !== "expert" && !!surfaceOf(scene) },
     // Ekspert: rozdział Rzeczy. Pętla: co dodajemy → gdzie (wskazanie w kadrze) → co leży na blacie → kolor → znowu co dodajemy,
@@ -5035,9 +5135,10 @@
     if (cat === "style") { optionsOf("style").forEach(o => add(o.name, path, () => jump([...base, opts(cat, null)], "opt-style-" + o.id))); return; }
     if (cat === "format") { FORMATS[scene.mode].forEach(fm => add(fm.name, path, () => jump([...base, opts(cat, null)], "opt-format-" + fm.id))); return; }
     if (cat === "look") {
-      [["expr", "Mina"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male").forEach(([k, name]) => {
+      [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male").forEach(([k, name]) => {
         const lvl = [...base, opts(cat, null, "opt-look-" + k)];
         add(name, path, () => jump([...lvl, opts(cat, k)]));
+        if (k === "gaze") { gazeList().forEach(o => add(o.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-gaze-" + o.id))); return; }
         if (k === "expr") {
           // Emocja otwiera rząd emocji; poziom od razu ustawia minę i pokazuje rząd poziomów
           EXPR_GROUPS.forEach(g => {
@@ -5231,6 +5332,7 @@
     const hair = lookOpt("hair", lk.hair);
     const head = [
       ["Mina", g.levels.length > 1 ? treePath(g.name, exprName) : exprName],
+      ["Spojrzenie", gazeOpt(st).name],
       ["Włosy", treePath(hair.name, !hair.noColor && "Kolor: " + (lk.hairColor === "auto" ? "Domyślny" : lookOpt("hairColor", lk.hairColor).name))],
       male && ["Zarost", treePath(lookOpt("beard", lk.beard).name, lk.beard !== "none" && "Kolor: " + (lk.beardColor === "auto" ? "Domyślny" : lookOpt("beardColor", lk.beardColor).name))],
       !male && ["Usta", lookOpt("lips", lk.lips).name],
@@ -5253,7 +5355,8 @@
         ["Głowa", null, head],
         ["Ubiór", st.outfit === "custom" ? "Własny" : "Zestaw " + optionOf("outfit", st.outfit).name, wear],
         ["Poza", treePath(parentName("pose", st.pose), optionOf("pose", st.pose).name)],
-        armsApply(st) && ["Ręce", optionOf("arms", armsFor(st)).name]
+        armsApply(st) && ["Ręce", optionOf("arms", armsFor(st)).name],
+        turnOf(st) !== "camera" && ["Zwrot", optionOf("turn", turnOf(st)).name]
       ].filter(Boolean)],
       ["Rzeczy", things.length ? null : "Nic", things],
       ["Scena", null, [

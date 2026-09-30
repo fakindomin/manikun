@@ -248,7 +248,10 @@ function computeFigure(pose, RIG, cloth = null) {
   push(cap(Ct, N1, 3.5, 3.5));
   push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: RIG.headRx, ry: RIG.headRy, rot: 180 - pose.head, head: true }, [Hc, RIG.headRy + 1]);
   if (hair && hair.cap) clothPoly(hair.cap, look.hairColor);
-  if (look) {
+  // Zwrot ciała: tyłem widać tył głowy (włosy na całej głowie), półtyłem włosy zakrywają większość głowy; twarzy nie rysujemy
+  const turned = look && (look.view === "back" || look.view === "away");
+  if (turned && hair) clothPoly(arc(0, 360, 28, a => look.view === "back" ? E(a, 1.07, 1.06, 0.02) : L(-0.26 + Math.cos(rad(a)) * 0.86, 0.04 + Math.sin(rad(a)) * 1.04)), look.hairColor);
+  if (look && !turned) {
     // Zarost: pełna i krótka broda jako materiał, kilkudniowy jako półprzezroczysty cień
     if (look.beard && look.beard !== "none") {
       const low = look.beard === "full" ? -0.3 : -0.42;
