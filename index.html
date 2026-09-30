@@ -506,6 +506,16 @@
     position: absolute; left: 50%; top: 14px; transform: translateX(-50%); white-space: nowrap;
     font-family: var(--mono); font-size: 11px; color: #fff; background: rgba(0, 0, 0, 0.6); border-radius: 999px; padding: 5px 12px;
   }
+  /* „Generowanie” między szkicem a zdjęciem: logo generatora kręci się jak kółko ładowania i co 250 ms zmienia się na następne */
+  .tut-gen { position: absolute; inset: 5px; border-radius: 18px; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 12px;
+    background: rgba(9, 9, 11, 0.62); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); opacity: 0; transition: opacity 250ms ease; }
+  .tut-gen.show { opacity: 1; }
+  .tut-gen-logo { position: relative; width: 72px; height: 72px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+    font: 700 34px/1 var(--font); color: #fff; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5); animation: genSpin 750ms linear infinite; }
+  .tut-gen-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 12px; box-sizing: border-box; background: #F4F4F5; }
+  .tut-gen-name { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: #fff; }
+  @keyframes genSpin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .tut-gen-logo { animation: none; } }
   /* Przycisk, na który Manikun wskazuje (np. Maniscrypt po Kreatorze) */
   .square.pulse { animation: pulse 1.2s ease-in-out 5; }
   @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft), 0 0 22px var(--accent); transform: scale(1.06); } }
@@ -744,6 +754,7 @@
     </svg>
     <!-- Tutorial: przykładowe zdjęcie z generatora na miejscu kadru (tutorial/cyberpunk.jpg, tutorial/fantasy.jpg);
          bez pliku pokazuje planszę w kolorach stylu -->
+    <div class="tut-gen" id="tutGen" hidden aria-hidden="true"><div class="tut-gen-logo" id="tutGenLogo"></div><span class="tut-gen-name" id="tutGenName"></span></div>
     <figure class="tut-photo" id="tutPhoto" hidden>
       <img id="tutImg" alt="">
       <div class="tut-ph" id="tutPh"><b id="tutPhName"></b><span>Tu będzie zdjęcie z generatora</span></div>
@@ -5990,8 +6001,9 @@
     { say: "Teraz wybierz Dres.", target: () => document.getElementById("opt-wear-bottom-joggers"), done: () => scene.wear.bottom === "joggers" },
     { say: "Świetnie. Stwórzmy Maniscrypt dla tej sceny: stuknij zielony przycisk.", target: () => document.getElementById("copy"),
       done: () => document.body.classList.contains("sheet-open") },
-    { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
-      after: () => { setSheet(false); tutPhoto("cyber"); } },
+    { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied, after: () => setSheet(false) },
+    // Między szkicem a zdjęciem: kręcące się logo generatorów pokazuje, że obraz robi AI z zewnątrz
+    { say: "Ciekawe, co AI nam zaproponuje…", before: () => tutGen(), done: () => tut.genDone, after: () => { tutGen(false); tutPhoto("cyber"); } },
     { say: "Hmm… cyberpunk w lesie? Chyba nie mój klimat.", tap: true, after: () => tutPhoto(null) },
     { say: "Przełączmy styl. Wróć strzałką do głównych grup.", target: () => rows.bottom && rows.bottom.back,
       done: () => nav.length === 2 && nav[0].kind === "groups" },
@@ -5999,14 +6011,16 @@
     { say: "Wybierz Fantasy.", target: () => document.getElementById("opt-style-fantasy"), done: () => scene.style === "fantasy" },
     { say: "Stwórzmy Maniscrypt dla stylu Fantasy.", target: () => document.getElementById("copy"),
       done: () => document.body.classList.contains("sheet-open"), before: () => { tut.copied = false; } },
-    { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied,
-      after: () => { setSheet(false); tutPhoto("fantasy"); } },
+    { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied, after: () => setSheet(false) },
+    { say: "Zobaczmy, co AI zrobi z Fantasy…", before: () => tutGen(), done: () => tut.genDone, after: () => { tutGen(false); tutPhoto("fantasy"); } },
     { say: "I to rozumiem! Fantasy jak trzeba!", tap: true, after: () => tutPhoto(null) },
     { say: "A Ty? Masz jakiś pomysł na scenę?", tap: true, after: () => tutFinish() }
   ];
   // Scena startowa tutoriala: streetwear z jeansami, las ze ścieżką i mgłą, noc, Cyberpunk, 4:5; rzędy otwarte na Postać › Ubiór
   function startTutorial() {
     wiz = null;
+    // Ikonki generatorów wczytane zawczasu, żeby w trakcie kręcenia nie mrugały
+    TUT_GENS().forEach(g => { const im = new Image(); im.referrerPolicy = "no-referrer"; im.src = `https://www.google.com/s2/favicons?domain=${g.site}&sz=64`; });
     setMenu(false);
     setSearch(false);
     setSheet(false);
@@ -6067,6 +6081,40 @@
     if (!tut || tut.step < 0) return;
     if (TUT_STEPS[tut.step].tap) { sfx("tik"); tutNext(); }
   }
+  // Kręcące się logo generatorów przez 1,5 s (logo co 250 ms); bez ikonki strony zostaje litera w kolorze generatora
+  const TUT_GENS = () => [...GENERATORS.photo, GENERATORS.video.find(g => g.name === "Kling")].filter(Boolean).slice(0, 6);
+  let genTimer = null;
+  function tutGen(on = true) {
+    const box = document.getElementById("tutGen"), logo = document.getElementById("tutGenLogo"), name = document.getElementById("tutGenName");
+    clearInterval(genTimer);
+    genTimer = null;
+    if (!on) { box.classList.remove("show"); setTimeout(() => { if (!genTimer) box.hidden = true; }, 250); return; }
+    const gens = TUT_GENS();
+    let i = 0;
+    const show = () => {
+      const g = gens[i % gens.length];
+      logo.replaceChildren(document.createTextNode(g.mark));
+      logo.style.background = g.color;
+      const img = new Image();
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      img.style.opacity = "0";
+      img.onload = () => { if (img.naturalWidth <= 16) img.remove(); else img.style.opacity = "1"; };
+      img.onerror = () => img.remove();
+      img.src = `https://www.google.com/s2/favicons?domain=${g.site}&sz=64`;
+      logo.appendChild(img);
+      name.textContent = g.name;
+      i++;
+    };
+    if (tut) tut.genDone = false;
+    show();
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add("show"));
+    genTimer = setInterval(() => {
+      if (i >= gens.length) { clearInterval(genTimer); genTimer = null; if (tut) tut.genDone = true; return; }
+      show();
+    }, 250);
+  }
   function tutPhoto(style) {
     const fig = document.getElementById("tutPhoto"), img = document.getElementById("tutImg");
     if (!style) { fig.classList.remove("show"); setTimeout(() => { fig.hidden = true; }, 500); return; }
@@ -6094,6 +6142,7 @@
     const fast = reduceMotion.matches;
     hush();
     setSheet(false);
+    tutGen(false);
     tutPhoto(null);
     leaveRow(rows.top);
     leaveRow(rows.bottom);
