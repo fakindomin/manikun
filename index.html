@@ -2045,8 +2045,12 @@
   const itemsOn = (st, i) => (st.items || []).filter(it => itemInfo(it) && itemOn(st, it) === i);
   const activeItems = st => (st.items || []).filter(it => itemInfo(it) && itemOn(st, it) >= 0);
   // Rysuje rzecz, a jeśli ma blat, to drobiazgi na nim (na środku blatu, obok siebie)
+  // Próbny kadr: rzeczy bez wybranego koloru dostają naturalny materiał (drewno, tapicerka, kamień); szkic zostaje szary
+  const TRIAL_MAT = { chair: "#8A5A34", bench: "#7E5532", crate: "#A27A4E", table: "#7A4E2E", desk: "#6B4A33", shelf: "#6E4B30", bar: "#4E3424",
+    stool: "#5A3E2B", stump: "#6A4B33", armchair: "#7E5F4C", sofa: "#56677A", pouf: "#8C7563", rock: "#75736C", stairs: "#8A8780" };
+  let trialMat = false;
   function drawThingWithItems(g, st, o) {
-    drawThing(g, o.t.id, o.x, o.G, o.s, o.color ? colorOf(o.color).hex : null);
+    drawThing(g, o.t.id, o.x, o.G, o.s, o.color ? colorOf(o.color).hex : trialMat ? TRIAL_MAT[o.t.id] || null : null);
     const items = o.t.surf ? itemsOn(st, o.i) : [], top = o.G - (o.t.surf || 0) * o.s;
     if (!items.length) return;
     items.forEach((it, i) => drawSmall(g, it, o.x + (i - (items.length - 1) / 2) * 30 * o.s, top, o.s));
@@ -3118,10 +3122,14 @@
       // Rzeczy za postacią (i siedzisko pod nią), postać, potem rzeczy przed nią
       const tg = reveal >= 1 ? fg : el("g", { opacity: f(reveal) }, fg);
       if ((opts.lit || flatDraw) && st.shot === "full" && layers.has("ground")) drawShadows(fg, st, A.pl, litPt, lightT);
-      A.things.filter(o => !o.front).forEach(o => drawThingWithItems(tg, st, o));
+      // split: rzeczy w osobnych grupach, żeby Próbny kadr dał im bryłę i cień przy podłodze
+      const thingG = () => opts.split ? el("g", { "data-part": "thing" }, tg) : tg;
+      const backG = thingG();
+      A.things.filter(o => !o.front).forEach(o => drawThingWithItems(backG, st, o));
       if (opts.lit) figLight(litPt, target, lightT, kindT);
       drawFigureAt(fg, A.pl, "fig", !!opts.lit);
-      A.things.filter(o => o.front).forEach(o => drawThingWithItems(tg, st, o));
+      const frontG = thingG();
+      A.things.filter(o => o.front).forEach(o => drawThingWithItems(frontG, st, o));
     }
     if (layers.has("background") && reveal > 0 && bgExtras(st).length) drawFxFront(layer(), bgExtras(st), W, H, u);
     if (subj > 0) {
@@ -5402,7 +5410,9 @@
     const fmt = currentFormat(), H = 600, W = H * fmt.w / fmt.h;
     pvEl("previewFrame").style.setProperty("--ar", `${fmt.w} / ${fmt.h}`);
     const st = { ...scene, props: { reveal: 1 } }, layers = new Set(["ground", "background", "things"]);
-    const G = renderScene(trialSvg, st, W, H, layers, { lit: true, draft: false, split: true });
+    trialMat = true;
+    let G;
+    try { G = renderScene(trialSvg, st, W, H, layers, { lit: true, draft: false, split: true }); } finally { trialMat = false; }
     const look = TRIAL[scene.style] || TRIAL.real, u = G.u, NS = "http://www.w3.org/2000/svg";
     trialSvg.setAttribute("width", f(W));
     trialSvg.setAttribute("height", f(H));
@@ -5419,6 +5429,29 @@
       const z = el("g", { transform: `translate(${f(W / 2)} ${f(H / 2)}) scale(1.04) translate(${f(-W / 2)} ${f(-H / 2)})` }, w);
       z.appendChild(n);
     });
+    // Rzeczy: bryła od światła (jak na Manikunie) i miękki cień w miejscu styku z podłogą
+    const tParts = [...trialSvg.querySelectorAll('[data-part="thing"]')].filter(n => n.childNodes.length);
+    if (tParts.length) {
+      const az = Math.atan2(G.litPt[1] - H * 0.5, G.litPt[0] - W / 2) * 180 / Math.PI;
+      const tl = el("filter", { id: "trialThingLit", x: "-5%", y: "-5%", width: "110%", height: "110%", "color-interpolation-filters": "sRGB" }, defs);
+      el("feGaussianBlur", { in: "SourceAlpha", stdDeviation: f(u * 0.9), result: "bump" }, tl);
+      const dl = el("feDiffuseLighting", { in: "bump", surfaceScale: 5, diffuseConstant: 1.25, "lighting-color": "#FFFFFF", result: "diff" }, tl);
+      el("feDistantLight", { azimuth: f(az), elevation: 50 }, dl);
+      el("feComposite", { in: "diff", in2: "SourceAlpha", operator: "in", result: "diffIn" }, tl);
+      el("feBlend", { in: "SourceGraphic", in2: "diffIn", mode: "multiply", result: "shaded" }, tl);
+      const sl = el("feSpecularLighting", { in: "bump", surfaceScale: 5, specularConstant: 0.25, specularExponent: 22, "lighting-color": "#FFF1D6", result: "spec" }, tl);
+      el("feDistantLight", { azimuth: f(az), elevation: 38 }, sl);
+      el("feComposite", { in: "spec", in2: "SourceAlpha", operator: "in", result: "specIn" }, tl);
+      el("feComposite", { in: "shaded", in2: "specIn", operator: "arithmetic", k2: 1, k3: 0.8 }, tl);
+      tParts.forEach(n => n.setAttribute("filter", "url(#trialThingLit)"));
+      if (scene.shot === "full") {
+        const sf = el("filter", { id: "trialThingShadow", x: "-30%", y: "-300%", width: "160%", height: "700%" }, defs);
+        el("feGaussianBlur", { stdDeviation: f(u * 0.8) }, sf);
+        const sg = el("g", { filter: "url(#trialThingShadow)" });
+        tParts[0].parentNode.insertBefore(sg, tParts[0]);
+        G.thingBoxes.forEach(({ box: [x0, , x1, gy] }) => el("ellipse", { cx: f((x0 + x1) / 2), cy: f(gy), rx: f((x1 - x0) * 0.56), ry: f(u * 1.1), style: "fill:#000;stroke:none;opacity:0.5" }, sg));
+      }
+    }
     const flt = el("filter", { id: "trialGrade", x: 0, y: 0, width: 1, height: 1, "color-interpolation-filters": "sRGB" }, defs);
     // Poświata jasnych miejsc (neony, lampy, słońce, jasne ubrania): tylko to, co jasne, rozmyte i dodane z powrotem
     el("feColorMatrix", { in: "SourceGraphic", type: "matrix", values: "1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 1.1 2.2 0.4 0 -2.55", result: "hi" }, flt);

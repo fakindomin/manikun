@@ -138,7 +138,10 @@ function computeFigure(pose, RIG, cloth = null) {
       wear(cap(S, E, 7.6, 6.6), cloth.outer.color);
       wear(cap(E, lerpP(E, W, 0.88), 6.6, 5.6), cloth.outer.color);
     }
-    push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: 4.5, ry: 8, rot: -pose[side + "Fore"] }, [Hc, 9]);
+    // Dłoń jak u manekina rysownika: kciuk z boku, śródręcze i nieco węższe palce (widać stopień przy kostkach)
+    const fd = dir(pose[side + "Fore"]), fp = [fd[1], -fd[0]];
+    push(cap(add(add(W, fd, 3), fp, 2.4), add(add(W, fd, 9), fp, 4.4), 1.8, 1.4));
+    push(cap(add(W, fd, 0.5), add(W, fd, 12.5), 3.7, 2.7), [Hc, 9]);
     hands[side] = Hc;
   }
   const knees = {};
@@ -163,13 +166,34 @@ function computeFigure(pose, RIG, cloth = null) {
         if (cloth.cuffs) wear(cap(lerpP(K, A, 0.82), lerpP(K, A, 0.96), 5.4, 5), cloth.cuffs);
       }
     }
-    push(cap(A, T, 4.5, 2.5), [T, 4]);
-    // Buty na stopie: sportowe pełniejsze, eleganckie smukłe, botki z cholewką za kostkę
+    // Stopa w układzie podeszwy: kostka leży nad piętą, linia kostka–palce opada, więc podeszwa jest obrócona
+    // o ~20° w górę względem niej (przy typowych pozach wychodzi pozioma). sd: wzdłuż podeszwy, sn: w stronę podłoża.
+    const fl = Math.hypot(T[0] - A[0], T[1] - A[1]) || 1, fdv = [(T[0] - A[0]) / fl, (T[1] - A[1]) / fl];
+    let fn = [-fdv[1], fdv[0]];
+    if (fn[0] * (K[0] - A[0]) + fn[1] * (K[1] - A[1]) > 0) fn = [-fn[0], -fn[1]];
+    const cs = Math.cos(rad(20)), sn20 = Math.sin(rad(20));
+    const sd = [fdv[0] * cs - fn[0] * sn20, fdv[1] * cs - fn[1] * sn20], sn = [fn[0] * cs + fdv[0] * sn20, fn[1] * cs + fdv[1] * sn20];
+    const F = (x, y) => [A[0] + sd[0] * x + sn[0] * y, A[1] + sd[1] * x + sn[1] * y];
+    const X = fl * cs, Y = fl * sn20 + 2.4;
+    // Drewniana stopa: pięta pod kostką, śródstopie i palce
+    push(cap(A, F(-0.6, Y - 3.2), 3.3, 3.2));
+    push(cap(F(-0.6, Y - 3.2), F(X * 0.62, Y - 3), 3.2, 2.9), [F(-3.8, Y), 1]);
+    push(cap(F(X * 0.6, Y - 2.6), F(X + 1, Y - 2.1), 2.6, 2.1), [F(X + 3, Y), 1]);
+    // Buty: profil z piętą, noskiem i podeszwą. Sportowe pełniejsze z grubą jasną podeszwą,
+    // eleganckie smukłe z cienką ciemną, botki z cholewką za kostkę
     if (cloth && cloth.shoes) {
-      const sh = cloth.shoes;
+      const sh = cloth.shoes, sport = sh.kind === "sneakers", soleH = sport ? 2.2 : 1.1;
       if (sh.kind === "boots") wear(cap(lerpP(K, A, 0.74), A, 5.8, 5.2), sh.color);
-      wear(sh.kind === "formal" ? cap(A, T, 4.9, 2.9) : cap(A, lerpP(A, T, 1.08), 5.5, 3.6), sh.color);
-      if (sh.kind === "sneakers") wear(cap(lerpP(A, T, -0.05), lerpP(A, T, 1.1), 2, 2), sh.sole || "#EEEAE2");
+      // Obrys buta krzywymi: kołnierz, podbicie, zaokrąglony nosek, płaska podeszwa, zaokrąglona pięta
+      const tip = X + (sport ? 3 : 4.2), hTop = F(-4.4, sport ? -1.8 : -0.8), col = F(2.6, sport ? -2.6 : -1.6);
+      const toeTop = F(X - 1, Y - (sport ? 5 : 4)), toeBot = F(tip - 1.4, Y), heelBot = F(-4.2, Y);
+      const P = p => `${p[0].toFixed(2)},${p[1].toFixed(2)}`;
+      const d = `M${P(hTop)} L${P(col)} Q${P(F(X * 0.45, Y * 0.2 - (sport ? 1.6 : 0.8)))} ${P(toeTop)} Q${P(F(tip + 0.4, Y - 4))} ${P(F(tip, Y - 1.6))}` +
+        ` Q${P(F(tip, Y))} ${P(toeBot)} L${P(heelBot)} Q${P(F(-6, Y))} ${P(F(-5.8, Y - 2.5))} Q${P(F(-5.6, 0))} ${P(hTop)} Z`;
+      wear({ t: "poly", q: [hTop, col, toeTop, F(tip, Y - 1.6), toeBot, heelBot], d }, sh.color);
+      const sq = [F(-5.4, Y - 0.3), F(tip - 1, Y - 0.3), F(tip - 1.6, Y + soleH), F(-5, Y + soleH)];
+      wear({ t: "poly", q: sq, d: poly(sq) }, sport ? (sh.sole || "#EEEAE2") : "#2A2622");
+      pts.push([F(-5.6, Y + soleH), 1], [F(tip, Y), 1]);
     }
   }
 
