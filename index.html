@@ -3214,7 +3214,7 @@
       });
     }
     const thingBoxes = A.things.map(o => ({ i: o.i, box: [o.x + o.t.box[0] * o.s, o.G - o.t.box[2] * o.s, o.x + o.t.box[1] * o.s, o.G] }));
-    return { camPt, litPt, zonePts, u, W, H, head: A.plBase.head, pickPts, thingBoxes };
+    return { camPt, litPt, zonePts, u, W, H, hz, head: A.plBase.head, pickPts, thingBoxes };
   }
 
   // ---------- Ikony paska kategorii ----------
@@ -5422,13 +5422,30 @@
     // Głębia ostrości: tło rozmyte tym mocniej, im bliższy plan (lekko powiększone, żeby brzegi nie ciemniały)
     const dof = { full: 0.3, portrait: 0.55, face: 0.8 }[scene.shot] ?? 0.3;
     const bl = el("filter", { id: "trialDof", x: "-5%", y: "-5%", width: "110%", height: "110%" }, defs);
-    el("feGaussianBlur", { stdDeviation: f(dof * u) }, bl);
-    trialSvg.querySelectorAll('[data-part="bg"]').forEach(n => {
+    el("feGaussianBlur", { stdDeviation: f(dof * u), result: "b" }, bl);
+    // Tło w Próbnym kadrze jest żywsze niż w szkicu: mocniejsze nasycenie i kontrast
+    el("feColorMatrix", { in: "b", type: "saturate", values: 1.45, result: "s" }, bl);
+    const ct = el("feComponentTransfer", { in: "s" }, bl);
+    ["feFuncR", "feFuncG", "feFuncB"].forEach(n => el(n, { type: "linear", slope: 1.15, intercept: -0.05 }, ct));
+    const wraps = [...trialSvg.querySelectorAll('[data-part="bg"]')].map(n => {
       const w = el("g", { filter: "url(#trialDof)" }, n.parentNode);
       n.parentNode.insertBefore(w, n);
       const z = el("g", { transform: `translate(${f(W / 2)} ${f(H / 2)}) scale(1.04) translate(${f(-W / 2)} ${f(-H / 2)})` }, w);
       z.appendChild(n);
+      return w;
     });
+    // Niebo w kolorach pory dnia (nałożone na rysunek tła) i jasna mgiełka nad horyzontem, która oddziela plany
+    if (wraps.length && isOutdoor(scene.background)) {
+      const SKY = { day: ["#2F6FD0", "#9FD4F2", "#DDEFF7"], golden: ["#3A3470", "#E0785A", "#FFC27A"], night: ["#060A2A", "#2B2F78", "#6A5AA8"] }[scene.time] || ["#2F6FD0", "#9FD4F2", "#DDEFF7"];
+      const hz = G.hz, sg = el("g", { "pointer-events": "none" });
+      wraps[0].parentNode.insertBefore(sg, wraps[0].nextSibling);
+      const lg = el("linearGradient", { id: "trialSky", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0, y2: f(hz) }, defs);
+      [[0, SKY[0]], [0.75, SKY[1]], [1, SKY[2]]].forEach(([o, c]) => el("stop", { offset: o, style: `stop-color:${c}` }, lg));
+      el("rect", { x: 0, y: 0, width: f(W), height: f(hz), style: "fill:url(#trialSky);stroke:none;mix-blend-mode:overlay;opacity:0.85" }, sg);
+      const hg = el("linearGradient", { id: "trialHaze", gradientUnits: "userSpaceOnUse", x1: 0, y1: f(hz - H * 0.07), x2: 0, y2: f(hz + H * 0.03) }, defs);
+      [[0, 0], [0.7, 0.22], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, style: `stop-color:${SKY[2]};stop-opacity:${a}` }, hg));
+      el("rect", { x: 0, y: f(hz - H * 0.07), width: f(W), height: f(H * 0.1), style: "fill:url(#trialHaze);stroke:none" }, sg);
+    }
     // Rzeczy: bryła od światła (jak na Manikunie) i miękki cień w miejscu styku z podłogą
     const tParts = [...trialSvg.querySelectorAll('[data-part="thing"]')].filter(n => n.childNodes.length);
     if (tParts.length) {
