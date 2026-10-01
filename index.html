@@ -3884,8 +3884,10 @@
   const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
   const catOff = id => (id === "turn" && (isSelfie(scene.camera) || LYING.includes(scene.pose))) || (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
-  const childOf = id => {
-    const g = GROUPS.find(x => x.id === id);
+  // from: rodzaj rzędu, w którym stuknięto. Grupa i kategoria mogą mieć to samo id (Kamera, Styl):
+  // w rzędzie kategorii to zawsze kategoria, więc otwierają się jej opcje, a nie znowu rząd kategorii grupy
+  const childOf = (id, from) => {
+    const g = from === "cats" ? null : GROUPS.find(x => x.id === id);
     if (g) return g.cat ? { kind: "opts", cat: g.cat, sub: null } : { kind: "cats", group: g.id };
     return { kind: "opts", cat: id, sub: null };
   };
@@ -4414,8 +4416,8 @@
     if (row.st.kind !== "opts") {
       // Grupa albo kategoria: jej zawartość trafia do górnego rzędu
       sfx("tok");
-      if (isBottom) { nav[n - 2].open = t.navId; nav[n - 1] = childOf(t.navId); navAnim = "swap"; }
-      else { nav[n - 1].open = t.navId; nav.push(childOf(t.navId)); navAnim = "push"; }
+      if (isBottom) { nav[n - 2].open = t.navId; nav[n - 1] = childOf(t.navId, row.st.kind); navAnim = "swap"; }
+      else { nav[n - 1].open = t.navId; nav.push(childOf(t.navId, row.st.kind)); navAnim = "push"; }
       render();
       return;
     }
