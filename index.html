@@ -2555,6 +2555,192 @@
       });
     }
   }
+  // ---------- Tła w pełnej jakości (Próbny kadr, tutorial): perspektywa podłoża i trzy plany ----------
+  // Szkic roboczy rysuje te same miejsca prościej (flatDraw). Daleki plan jasny i zamglony, średni nasycony,
+  // bliski ciemniejszy i ostry; podłoże z fakturą, która gęstnieje ku horyzontowi.
+  const RICH_BG = ["beach", "forest", "meadow"];
+  const rnd01 = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+  // Głębokość na podłożu: t 0 = horyzont, 1 = dół kadru (odstępy rosną ku widzowi)
+  const depthY = (hz, H, t, top = hz) => top + (H - top) * Math.pow(t, 1.7);
+  const strokeP = (d, color, w, op, g) => el("path", { d, style: `fill:none;stroke:${color};stroke-width:${f(w)};stroke-linecap:round;stroke-linejoin:round${op !== undefined ? `;opacity:${op}` : ""}` }, g);
+  // Linia grzbietu (wzgórza, rząd drzew) jako zamknięta ścieżka do linii bazowej
+  function ridge(W, base, fn, step = 0.02, bottom = base) {
+    let d = `M0,${f(bottom)} L0,${f(fn(0))}`;
+    for (let x = step; x <= 1.0001; x += step) d += ` L${f(x * W)},${f(fn(x))}`;
+    return d + ` L${f(W)},${f(bottom)} Z`;
+  }
+  // Rząd świerków jako jedna sylwetka (zęby różnej wysokości)
+  function pineRow(W, base, hMin, hMax, n, seed) {
+    let d = `M0,${f(base)}`;
+    for (let k = 0; k < n; k++) {
+      const x0 = (k / n) * W, w = W / n, h = hMin + (hMax - hMin) * rnd01(seed + k);
+      d += ` L${f(x0)},${f(base - h * 0.18)} L${f(x0 + w * 0.5)},${f(base - h)} L${f(x0 + w)},${f(base - h * 0.18)}`;
+    }
+    return d + ` L${f(W)},${f(base)} Z`;
+  }
+  // Rząd koron liściastych jako jedna sylwetka (półokręgi)
+  function crownRow(W, base, hMin, hMax, n, seed) {
+    let d = `M0,${f(base)}`;
+    for (let k = 0; k < n; k++) {
+      const x0 = (k / n) * W, w = W / n, h = hMin + (hMax - hMin) * rnd01(seed + k);
+      d += ` L${f(x0)},${f(base - h * 0.5)} Q${f(x0)},${f(base - h)} ${f(x0 + w * 0.5)},${f(base - h)} Q${f(x0 + w)},${f(base - h)} ${f(x0 + w)},${f(base - h * 0.5)}`;
+    }
+    return d + ` L${f(W)},${f(base)} Z`;
+  }
+  // Świerk z bryłą: piętra z postrzępionym brzegiem, strona od słońca jaśniejsza
+  function richPine(g, x, base, h, c, lit, sunLeft, seed) {
+    const w = h * 0.4;
+    paint("rect", { x: f(x - w * 0.045), y: f(base - h * 0.14), width: f(w * 0.09), height: f(h * 0.14) }, "#3A2C22", g);
+    for (let i = 0; i < 5; i++) {
+      const tw = w * (1 - i * 0.17), ty = base - h * (0.1 + i * 0.165), th = h * 0.3;
+      let d = `M${f(x)},${f(ty - th)}`;
+      for (let k = 1; k <= 4; k++) { const t = k / 4; d += ` L${f(x + tw / 2 * t + (k % 2 ? 0 : -tw * 0.06))},${f(ty - th + th * t - (k % 2 ? th * 0.06 : 0))}`; }
+      d += ` L${f(x)},${f(ty + th * 0.08)}`;
+      for (let k = 4; k >= 1; k--) { const t = k / 4; d += ` L${f(x - tw / 2 * t + (k % 2 ? 0 : tw * 0.06))},${f(ty - th + th * t - (k % 2 ? th * 0.06 : 0))}`; }
+      paint("path", { d: d + " Z" }, c, g);
+      const sx = sunLeft ? -1 : 1;
+      paint("path", { d: `M${f(x)},${f(ty - th)} L${f(x + sx * tw * 0.5)},${f(ty)} L${f(x)},${f(ty + th * 0.08)} Z` }, lit, g, 0.55);
+    }
+  }
+  function richTree(g, x, base, h, c, lit, sunLeft) {
+    paint("path", { d: `M${f(x - h * 0.035)},${f(base)} L${f(x - h * 0.02)},${f(base - h * 0.5)} L${f(x + h * 0.02)},${f(base - h * 0.5)} L${f(x + h * 0.035)},${f(base)} Z` }, "#3A2E24", g);
+    const sx = sunLeft ? -1 : 1;
+    [[0, 0.66, 0.25], [-0.16, 0.55, 0.19], [0.16, 0.53, 0.2], [0.05, 0.82, 0.16], [-0.08, 0.76, 0.14]].forEach(([dx, dy, r], i) => {
+      paint("circle", { cx: f(x + dx * h), cy: f(base - dy * h), r: f(r * h) }, c, g);
+      paint("circle", { cx: f(x + dx * h + sx * r * h * 0.3), cy: f(base - dy * h - r * h * 0.3), r: f(r * h * 0.62) }, lit, g, 0.5);
+    });
+  }
+  // Pora dnia na podłożu pełnego tła: nocą granat i mniej światła, o złotej godzinie ciepło (niebo robi drawSky)
+  function groundTime(g, W, H, top, tod) {
+    const goldW = Math.max(0, 1 - Math.abs(tod - 1)), nightW = Math.max(0, Math.min(1, tod - 1));
+    if (nightW > 0) paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, "#0A1030", g, f(0.32 * nightW));
+    if (goldW > 0) paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, "#C8783C", g, f(0.12 * goldW));
+  }
+  // Kępka trawy z kilku źdźbeł
+  function tuft(g, x, y, h, c, seed) {
+    for (let k = 0; k < 7; k++) {
+      const a = (rnd01(seed + k) - 0.5) * 1.1, hh = h * (0.55 + rnd01(seed + k + 9) * 0.45);
+      strokeP(`M${f(x + (k - 3) * h * 0.06)},${f(y)} Q${f(x + (k - 3) * h * 0.06 + Math.sin(a) * hh * 0.3)},${f(y - hh * 0.6)} ${f(x + (k - 3) * h * 0.06 + Math.sin(a) * hh)},${f(y - hh)}`, c, Math.max(0.6, h * 0.05), 1, g);
+    }
+  }
+  // Promienie słońca między drzewami (tylko w dzień i o złotej godzinie)
+  function sunRays(g, defs, uid, W, H, x, tod) {
+    const nightW = Math.max(0, Math.min(1, tod - 1));
+    if (nightW >= 1) return;
+    const gid = uid + "ray";
+    const gr = el("linearGradient", { id: gid, x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
+    el("stop", { offset: "0", "stop-color": tod > 0.5 ? "#FFD9A0" : "#FFF6DC", "stop-opacity": "0.3" }, gr);
+    el("stop", { offset: "1", "stop-color": "#FFF6DC", "stop-opacity": "0" }, gr);
+    const rg = el("g", { style: "mix-blend-mode:screen", opacity: f(1 - nightW) }, g);
+    [[-0.16, 0.05], [0.0, 0.035], [0.14, 0.06], [0.3, 0.03]].forEach(([dx, w]) => {
+      const x0 = x * W + dx * W * 0.3, x1 = x * W + dx * W * 1.6 + (x < 0.5 ? W * 0.25 : -W * 0.25);
+      paint("path", { d: `M${f(x0 - w * W * 0.3)},0 L${f(x0 + w * W * 0.3)},0 L${f(x1 + w * W * 2)},${f(H)} L${f(x1 - w * W * 2)},${f(H)} Z` }, `url(#${gid})`, rg);
+    });
+  }
+
+  function richBeach(g, defs, uid, W, H, hz, gy, u, tod, skyX) {
+    const shore = hz + H * 0.085, sandTop = shore + H * 0.012, nightW = Math.max(0, Math.min(1, tod - 1));
+    // Morze: ciemniejsze przy horyzoncie, jaśniejsze i bardziej turkusowe przy brzegu
+    paint("rect", { x: 0, y: f(hz), width: f(W), height: f(shore - hz + 2) }, vGrad(defs, uid + "sea", [[0, "#2F5F80"], [0.45, "#3E7D9C"], [1, "#5FA7B4"]]), g);
+    paint("rect", { x: 0, y: f(hz - H * 0.006), width: f(W), height: f(H * 0.012) }, "#E3EEF2", g, 0.35);
+    // Fale: kreski coraz dłuższe i rzadsze ku brzegowi
+    for (let r = 0; r < 9; r++) {
+      const t = (r + 1) / 10, y = hz + (shore - hz) * Math.pow(t, 1.5);
+      for (let k = 0; k < 7; k++) {
+        const x = rnd01(r * 13 + k) * W, len = W * (0.03 + t * 0.09) * (0.6 + rnd01(r * 7 + k));
+        strokeP(`M${f(x)},${f(y)} q${f(len / 2)},${f(-u * 0.25 * (0.5 + t))} ${f(len)},0`, "#E6F3F6", 0.4 + t * 1.1, 0.25 + t * 0.35, g);
+      }
+    }
+    // Odbicie słońca (albo księżyca) na wodzie pod ciałem niebieskim
+    for (let r = 0; r < 12; r++) {
+      const t = (r + 1) / 12, y = hz + (shore - hz) * Math.pow(t, 1.3), spread = W * (0.015 + t * 0.06);
+      const x = skyX * W + (rnd01(r * 3.3) - 0.5) * spread * 2, len = W * (0.012 + t * 0.03);
+      strokeP(`M${f(x - len / 2)},${f(y)} L${f(x + len / 2)},${f(y)}`, nightW > 0.5 ? "#DCE4F2" : "#FFF0C8", 0.6 + t, 0.75 - t * 0.3, g);
+    }
+    // Brzeg: mokry piasek i piana
+    const wave = (y, a, ph) => `M0,${f(y)} C${f(W * 0.25)},${f(y - a + ph)} ${f(W * 0.55)},${f(y + a)} ${f(W)},${f(y - a * 0.5)}`;
+    paint("path", { d: wave(shore, H * 0.008, 0) + ` L${f(W)},${f(sandTop + H * 0.03)} L0,${f(sandTop + H * 0.03)} Z` }, vGrad(defs, uid + "wet", [[0, "#8E7D5E"], [1, "#B09B74"]]), g);
+    strokeP(wave(shore, H * 0.008, 0), "#F4FAFB", u * 0.55, 0.9, g);
+    strokeP(wave(shore - H * 0.006, H * 0.006, H * 0.004), "#F4FAFB", u * 0.3, 0.5, g);
+    // Suchy piasek: jasny, cieplejszy przy widzu
+    const dry = wave(sandTop + H * 0.022, H * 0.006, 0) + ` L${f(W)},${f(H)} L0,${f(H)} Z`;
+    paint("path", { d: dry }, vGrad(defs, uid + "dry", [[0, "#DCCDAC"], [0.5, "#D3C09C"], [1, "#BFA67F"]]), g);
+    // Zmarszczki piasku w perspektywie i drobne kamyki
+    for (let r = 1; r <= 13; r++) {
+      const t = r / 14, y = depthY(hz, H, t, sandTop + H * 0.03), a = u * (0.15 + t * 0.6);
+      let d = `M0,${f(y)}`;
+      for (let x = 0.08; x <= 1.0001; x += 0.08) d += ` Q${f((x - 0.04) * W)},${f(y - a * (rnd01(r * 5 + x * 10) > 0.5 ? 1 : -1))} ${f(x * W)},${f(y)}`;
+      strokeP(d, "#A88C5E", 0.4 + t * 0.9, 0.18 + t * 0.2, g);
+    }
+    for (let k = 0; k < 70; k++) {
+      const t = rnd01(k * 1.7), y = depthY(hz, H, 0.1 + t * 0.9, sandTop + H * 0.03), x = rnd01(k * 2.9) * W;
+      paint("ellipse", { cx: f(x), cy: f(y), rx: f(u * (0.12 + t * 0.4)), ry: f(u * (0.08 + t * 0.22)) }, k % 3 ? "#9C8460" : "#F2E6CC", g, 0.6);
+    }
+    // Trawa na wydmach przy dolnych rogach
+    [[0.03, 1], [0.1, 0.7], [0.92, 0.8], [0.985, 1.05]].forEach(([x, k], i) => tuft(g, x * W, H * 0.995, H * 0.09 * k, i % 2 ? "#8B9A5A" : "#6E7E44", i * 17));
+  }
+
+  function richForest(g, defs, uid, W, H, hz, gy, u, tod, skyX, leafy) {
+    const row = leafy ? crownRow : pineRow, sunLeft = skyX < 0.5;
+    // Trzy rzędy drzew: daleki jasny i mglisty, średni zielony, bliski ciemny
+    paint("path", { d: row(W, hz + H * 0.004, H * 0.09, H * 0.15, 26, 3) }, leafy ? "#A7B5A2" : "#9DAEA6", g);
+    paint("rect", { x: 0, y: f(hz - H * 0.18), width: f(W), height: f(H * 0.19) }, vGrad(defs, uid + "hz1", [[0, "rgba(220,232,226,0)"], [1, "rgba(220,232,226,0.55)"]]), g);
+    paint("path", { d: row(W, hz + H * 0.012, H * 0.12, H * 0.2, 17, 41) }, leafy ? "#7C9171" : "#6F8676", g);
+    paint("rect", { x: 0, y: f(hz - H * 0.08), width: f(W), height: f(H * 0.1) }, vGrad(defs, uid + "hz2", [[0, "rgba(210,226,214,0)"], [1, "rgba(210,226,214,0.4)"]]), g);
+    // Podłoże: mech i ściółka, jaśniej w głębi
+    paint("rect", { x: 0, y: f(hz + H * 0.01), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "fl", [[0, "#7E8C64"], [0.35, "#64734B"], [1, "#48573A"]]), g);
+    // Plamy słońca na ściółce
+    for (let k = 0; k < 14; k++) {
+      const t = 0.12 + rnd01(k * 4.1) * 0.85, y = depthY(hz, H, t, hz + H * 0.02), x = rnd01(k * 7.3) * W;
+      paint("ellipse", { cx: f(x), cy: f(y), rx: f(W * (0.02 + t * 0.07)), ry: f(H * (0.004 + t * 0.012)) }, "#C6CF96", g, f(0.25 * (1 - Math.max(0, tod - 1))));
+    }
+    // Igliwie, gałązki, kępki
+    for (let k = 0; k < 90; k++) {
+      const t = rnd01(k * 1.31), y = depthY(hz, H, 0.06 + t * 0.94, hz + H * 0.02), x = rnd01(k * 3.7) * W, l = u * (0.3 + t * 1.2);
+      strokeP(`M${f(x)},${f(y)} l${f(l)},${f(-l * 0.25)}`, k % 3 ? "#2F4224" : "#8A7550", 0.5 + t * 0.7, 0.55, g);
+    }
+    // Średni plan: pojedyncze drzewa z bryłą w głębi, z dala od środka kadru
+    const T = leafy ? richTree : richPine;
+    [[0.24, 0.3, 0.035], [0.33, 0.24, 0.025], [0.67, 0.27, 0.03], [0.78, 0.33, 0.04]].forEach(([x, h, dy], i) =>
+      T(g, x * W, hz + H * dy, H * h, leafy ? "#566D48" : "#4A6352", leafy ? "#829A68" : "#788F7A", sunLeft, i * 11));
+    sunRays(g, defs, uid, W, H, skyX, tod);
+    // Paprocie przy dolnych rogach
+    [[0.02, 1], [0.12, 0.7], [0.88, 0.75], [0.98, 1]].forEach(([x, k], i) => {
+      const bx = x * W, by = H * 0.995, h = H * 0.1 * k;
+      for (let j = -3; j <= 3; j++) strokeP(`M${f(bx)},${f(by)} Q${f(bx + j * h * 0.18)},${f(by - h * 0.9)} ${f(bx + j * h * 0.42)},${f(by - h * (0.75 - Math.abs(j) * 0.08))}`, i % 2 ? "#3F6A35" : "#355A2D", h * 0.06, 1, g);
+    });
+  }
+
+  function richMeadow(g, defs, uid, W, H, hz, gy, u, tod, skyX) {
+    // Wzgórza w trzech planach: dalekie błękitnawe, średnie zielone z kępami drzew, bliskie jasne
+    paint("path", { d: ridge(W, hz, x => hz - H * (0.07 + 0.05 * Math.sin(x * 5.2 + 0.6) + 0.02 * Math.sin(x * 13)), 0.02, hz + H * 0.02) }, "#AABCB5", g);
+    paint("rect", { x: 0, y: f(hz - H * 0.13), width: f(W), height: f(H * 0.15) }, vGrad(defs, uid + "mh", [[0, "rgba(225,236,232,0)"], [1, "rgba(225,236,232,0.5)"]]), g);
+    paint("path", { d: ridge(W, hz, x => hz - H * (0.035 + 0.03 * Math.sin(x * 3.4 + 2.1)), 0.02, hz + H * 0.04) }, "#8BA67B", g);
+    // Kępy drzew na średnim wzgórzu
+    [[0.14, 0.03], [0.2, 0.025], [0.71, 0.035], [0.79, 0.028], [0.84, 0.02]].forEach(([x, r], i) => {
+      const by = hz - H * (0.035 + 0.03 * Math.sin(x * 3.4 + 2.1)) + H * 0.006;
+      paint("circle", { cx: f(x * W), cy: f(by - r * H * 0.8), r: f(r * H) }, "#5C7A4E", g);
+      paint("circle", { cx: f(x * W - r * H * 0.35), cy: f(by - r * H * 1.1), r: f(r * H * 0.55) }, "#7E9A66", g, 0.7);
+    });
+    // Bliska łąka
+    const top = hz + H * 0.02;
+    paint("path", { d: ridge(W, H, x => top + H * 0.012 * Math.sin(x * 4 + 1), 0.05, H) }, vGrad(defs, uid + "mg", [[0, "#9DB574"], [0.4, "#82A05E"], [1, "#5E7D46"]]), g);
+    // Źdźbła w perspektywie: w głębi drobne i gęste, z przodu wyższe
+    for (let r = 0; r < 16; r++) {
+      const t = (r + 1) / 17, y = depthY(hz, H, t, top + H * 0.01), n = Math.round(46 - t * 22), h = u * (0.3 + t * 2.2);
+      for (let k = 0; k < n; k++) {
+        const x = ((k + rnd01(r * 31 + k)) / n) * W, lean = (rnd01(r * 7 + k * 3) - 0.5) * h * 0.6;
+        strokeP(`M${f(x)},${f(y)} q${f(lean * 0.3)},${f(-h * 0.6)} ${f(lean)},${f(-h)}`, (k + r) % 3 ? "#56763C" : "#B4CB8A", 0.4 + t * 0.8, 0.55 + t * 0.25, g);
+      }
+    }
+    // Kilka polnych kwiatków
+    for (let k = 0; k < 26; k++) {
+      const t = 0.2 + rnd01(k * 2.3) * 0.8, y = depthY(hz, H, t, top), x = rnd01(k * 5.1) * W;
+      paint("circle", { cx: f(x), cy: f(y), r: f(u * (0.15 + t * 0.35)) }, ["#F4F1E6", "#F2D35A", "#F4F1E6"][k % 3], g, 0.85);
+    }
+    [[0.03, 1], [0.1, 0.75], [0.9, 0.8], [0.975, 1.05]].forEach(([x, k], i) => tuft(g, x * W, H * 0.995, H * 0.08 * k, i % 2 ? "#64874A" : "#4E6E3A", i * 23 + 5));
+  }
+
   function drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null) {
     // Miękka plama światła (latarnie, lampy w kawiarni)
     // v: podstawa tła i jego dodatki
@@ -2645,13 +2831,16 @@
       return;
     }
     if (kind === "forest") {
-      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#374539"], [1, "#6A7A6C"]]), g);
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", flatDraw ? [[0, "#374539"], [1, "#6A7A6C"]] : [[0, "#435467"], [1, "#9AA9AA"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
-      // Dalszy plan: równa linia koron drzew
-      let d = `M0,${f(hz)}`;
-      for (let x = 0; x <= 1.001; x += 0.05) d += ` L${f(x * W)},${f(hz - H * (0.07 + ((x * 37) % 1) * 0.04))} L${f((x + 0.025) * W)},${f(hz - H * 0.03)}`;
-      paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3D4D41", g);
-      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#2B362D"], [1, "#1F2621"]]), g);
+      if (!flatDraw) richForest(g, defs, uid, W, H, hz, gy, u, tod, skyX, is("leafy"));
+      else {
+        // Dalszy plan: równa linia koron drzew
+        let d = `M0,${f(hz)}`;
+        for (let x = 0; x <= 1.001; x += 0.05) d += ` L${f(x * W)},${f(hz - H * (0.07 + ((x * 37) % 1) * 0.04))} L${f((x + 0.025) * W)},${f(hz - H * 0.03)}`;
+        paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3D4D41", g);
+        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#2B362D"], [1, "#1F2621"]]), g);
+      }
       // Średni plan: kilka dużych świerków tylko przy krawędziach kadru
       const tree = (x, h, c) => {
         const base = Math.min(gy, H * 0.96), w = h * 0.42;
@@ -2667,8 +2856,9 @@
         paint("rect", { x: f(x - h * 0.03), y: f(base - h * 0.45), width: f(h * 0.06), height: f(h * 0.45) }, "#3A2E24", g);
         [[0, 0.62, 0.26], [-0.14, 0.52, 0.19], [0.14, 0.5, 0.2]].forEach(([dx, dy, r]) => paint("circle", { cx: f(x + dx * h), cy: f(base - dy * h), r: f(r * h) }, c, g));
       };
-      const T = is("leafy") ? leafy : tree;
-      const cA = is("leafy") ? "#3E5234" : "#26342A", cB = is("leafy") ? "#4A6040" : "#2B3A2F";
+      const sunLeft = skyX < 0.5, rich = (fn, lit) => (x, h, c) => fn(g, x, Math.min(gy, H * 0.96), h, c, lit, sunLeft, Math.round(x));
+      const T = flatDraw ? (is("leafy") ? leafy : tree) : is("leafy") ? rich(richTree, "#6A8452") : rich(richPine, "#5B7660");
+      const cA = flatDraw ? (is("leafy") ? "#3E5234" : "#26342A") : is("leafy") ? "#46593B" : "#34473A", cB = flatDraw ? (is("leafy") ? "#4A6040" : "#2B3A2F") : is("leafy") ? "#50653F" : "#3C5142";
       if (is("clearing")) {
         // Polana: jasna, nasłoneczniona trawa pośrodku, drzewa dalej od środka
         paint("ellipse", { cx: f(W / 2), cy: f(hz + (H - hz) * 0.55), rx: f(W * 0.6), ry: f((H - hz) * 0.45) }, "#4F6246", g, 0.9);
@@ -2682,8 +2872,14 @@
         paint("path", { d: `M${f(W * 0.5)},${f(hz)} C${f(W * 0.62)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.3)},${f(hz + (H - hz) * 0.55)} ${f(W * 0.46)},${f(H)} L${f(W * 0.8)},${f(H)} C${f(W * 0.5)},${f(hz + (H - hz) * 0.55)} ${f(W * 0.72)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.52)},${f(hz)} Z` }, vGrad(defs, uid + "st", [[0, "#7C98A6"], [1, "#4F6D7C"]]), g, 0.9);
       }
       if (is("path")) {
-        paint("path", { d: `M${f(W * 0.48)},${f(hz)} L${f(W * 0.52)},${f(hz)} L${f(W * 0.78)},${f(H)} L${f(W * 0.22)},${f(H)} Z` }, vGrad(defs, uid + "pt", [[0, "#5B4E3E"], [1, "#6E5E48"]]), g, 0.9);
+        const pd = `M${f(W * 0.48)},${f(hz)} L${f(W * 0.52)},${f(hz)} L${f(W * 0.78)},${f(H)} L${f(W * 0.22)},${f(H)} Z`;
+        paint("path", { d: pd }, vGrad(defs, uid + "pt", flatDraw ? [[0, "#5B4E3E"], [1, "#6E5E48"]] : [[0, "#A69878"], [1, "#857258"]]), g, 0.9);
+        if (!flatDraw) for (let k = 0; k < 40; k++) {
+          const t = 0.05 + rnd01(k * 3.3) * 0.95, y = depthY(hz, H, t), half = W * (0.02 + 0.26 * (y - hz) / (H - hz)), x = W / 2 + (rnd01(k * 1.9) - 0.5) * 2 * half;
+          paint("ellipse", { cx: f(x), cy: f(y), rx: f(u * (0.15 + t * 0.5)), ry: f(u * (0.1 + t * 0.28)) }, k % 2 ? "#6B5A44" : "#C4B594", g, 0.7);
+        }
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.2, tod);
       return;
     }
     if (kind === "rooftop") {
@@ -2725,11 +2921,14 @@
     if (kind === "beach") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#4A5A6E"], [1, "#A5B0B6"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
-      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.07) }, vGrad(defs, uid + "s", [[0, "#5C7C88"], [1, "#4A6771"]]), g);
-      paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.004) }, "#8FAAB0", g, 0.5);
-      // Mokry piasek przy wodzie i suchy bliżej
-      paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#6D6452"], [1, "#4E4639"]]), g);
-      paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(hz + H * 0.08)} Q${f(W * 0.5)},${f(hz + H * 0.115)} 0,${f(hz + H * 0.085)} Z` }, "#5E5646", g);
+      if (!flatDraw) richBeach(g, defs, uid, W, H, hz, gy, u, tod, skyX);
+      else {
+        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.07) }, vGrad(defs, uid + "s", [[0, "#5C7C88"], [1, "#4A6771"]]), g);
+        paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.004) }, "#8FAAB0", g, 0.5);
+        // Mokry piasek przy wodzie i suchy bliżej
+        paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#6D6452"], [1, "#4E4639"]]), g);
+        paint("path", { d: `M0,${f(hz + H * 0.07)} Q${f(W * 0.5)},${f(hz + H * 0.1)} ${f(W)},${f(hz + H * 0.065)} L${f(W)},${f(hz + H * 0.08)} Q${f(W * 0.5)},${f(hz + H * 0.115)} 0,${f(hz + H * 0.085)} Z` }, "#5E5646", g);
+      }
       if (is("rocks")) {
         [[0, 0.16, 0.12], [0.1, 0.1, 0.07], [0.86, 0.18, 0.14], [0.78, 0.08, 0.06]].forEach(([x, w, h]) => {
           const bx = x * W, by = hz + H * 0.09, bw = w * W;
@@ -2753,6 +2952,7 @@
         paint("path", { d: `M${f(W * 0.6)},${f(hz + H * 0.01)} L${f(W * 0.64)},${f(hz + H * 0.01)} L${f(x1)},${f(hz + H * 0.09)} L${f(x0 + W * 0.12)},${f(hz + H * 0.09)} Z` }, "#6A5844", g);
         for (let k = 0; k < 6; k++) { const t = k / 5; paint("rect", { x: f(W * (0.62 + t * 0.34)), y: f(hz + H * (0.01 + t * 0.08)), width: f(W * 0.006 * (1 + t * 2)), height: f(H * (0.01 + t * 0.03)) }, "#3E3226", g); }
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.004, tod);
       return;
     }
     if (kind === "lake" || kind === "river") {
@@ -2801,10 +3001,13 @@
     if (kind === "meadow") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#435467"], [1, "#94A3A6"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
-      paint("path", { d: `M0,${f(hz)} C${f(W * 0.2)},${f(hz - H * 0.12)} ${f(W * 0.45)},${f(hz - H * 0.02)} ${f(W * 0.6)},${f(hz - H * 0.08)} C${f(W * 0.75)},${f(hz - H * 0.14)} ${f(W * 0.9)},${f(hz - H * 0.05)} ${f(W)},${f(hz - H * 0.07)} L${f(W)},${f(hz + H * 0.1)} L0,${f(hz + H * 0.1)} Z` }, "#5A7159", g);
-      paint("path", { d: `M0,${f(hz + H * 0.03)} C${f(W * 0.3)},${f(hz - H * 0.04)} ${f(W * 0.6)},${f(hz + H * 0.04)} ${f(W)},${f(hz - H * 0.02)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#465C45"], [1, "#2E3B2E"]]), g);
-      // Kępki trawy tylko przy dolnych rogach
-      [[0.04, 1], [0.1, 0.8], [0.9, 0.85], [0.96, 1]].forEach(([x, k]) => {
+      if (!flatDraw) richMeadow(g, defs, uid, W, H, hz, gy, u, tod, skyX);
+      else {
+        paint("path", { d: `M0,${f(hz)} C${f(W * 0.2)},${f(hz - H * 0.12)} ${f(W * 0.45)},${f(hz - H * 0.02)} ${f(W * 0.6)},${f(hz - H * 0.08)} C${f(W * 0.75)},${f(hz - H * 0.14)} ${f(W * 0.9)},${f(hz - H * 0.05)} ${f(W)},${f(hz - H * 0.07)} L${f(W)},${f(hz + H * 0.1)} L0,${f(hz + H * 0.1)} Z` }, "#5A7159", g);
+        paint("path", { d: `M0,${f(hz + H * 0.03)} C${f(W * 0.3)},${f(hz - H * 0.04)} ${f(W * 0.6)},${f(hz + H * 0.04)} ${f(W)},${f(hz - H * 0.02)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#465C45"], [1, "#2E3B2E"]]), g);
+      }
+      // Kępki trawy tylko przy dolnych rogach (szkic; w pełnej jakości są w richMeadow)
+      if (flatDraw) [[0.04, 1], [0.1, 0.8], [0.9, 0.85], [0.96, 1]].forEach(([x, k]) => {
         const bx = x * W, by = H * 0.98, h = H * 0.07 * k;
         paint("path", { d: `M${f(bx - W * 0.03)},${f(by)} L${f(bx - W * 0.012)},${f(by - h)} L${f(bx)},${f(by - h * 0.3)} L${f(bx + W * 0.01)},${f(by - h * 1.1)} L${f(bx + W * 0.03)},${f(by)} Z` }, "#344534", g);
       });
@@ -2828,6 +3031,7 @@
         paint("circle", { cx: f(tx - W * 0.04), cy: f(ty - H * 0.08), r: f(H * 0.04) }, "#44593A", g);
         paint("circle", { cx: f(tx + W * 0.04), cy: f(ty - H * 0.085), r: f(H * 0.042) }, "#3A4E31", g);
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.13, tod);
       return;
     }
     if (kind === "room") {
@@ -3148,7 +3352,9 @@
         drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgLook(st), bgExtras(st));
       } else {
         // split: tło w osobnej grupie, żeby Próbny kadr mógł je rozmyć (głębia ostrości)
-        drawBackground(opts.split ? el("g", { "data-part": "bg" }, layer()) : layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgLook(st), bgExtras(st));
+        // Słońce jako światło stoi w strefie lampy: odbicie na wodzie i promienie idą za nim
+        const bgSkyX = skyT >= 0.5 ? litPt[0] / W : skyX;
+        drawBackground(opts.split ? el("g", { "data-part": "bg" }, layer()) : layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, bgSkyX, bgLook(st), bgExtras(st));
       }
       // Pora dnia delikatnie zmienia całe tło (bez studia): ciepło o złotej godzinie, ciemny granat nocą
       if (st.background !== "studio") {
@@ -3172,7 +3378,8 @@
 
     // Podłoże
     if (st.shot === "full" && layers.has("ground")) {
-      el("line", { x1: 0, y1: f(pl.groundY), x2: f(W), y2: f(pl.groundY), class: "thin" }, g);
+      // Linia podłogi tylko w szkicu i przy tłach rysowanych prosto; pełne tło ma własne podłoże
+      if (flatDraw || !layers.has("background") || !RICH_BG.includes(st.background)) el("line", { x1: 0, y1: f(pl.groundY), x2: f(W), y2: f(pl.groundY), class: "thin" }, g);
     }
 
     // Światło: jedna lampa przelatuje łukiem z przodu (miękkie) za postać (kontra).
@@ -5552,7 +5759,8 @@
       const hz = G.hz, sg = el("g", { "pointer-events": "none" });
       wraps[0].parentNode.insertBefore(sg, wraps[0].nextSibling);
       const lg = el("linearGradient", { id: "trialSky", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0, y2: f(hz) }, defs);
-      [[0, SKY[0]], [0.75, SKY[1]], [1, SKY[2]]].forEach(([o, c]) => el("stop", { offset: o, style: `stop-color:${c}` }, lg));
+      // Ku horyzontowi nakładka gaśnie do neutralnej szarości (w trybie overlay bez zmiany): bez twardej krawędzi na drzewach i wzgórzach
+      [[0, SKY[0]], [0.55, SKY[1]], [0.78, SKY[2]], [1, "#808080"]].forEach(([o, c]) => el("stop", { offset: o, style: `stop-color:${c}` }, lg));
       el("rect", { x: 0, y: 0, width: f(W), height: f(hz), style: "fill:url(#trialSky);stroke:none;mix-blend-mode:overlay;opacity:0.85" }, sg);
       const hg = el("linearGradient", { id: "trialHaze", gradientUnits: "userSpaceOnUse", x1: 0, y1: f(hz - H * 0.07), x2: 0, y2: f(hz + H * 0.03) }, defs);
       [[0, 0], [0.7, 0.22], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, style: `stop-color:${SKY[2]};stop-opacity:${a}` }, hg));

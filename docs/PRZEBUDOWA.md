@@ -317,3 +317,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Spojrzenie (Głowa): Naturalnie (bez opisu), W obiektyw, Przed siebie, W dal; w Ekspercie także W dół i Na rzecz ze sceny („looking at the wooden table”). W obiektyw przy postaci odwróconej: spojrzenie przez ramię. Na rysunku spojrzenie przechyla głowę.
 - Kreator: po rękach „Jak stoi względem kamery?” (Ekspert) i „Gdzie patrzy?” (oba poziomy). Drzewko sceny pokazuje Spojrzenie i Zwrot (gdy inny niż Do kamery).
 - Tutorial: po skopiowaniu Maniscryptu, zanim pokaże się zdjęcie, przez 1,5 s w kadrze kręci się logo generatora (jak kółko ładowania), zmieniając się co 250 ms: ChatGPT, Gemini, Midjourney, Leonardo, Ideogram, Kling. Manikun mówi „Ciekawe, co AI nam zaproponuje…” (przy Fantasy: „Zobaczmy, co AI zrobi z Fantasy…”). Widać, że obraz robi AI z zewnątrz.
+
+## Tła w pełnej jakości: plaża, las, łąka
+
+- W Próbnym kadrze i tutorialu (szkic roboczy zostaje prosty): podłoże z perspektywą i fakturą, która gęstnieje ku horyzontowi, trzy plany (daleki jasny i zamglony, średni nasycony, bliski ciemniejszy).
+- Plaża: morze ciemniejsze przy horyzoncie, fale coraz dłuższe ku brzegowi, odbicie słońca albo księżyca pod ciałem niebieskim, mokry piasek z pianą, suchy jasny piasek ze zmarszczkami i kamykami, trawa na wydmach w rogach.
+- Las: trzy rzędy świerków albo koron liściastych z mgiełką między nimi, drzewa z bryłą (strona od słońca jaśniejsza), ściółka z plamami słońca, igliwiem i paprociami, promienie słońca między drzewami (nie nocą), ścieżka z kamykami.
+- Łąka: wzgórza w trzech planach z kępami drzew, trawa ze źdźbłami w perspektywie, polne kwiatki, kępki w rogach.
+- Pora dnia na podłożu (noc granatowo, złota godzina ciepło) nakłada się na końcu, razem z dodatkami tła. Nakładka nieba w Próbnym kadrze gaśnie ku horyzontowi, bez twardej krawędzi. Linia podłogi pod stopami zostaje tylko w szkicu.
+
