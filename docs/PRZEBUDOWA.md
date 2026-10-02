@@ -344,4 +344,5 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Cień bliższej ręki na reszcie ciała (Próbny kadr): rozmyta sylwetka ręki przesunięta od światła, przycięta do obrysu ciała (pada na tułów, udo, a przy dłoni nad oczami na twarz). Cień na podłodze ma ostrzejszy rdzeń pod miękkim brzegiem.
 - Dłoń w zbliżeniu (portret, twarz w Próbnym kadrze): cztery palce z zaokrąglonymi końcami i linia kostek zamiast gładkiej dłoni ze słojami.
 - Proporcje: mężczyzna ma szersze ramiona i węższą talię, kobieta węższą talię i szersze biodra.
+- Łączenia rąk i nóg (Próbny kadr): ramię z przedramieniem i udo z łydką (także rękaw i nogawka) to jeden kształt bez szwu, z łukiem po zewnętrznej stronie zgięcia; drewniane kulki w łokciach i kolanach znikają. Na ubraniu fałda tuż nad i pod zgięciem. Szkic, start i tutorial bez zmian.
 

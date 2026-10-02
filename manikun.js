@@ -22,6 +22,47 @@ function capsule(A, B, rA, rB) {
   return `M${f(p1[0])},${f(p1[1])} L${f(p2[0])},${f(p2[1])} A${rB},${rB} 0 0 0 ${f(p3[0])},${f(p3[1])} L${f(p4[0])},${f(p4[1])} A${rA},${rA} 0 0 0 ${f(p1[0])},${f(p1[1])} Z`;
 }
 const poly = pts => "M" + pts.map(p => f(p[0]) + "," + f(p[1])).join(" L") + " Z";
+// Obrys dwóch zwężających się walców połączonych w stawie B (ramię z przedramieniem, udo z łydką) jako jeden kształt:
+// po zewnętrznej stronie zgięcia łuk wokół stawu, po wewnętrznej zbiegające się krawędzie, na końcach półokręgi.
+function limbPath(A, B, C, rA, rB, rC) {
+  const unit = (p, q) => { const dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+  const d1 = unit(A, B), d2 = unit(B, C), n1 = [-d1[1], d1[0]], n2 = [-d2[1], d2[0]];
+  const turn = d1[0] * d2[1] - d1[1] * d2[0], o = turn > 0 ? -1 : 1;
+  const P = (c, n, r, k = 1) => [c[0] + n[0] * r * k, c[1] + n[1] * r * k];
+  // Łuk wokół środka c od kąta a0 do a1, przechodzący przez kierunek via
+  const arc = (c, r, from, to, via) => {
+    let a0 = Math.atan2(from[1], from[0]), a1 = Math.atan2(to[1], to[0]), av = Math.atan2(via[1], via[0]);
+    let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    let dv = av - a0; while (dv > Math.PI) dv -= 2 * Math.PI; while (dv < -Math.PI) dv += 2 * Math.PI;
+    if (Math.abs(Math.abs(da) - Math.PI) < 1e-3 || Math.sign(dv) !== Math.sign(da) || Math.abs(dv) > Math.abs(da)) da = da > 0 ? da - 2 * Math.PI : da + 2 * Math.PI;
+    if (Math.abs(Math.abs(da) - Math.PI) < 0.05) da = Math.sign(dv || 1) * Math.PI;
+    const n = Math.max(2, Math.ceil(Math.abs(da) / 0.35));
+    let d = "";
+    for (let k = 1; k <= n; k++) { const a = a0 + da * k / n; d += ` L${f(c[0] + Math.cos(a) * r)},${f(c[1] + Math.sin(a) * r)}`; }
+    return d;
+  };
+  const oN1 = [n1[0] * o, n1[1] * o], oN2 = [n2[0] * o, n2[1] * o], iN1 = [-oN1[0], -oN1[1]], iN2 = [-oN2[0], -oN2[1]];
+  // Wewnętrzny narożnik: przecięcie wewnętrznych krawędzi (przy niemal prostym członie: punkt przy stawie)
+  const p1 = P(A, iN1, rA), q1 = P(B, iN1, rB), p2 = P(B, iN2, rB), q2 = P(C, iN2, rC);
+  const r1 = [q1[0] - p1[0], q1[1] - p1[1]], r2 = [q2[0] - p2[0], q2[1] - p2[1]], den = r1[0] * r2[1] - r1[1] * r2[0];
+  let I = null;
+  if (Math.abs(den) > 1e-6) {
+    const t = ((p2[0] - p1[0]) * r2[1] - (p2[1] - p1[1]) * r2[0]) / den;
+    I = [p1[0] + r1[0] * t, p1[1] + r1[1] * t];
+    if (Math.hypot(I[0] - B[0], I[1] - B[1]) > rB * 2.5) I = null;
+  }
+  if (!I) { const m = unit([0, 0], [iN1[0] + iN2[0], iN1[1] + iN2[1]]); I = P(B, m, rB); }
+  const s0 = P(A, oN1, rA);
+  let d = `M${f(s0[0])},${f(s0[1])}`;
+  const b1 = P(B, oN1, rB); d += ` L${f(b1[0])},${f(b1[1])}`;
+  d += arc(B, rB, oN1, oN2, [oN1[0] + oN2[0], oN1[1] + oN2[1]]);
+  const c1 = P(C, oN2, rC); d += ` L${f(c1[0])},${f(c1[1])}`;
+  d += arc(C, rC, oN2, iN2, d2);
+  d += ` L${f(I[0])},${f(I[1])}`;
+  const a1 = P(A, iN1, rA); d += ` L${f(a1[0])},${f(a1[1])}`;
+  d += arc(A, rA, iN1, oN1, [-d1[0], -d1[1]]);
+  return d + " Z";
+}
 // Gładka krzywa przez punkty (Catmull-Rom zamieniony na krzywe Béziera), bez początkowego M
 function smoothThrough(pts) {
   let d = "";
@@ -496,6 +537,20 @@ function paintFigure(g, shapes, m) {
     return;
   }
 
+  // Próbny kadr: dwa walce jednego członu (ramię–przedramię, udo–łydka, rękaw, nogawka) jako jeden kształt bez szwu,
+  // a drewniane kulki w łokciach i kolanach znikają (zgięcie jest gładkie)
+  if (m.soft) {
+    const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.01, merged = [], joints = [];
+    for (let i = 0; i < shapes.length; i++) {
+      const a = shapes[i], b = shapes[i + 1];
+      if (a.t === "cap" && b && b.t === "cap" && !a.hand && !b.hand && a.cloth === b.cloth && near(a.B, b.A) && Math.abs(a.rB - b.rA) < 0.01) {
+        merged.push({ ...a, t: "cap2", J: a.B, B: b.B, rJ: a.rB, rB: b.rB, d: limbPath(a.A, a.B, b.B, a.rA, a.rB, b.rB) });
+        if (!a.cloth) joints.push(a.B);
+        i++;
+      } else merged.push(a);
+    }
+    shapes = merged.filter(s => !(s.t === "circle" && joints.some(j => near(j, [s.cx, s.cy]))));
+  }
   const defs = el("defs", {}, g);
   const pre = "mk" + (++gradSeq) + "-";
   const stops = (grad, list) => list.forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, grad));
@@ -504,7 +559,7 @@ function paintFigure(g, shapes, m) {
   const grainLine = (d, w = 0.8, op = 0.6) => m.grain && el("path", { d, style: `fill:none;stroke:${m.grain};stroke-width:${w};opacity:${op}` }, g);
   let n = 0;
   // Cień bliższej ręki na reszcie ciała (Próbny kadr): rozmyta sylwetka ręki przesunięta od światła, przycięta do obrysu ciała
-  const geom = (s, parent, style) => s.t === "cap" || s.t === "poly" ? el("path", { d: s.d, style }, parent)
+  const geom = (s, parent, style) => s.t === "cap" || s.t === "cap2" || s.t === "poly" ? el("path", { d: s.d, style }, parent)
     : s.t === "circle" ? el("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r, style }, parent)
     : el("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})`, style }, parent);
   let armShadow = null;
@@ -530,9 +585,10 @@ function paintFigure(g, shapes, m) {
       const id = pre + "t" + (++n);
       // Bryły materiału cieniowane od lewej do prawej krawędzi, rękawy i nogawki w poprzek
       const xs = s.t === "poly" ? s.q.map(q => q[0]) : [0], my0 = s.t === "poly" ? s.q.reduce((acc, q) => acc + q[1], 0) / s.q.length : 0;
-      const [a, b] = s.t === "cap" ? [s.A, s.B] : [[Math.min(...xs), my0], [Math.max(...xs), my0]];
+      const isCap = s.t === "cap" || s.t === "cap2";
+      const [a, b] = isCap ? [s.A, s.B] : [[Math.min(...xs), my0], [Math.max(...xs), my0]];
       let x1 = a[0], y1 = a[1], x2 = b[0], y2 = b[1];
-      if (s.t === "cap") {
+      if (isCap) {
         const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, rr = Math.max(s.rA, s.rB);
         const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
         x1 = mx - dy / len * rr; y1 = my + dx / len * rr; x2 = mx + dy / len * rr; y2 = my - dx / len * rr;
@@ -546,15 +602,21 @@ function paintFigure(g, shapes, m) {
       }
       if (m.soft) {
         const dk = shadeHex(s.cloth, -0.38), lt = shadeHex(s.cloth, 0.28);
-        if (s.t === "cap") {
-          // Fałdy w poprzek rękawa albo nogawki: łuki wygięte raz w jedną, raz w drugą stronę, nad nimi jasny refleks
-          const dx = s.B[0] - s.A[0], dy = s.B[1] - s.A[1], len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
-          if (len > 8) [0.38, 0.72].forEach((t, i) => {
-            const r = (s.rA + (s.rB - s.rA) * t) * 0.8, cx = s.A[0] + dx * t, cy = s.A[1] + dy * t, bow = len * 0.05 * (i % 2 ? 1 : -1);
+        // Fałdy w poprzek rękawa albo nogawki: łuki wygięte raz w jedną, raz w drugą stronę, nad nimi jasny refleks
+        const segFolds = (A, B, rA, rB, ts) => {
+          const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+          if (len > 8) ts.forEach((t, i) => {
+            const r = (rA + (rB - rA) * t) * 0.8, cx = A[0] + dx * t, cy = A[1] + dy * t, bow = len * 0.05 * (i % 2 ? 1 : -1);
             const a = [cx + nx * r, cy + ny * r], b = [cx - nx * r * 0.6, cy - ny * r * 0.6], c = [cx + nx * r * 0.2 + ux * bow, cy + ny * r * 0.2 + uy * bow];
             fold(`M${f(a[0])},${f(a[1])} Q${f(c[0])},${f(c[1])} ${f(b[0])},${f(b[1])}`, dk, 0.9, 0.36);
             fold(`M${f(a[0] - ux * 1.1)},${f(a[1] - uy * 1.1)} Q${f(c[0] - ux * 1.1)},${f(c[1] - uy * 1.1)} ${f(b[0] - ux * 1.1)},${f(b[1] - uy * 1.1)}`, lt, 0.6, 0.35);
           });
+        };
+        if (s.t === "cap") segFolds(s.A, s.B, s.rA, s.rB, [0.38, 0.72]);
+        else if (s.t === "cap2") {
+          // Zgięty człon: fałda tuż nad i tuż pod stawem (materiał marszczy się w zgięciu) i jedna w połowie dolnego odcinka
+          segFolds(s.A, s.J, s.rA, s.rJ, [0.82]);
+          segFolds(s.J, s.B, s.rJ, s.rB, [0.16, 0.6]);
         } else if (s.t === "poly" && s.q && s.q.length === 4 && !s.noFold) {
           // Tułów: dwie fałdy od ramion ku talii i zagniecenie nad paskiem
           const [tn, tf, bf, bn] = s.q, L = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
@@ -568,7 +630,23 @@ function paintFigure(g, shapes, m) {
       }
       return;
     }
-    if (s.t === "cap") {
+    if (s.t === "cap2") {
+      // Zgięty drewniany człon jednym kształtem: cieniowanie w poprzek średniego kierunku, słoje osobno na obu odcinkach
+      const id = pre + "c" + (++n);
+      const dx = s.B[0] - s.A[0], dy = s.B[1] - s.A[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len, r = Math.max(s.rA, s.rJ);
+      const mx = s.J[0], my = s.J[1];
+      const lg = el("linearGradient", { id, gradientUnits: "userSpaceOnUse", x1: f(mx + nx * r), y1: f(my + ny * r), x2: f(mx - nx * r), y2: f(my - ny * r) }, defs);
+      stops(lg, [[0, m.dark], [0.35, m.light], [0.6, m.mid], [1, m.dark]]);
+      shape("path", { d: s.d }, `url(#${id})`);
+      if (m.grain) [[s.A, s.J, s.rA, s.rJ], [s.J, s.B, s.rJ, s.rB]].forEach(([A, B, rA, rB], j) => {
+        const ddx = B[0] - A[0], ddy = B[1] - A[1], l = Math.hypot(ddx, ddy) || 1, qx = -ddy / l, qy = ddx / l;
+        if (l > 6) [-0.5, 0, 0.5].forEach((k, i) => {
+          const at = (t, kk) => { const rr = rA + (rB - rA) * t; return [A[0] + ddx * t + qx * rr * kk, A[1] + ddy * t + qy * rr * kk]; };
+          const wob = ((idx + i + j) % 2 ? 1 : -1) * 0.15, a = at(0.12, k), b = at(0.4, k + wob), c = at(0.65, k - wob), d = at(0.88, k);
+          grainLine(`M${f(a[0])},${f(a[1])} C${f(b[0])},${f(b[1])} ${f(c[0])},${f(c[1])} ${f(d[0])},${f(d[1])}`, i % 2 ? 0.6 : 0.8, 0.5);
+        });
+      });
+    } else if (s.t === "cap") {
       // Cieniowanie w poprzek: walec zamiast płaskiego paska
       const id = pre + "c" + (++n);
       const dx = s.B[0] - s.A[0], dy = s.B[1] - s.A[1], len = Math.hypot(dx, dy) || 1;
