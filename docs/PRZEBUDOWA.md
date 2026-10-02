@@ -387,3 +387,5 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - 8 ze zwierzakami: Spacer z Manidogiem, Wieczór z Manicatem (fotel), Manibun na łące, Smok w lesie, Dalmatyńczyk w studiu, Pies na plaży, Lodowy smok, Manicat w kuchni. Każdy zwierzak ma ustaloną pozę i umaszczenie.
 - `wearIn(setId, parts, colors)` składa zestaw z podmienionymi częściami (strój „custom”).
 - `applyPreset` kopiuje gotowca głęboko i zeruje cechy (`TRAIT0`) oraz zwrot ciała, żeby scena nie dziedziczyła np. „dziecko, niski” z poprzednich ustawień. Miniatury gotowców rysują też rzeczy i zwierzaki.
+
+- Szkic kuchni (podgląd roboczy) ma ten sam układ co próbny kadr: okno, szafki górne albo półki ze słojami, szafki dolne z blatem i kranem, lodówka, zioła na parapecie, w stonowanych barwach szkicu.

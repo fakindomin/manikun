@@ -3747,10 +3747,38 @@
       const fy = Math.min(gy, H * 0.92) - H * 0.12;
       if (!flatDraw) richKitchen(g, defs, uid, W, H, hz, gy, u, fy, tod, is("rustic"), is("herbs"));
       else {
-        paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, is("rustic") ? "#7E6A52" : "#6E7074", g);
-        paint("rect", { x: 0, y: f(fy - H * 0.15), width: f(W), height: f(H * 0.15) }, is("rustic") ? "#5E4532" : "#3E4A58", g);
-        paint("rect", { x: f(W * 0.05), y: f(H * 0.1), width: f(W * 0.26), height: f(H * 0.2) }, "#8093A3", g);
-        paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, is("rustic") ? "#6E4A36" : "#55575C", g);
+        // Szkic: ten sam układ co w kadrze (okno, szafki albo półki, blat, lodówka), w stonowanych barwach
+        const rustic = is("rustic"), cy = fy - H * 0.15, line = "#2E3036";
+        const cab = rustic ? "#5E4532" : "#3E4A58", cabL = rustic ? "#6E5340" : "#4A5666";
+        paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, rustic ? "#7E6A52" : "#6E7074", g);
+        paint("rect", { x: 0, y: f(cy - H * 0.16), width: f(W), height: f(H * 0.16) }, rustic ? "#86735C" : "#787A7E", g);
+        const wx = W * 0.05, wy = H * 0.1, ww = W * 0.26, wh = cy - H * 0.2 - wy;
+        paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, "#55606C", g);
+        paint("rect", { x: f(wx + ww * 0.06), y: f(wy + wh * 0.06), width: f(ww * 0.88), height: f(wh * 0.88) }, "#8093A3", g);
+        paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, "#55606C", g);
+        if (rustic) [0.2, 0.32].forEach(t => {
+          paint("rect", { x: f(W * 0.36), y: f(H * t), width: f(W * 0.44), height: f(H * 0.01) }, cab, g);
+          for (let k = 0; k < 6; k++) paint("rect", { x: f(W * (0.38 + k * 0.07)), y: f(H * (t - 0.05)), width: f(W * 0.035), height: f(H * 0.05), rx: f(W * 0.008) }, ["#9A9286", "#8C7A62", "#7E8A84", "#8A6A58"][k % 4], g);
+        });
+        else {
+          paint("rect", { x: f(W * 0.36), y: f(H * 0.06), width: f(W * 0.46), height: f(cy - H * 0.26) }, cab, g);
+          for (let k = 1; k < 4; k++) paint("rect", { x: f(W * 0.36 + k * W * 0.46 / 4), y: f(H * 0.06), width: 1, height: f(cy - H * 0.26) }, line, g);
+          for (let k = 0; k < 4; k++) paint("rect", { x: f(W * (0.36 + 0.46 * (k + 0.5) / 4) - 0.6), y: f(cy - H * 0.24), width: f(W * 0.004), height: f(H * 0.025) }, "#9AA0A8", g);
+        }
+        paint("rect", { x: 0, y: f(cy), width: f(W), height: f(fy - cy) }, cabL, g);
+        for (let k = 1; k < 8; k++) paint("rect", { x: f(k * W / 8), y: f(cy + H * 0.01), width: 1, height: f(fy - cy - H * 0.015) }, line, g);
+        for (let k = 0; k < 8; k++) paint("rect", { x: f((k + 0.5) * W / 8 - W * 0.015), y: f(cy + H * 0.025), width: f(W * 0.03), height: f(H * 0.004) }, "#9AA0A8", g);
+        paint("rect", { x: 0, y: f(cy - H * 0.012), width: f(W), height: f(H * 0.018) }, rustic ? "#9A8266" : "#9A9894", g);
+        strokeP(`M${f(W * 0.12)},${f(cy - H * 0.012)} L${f(W * 0.12)},${f(cy - H * 0.06)} Q${f(W * 0.12)},${f(cy - H * 0.075)} ${f(W * 0.15)},${f(cy - H * 0.072)}`, "#9AA0A8", u * 0.6, 1, g);
+        paint("rect", { x: f(W * 0.85), y: f(H * 0.05), width: f(W * 0.17), height: f(fy - H * 0.05) }, "#8A8E94", g);
+        paint("rect", { x: f(W * 0.85), y: f(H * 0.32), width: f(W * 0.17), height: 1 }, line, g);
+        [[0.2, 0.08], [0.36, 0.1]].forEach(([y, h]) => paint("rect", { x: f(W * 0.87), y: f(H * y), width: f(W * 0.008), height: f(H * h) }, line, g));
+        paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, rustic ? "#6E4A36" : "#55575C", g);
+        if (is("herbs")) [0.18, 0.5, 0.82].forEach(t => {
+          const px = wx + ww * t, py = wy + wh;
+          paint("rect", { x: f(px - ww * 0.05), y: f(py - H * 0.03), width: f(ww * 0.1), height: f(H * 0.03) }, "#8A6A58", g);
+          paint("circle", { cx: f(px), cy: f(py - H * 0.045), r: f(ww * 0.07) }, "#5A7159", g);
+        });
       }
       return;
     }
