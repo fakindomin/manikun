@@ -399,3 +399,15 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Dźwięk `magia`: arpeggio sinusów w górę (`chime`) zamiast `klap`, z przyciskiem wyciszenia jak inne dźwięki.
 - Przy ograniczeniu animacji w systemie kadr pokazuje się od razu. Zapis PNG bez zmian (to tylko warstwa `#trialDraft`).
 - Uwaga: klasa `.ink` nadpisuje atrybuty fill/stroke, dlatego elementy różdżki mają style w atrybucie `style`.
+
+## Losuj jak maszyna losująca + pełna klatka w podglądzie
+
+- „Losuj” (`rollRandom`): 8 szkiców przelatuje coraz wolniej (60→220 ms, „tik” przy każdym), ostatni staje z „klap”, a po chwili nad szkicem pojawia się nieruchoma klatka w pełnej jakości (`#previewStill`, `showStill`).
+- Klatka rysuje się raz (ok. 50 ms na wolnym telefonie), a nie co klatkę: szkic pod spodem dalej „oddycha”. Znika przy każdej zmianie sceny (odcisk `stillKey` bez stanu menu), przy chwyceniu kamery lub lampy i przy zmianie rozmiaru okna.
+- Pośrednie szkice: `randomize(true)` bez odświeżania menu (`fixScene` + `sceneChanged`) i bez płynnych przejść (`snapScene`); jeden krok kosztuje ok. 16 ms zamiast ok. 260 ms przy CPU ×4.
+- W klatce bez poświaty lampy (`.glow`), z miękkim materiałem postaci jak w próbnym kadrze.
+
+## Poprawka: znikający Manikun w zbliżeniach z kamery z lewej
+
+- Przy kamerze z lewej postać jest odbijana lustrzanie. Oś szła przez środek sylwetki, a w leżących i rozpartych pozach głowa jest daleko od niego, więc w zbliżeniu (portret, twarz) odbita postać wypadała poza kadr. Szkic był pusty, a Maniscrypt i tak opisywał twarz.
+- Przy zbliżeniach oś odbicia przechodzi przez głowę. Test wszystkich póz × kamer × ujęć × formatów: 0 pustych kadrów (wcześniej 41).
