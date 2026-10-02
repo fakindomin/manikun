@@ -2558,7 +2558,7 @@
   // ---------- Tła w pełnej jakości (Próbny kadr, tutorial): perspektywa podłoża i trzy plany ----------
   // Szkic roboczy rysuje te same miejsca prościej (flatDraw). Daleki plan jasny i zamglony, średni nasycony,
   // bliski ciemniejszy i ostry; podłoże z fakturą, która gęstnieje ku horyzontowi.
-  const RICH_BG = ["beach", "forest", "meadow"];
+  const RICH_BG = ["beach", "forest", "meadow", "mountains", "lake", "river", "street", "rooftop", "room", "cafe", "studio"];
   const rnd01 = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   // Głębokość na podłożu: t 0 = horyzont, 1 = dół kadru (odstępy rosną ku widzowi)
   const depthY = (hz, H, t, top = hz) => top + (H - top) * Math.pow(t, 1.7);
@@ -2741,6 +2741,258 @@
     [[0.03, 1], [0.1, 0.75], [0.9, 0.8], [0.975, 1.05]].forEach(([x, k], i) => tuft(g, x * W, H * 0.995, H * 0.08 * k, i % 2 ? "#64874A" : "#4E6E3A", i * 23 + 5));
   }
 
+  // Miękka plama światła (gradient radialny)
+  function radGlow(g, defs, id, x, y, r, color, op, ry) {
+    const gr = el("radialGradient", { id }, defs);
+    el("stop", { offset: "0", "stop-color": color, "stop-opacity": op }, gr);
+    el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
+    paint("ellipse", { cx: f(x), cy: f(y), rx: f(r), ry: f(ry ?? r) }, `url(#${id})`, g);
+  }
+  // Punkt na odcinku od a do b (t 0..1) i punkt krzywej Béziera 3. stopnia
+  const lerpP = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const bez = (p0, p1, p2, p3, t) => { const m = 1 - t; return [m * m * m * p0[0] + 3 * m * m * t * p1[0] + 3 * m * t * t * p2[0] + t * t * t * p3[0], m * m * m * p0[1] + 3 * m * m * t * p1[1] + 3 * m * t * t * p2[1] + t * t * t * p3[1]]; };
+  // Pasmo gór: sylwetka, cień zbocza od strony bez słońca i śnieg na szczytach
+  function range(g, W, H, base, pts, c, shade, snow, snowK, sunLeft) {
+    paint("path", { d: peaks(pts, W, base, H) }, c, g);
+    const P = pts.map(([x, h]) => [x * W, base - h * H]);
+    for (let i = 1; i < P.length - 1; i++) {
+      if (!(pts[i][1] > pts[i - 1][1] && pts[i][1] > pts[i + 1][1])) continue;
+      const pk = P[i], side = sunLeft ? P[i + 1] : P[i - 1];
+      paint("path", { d: `M${f(pk[0])},${f(pk[1])} L${f(side[0])},${f(side[1])} L${f(side[0])},${f(base)} L${f(pk[0])},${f(base)} Z` }, shade, g, 0.5);
+      if (snow && snowK > 0) {
+        const l = lerpP(pk, P[i - 1], snowK), r = lerpP(pk, P[i + 1], snowK), m1 = lerpP(pk, [(l[0] + r[0]) / 2, Math.max(l[1], r[1])], 0.75);
+        paint("path", { d: `M${f(pk[0])},${f(pk[1])} L${f(r[0])},${f(r[1])} L${f((r[0] + m1[0]) / 2)},${f(m1[1] - H * 0.006)} L${f(m1[0])},${f(m1[1] + H * 0.008)} L${f((l[0] + m1[0]) / 2)},${f(m1[1] - H * 0.004)} L${f(l[0])},${f(l[1])} Z` }, snow, g, 0.95);
+      }
+    }
+  }
+  // Trawa w perspektywie (rzędy źdźbeł) na pasie od top do dołu kadru
+  function grassField(g, W, H, hz, top, dark, light, rows = 12, dens = 34) {
+    for (let r = 0; r < rows; r++) {
+      const t = (r + 1) / (rows + 1), y = depthY(hz, H, t, top), n = Math.round(dens - t * dens * 0.45), h = (H / 300) * (0.3 + t * 2);
+      for (let k = 0; k < n; k++) {
+        const x = ((k + rnd01(r * 31 + k + top)) / n) * W, lean = (rnd01(r * 7 + k * 3) - 0.5) * h * 0.6;
+        strokeP(`M${f(x)},${f(y)} q${f(lean * 0.3)},${f(-h * 0.6)} ${f(lean)},${f(-h)}`, (k + r) % 3 ? dark : light, 0.4 + t * 0.8, 0.5 + t * 0.25, g);
+      }
+    }
+  }
+
+  function richMountains(g, defs, uid, W, H, hz, gy, u, tod, skyX, alp) {
+    const sunLeft = skyX < 0.5;
+    range(g, W, H, hz + H * 0.01, [[0, 0.14], [0.1, 0.25], [0.2, 0.15], [0.33, 0.3], [0.45, 0.16], [0.58, 0.32], [0.7, 0.17], [0.82, 0.27], [0.92, 0.15], [1, 0.21]], "#A3B0C2", "#7C8AA0", "#E9EEF4", 0.2, sunLeft);
+    paint("rect", { x: 0, y: f(hz - H * 0.2), width: f(W), height: f(H * 0.21) }, vGrad(defs, uid + "mz1", [[0, "rgba(226,234,242,0)"], [1, "rgba(226,234,242,0.6)"]]), g);
+    range(g, W, H, hz + H * 0.03, [[0, 0.1], [0.14, 0.19], [0.29, 0.08], [0.46, 0.21], [0.6, 0.09], [0.77, 0.18], [0.9, 0.07], [1, 0.12]], "#6E7E93", "#526076", "#DCE3EA", 0.12, sunLeft);
+    paint("rect", { x: 0, y: f(hz - H * 0.06), width: f(W), height: f(H * 0.09) }, vGrad(defs, uid + "mz2", [[0, "rgba(220,230,236,0)"], [1, "rgba(220,230,236,0.35)"]]), g);
+    // Pas lasu u stóp gór i łąka albo kamienista hala
+    paint("path", { d: pineRow(W, hz + H * 0.05, H * 0.03, H * 0.065, 34, 7) }, "#4C6852", g);
+    const top = hz + H * 0.045;
+    paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, vGrad(defs, uid + "mg", alp ? [[0, "#94AE70"], [1, "#5E7C45"]] : [[0, "#8C9672"], [0.5, "#737D59"], [1, "#56603F"]]), g);
+    grassField(g, W, H, hz, top, alp ? "#5A7A3E" : "#5C6644", alp ? "#B2C98A" : "#A6AE88", 11, alp ? 34 : 22);
+    if (!alp) for (let k = 0; k < 22; k++) {
+      const t = 0.1 + rnd01(k * 2.7) * 0.9, y = depthY(hz, H, t, top), x = rnd01(k * 5.3) * W, r = u * (0.4 + t * 1.6);
+      paint("ellipse", { cx: f(x), cy: f(y), rx: f(r * 1.3), ry: f(r * 0.7) }, "#5E5C57", g);
+      paint("ellipse", { cx: f(x + (sunLeft ? -r * 0.3 : r * 0.3)), cy: f(y - r * 0.25), rx: f(r * 0.7), ry: f(r * 0.35) }, "#8A8780", g, 0.8);
+    }
+  }
+
+  function richWater(g, defs, uid, W, H, hz, gy, u, tod, skyX, river) {
+    const nightW = Math.max(0, Math.min(1, tod - 1));
+    // Dalszy brzeg: wzgórza i rząd drzew w mgiełce
+    paint("path", { d: ridge(W, hz, x => hz - H * (0.05 + 0.03 * Math.sin(x * 4.4 + 1.2)), 0.02, hz + H * 0.01) }, "#A3B5AE", g);
+    paint("rect", { x: 0, y: f(hz - H * 0.1), width: f(W), height: f(H * 0.11) }, vGrad(defs, uid + "wz", [[0, "rgba(226,236,234,0)"], [1, "rgba(226,236,234,0.5)"]]), g);
+    paint("path", { d: pineRow(W, hz + H * 0.004, H * 0.035, H * 0.075, 30, 19) }, "#5D7B66", g);
+    const glitter = (y0, y1, x0, rows) => {
+      for (let r = 0; r < rows; r++) {
+        const t = (r + 1) / rows, y = y0 + (y1 - y0) * Math.pow(t, 1.3), spread = W * (0.015 + t * 0.05), x = x0 + (rnd01(r * 3.7) - 0.5) * spread * 2, len = W * (0.01 + t * 0.03);
+        strokeP(`M${f(x - len / 2)},${f(y)} L${f(x + len / 2)},${f(y)}`, nightW > 0.5 ? "#DCE4F2" : "#FFF0C8", 0.6 + t, 0.7 - t * 0.3, g);
+      }
+    };
+    if (!river) {
+      const wb = hz + H * 0.2;
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(wb - hz + 2) }, vGrad(defs, uid + "lw", [[0, "#7F9DB2"], [0.5, "#5F849C"], [1, "#4B7088"]]), g);
+      // Odbicie drzew z dalszego brzegu
+      paint("path", { d: pineRow(W, hz + H * 0.004, -H * 0.035, -H * 0.075, 30, 19) }, "#4E6B5E", g, 0.4);
+      for (let r = 0; r < 10; r++) {
+        const t = (r + 1) / 11, y = hz + (wb - hz) * Math.pow(t, 1.4);
+        for (let k = 0; k < 6; k++) { const x = rnd01(r * 11 + k) * W, len = W * (0.03 + t * 0.08); strokeP(`M${f(x)},${f(y)} l${f(len)},0`, "#DCE8EE", 0.4 + t * 0.8, 0.25 + t * 0.25, g); }
+      }
+      glitter(hz, wb, skyX * W, 12);
+      // Bliski brzeg: pas mułu i trawa
+      paint("path", { d: ridge(W, H, x => wb - H * 0.012 + H * 0.01 * Math.sin(x * 5 + 0.4), 0.05, H) }, "#8C8468", g);
+      const top = wb + H * 0.004;
+      paint("path", { d: ridge(W, H, x => top + H * 0.01 * Math.sin(x * 5 + 0.4), 0.05, H) }, vGrad(defs, uid + "lg", [[0, "#93AE72"], [1, "#5C7C46"]]), g);
+      grassField(g, W, H, hz, top + H * 0.01, "#56763C", "#B4CB8A", 9, 30);
+    } else {
+      paint("rect", { x: 0, y: f(hz + H * 0.004), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "rg", [[0, "#93AE72"], [0.4, "#7E9C5E"], [1, "#5A7A44"]]), g);
+      grassField(g, W, H, hz, hz + H * 0.01, "#56763C", "#B4CB8A", 13, 34);
+      // Nurt od horyzontu do przodu kadru: brzegi z ziemią, smugi prądu i błysk słońca
+      const L0 = [W * 0.46, hz], L1 = [W * 0.7, hz + (H - hz) * 0.3], L2 = [W * 0.2, hz + (H - hz) * 0.6], L3 = [W * 0.3, H];
+      const R0 = [W * 0.54, hz], R1 = [W * 0.85, hz + (H - hz) * 0.3], R2 = [W * 0.55, hz + (H - hz) * 0.6], R3 = [W * 0.95, H];
+      const d = `M${f(L0[0])},${f(L0[1])} C${f(L1[0])},${f(L1[1])} ${f(L2[0])},${f(L2[1])} ${f(L3[0])},${f(L3[1])} L${f(R3[0])},${f(R3[1])} C${f(R2[0])},${f(R2[1])} ${f(R1[0])},${f(R1[1])} ${f(R0[0])},${f(R0[1])} Z`;
+      el("path", { d, style: `fill:none;stroke:#7A6C50;stroke-width:${f(u * 1.6)};stroke-linejoin:round` }, g);
+      paint("path", { d }, vGrad(defs, uid + "rw", [[0, "#9DBBCB"], [0.4, "#6F95AC"], [1, "#4C7590"]]), g);
+      for (let k = 0; k < 34; k++) {
+        const t = 0.04 + rnd01(k * 1.9) * 0.94, a = bez(L0, L1, L2, L3, t), b = bez(R0, R1, R2, R3, t), q = 0.15 + rnd01(k * 4.3) * 0.7;
+        const x = a[0] + (b[0] - a[0]) * q, y = a[1] + (b[1] - a[1]) * q, len = (b[0] - a[0]) * 0.12;
+        strokeP(`M${f(x)},${f(y)} q${f(len / 2)},${f(-u * 0.2)} ${f(len)},0`, "#E4EEF3", 0.4 + t * 1.1, 0.35 + t * 0.3, g);
+      }
+      const gx = bez(L0, L1, L2, L3, 0.5)[0] / 2 + bez(R0, R1, R2, R3, 0.5)[0] / 2;
+      glitter(hz + (H - hz) * 0.05, hz + (H - hz) * 0.45, Math.abs(gx - skyX * W) < W * 0.25 ? skyX * W : gx, 9);
+    }
+  }
+
+  // Ulica w perspektywie: kamienice (albo szklane biurowce) po obu stronach zbiegają się do punktu na horyzoncie
+  function richStreet(g, defs, uid, W, H, hz, gy, u, tod, skyX, modern) {
+    const nightW = Math.max(0, Math.min(1, tod - 1)), vx = W * 0.5;
+    // Dalekie miasto w mgiełce
+    const far = [[0, 0.16], [0.07, 0.24], [0.15, 0.13], [0.24, 0.21], [0.36, 0.15], [0.45, 0.26], [0.55, 0.14], [0.63, 0.2], [0.74, 0.12], [0.83, 0.22], [0.92, 0.15], [1, 0.2]];
+    far.forEach(([x, h], i) => { if (i < far.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((far[i + 1][0] - x) * W + 1), height: f(h * H + 2) }, "#9AA4B2", g); });
+    paint("rect", { x: 0, y: f(hz - H * 0.26), width: f(W), height: f(H * 0.27) }, vGrad(defs, uid + "sz", [[0, "rgba(228,234,240,0)"], [1, "rgba(228,234,240,0.55)"]]), g);
+    // Jezdnia i chodniki: linie zbiegają się do punktu zbiegu
+    const at = (x, y, t) => [vx + (x - vx) * t, hz + (y - hz) * t];   // t 0 = punkt zbiegu, 1 = dół kadru
+    paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "ra", [[0, "#6A6C72"], [1, "#46484E"]]), g);
+    const curbL = [-W * 0.15, H], curbR = [W * 1.15, H], wallL = [-W * 1.4, H], wallR = [W * 2.4, H];
+    [[wallL, curbL], [curbR, wallR]].forEach(([a, b], i) => {
+      paint("path", { d: `M${f(vx)},${f(hz)} L${f(a[0])},${f(a[1])} L${f(b[0])},${f(b[1])} Z` }, vGrad(defs, uid + "sw" + i, [[0, "#A39F98"], [1, "#8A867E"]]), g);
+      strokeP(`M${f(vx)},${f(hz)} L${f(b[0])},${f(b[1])}`, "#5E5A55", u * 0.5, 0.8, g);
+      for (let k = 1; k < 12; k++) { const t = Math.pow(k / 12, 1.8), p = at(a[0], a[1], t), q = at(b[0], b[1], t); strokeP(`M${f(p[0])},${f(p[1])} L${f(q[0])},${f(q[1])}`, "#6E6A64", 0.4 + t, 0.35, g); }
+    });
+    for (let k = 1; k <= 4; k++) {
+      const t0 = Math.pow(k / 7, 1.8), t1 = Math.pow((k + 0.45) / 7, 1.8), p0 = at(vx, H, t0), p1 = at(vx, H, t1), w0 = W * 0.006 * (1 + k * 1.4);
+      paint("rect", { x: f(vx - w0 / 2), y: f(p0[1]), width: f(w0), height: f(p1[1] - p0[1]) }, "#E8E4DA", g, 0.75);
+    }
+    // Fasady: segmenty kamienic, okna w perspektywie (nocą część świeci), gzymsy
+    const facade = side => {
+      const s = side < 0 ? -1 : 1, edge = side < 0 ? 0 : W;
+      const deps = [1, 1.45, 2.1, 3.1, 4.7, 7.4, 12];   // głębokość kolejnych segmentów (1 = krawędź kadru)
+      const topH = H * 0.9, baseY = H + (H - hz) * 0.0;
+      for (let i = 0; i < deps.length - 1; i++) {
+        const d0 = deps[i], d1 = deps[i + 1], x0 = vx + (edge - vx) / d0, x1 = vx + (edge - vx) / d1;
+        const hh = topH * (0.75 + 0.35 * rnd01(i * 3 + (s > 0 ? 7 : 0)));
+        const t0 = hz - hh / d0, t1 = hz - hh / d1, b0 = hz + (baseY - hz) * 0.62 / d0, b1 = hz + (baseY - hz) * 0.62 / d1;
+        const col = modern ? ["#6F8399", "#5E7389", "#7890A6"][i % 3] : ["#B59C82", "#9E8C78", "#C2A88C", "#8E7C6A"][i % 4];
+        paint("path", { d: `M${f(x0)},${f(t0)} L${f(x1)},${f(t1)} L${f(x1)},${f(b1)} L${f(x0)},${f(b0)} Z` }, col, g);
+        paint("path", { d: `M${f(x0)},${f(t0)} L${f(x1)},${f(t1)} L${f(x1)},${f(b1)} L${f(x0)},${f(b0)} Z` }, "#000", g, s > 0 === (skyX > 0.5) ? 0.04 : 0.16);
+        strokeP(`M${f(x0)},${f(t0)} L${f(x1)},${f(t1)}`, modern ? "#B9CADB" : "#E2D6C4", u * 0.7 / d0 + 0.6, 0.9, g);
+        // Okna: siatka w perspektywie
+        const cols = modern ? 4 : 3, rows = modern ? 9 : 5;
+        for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+          const ca = (c + 0.2) / cols, cb = (c + 0.8) / cols, ra = (r + 0.25) / rows, rb = (r + (modern ? 0.85 : 0.75)) / rows;
+          const xa = x0 + (x1 - x0) * ca, xb = x0 + (x1 - x0) * cb;
+          const ya = y => [t0 + (b0 - t0) * y, t1 + (b1 - t1) * y], A = ya(ra * 0.86), B = ya(rb * 0.86);
+          const ta = A[0] + (A[1] - A[0]) * ca, tb = A[0] + (A[1] - A[0]) * cb, ba = B[0] + (B[1] - B[0]) * ca, bb = B[0] + (B[1] - B[0]) * cb;
+          const lit = nightW > 0.3 && rnd01(i * 97 + c * 13 + r * 7 + (s > 0 ? 3 : 0)) > 0.45;
+          paint("path", { d: `M${f(xa)},${f(ta)} L${f(xb)},${f(tb)} L${f(xb)},${f(bb)} L${f(xa)},${f(ba)} Z` }, lit ? "#FFD58A" : modern ? "#A9C2D8" : "#5A6878", g, lit ? 0.95 : 0.85);
+        }
+        // Drzwi i witryna na parterze
+        const fa = [t0 + (b0 - t0) * 0.88, t1 + (b1 - t1) * 0.88];
+        paint("path", { d: `M${f(x0 + (x1 - x0) * 0.2)},${f(fa[0] + (fa[1] - fa[0]) * 0.2)} L${f(x0 + (x1 - x0) * 0.75)},${f(fa[0] + (fa[1] - fa[0]) * 0.75)} L${f(x0 + (x1 - x0) * 0.75)},${f(b0 + (b1 - b0) * 0.75)} L${f(x0 + (x1 - x0) * 0.2)},${f(b0 + (b1 - b0) * 0.2)} Z` }, nightW > 0.3 ? "#E8B868" : "#3E4652", g, 0.9);
+      }
+    };
+    facade(-1); facade(1);
+    // Latarnie przy krawężnikach
+    [[-1, 1.3], [1, 1.6], [-1, 3.2], [1, 4]].forEach(([s, d], i) => {
+      const bx = vx + ((s < 0 ? curbL[0] + W * 0.08 : curbR[0] - W * 0.08) - vx) / d, by = hz + (H - hz) / d, h = H * 0.62 / d;
+      strokeP(`M${f(bx)},${f(by)} L${f(bx)},${f(by - h)} q0,${f(-h * 0.05)} ${f(-s * h * 0.1)},${f(-h * 0.06)}`, "#2E3036", Math.max(1, u * 0.9 / d), 1, g);
+      const lx = bx - s * h * 0.1, ly = by - h * 1.04;
+      if (nightW > 0) radGlow(g, defs, uid + "lamp" + i, lx, ly + h * 0.05, h * 0.35, "#FFD68A", f(0.6 * nightW));
+      paint("ellipse", { cx: f(lx), cy: f(ly + h * 0.02), rx: f(h * 0.05), ry: f(h * 0.022) }, nightW > 0.3 ? "#FFE8B0" : "#D8DCE0", g);
+    });
+  }
+
+  function richRooftop(g, defs, uid, W, H, hz, gy, u, tod, skyX) {
+    const nightW = Math.max(0, Math.min(1, tod - 1));
+    const sky = (seed, n, hMin, hMax, col, win) => {
+      for (let k = 0; k < n; k++) {
+        const x = (k / n) * W, w = W / n + 1, h = (hMin + (hMax - hMin) * rnd01(seed + k)) * H;
+        paint("rect", { x: f(x), y: f(hz - h), width: f(w), height: f(h + 2) }, col, g);
+        if (win) for (let r = 1; r < h / (H * 0.025); r++) for (let c = 0; c < 3; c++) {
+          const lit = nightW > 0.3 ? rnd01(seed * 7 + k * 31 + r * 5 + c) > 0.5 : rnd01(k + r + c) > 0.7;
+          if (lit) paint("rect", { x: f(x + w * (0.15 + c * 0.28)), y: f(hz - h + r * H * 0.025), width: f(w * 0.16), height: f(H * 0.01) }, nightW > 0.3 ? "#FFD58A" : "#C4D3E2", g, 0.8);
+        }
+      }
+    };
+    sky(5, 22, 0.08, 0.3, "#A3AEBC", false);
+    paint("rect", { x: 0, y: f(hz - H * 0.3), width: f(W), height: f(H * 0.31) }, vGrad(defs, uid + "tz", [[0, "rgba(228,234,240,0)"], [1, "rgba(228,234,240,0.5)"]]), g);
+    sky(41, 13, 0.05, 0.17, "#6E7A8C", true);
+    // Murek dachu z jasną obróbką i posadzka z płyt w perspektywie
+    paint("rect", { x: 0, y: f(hz - H * 0.005), width: f(W), height: f(H * 0.045) }, "#8E8A84", g);
+    paint("rect", { x: 0, y: f(hz - H * 0.012), width: f(W), height: f(H * 0.01) }, "#C4C0B8", g);
+    const top = hz + H * 0.04, vx = W * 0.5;
+    paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, vGrad(defs, uid + "tf", [[0, "#9C9890"], [1, "#77736C"]]), g);
+    for (let k = -8; k <= 8; k++) { const xb = vx + k * W * 0.16; strokeP(`M${f(vx + (xb - vx) * 0.12)},${f(top)} L${f(xb)},${f(H)}`, "#5E5A54", 0.6, 0.4, g); }
+    for (let k = 1; k < 10; k++) { const y = depthY(hz, H, k / 10, top); strokeP(`M0,${f(y)} L${f(W)},${f(y)}`, "#5E5A54", 0.4 + k * 0.08, 0.35, g); }
+    // Wywietrznik i zbiornik na wodę przy prawej krawędzi
+    paint("rect", { x: f(W * 0.86), y: f(hz - H * 0.17), width: f(W * 0.12), height: f(H * 0.21) }, "#7C7A78", g);
+    paint("rect", { x: f(W * 0.92), y: f(hz - H * 0.17), width: f(W * 0.06), height: f(H * 0.21) }, "#000", g, 0.15);
+    paint("rect", { x: f(W * 0.84), y: f(hz - H * 0.2), width: f(W * 0.16), height: f(H * 0.035) }, "#96928E", g);
+    paint("rect", { x: f(W * 0.02), y: f(hz - H * 0.08), width: f(W * 0.06), height: f(H * 0.11) }, "#86827C", g);
+    for (let k = 0; k < 4; k++) paint("rect", { x: f(W * 0.025), y: f(hz - H * (0.07 - k * 0.022)), width: f(W * 0.05), height: f(H * 0.006) }, "#5E5A54", g, 0.6);
+  }
+
+  function richStudio(g, defs, uid, W, H, hz, gy, u, v) {
+    // Bezszwowe tło fotograficzne: ściana łagodnie przechodzi w podłogę, za postacią plama światła
+    const C = { grey: ["#7C7C83", "#64646B", "#58585E", "#4A4A50"], white: ["#E7E5E0", "#D6D4CF", "#CDCBC6", "#BDBBB6"], black: ["#2C2C31", "#222226", "#1E1E22", "#17171A"], color: ["#5D858A", "#4A6E73", "#43666B", "#36565A"] }[v || "grey"] || ["#7C7C83", "#64646B", "#58585E", "#4A4A50"];
+    const fy = Math.min(gy, H * 0.92);
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "sw", [[0, C[0]], [(fy - H * 0.2) / H, C[1]], [fy / H, C[2]], [1, C[3]]]), g);
+    radGlow(g, defs, uid + "sp", W / 2, H * 0.48, Math.max(W, H) * 0.42, "#FFFFFF", v === "white" ? "0.35" : v === "black" ? "0.12" : "0.22", H * 0.46);
+    radGlow(g, defs, uid + "sf", W / 2, fy, W * 0.55, "#FFFFFF", v === "black" ? "0.06" : "0.12", H * 0.07);
+    // Winieta po bokach (miękkie zejście światła)
+    const vg = el("radialGradient", { id: uid + "sv", cx: "50%", cy: "50%", r: "70%" }, defs);
+    el("stop", { offset: "0.6", "stop-color": "#000", "stop-opacity": "0" }, vg);
+    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": v === "white" ? "0.18" : "0.35" }, vg);
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, `url(#${uid}sv)`, g);
+  }
+
+  // Pokój: jasna ściana z listwą, podłoga z desek w perspektywie (okno, meble i dodatki rysuje dalej drawBackgroundBase)
+  function richRoomBase(g, defs, uid, W, H, hz, gy, u, fy) {
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, vGrad(defs, uid + "rw", [[0, "#B7AB98"], [0.5, "#CABFAD"], [1, "#BFB39F"]]), g);
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(H * 0.18) }, vGrad(defs, uid + "rc", [[0, "rgba(40,30,20,0.28)"], [1, "rgba(40,30,20,0)"]]), g);
+    paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "rf", [[0, "#A47C56"], [1, "#7C5B3D"]]), g);
+    const vx = W * 0.5, vy = fy - (H - fy) * 1.6;
+    for (let k = -14; k <= 14; k++) { const xb = vx + k * W * 0.09, xt = vx + (xb - vx) * (fy - vy) / (H - vy); strokeP(`M${f(xt)},${f(fy)} L${f(xb)},${f(H)}`, "#5E422B", 0.6, 0.45, g); }
+    for (let k = 0; k < 18; k++) {
+      const t = rnd01(k * 2.1), y = fy + (H - fy) * Math.pow(t, 1.3), lane = Math.floor(rnd01(k * 5.7) * 20) - 10, xb = vx + lane * W * 0.09, xt = vx + (xb - vx) * (y - vy) / (H - vy), xb2 = vx + (lane + 1) * W * 0.09, xt2 = vx + (xb2 - vx) * (y - vy) / (H - vy);
+      strokeP(`M${f(xt)},${f(y)} L${f(xt2)},${f(y)}`, "#5E422B", 0.6, 0.4, g);
+    }
+    // Listwa przypodłogowa
+    paint("rect", { x: 0, y: f(fy - H * 0.018), width: f(W), height: f(H * 0.02) }, "#ECE6DA", g);
+    paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H * 0.004) }, "#000", g, 0.25);
+  }
+
+  // Kawiarnia: ciepła ściana, boazeria, podłoga w szachownicę w perspektywie, lada z ekspresem, tablica z menu, światło lamp na ścianie
+  function richCafeBase(g, defs, uid, W, H, hz, gy, u, fy) {
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, vGrad(defs, uid + "cw", [[0, "#6E4E3A"], [1, "#8C6A50"]]), g);
+    const wy = fy - H * 0.2;
+    paint("rect", { x: 0, y: f(wy), width: f(W), height: f(fy - wy) }, "#5A3E2C", g);
+    paint("rect", { x: 0, y: f(wy - H * 0.008), width: f(W), height: f(H * 0.01) }, "#7A5640", g);
+    for (let k = 0; k <= 16; k++) paint("rect", { x: f(k * W / 16), y: f(wy), width: 1, height: f(fy - wy) }, "#3E2A1E", g, 0.6);
+    // Podłoga: szachownica w perspektywie
+    const vx = W * 0.5, vy = fy - (H - fy) * 1.4, cols = 14, rows = 7;
+    paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, "#D6CCB8", g);
+    const X = (c, y) => { const xb = vx + (c - cols / 2) * W * 0.16; return vx + (xb - vx) * (y - vy) / (H - vy); };
+    for (let r = 0; r < rows; r++) {
+      const y0 = fy + (H - fy) * Math.pow(r / rows, 1.35), y1 = fy + (H - fy) * Math.pow((r + 1) / rows, 1.35);
+      for (let c = 0; c < cols; c++) if ((r + c) % 2) paint("path", { d: `M${f(X(c, y0))},${f(y0)} L${f(X(c + 1, y0))},${f(y0)} L${f(X(c + 1, y1))},${f(y1)} L${f(X(c, y1))},${f(y1)} Z` }, "#3E3430", g);
+    }
+    paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "cf", [[0, "rgba(40,24,14,0.35)"], [1, "rgba(40,24,14,0.1)"]]), g);
+    // Tablica z menu nad ladą
+    paint("rect", { x: f(W * 0.03), y: f(H * 0.16), width: f(W * 0.19), height: f(H * 0.15), rx: f(u * 0.6) }, "#6A4A32", g);
+    paint("rect", { x: f(W * 0.04), y: f(H * 0.168), width: f(W * 0.17), height: f(H * 0.134) }, "#2A2E2C", g);
+    for (let k = 0; k < 5; k++) paint("rect", { x: f(W * 0.055), y: f(H * (0.19 + k * 0.022)), width: f(W * (0.08 + rnd01(k) * 0.06)), height: f(H * 0.005) }, "#E8E4DA", g, 0.75);
+    // Półki z kubkami i słojami po prawej
+    [0.28, 0.4].forEach((t, j) => {
+      paint("rect", { x: f(W * 0.79), y: f(H * t), width: f(W * 0.21), height: f(H * 0.01) }, "#8A6446", g);
+      for (let k = 0; k < 4; k++) paint("rect", { x: f(W * (0.81 + k * 0.045)), y: f(H * (t - 0.05)), width: f(W * 0.026), height: f(H * 0.05), rx: f(W * 0.006) }, ["#E8E2D6", "#B8C8C0", "#D9A86A", "#E8E2D6"][(k + j) % 4], g, 0.9);
+    });
+    // Lada z blatem i ekspresem
+    paint("rect", { x: 0, y: f(fy - H * 0.14), width: f(W * 0.25), height: f(H * 0.16) }, "#7A5640", g);
+    for (let k = 1; k < 4; k++) paint("rect", { x: f(W * 0.0625 * k), y: f(fy - H * 0.13), width: 1, height: f(H * 0.14) }, "#4E3626", g, 0.6);
+    paint("rect", { x: 0, y: f(fy - H * 0.158), width: f(W * 0.27), height: f(H * 0.02) }, "#2E2A28", g);
+    paint("rect", { x: f(W * 0.05), y: f(fy - H * 0.235), width: f(W * 0.11), height: f(H * 0.078), rx: f(u * 0.5) }, "#B9BEC4", g);
+    paint("rect", { x: f(W * 0.06), y: f(fy - H * 0.225), width: f(W * 0.09), height: f(H * 0.02) }, "#7E848A", g);
+    paint("rect", { x: f(W * 0.09), y: f(fy - H * 0.2), width: f(W * 0.012), height: f(H * 0.03) }, "#4A4E54", g);
+  }
+
   function drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null) {
     // Miękka plama światła (latarnie, lampy w kawiarni)
     // v: podstawa tła i jego dodatki
@@ -2753,6 +3005,7 @@
       el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
       paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
     };
+    if (kind === "studio" && !flatDraw) { richStudio(g, defs, uid, W, H, hz, gy, u, v && v[0]); return; }
     if (kind === "studio") {
       // Ciemna ściana, jaśniejsza podłoga z miękkim przejściem i plama światła za postacią
       const SC = { grey: ["#2F2F36", "#24242A", "#2A2A30", "#36363D", "#2B2B31"], white: ["#BDBBB6", "#A9A7A2", "#B3B1AC", "#C7C5C0", "#B0AEA9"],
@@ -2770,6 +3023,8 @@
     if (kind === "street") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3A4452"], [1, "#5E6875"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      if (!flatDraw) richStreet(g, defs, uid, W, H, hz, gy, u, tod, skyX, is("modern"));
+      else {
       // Dalszy plan: mgliste bryły miasta
       const far = [[0, 0.2], [0.08, 0.28], [0.17, 0.16], [0.28, 0.25], [0.4, 0.19], [0.52, 0.27], [0.64, 0.15], [0.75, 0.23], [0.87, 0.18], [1, 0.26]];
       far.forEach(([x, h], i) => { if (i < far.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((far[i + 1][0] - x) * W + 1), height: f(h * H) }, "#4C535E", g); });
@@ -2789,7 +3044,8 @@
           paint("rect", { x: f(bx + bw * (0.2 + q * 0.4)), y: f(top + H * (0.05 + r * 0.1)), width: f(bw * 0.2), height: f(H * 0.05) }, "#8A7A58", g, 0.35);
         }
       });
-      if (is("modern")) {
+      }
+      if (is("modern") && flatDraw) {
         // Szklane biurowce przy krawędziach, z siatką okien
         [[0, 0.26, 0.8], [0.74, 1, 0.72]].forEach(([x0, x1, h]) => {
           const top = hz - h * H, bx = x0 * W, bw = (x1 - x0) * W;
@@ -2813,21 +3069,26 @@
         });
         for (let k = 0; k < 26; k++) paint("rect", { x: f(((k * 0.618) % 1) * W), y: f(((k * 0.37) % 1) * hz), width: 0.7, height: f(H * 0.04) }, "#C9D4E0", g, 0.35);
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.3, tod);
       return;
     }
     if (kind === "mountains") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B4759"], [1, "#8290A0"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
-      paint("path", { d: peaks([[0, 0.12], [0.12, 0.21], [0.26, 0.11], [0.4, 0.24], [0.55, 0.09], [0.68, 0.19], [0.82, 0.1], [0.94, 0.22], [1, 0.15]], W, hz, H) }, "#5C687A", g);
-      paint("path", { d: peaks([[0, 0.07], [0.16, 0.12], [0.32, 0.04], [0.5, 0.09], [0.7, 0.03], [0.86, 0.13], [1, 0.06]], W, hz + H * 0.02, H) }, "#414C5B", g);
-      const ground = is("alp") ? [[0, "#56744C"], [1, "#35492F"]] : [[0, "#34403A"], [1, "#252C27"]];
-      paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H) }, vGrad(defs, uid + "g", ground), g);
+      if (!flatDraw) richMountains(g, defs, uid, W, H, hz, gy, u, tod, skyX, is("alp"));
+      else {
+        paint("path", { d: peaks([[0, 0.12], [0.12, 0.21], [0.26, 0.11], [0.4, 0.24], [0.55, 0.09], [0.68, 0.19], [0.82, 0.1], [0.94, 0.22], [1, 0.15]], W, hz, H) }, "#5C687A", g);
+        paint("path", { d: peaks([[0, 0.07], [0.16, 0.12], [0.32, 0.04], [0.5, 0.09], [0.7, 0.03], [0.86, 0.13], [1, 0.06]], W, hz + H * 0.02, H) }, "#414C5B", g);
+        const ground = is("alp") ? [[0, "#56744C"], [1, "#35492F"]] : [[0, "#34403A"], [1, "#252C27"]];
+        paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H) }, vGrad(defs, uid + "g", ground), g);
+      }
       if (is("lake")) {
         // Jezioro u stóp gór z odbiciem szczytów
         paint("rect", { x: 0, y: f(hz + H * 0.02), width: f(W), height: f(H * 0.09) }, vGrad(defs, uid + "lk", [[0, "#6D8296"], [1, "#4E6275"]]), g);
         paint("path", { d: peaks([[0, 0.05], [0.2, 0.08], [0.4, 0.04], [0.55, 0.07], [0.75, 0.03], [1, 0.05]], W, hz + H * 0.02, -H) }, "#5C687A", g, 0.35);
         for (let k = 0; k < 5; k++) paint("rect", { x: f(W * (0.1 + k * 0.18)), y: f(hz + H * (0.05 + (k % 2) * 0.03)), width: f(W * 0.1), height: 0.8 }, "#C9D8E4", g, 0.5);
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.3, tod);
       return;
     }
     if (kind === "forest") {
@@ -2885,6 +3146,8 @@
     if (kind === "rooftop") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#3B485A"], [1, "#7F8C9B"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      if (!flatDraw) richRooftop(g, defs, uid, W, H, hz, gy, u, tod, skyX);
+      else {
       const sk = [[0, 0.08], [0.06, 0.14], [0.13, 0.06], [0.2, 0.18], [0.27, 0.1], [0.35, 0.07], [0.42, 0.15], [0.5, 0.09], [0.58, 0.2], [0.65, 0.08], [0.73, 0.12], [0.8, 0.06], [0.87, 0.16], [0.94, 0.09], [1, 0.11]];
       sk.forEach(([x, h], i) => { if (i < sk.length - 1) paint("rect", { x: f(x * W), y: f(hz - h * H), width: f((sk[i + 1][0] - x) * W + 1), height: f(h * H + 2) }, "#56606F", g); });
       // Gzyms dachu i posadzka
@@ -2894,13 +3157,15 @@
       paint("rect", { x: f(W * 0.86), y: f(hz - H * 0.16), width: f(W * 0.12), height: f(H * 0.2) }, "#3A3C43", g);
       paint("rect", { x: f(W * 0.84), y: f(hz - H * 0.19), width: f(W * 0.16), height: f(H * 0.035) }, "#45474E", g);
       paint("rect", { x: f(W * 0.02), y: f(hz - H * 0.07), width: f(W * 0.05), height: f(H * 0.1) }, "#3D3F46", g);
+      }
       if (is("towers")) {
         // Wysokie wieżowce za dachem
         [[0.12, 0.1, 0.46], [0.3, 0.08, 0.38], [0.62, 0.11, 0.5], [0.76, 0.07, 0.34]].forEach(([x, w, h]) => {
           paint("rect", { x: f(x * W), y: f(hz - h * H), width: f(w * W), height: f(h * H) }, "#4A5363", g);
           for (let r = 1; r < 10; r++) paint("rect", { x: f(x * W), y: f(hz - h * H + r * h * H / 10), width: f(w * W), height: 0.7 }, "#8FA3BA", g, 0.3);
         });
-        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.035) }, "#44464D", g);
+        if (flatDraw) paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.035) }, "#44464D", g);
+        else { paint("rect", { x: 0, y: f(hz - H * 0.005), width: f(W), height: f(H * 0.045) }, "#8E8A84", g); paint("rect", { x: 0, y: f(hz - H * 0.012), width: f(W), height: f(H * 0.01) }, "#C4C0B8", g); }
       }
       if (is("terrace")) {
         // Rośliny w donicach i girlanda żarówek
@@ -2916,6 +3181,7 @@
           paint("circle", { cx: f(x), cy: f(y + u), r: f(u * 0.6) }, "#FFE3A6", g);
         }
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.3, tod);
       return;
     }
     if (kind === "beach") {
@@ -2958,16 +3224,19 @@
     if (kind === "lake" || kind === "river") {
       paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#40526A"], [1, "#9AABB6"]]), g);
       drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      if (!flatDraw) richWater(g, defs, uid, W, H, hz, gy, u, tod, skyX, kind === "river");
       // Dalszy brzeg: linia drzew
       let d = `M0,${f(hz)}`;
       for (let x = 0; x <= 1.001; x += 0.04) d += ` L${f(x * W)},${f(hz - H * (0.035 + ((x * 29) % 1) * 0.03))} L${f((x + 0.02) * W)},${f(hz - H * 0.015)}`;
-      paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3F5143", g);
+      if (flatDraw) paint("path", { d: d + ` L${f(W)},${f(hz)} Z` }, "#3F5143", g);
       if (kind === "lake") {
         // Szeroka tafla wody z odbiciem brzegu i jasnymi refleksami, bliżej trawiasty brzeg
-        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.2) }, vGrad(defs, uid + "w", [[0, "#6F8799"], [1, "#4D6475"]]), g);
+        if (flatDraw) paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.2) }, vGrad(defs, uid + "w", [[0, "#6F8799"], [1, "#4D6475"]]), g);
+        if (flatDraw) {
         paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H * 0.025) }, "#3F5143", g, 0.35);
         for (let k = 0; k < 7; k++) paint("rect", { x: f(W * (0.05 + ((k * 0.37) % 0.9))), y: f(hz + H * (0.04 + k * 0.02)), width: f(W * (0.08 + (k % 3) * 0.04)), height: 0.8 }, "#D5E2EA", g, 0.45);
-        paint("path", { d: `M0,${f(hz + H * 0.2)} Q${f(W * 0.5)},${f(hz + H * 0.17)} ${f(W)},${f(hz + H * 0.21)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#4A6146"], [1, "#2F3D2E"]]), g);
+        }
+        if (flatDraw) paint("path", { d: `M0,${f(hz + H * 0.2)} Q${f(W * 0.5)},${f(hz + H * 0.17)} ${f(W)},${f(hz + H * 0.21)} L${f(W)},${f(H)} L0,${f(H)} Z` }, vGrad(defs, uid + "g", [[0, "#4A6146"], [1, "#2F3D2E"]]), g);
         if (is("jetty")) {
           paint("path", { d: `M${f(W * 0.62)},${f(H)} L${f(W * 0.9)},${f(H)} L${f(W * 0.7)},${f(hz + H * 0.07)} L${f(W * 0.64)},${f(hz + H * 0.07)} Z` }, "#6A5844", g);
           for (let k = 1; k < 8; k++) { const t = k / 8, y = hz + H * 0.07 + (H - hz - H * 0.07) * t * t; paint("rect", { x: f(W * (0.64 - t * 0.02)), y: f(y), width: f(W * (0.06 + t * 0.22)), height: 0.8 }, "#3E3226", g, 0.6); }
@@ -2981,8 +3250,8 @@
         }
       } else {
         // Rzeka: zielone brzegi, szeroki nurt od horyzontu do przodu kadru
-        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#4A6146"], [1, "#2F3D2E"]]), g);
-        paint("path", { d: `M${f(W * 0.46)},${f(hz)} C${f(W * 0.7)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.2)},${f(hz + (H - hz) * 0.6)} ${f(W * 0.3)},${f(H)} L${f(W * 0.95)},${f(H)} C${f(W * 0.55)},${f(hz + (H - hz) * 0.6)} ${f(W * 0.85)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.54)},${f(hz)} Z` }, vGrad(defs, uid + "w", [[0, "#7C98A6"], [1, "#4F6D7C"]]), g);
+        if (flatDraw) paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H - hz) }, vGrad(defs, uid + "g", [[0, "#4A6146"], [1, "#2F3D2E"]]), g);
+        if (flatDraw) paint("path", { d: `M${f(W * 0.46)},${f(hz)} C${f(W * 0.7)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.2)},${f(hz + (H - hz) * 0.6)} ${f(W * 0.3)},${f(H)} L${f(W * 0.95)},${f(H)} C${f(W * 0.55)},${f(hz + (H - hz) * 0.6)} ${f(W * 0.85)},${f(hz + (H - hz) * 0.3)} ${f(W * 0.54)},${f(hz)} Z` }, vGrad(defs, uid + "w", [[0, "#7C98A6"], [1, "#4F6D7C"]]), g);
         if (is("rocky")) {
           [[0.42, 0.72, 0.05], [0.62, 0.84, 0.06], [0.5, 0.95, 0.07], [0.72, 0.62, 0.035]].forEach(([x, y, r]) => {
             paint("ellipse", { cx: f(x * W), cy: f(y * H), rx: f(r * W * 1.4), ry: f(r * H * 0.45) }, "#5A5853", g);
@@ -2996,6 +3265,7 @@
           for (let k = 0; k <= 6; k++) { const t = k / 6, x = W * (0.3 + t * 0.6), yy = (1 - t) * (1 - t) * (y + H * 0.02) + 2 * t * (1 - t) * (y - H * 0.06) + t * t * (y + H * 0.02); paint("rect", { x: f(x - 0.7), y: f(yy - H * 0.04), width: 1.4, height: f(H * 0.04) }, "#4E3F30", g); }
         }
       }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.1, tod);
       return;
     }
     if (kind === "meadow") {
@@ -3035,16 +3305,20 @@
       return;
     }
     if (kind === "room") {
-      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A3531"], [1, "#2E2A27"]]), g);
       const fy = Math.min(gy, H * 0.92) - H * 0.12;
-      paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#3C3129"], [1, "#2B231D"]]), g);
-      paint("rect", { x: 0, y: f(fy - H * 0.012), width: f(W), height: f(H * 0.012) }, "#46403A", g);
-      for (let k = 1; k < 4; k++) paint("rect", { x: 0, y: f(fy + (H - fy) * k / 4), width: f(W), height: 1 }, "#FFFFFF", g, 0.05);
+      if (!flatDraw) richRoomBase(g, defs, uid, W, H, hz, gy, u, fy);
+      else {
+        paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A3531"], [1, "#2E2A27"]]), g);
+        paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#3C3129"], [1, "#2B231D"]]), g);
+        paint("rect", { x: 0, y: f(fy - H * 0.012), width: f(W), height: f(H * 0.012) }, "#46403A", g);
+        for (let k = 1; k < 4; k++) paint("rect", { x: 0, y: f(fy + (H - fy) * k / 4), width: f(W), height: 1 }, "#FFFFFF", g, 0.05);
+      }
       // Okno przy lewej krawędzi
       const wx = W * 0.03, wy = H * 0.07, ww = W * 0.22, wh = H * 0.35;
-      paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, "#55606C", g);
+      const frameC = flatDraw ? "#55606C" : "#EEE9E0";
+      paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, frameC, g);
       const px = wx + ww * 0.08, py = wy + wh * 0.06, pw = ww * 0.84, ph = wh * 0.88;
-      paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "o", [[0, "#8093A3"], [1, "#6A7886"]]), g);
+      paint("rect", { x: f(px), y: f(py), width: f(pw), height: f(ph) }, vGrad(defs, uid + "o", flatDraw ? [[0, "#8093A3"], [1, "#6A7886"]] : [[0, "#9CC3E2"], [0.7, "#C6DDEC"], [1, "#9FB0A2"]]), g);
       // Za oknem pora dnia: o złotej godzinie zachodzi słońce, nocą księżyc i gwiazdy
       const goldW = Math.max(0, 1 - Math.abs(tod - 1)), nightW = Math.max(0, Math.min(1, tod - 1));
       if (goldW > 0 || nightW > 0) {
@@ -3071,8 +3345,28 @@
           paint("path", { d: `M${f(x0)},${f(fy)} L${f(x1)},${f(fy)} L${f(x1 + W * 0.28)},${f(H)} L${f(x0 + W * 0.2)},${f(H)} Z` }, "#FFB866", g, f(0.14 * goldW));
         }
       }
-      paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, "#55606C", g);
-      paint("rect", { x: f(wx), y: f(wy + wh * 0.48), width: f(ww), height: f(wh * 0.03) }, "#55606C", g);
+      paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, frameC, g);
+      paint("rect", { x: f(wx), y: f(wy + wh * 0.48), width: f(ww), height: f(wh * 0.03) }, frameC, g);
+      if (!flatDraw) {
+        const nightW = Math.max(0, Math.min(1, tod - 1));
+        // Parapet, zasłony, smuga światła z okna na podłodze, obraz na ścianie, dywan i roślina
+        paint("rect", { x: f(wx - ww * 0.06), y: f(wy + wh), width: f(ww * 1.12), height: f(H * 0.014) }, "#F2EEE6", g);
+        [[wx - ww * 0.16, 0.2], [wx + ww * 0.96, 0.2]].forEach(([x, w]) => {
+          paint("rect", { x: f(x), y: f(wy - H * 0.03), width: f(ww * w), height: f(wh + H * 0.08) }, "#D8CBB4", g);
+          for (let k = 1; k < 3; k++) paint("rect", { x: f(x + ww * w * k / 3), y: f(wy - H * 0.03), width: 1, height: f(wh + H * 0.08) }, "#A8987E", g, 0.6);
+        });
+        paint("rect", { x: f(wx - ww * 0.2), y: f(wy - H * 0.04), width: f(ww * 1.4), height: f(H * 0.008) }, "#6A5A4A", g);
+        if (nightW < 1) paint("path", { d: `M${f(wx + ww * 0.1)},${f(fy)} L${f(wx + ww * 0.95)},${f(fy)} L${f(wx + ww * 0.95 + W * 0.32)},${f(H)} L${f(wx + ww * 0.1 + W * 0.18)},${f(H)} Z` }, "#FFF1D2", g, f(0.22 * (1 - nightW)));
+        const ax = W * 0.66, ay = H * 0.12, aw = W * 0.2, ah = H * 0.14;
+        paint("rect", { x: f(ax), y: f(ay), width: f(aw), height: f(ah) }, "#3A3330", g);
+        paint("rect", { x: f(ax + aw * 0.07), y: f(ay + ah * 0.08), width: f(aw * 0.86), height: f(ah * 0.84) }, vGrad(defs, uid + "art", [[0, "#E2A86A"], [0.55, "#C86B52"], [1, "#4E6B7A"]]), g);
+        paint("path", { d: `M${f(ax + aw * 0.07)},${f(ay + ah * 0.7)} Q${f(ax + aw * 0.4)},${f(ay + ah * 0.45)} ${f(ax + aw * 0.93)},${f(ay + ah * 0.66)} L${f(ax + aw * 0.93)},${f(ay + ah * 0.92)} L${f(ax + aw * 0.07)},${f(ay + ah * 0.92)} Z` }, "#3E5560", g, 0.8);
+        paint("ellipse", { cx: f(W / 2), cy: f(Math.min(gy, H * 0.92) + H * 0.01), rx: f(W * 0.36), ry: f(H * 0.05) }, "#8E5A48", g, 0.85);
+        el("ellipse", { cx: f(W / 2), cy: f(Math.min(gy, H * 0.92) + H * 0.01), rx: f(W * 0.33), ry: f(H * 0.042), style: `fill:none;stroke:#E2C9A2;stroke-width:${f(u * 0.4)};opacity:0.7` }, g);
+        const pxp = W * 0.06, pyp = H * 0.99;
+        paint("path", { d: `M${f(pxp - W * 0.045)},${f(pyp - H * 0.07)} L${f(pxp + W * 0.045)},${f(pyp - H * 0.07)} L${f(pxp + W * 0.035)},${f(pyp)} L${f(pxp - W * 0.035)},${f(pyp)} Z` }, "#C27A58", g);
+        for (let k = -3; k <= 3; k++) strokeP(`M${f(pxp)},${f(pyp - H * 0.07)} Q${f(pxp + k * W * 0.02)},${f(pyp - H * 0.2)} ${f(pxp + k * W * 0.045)},${f(pyp - H * (0.18 - Math.abs(k) * 0.02))}`, k % 2 ? "#4F7A45" : "#3F6A38", u * 0.9, 1, g);
+      }
       const sx = W * 0.76, sw = W * 0.3, sb = fy + H * 0.02;
       if (is("loft")) {
         // Ceglana ściana: rzędy przesuniętych cegieł za oknem i sofą
@@ -3084,7 +3378,8 @@
       if (is("bedroom")) {
         // Łóżko przy prawej krawędzi z poduszką
         paint("rect", { x: f(W * 0.7), y: f(sb - H * 0.14), width: f(W * 0.04), height: f(H * 0.14) }, "#4A3D33", g);
-        paint("rect", { x: f(W * 0.72), y: f(sb - H * 0.08), width: f(W * 0.4), height: f(H * 0.08), rx: f(H * 0.01) }, "#8A8479", g);
+        paint("rect", { x: f(W * 0.72), y: f(sb - H * 0.08), width: f(W * 0.4), height: f(H * 0.08), rx: f(H * 0.01) }, flatDraw ? "#8A8479" : "#E4DED2", g);
+        if (!flatDraw) paint("rect", { x: f(W * 0.8), y: f(sb - H * 0.085), width: f(W * 0.32), height: f(H * 0.05), rx: f(H * 0.01) }, "#7E95A8", g);
         paint("rect", { x: f(W * 0.75), y: f(sb - H * 0.11), width: f(W * 0.12), height: f(H * 0.04), rx: f(H * 0.015) }, "#C9C4B8", g);
       } else if (is("office")) {
         // Biurko z monitorem
@@ -3094,14 +3389,17 @@
         paint("rect", { x: f(W * 0.875), y: f(sb - H * 0.14), width: f(W * 0.01), height: f(H * 0.02) }, "#2A2B30", g);
       } else {
         // Sofa przy prawej krawędzi
-        paint("rect", { x: f(sx), y: f(sb - H * 0.16), width: f(sw), height: f(H * 0.1), rx: f(H * 0.02) }, "#4A4140", g);
-        paint("rect", { x: f(sx - W * 0.02), y: f(sb - H * 0.08), width: f(sw), height: f(H * 0.08), rx: f(H * 0.015) }, "#55494A", g);
+        paint("rect", { x: f(sx), y: f(sb - H * 0.16), width: f(sw), height: f(H * 0.1), rx: f(H * 0.02) }, flatDraw ? "#4A4140" : "#5E6F7A", g);
+        paint("rect", { x: f(sx - W * 0.02), y: f(sb - H * 0.08), width: f(sw), height: f(H * 0.08), rx: f(H * 0.015) }, flatDraw ? "#55494A" : "#6E808B", g);
+        if (!flatDraw) paint("rect", { x: f(sx + W * 0.03), y: f(sb - H * 0.135), width: f(W * 0.07), height: f(H * 0.05), rx: f(H * 0.015) }, "#D9A86A", g);
       }
       return;
     }
     if (kind === "cafe") {
-      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A2E27"], [1, "#2C231E"]]), g);
       const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      if (!flatDraw) richCafeBase(g, defs, uid, W, H, hz, gy, u, fy);
+      else {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, "#3A2E27"], [1, "#2C231E"]]), g);
       paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, "#34291F"], [1, "#241C16"]]), g);
       // Półki z butelkami po prawej
       [0.28, 0.4].forEach(t => {
@@ -3111,10 +3409,15 @@
       // Lada przy lewej krawędzi
       paint("rect", { x: 0, y: f(fy - H * 0.14), width: f(W * 0.24), height: f(H * 0.16) }, "#4A392C", g);
       paint("rect", { x: 0, y: f(fy - H * 0.155), width: f(W * 0.26), height: f(H * 0.02) }, "#5C4736", g);
-      // Lampy wiszące przy krawędziach z ciepłą poświatą
+      }
+      // Lampy wiszące przy krawędziach z ciepłą poświatą (w pełnej jakości także plama światła na ścianie i stożek w dół)
       [W * 0.12, W * 0.3, W * 0.7, W * 0.88].forEach((x, i) => {
         const y = H * (i % 3 ? 0.2 : 0.14);
         paint("rect", { x: f(x - 0.5), y: 0, width: 1.2, height: f(y) }, "#6A5A4A", g);
+        if (!flatDraw) {
+          radGlow(g, defs, uid + "wl" + i, x, y + H * 0.12, W * 0.16, "#FFD49A", "0.35", H * 0.16);
+          paint("path", { d: `M${f(x - W * 0.03)},${f(y + H * 0.025)} L${f(x + W * 0.03)},${f(y + H * 0.025)} L${f(x + W * 0.11)},${f(fy)} L${f(x - W * 0.11)},${f(fy)} Z` }, "#FFE2B0", g, 0.08);
+        }
         glowAt(x, y + H * 0.02, H * 0.13, "#FFC47A", "0.3");
         paint("path", { d: `M${f(x - W * 0.035)},${f(y + H * 0.025)} L${f(x - W * 0.012)},${f(y)} L${f(x + W * 0.012)},${f(y)} L${f(x + W * 0.035)},${f(y + H * 0.025)} Z` }, "#2A211B", g);
       });

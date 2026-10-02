@@ -318,11 +318,17 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Kreator: po rękach „Jak stoi względem kamery?” (Ekspert) i „Gdzie patrzy?” (oba poziomy). Drzewko sceny pokazuje Spojrzenie i Zwrot (gdy inny niż Do kamery).
 - Tutorial: po skopiowaniu Maniscryptu, zanim pokaże się zdjęcie, przez 1,5 s w kadrze kręci się logo generatora (jak kółko ładowania), zmieniając się co 250 ms: ChatGPT, Gemini, Midjourney, Leonardo, Ideogram, Kling. Manikun mówi „Ciekawe, co AI nam zaproponuje…” (przy Fantasy: „Zobaczmy, co AI zrobi z Fantasy…”). Widać, że obraz robi AI z zewnątrz.
 
-## Tła w pełnej jakości: plaża, las, łąka
+## Tła w pełnej jakości (wszystkie miejsca)
 
 - W Próbnym kadrze i tutorialu (szkic roboczy zostaje prosty): podłoże z perspektywą i fakturą, która gęstnieje ku horyzontowi, trzy plany (daleki jasny i zamglony, średni nasycony, bliski ciemniejszy).
 - Plaża: morze ciemniejsze przy horyzoncie, fale coraz dłuższe ku brzegowi, odbicie słońca albo księżyca pod ciałem niebieskim, mokry piasek z pianą, suchy jasny piasek ze zmarszczkami i kamykami, trawa na wydmach w rogach.
 - Las: trzy rzędy świerków albo koron liściastych z mgiełką między nimi, drzewa z bryłą (strona od słońca jaśniejsza), ściółka z plamami słońca, igliwiem i paprociami, promienie słońca między drzewami (nie nocą), ścieżka z kamykami.
 - Łąka: wzgórza w trzech planach z kępami drzew, trawa ze źdźbłami w perspektywie, polne kwiatki, kępki w rogach.
 - Pora dnia na podłożu (noc granatowo, złota godzina ciepło) nakłada się na końcu, razem z dodatkami tła. Nakładka nieba w Próbnym kadrze gaśnie ku horyzontowi, bez twardej krawędzi. Linia podłogi pod stopami zostaje tylko w szkicu.
-
+- Góry: trzy pasma (dalekie jasne, średnie ciemniejsze) z cieniem zbocza od strony bez słońca i śniegiem na szczytach, pas lasu u stóp, hala z trawą albo kamienistym gruntem z głazami.
+- Jezioro: dalszy brzeg ze wzgórzami i drzewami w mgiełce, tafla z odbiciem drzew, zmarszczkami i błyskiem słońca, pas mułu i trawiasty brzeg. Rzeka: nurt z ziemnymi brzegami, smugami prądu i błyskiem, łąka dookoła.
+- Ulica: kamienice (albo szklane biurowce przy wariancie Nowoczesna) po obu stronach w perspektywie, zbiegające się do punktu na horyzoncie: gzymsy, okna (nocą część świeci), drzwi na parterze, chodniki z płytami i krawężnikiem, jezdnia z pasami, latarnie (nocą z poświatą), dalekie miasto w mgiełce.
+- Dach: panorama w dwóch planach (bliższa z oknami, nocą świecącymi), murek z obróbką, posadzka z płyt w perspektywie, wywietrznik i zbiornik.
+- Pokój: jasna ściana, listwa, podłoga z desek w perspektywie, okno z ramą, parapetem i zasłonami, smuga światła z okna na podłodze (nie nocą), obraz na ścianie, dywan pod postacią, roślina w donicy, jaśniejsze meble.
+- Kawiarnia: ciepła ściana z boazerią, podłoga w szachownicę w perspektywie, lada z ekspresem, tablica z menu, półki z kubkami, lampy świecące na ścianę i stożki światła w dół.
+- Studio: bezszwowe tło w kolorze wariantu (szare, białe, czarne, kolorowe), ściana łagodnie przechodzi w podłogę, plama światła za postacią i miękka winieta.
