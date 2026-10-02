@@ -379,3 +379,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Maniscrypt: „with a golden retriever dog sitting next to them on the right”, „a small friendly green cartoon dragon standing…”.
 - Kreator pyta „A może zwierzak? Pies, kot, królik albo smok.” (oba poziomy). Losowanie czasem dodaje zwierzaka. Wyszukiwarka zna „pies”, „kot”, „królik”, „smok”.
 
+
+## Nowe gotowce (Gotowe)
+
+- 16 nowych gotowych scen w `PRESETS.person`, razem 24.
+- 8 bez zwierząt: Pustynny wędrowiec, Zima w górach, Gotowanie w kuchni, Jesień w parku, Ognisko w lesie, Wakacje nad morzem (dziecko), Tatuaż i neony, Portret w golfie. Korzystają z nowych miejsc (pustynia, park, zimowe góry, kuchnia), ubrań (koszula w kratę, golf, top, kamizelka, szalik, torba) i cech (skóra, wiek, budowa, piegi, tatuaż, kolczyki).
+- 8 ze zwierzakami: Spacer z Manidogiem, Wieczór z Manicatem (fotel), Manibun na łące, Smok w lesie, Dalmatyńczyk w studiu, Pies na plaży, Lodowy smok, Manicat w kuchni. Każdy zwierzak ma ustaloną pozę i umaszczenie.
+- `wearIn(setId, parts, colors)` składa zestaw z podmienionymi częściami (strój „custom”).
+- `applyPreset` kopiuje gotowca głęboko i zeruje cechy (`TRAIT0`) oraz zwrot ciała, żeby scena nie dziedziczyła np. „dziecko, niski” z poprzednich ustawień. Miniatury gotowców rysują też rzeczy i zwierzaki.

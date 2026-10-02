@@ -4323,6 +4323,12 @@
   }
 
   // ---------- Gotowe schematy ----------
+  // Zestaw z podmienionymi częściami: kolory podanych części albo ich naturalne, reszta z zestawu
+  function wearIn(setId, parts, colors = {}) {
+    const d = dressIn(setId), wear = { ...d.wear, ...parts };
+    const wc = Object.fromEntries(PARTS.map(p => [p, colors[p] || (parts[p] ? wearOpt(p, parts[p]).def : null) || d.wc[p]]));
+    return { outfit: "custom", wear, wc, wcPicked: {} };
+  }
   const LOOK0 = { hair: null, hairPicked: false, hairColor: "auto", expr: "neutral", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" };
   const PRESETS = {
     person: [
@@ -4341,7 +4347,57 @@
       { id: "window", name: "Zamyślenie przy oknie", set: { ...dressIn("casual"), pose: "stand", arms: "chin", shot: "portrait", camera: "R2",
         light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "golden", look: { ...LOOK0, expr: "thought", hair: "short" } } },
       { id: "athlete", name: "Sportowiec na dachu", set: { ...dressIn("sport"), pose: "crouch", arms: "down", shot: "full", camera: "B",
-        light: "art-back", lightZone: "R1", background: "rooftop", bgv: { rooftop: "towers" }, time: "night", look: { ...LOOK0, expr: "anger", hair: "buzz" } } }
+        light: "art-back", lightZone: "R1", background: "rooftop", bgv: { rooftop: "towers" }, time: "night", look: { ...LOOK0, expr: "anger", hair: "buzz" } } },
+      // Nowe miejsca, ubrania i cechy
+      { id: "desert", name: "Pustynny wędrowiec", set: { ...wearIn("casual", { top: "shirt", bottom: "chinos", hat: "hat", acc: "bag", shoes: "boots" }, { top: "cream", bottom: "khaki", hat: "beige" }),
+        traits: { ...TRAIT0, skin: "tan" }, pose: "stride", arms: "shade", shot: "full", camera: "L3", light: "nat-front", lightZone: "R2",
+        background: "desert", bgv: { desert: "dunes" }, time: "golden", look: { ...LOOK0, hair: "short", glasses: "sun" } } },
+      { id: "winter", name: "Zima w górach", set: { ...wearIn("coat", { top: "turtleneck", outer: "jacket", bottom: "jeans", hat: "beanie", acc: "scarf" }, { outer: "red", hat: "cream", acc: "cream" }),
+        traits: { ...TRAIT0 }, pose: "contra", arms: "hips", shot: "full", camera: "L2", light: "nat-front", lightZone: "L1",
+        background: "snowpeaks", bgv: { snowpeaks: "peaks" }, bga: { snowpeaks: ["cabin"] }, fx: ["snow"], time: "day", look: { ...LOOK0, hair: "long", expr: "joy" } } },
+      { id: "kitchen", name: "Gotowanie w kuchni", set: { ...wearIn("casual", { top: "shirt", bottom: "chinos" }, { top: "sky", bottom: "beige" }),
+        traits: { ...TRAIT0, earrings: "studs" }, pose: "contra", arms: "hipOne", shot: "full", camera: "R2", light: "nat-front", lightZone: "L2",
+        background: "kitchen", bgv: { kitchen: "rustic" }, bga: { kitchen: ["herbs"] }, time: "day", look: { ...LOOK0, hair: "bun", expr: "smile" } } },
+      { id: "autumn", name: "Jesień w parku", set: { ...wearIn("coat", { acc: "scarf" }, { outer: "caramel", acc: "mustard" }),
+        traits: { ...TRAIT0, freckles: "yes", skin: "fair" }, pose: "stride", arms: "down", shot: "full", camera: "L2", light: "nat-back", lightZone: "R2",
+        background: "park", bgv: { park: "alley" }, fx: ["leaves"], time: "golden", look: { ...LOOK0, hair: "wavy", hairColor: "auburn", expr: "smile" } } },
+      { id: "lumberjack", name: "Ognisko w lesie", set: { ...wearIn("casual", { top: "plaid", outer: "vest", bottom: "jeans", hat: "beanie", shoes: "boots" }, { top: "red", outer: "olive", hat: "graphite" }),
+        traits: { ...TRAIT0, build: "stocky" }, things: [{ id: "stump" }], pose: "sit", arms: "down", shot: "full", camera: "R2", light: "nat-front", lightZone: "L1",
+        background: "forest", bgv: { forest: "clearing" }, fx: ["fire"], time: "night", look: { ...LOOK0, hair: "medium", beard: "full", expr: "smile" } } },
+      { id: "kidBeach", name: "Wakacje nad morzem", set: { ...wearIn("casual", { top: "tank", bottom: "shorts", hat: "cap" }, { top: "orange", bottom: "sky", hat: "white" }),
+        traits: { ...TRAIT0, age: "child", freckles: "yes" }, pose: "wide", arms: "hips", shot: "full", camera: "L2", light: "nat-front", lightZone: "L2",
+        background: "beach", bgv: { beach: "palms" }, time: "day", look: { ...LOOK0, hair: "curly", expr: "joy" } } },
+      { id: "tattoo", name: "Tatuaż i neony", set: { ...wearIn("sport", { top: "tank", hat: "cap" }, { top: "black", bottom: "graphite", hat: "black" }),
+        traits: { ...TRAIT0, build: "athletic", tattoo: "sleeve", earrings: "hoops" }, pose: "contra", arms: "hipOne", shot: "full", camera: "L3", light: "art-back", lightZone: "R1",
+        background: "street", bgv: { street: "modern" }, bga: { street: ["neon"] }, fx: ["puddles"], time: "night", look: { ...LOOK0, hair: "buzz" } } },
+      { id: "turtleneck", name: "Portret w golfie", set: { ...wearIn("casual", { top: "turtleneck", bottom: "chinos", shoes: "formal" }, { top: "black", bottom: "black" }),
+        traits: { ...TRAIT0, skin: "deep" }, pose: "stand", arms: "chin", shot: "portrait", camera: "L2", light: "art-back", lightZone: "L1",
+        background: "studio", bgv: { studio: "black" }, time: "day", look: { ...LOOK0, hair: "short", glasses: "round", expr: "thought" } } },
+      // Ze zwierzakami
+      { id: "dogPark", name: "Spacer z Manidogiem", set: { ...wearIn("casual", { acc: "bag" }, { top: "white" }),
+        traits: { ...TRAIT0 }, things: [{ id: "dog", pose: "stand", coat: "golden" }], pose: "stride", arms: "down", shot: "full", camera: "L2", light: "nat-front", lightZone: "R1",
+        background: "park", bgv: { park: "lawn" }, time: "day", look: { ...LOOK0, hair: "ponytail", expr: "smile" } } },
+      { id: "catChair", name: "Wieczór z Manicatem", set: { ...wearIn("casual", { top: "sweater", bottom: "joggers" }, { top: "cream", bottom: "grey" }),
+        traits: { ...TRAIT0 }, things: [{ id: "armchair" }, { id: "cat", pose: "lie", coat: "ginger" }], pose: "sit", arms: "down", shot: "full", camera: "R2", light: "art-front", lightZone: "L2",
+        background: "room", bgv: { room: "living" }, time: "night", look: { ...LOOK0, hair: "long", glasses: "round", expr: "smile" } } },
+      { id: "bunnyMeadow", name: "Manibun na łące", set: { ...wearIn("casual", { top: "tshirt", bottom: "shorts" }, { top: "pink", bottom: "denim" }),
+        traits: { ...TRAIT0, age: "child" }, things: [{ id: "bunny", pose: "sit", coat: "white" }], pose: "cross", arms: "down", shot: "full", camera: "L1", light: "nat-front", lightZone: "L2",
+        background: "meadow", bgv: { meadow: "flowers" }, time: "day", look: { ...LOOK0, hair: "ponytail", expr: "joy" } } },
+      { id: "dragonForest", name: "Smok w lesie", set: { ...wearIn("coat", { top: "plaid", outer: "coat", shoes: "boots", acc: "bag" }, { top: "bottle", outer: "brown" }),
+        traits: { ...TRAIT0 }, things: [{ id: "dragon", pose: "stand", coat: "green" }], pose: "wide", arms: "hips", shot: "full", camera: "B", light: "nat-back", lightZone: "R2",
+        background: "forest", bgv: { forest: "stream" }, fx: ["fog"], time: "golden", look: { ...LOOK0, hair: "medium", expr: "surprise" } } },
+      { id: "dalmatian", name: "Dalmatyńczyk w studiu", set: { ...dressIn("elegant"),
+        traits: { ...TRAIT0 }, things: [{ id: "dog", pose: "sit", coat: "dalmatian" }], pose: "contra", arms: "hipOne", shot: "full", camera: "L2", light: "art-front", lightZone: "R1",
+        background: "studio", bgv: { studio: "white" }, time: "day", look: { ...LOOK0, hair: "short", lips: "red" } } },
+      { id: "dogBeach", name: "Pies na plaży", set: { ...wearIn("casual", { top: "tank", bottom: "shorts" }, { top: "white", bottom: "navy" }),
+        traits: { ...TRAIT0, skin: "olive" }, things: [{ id: "dog", pose: "stand", coat: "black" }], pose: "stride", arms: "down", shot: "full", camera: "R2", light: "nat-back", lightZone: "L2",
+        background: "beach", bgv: { beach: "sand" }, time: "golden", look: { ...LOOK0, hair: "wavy", expr: "smile" } } },
+      { id: "iceDragon", name: "Lodowy smok", set: { ...wearIn("coat", { top: "sweater", outer: "jacket", bottom: "joggers", hat: "beanie", acc: "scarf" }, { outer: "sky", hat: "red", acc: "red" }),
+        traits: { ...TRAIT0, age: "child" }, things: [{ id: "dragon", pose: "sit", coat: "blue" }], pose: "stand", arms: "down", shot: "full", camera: "L2", light: "nat-front", lightZone: "R1",
+        background: "snowpeaks", bgv: { snowpeaks: "woods" }, fx: ["snow"], time: "day", look: { ...LOOK0, hair: "short", expr: "joy" } } },
+      { id: "catKitchen", name: "Manicat w kuchni", set: { ...wearIn("casual", { top: "sweater", bottom: "jeans" }, { top: "mustard" }),
+        traits: { ...TRAIT0, skin: "brown", earrings: "hoops" }, things: [{ id: "cat", pose: "sit", coat: "tabby" }], pose: "stand", arms: "hipOne", shot: "full", camera: "L2", light: "nat-front", lightZone: "L1",
+        background: "kitchen", bgv: { kitchen: "modern" }, time: "day", look: { ...LOOK0, hair: "curly", expr: "smile" } } }
     ],
     object: [
       { id: "perfume", name: "Kosmetyk na cokole", set: { item: "serum", base: "pedestal", itemColor: "beige", camera: "L2", light: "art-back", lightZone: "R1", background: "studio", bgv: { studio: "black" } } },
@@ -4364,20 +4420,21 @@
   };
   let lastPreset = null;
   function applyPreset(pr) {
-    const set = { ...pr.set };
+    // Kopia głęboka: późniejsze zmiany sceny (cechy, poza zwierzaka) nie mogą psuć gotowca
+    const set = JSON.parse(JSON.stringify(pr.set));
     // Gotowiec bez fryzury dostaje domyślną dla postaci
     if (set.look) set.look = { ...set.look, hair: set.look.hair || DEFAULT_HAIR_OF[scene.body], hairPicked: !!set.look.hair };
-    Object.assign(scene, { things: [], items: [], fx: [], ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bga: { ...(set.bga || {}) } });
+    Object.assign(scene, { things: [], items: [], fx: [], traits: { ...TRAIT0 }, turn: "camera", ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bga: { ...(set.bga || {}) } });
     lastPreset = pr.id;
     render();
   }
   function presetTiles() {
     return PRESETS[scene.subject].map(pr => tile("opt-preset-" + pr.id, pr.name, () => lastPreset === pr.id, () => applyPreset(pr), svg => {
       // Na czas rysowania miniatury scena przyjmuje ustawienia gotowca (wygląd i kolory ubrania czytane są ze sceny)
-      const st = { ...scene, ...pr.set, ...(pr.set.look ? { look: { ...pr.set.look, hair: pr.set.look.hair || DEFAULT_HAIR_OF[scene.body] } } : {}), bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, bga: { ...(pr.set.bga || {}) }, fx: pr.set.fx || [] };
+      const st = { ...scene, things: [], items: [], traits: { ...TRAIT0 }, turn: "camera", ...pr.set, ...(pr.set.look ? { look: { ...pr.set.look, hair: pr.set.look.hair || DEFAULT_HAIR_OF[scene.body] } } : {}), bgv: { ...scene.bgv, ...(pr.set.bgv || {}) }, bga: { ...(pr.set.bga || {}) }, fx: pr.set.fx || [] };
       const saved = { ...scene };
       Object.assign(scene, st);
-      renderScene(svg, st, 100, 100, new Set(["ground", "background", "camera", "light"]));
+      renderScene(svg, st, 100, 100, new Set(["ground", "background", "camera", "light", "things"]));
       Object.assign(scene, saved);
     }));
   }
