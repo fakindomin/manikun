@@ -148,6 +148,11 @@ function hairBack({ L, E, arc }, depth, wave = 0) {
   });
   return arc(40, 200, 12, a => E(a, 1.13, 1.06)).concat(side(-1.15, -1.28, 1), side(0.82, 0.78, -1).reverse());
 }
+// Kręcone: puszysta chmura loków wokół głowy do linii żuchwy. Brzeg z okrągłych garbków (loki), nie z fali
+function hairCloud({ L, E, arc }) {
+  const bumps = 11, R = a => { const t = (a - 55) / 205; return 1.32 + 0.16 * Math.sin(Math.PI * Math.min(1, t * 1.6)) + 0.1 * Math.abs(Math.sin(t * Math.PI * bumps)); };
+  return arc(55, 260, 88, a => E(a, R(a), R(a) * 1.02, -0.05)).concat([L(-0.15, -1.05), L(0.25, -0.55), L(0.55, 0.6)]);
+}
 // Pasmo z przodu po stronie twarzy: od skroni w dół, przed ramieniem
 function hairFront({ L }, depth, wave = 0) {
   const n = 12, pts = [];
@@ -161,7 +166,7 @@ const HAIR_SHAPES = {
   medium: h => ({ cap: hairCap(h, 1.1), back: [hairBack(h, 1.5)], front: hairFront(h, 1.3) }),
   long: h => ({ cap: hairCap(h, 1.1), back: [hairBack(h, 3.0)], front: hairFront(h, 2.8) }),
   wavy: h => ({ cap: hairCap(h, 1.12, 0.03), back: [hairBack(h, 2.8, 1)], front: hairFront(h, 2.6, 1) }),
-  curly: h => ({ cap: hairCap(h, 1.2, 0.07), back: [hairBack(h, 1.2, 1.5)] }),
+  curly: h => ({ cap: hairCap(h, 1.2, 0.07), back: [hairCloud(h)] }),
   ponytail: h => ({ cap: hairCap(h, 1.08), back: [h.arc(0, 360, 16, a => h.L(-1.15 + Math.cos(rad(a)) * 0.28, -0.55 + Math.sin(rad(a)) * 0.95))] }),
   bun: h => ({ cap: hairCap(h, 1.08), back: [h.arc(0, 360, 16, a => h.L(-0.55 + Math.cos(rad(a)) * 0.45, 1.02 + Math.sin(rad(a)) * 0.36))] })
 };
