@@ -417,3 +417,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Przelot 4 świeżo losowanych szkiców, odstępy 40, 50 i 65 ms (razem ok. 0,15 s; każdy szkic widać przez 2–4 klatki ekranu). Każdy szkic to pełne `randomize`, bez gotowej puli.
 - Losowanie pokazuje całą aplikację: w połowie losowań strój z pojedynczych części (wszystkie góry, okrycia, doły, buty), dodatki (szalik, torba), spojrzenie, a w trybie eksperta także zwrot ciała. Test 800 losowań: wszystkie części, zwroty, spojrzenia i miejsca się pojawiają, 0 błędów.
 - Wycofane: pełna klatka po losowaniu (`#previewStill`) psuła efekt przelotu. Losuj kończy się na zwykłym szkicu; pełna jakość zostaje tylko w próbnym kadrze.
+
+## Losuj jako zmiana scenografii w teatrze
+
+- Zamiast przelotu 4 szkiców jedno losowanie z teatralnym przejściem (ok. 1 s): Manikun z rzeczami i zwierzakiem odjeżdża w lewo jak na taśmie (0–380 ms), nowa dekoracja zjeżdża z góry, przyspiesza jak opuszczana i lekko podskakuje przy lądowaniu (120–720 ms, belka i cień na dolnej krawędzi), potem z prawej wjeżdża nowy Manikun i staje z małym przerzutem (470–990 ms).
+- Dźwięki: skrzypienie przy starcie (`krrr`), stuknięcie przy lądowaniu dekoracji (`tuk`).
+- Postać z rzeczami rysuje się w grupie `[data-part="subj"]`; stary Manikun to klon tej grupy z poprzedniej klatki (`belt.old`). Kamera, lampa i poza ustawiają się od razu, rusza się tylko dekoracja i taśma.
+- Przy ograniczeniu animacji w systemie scena zmienia się od razu.

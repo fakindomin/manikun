@@ -4129,8 +4129,14 @@
       const gy = st.shot === "full" ? pl.groundY : H * 0.95;
       if (st.bgTrans) {
         // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgLook(st, st.bgTrans.old), bgExtras(st));
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer()), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgLook(st), bgExtras(st));
+        // Teatr (drop): stara dekoracja stoi, nowa zjeżdża z góry i ją zakrywa; dolna krawędź z belką i cieniem
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, st.bgTrans.oldLook || bgLook(st, st.bgTrans.old), bgExtras(st));
+        const ng = el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer());
+        drawBackground(ng, defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgLook(st), bgExtras(st));
+        if (st.bgTrans.drop && st.bgTrans.newOff < -0.002) {
+          el("rect", { x: 0, y: f(H), width: f(W), height: f(u * 2.2), style: "fill:#000;stroke:none;opacity:0.28" }, ng);
+          el("rect", { x: 0, y: f(H - u * 0.9), width: f(W), height: f(u * 0.9), style: "fill:#5A4636;stroke:none" }, ng);
+        }
       } else {
         // split: tło w osobnej grupie, żeby Próbny kadr mógł je rozmyć (głębia ostrości)
         // Słońce jako światło stoi w strefie lampy: odbicie na wodzie i promienie idą za nim
@@ -4181,7 +4187,13 @@
     }
 
     if (subj < 1) {
-      const fg = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
+      const host = subj > 0 ? el("g", { opacity: f(1 - subj) }, g) : g;
+      // Postać z rzeczami w jednej grupie: przy zmianie scenografii jedzie na taśmie (st.belt)
+      const fg = el("g", st.belt ? { "data-part": "subj", transform: `translate(${f(W * 1.5 * st.belt.in)} 0)` } : { "data-part": "subj" }, host);
+      if (st.belt && st.belt.old && st.belt.out < 1) {
+        st.belt.old.setAttribute("transform", `translate(${f(-W * 1.5 * st.belt.out)} 0)`);
+        host.insertBefore(st.belt.old, fg);
+      }
       // Rzeczy za postacią (i siedzisko pod nią), postać, potem rzeczy przed nią
       const tg = reveal >= 1 ? fg : el("g", { opacity: f(reveal) }, fg);
       if ((opts.lit || flatDraw) && st.shot === "full" && layers.has("ground")) drawShadows(fg, st, A.pl, litPt, lightT);
@@ -4540,25 +4552,14 @@
     // Pośrednie szkice przy losowaniu: bez odświeżania menu (to najdroższe), tylko podgląd
     if (quiet) { fixScene(); sceneChanged(); } else render();
   }
-  // Losuj jak maszyna losująca: kilka świeżo wylosowanych szkiców przelatuje coraz wolniej, ostatni zostaje
-  let snapScene = false, rollSeq = 0;
-  // Odstępy między 4 szkicami: ostatni zostaje
-  const ROLL_MS = [40, 50, 65];
+  // Losuj jak zmiana scenografii w teatrze: Manikun odjeżdża w bok jak na taśmie, nowa dekoracja zjeżdża z góry,
+  // potem wjeżdża nowy Manikun (sceneChanged z theatreNext ustawia przejście)
+  let snapScene = false, theatreNext = false;
   function rollRandom() {
-    const id = ++rollSeq;
-    if (reduceMotion.matches) { randomize(); return; }
-    let k = 0;
-    const step = () => {
-      if (id !== rollSeq) return;
-      const last = k === ROLL_MS.length;
-      // Przelot bez płynnych przejść kamery i lampy; ostatni szkic też staje od razu, żeby kadr pasował do klatki
-      snapScene = true;
-      try { randomize(!last); } finally { snapScene = false; }
-      sfx(last ? "klap" : "tik");
-      if (last) { nod("nod"); return; }
-      setTimeout(step, ROLL_MS[k++]);
-    };
-    step();
+    theatreNext = !reduceMotion.matches;
+    try { randomize(); } finally { theatreNext = false; }
+    sfx("krrr");
+    setTimeout(() => sfx("tuk"), 720);
   }
 
   // Kafelek: obrazek i opis. redraw() odświeża rysunek, opis i zaznaczenie bez ponownej animacji wejścia.
@@ -5792,7 +5793,7 @@
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
   // Przejście tła: te same czasy i krzywe co przy zmianie rzędu kafelków (wyjście 280 ms, wejście 420 ms po 140 ms)
-  let bgTrans = null;
+  let bgTrans = null, belt = null;
   const easeOut = t => 1 - Math.pow(1 - t, 5);   // ≈ cubic-bezier(0.22, 1, 0.36, 1)
   const easeIn = t => t * t;                      // ≈ cubic-bezier(0.4, 0, 1, 1)
 
@@ -5830,7 +5831,19 @@
       props[key] = a.from + (a.to - a.from) * easeInOut(t);
       if (t >= 1) delete propAnim[key]; else active = true;
     }
-    if (bgTrans) {
+    if (belt) {
+      // Taśma: stary Manikun odjeżdża w lewo, nowy wjeżdża z prawej i staje z lekkim przerzutem
+      const e = now - belt.start, q = clamp((e - 470) / 520, 0, 1), c = q - 1;
+      belt.out = easeIn(clamp(e / 380, 0, 1));
+      belt.in = 1 - (1 + 2.2 * c * c * c + 1.2 * c * c);
+      if (e >= 990) belt = null; else active = true;
+    }
+    if (bgTrans && bgTrans.drop) {
+      // Dekoracja opuszczana z góry: przyspiesza jak spadająca, przy lądowaniu lekko podskakuje
+      const e = now - bgTrans.start, p = clamp((e - 120) / 600, 0, 1);
+      bgTrans.newOff = p < 0.72 ? -(1 - (p / 0.72) ** 2) : -0.035 * Math.sin(Math.PI * (p - 0.72) / 0.28);
+      if (e >= 720) bgTrans = null; else active = true;
+    } else if (bgTrans) {
       const e = now - bgTrans.start;
       bgTrans.oldOff = easeIn(Math.min(1, e / OUT_MS));
       bgTrans.newOff = 1 - easeOut(Math.max(0, Math.min(1, (e - 140) / PANEL_MS)));
@@ -5891,6 +5904,7 @@
     if (scene.mode === "video" && !isSelfie(scene.camera)) layers.push("motion");
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
+    if (belt) st.belt = belt;
     if (!reduceMotion.matches && scene.subject !== "object") {
       const base = shown || baseShown();
       st.fig = computeFigure(livePose(base.pose, performance.now()), base.rig, clothOf(scene.body));
@@ -5979,6 +5993,18 @@
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
     const tp = targetProps();
+    if (theatreNext && prev && shown) {
+      // Teatr: kamera, lampa i poza od razu na nowych miejscach; ruch robi tylko dekoracja i taśma z Manikunem
+      const oldSubj = preview.querySelector('[data-part="subj"]');
+      figAnim = null; gaze = null; shown = baseShown();
+      PROP_KEYS.forEach(k => { props[k] = tp[k]; });
+      for (const k in propAnim) delete propAnim[k];
+      const now = performance.now();
+      bgTrans = { old: prev.background, oldLook: bgLook(prev, prev.background), drop: true, start: now, oldOff: 0, newOff: -1 };
+      belt = { old: oldSubj ? oldSubj.cloneNode(true) : null, start: now, out: 0, in: 1 };
+      ensureLoop();
+      return;
+    }
     if (!prev || !shown || reduceMotion.matches || snapScene) {
       figAnim = null;
       shown = baseShown();
