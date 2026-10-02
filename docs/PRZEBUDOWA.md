@@ -424,3 +424,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Dźwięki: skrzypienie przy starcie (`krrr`), stuknięcie przy lądowaniu dekoracji (`tuk`).
 - Postać z rzeczami rysuje się w grupie `[data-part="subj"]`; stary Manikun to klon tej grupy z poprzedniej klatki (`belt.old`). Kamera, lampa i poza ustawiają się od razu, rusza się tylko dekoracja i taśma.
 - Przy ograniczeniu animacji w systemie scena zmienia się od razu.
+- Każda zmiana tła (menu, gotowce, Kreator), także zmiana podstawy w tym samym miejscu, to opuszczana z góry dekoracja ze stuknięciem przy lądowaniu. Manikun zostaje na miejscu i rozgląda się po nowym miejscu; taśma tylko przy Losuj. Dodatki tła zmieniają się od razu. Stare przejście (tło chowane w dół, nowe wysuwane od dołu) usunięte.
