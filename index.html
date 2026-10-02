@@ -4311,6 +4311,14 @@
         lips: !male && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
         glasses: Math.random() < 0.3 ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id
       };
+      // Cechy: zwykle dorosły o przeciętnej budowie i średnim wzroście, kolor skóry z całej palety, detale od czasu do czasu
+      const pick = (k, odds) => Math.random() < odds ? anyOf(TRAITS[k].options.filter(o => o.id !== TRAIT0[k])).id : TRAIT0[k];
+      const child = Math.random() < 0.15;
+      scene.traits = {
+        skin: anyOf(TRAITS.skin.options).id, age: child ? "child" : "adult", build: pick("build", 0.45), height: pick("height", 0.4),
+        freckles: pick("freckles", 0.15), tattoo: child ? "none" : pick("tattoo", 0.15), earrings: pick("earrings", male ? 0.12 : 0.35)
+      };
+      if (child) scene.look = { ...scene.look, beard: "none", lips: "none" };
       scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
       const armOpts = optionsOf("arms").filter(o => fitsBody(o, scene));
       if (armOpts.length) scene.arms = anyOf(armOpts).id;
