@@ -347,3 +347,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Łączenia rąk i nóg (Próbny kadr): ramię z przedramieniem i udo z łydką (także rękaw i nogawka) to jeden kształt bez szwu, z łukiem po zewnętrznej stronie zgięcia; drewniane kulki w łokciach i kolanach znikają. Na ubraniu fałda tuż nad i pod zgięciem. Szkic, start i tutorial bez zmian.
 - Dłonie (Próbny kadr): jeden kształt dłoni z palcami i kciuk wyrastający z boku zamiast dwóch walców. Ułożenie z gestu rąk: luźna (palce lekko zgięte), płaska nad oczami, pięść pod brodą i przy telefonie, dłoń na biodrze z mocno zgiętymi palcami. Szczeliny między palcami, wyraźniejsze w zbliżeniach.
 
+## Nowe miejsca: pustynia, park, góry zimą, kuchnia
+
+- Pustynia (Natura): Wydmy albo Skalista (czerwone ostańce), dodatki Kaktusy i Oaza. Wydmy z cieniem po zawietrznej, zmarszczki piasku w perspektywie, drżące powietrze nad horyzontem.
+- Park (Miasto): Aleja (żwirowa alejka z latarniami, nocą świecącymi) albo Trawnik (ścieżka z boku, miasto za drzewami), dodatki Fontanna i Ławki.
+- Góry zimą (Natura): Szczyty albo Ośnieżony las, dodatki Chatka (okno świeci nocą) i Stok (ślady nart). Mocno ośnieżone pasma, świerki z czapami śniegu, zaspy i iskrzący śnieg.
+- Kuchnia (Wnętrze): Nowoczesna (granatowe szafki, białe kafelki) albo Rustykalna (drewno, otwarte półki ze słojami, podłoga z terakoty), dodatek Zioła na parapecie. Okno z porą dnia, lodówka, blat z czajnikiem i miską, nocą ciepłe światło pod szafkami.
+- Każde miejsce ma prostą wersję w szkicu roboczym i opis w Maniscrypcie (podstawa, wariant i dodatki).
+

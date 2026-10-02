@@ -1022,7 +1022,8 @@
       { id: "studio", name: "Studio", short: "Studio", prompt: "plain seamless studio backdrop in neutral grey" },
       { id: "city", name: "Miasto", children: [
         { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in the background, softly out of focus" },
-        { id: "rooftop", name: "Dach", short: "Dach", prompt: "city rooftop with a skyline in the background, softly out of focus" }
+        { id: "rooftop", name: "Dach", short: "Dach", prompt: "city rooftop with a skyline in the background, softly out of focus" },
+        { id: "park", name: "Park", short: "Park", prompt: "city park with trees and a path in the background, softly out of focus" }
       ]},
       { id: "nature", name: "Natura", children: [
         { id: "mountains", name: "Góry", short: "Góry", prompt: "misty mountain landscape in the background, softly out of focus" },
@@ -1030,11 +1031,14 @@
         { id: "beach", name: "Plaża", short: "Plaża", prompt: "calm sandy beach with the sea on the horizon in the background, softly out of focus" },
         { id: "meadow", name: "Łąka", short: "Łąka", prompt: "open green meadow with soft rolling hills in the background, softly out of focus" },
         { id: "lake", name: "Jezioro", short: "Jezioro", prompt: "calm lake in the background, softly out of focus" },
-        { id: "river", name: "Rzeka", short: "Rzeka", prompt: "river flowing through the landscape in the background, softly out of focus" }
+        { id: "river", name: "Rzeka", short: "Rzeka", prompt: "river flowing through the landscape in the background, softly out of focus" },
+        { id: "desert", name: "Pustynia", short: "Pustynia", prompt: "vast sandy desert in the background, softly out of focus" },
+        { id: "snowpeaks", name: "Góry zimą", short: "Zima", prompt: "snowy winter mountain landscape in the background, softly out of focus" }
       ]},
       { id: "interior", name: "Wnętrze", children: [
         { id: "room", name: "Pokój", short: "Pokój", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
-        { id: "cafe", name: "Kawiarnia", short: "Kawiarnia", prompt: "cosy café interior with warm pendant lights in the background, softly out of focus" }
+        { id: "cafe", name: "Kawiarnia", short: "Kawiarnia", prompt: "cosy café interior with warm pendant lights in the background, softly out of focus" },
+        { id: "kitchen", name: "Kuchnia", short: "Kuchnia", prompt: "bright kitchen interior in the background, softly out of focus" }
       ]}
     ]},
     // Elementy miejsca: kafelki buduje makeTiles (scene.fx to lista), tu nazwy dla wyszukiwarki
@@ -1143,6 +1147,29 @@
       { id: "office", name: "Biuro", prompt: "modern office interior with a desk and a monitor in the background, softly out of focus" },
       { id: "loft", name: "Loft", add: "exposed brick walls in an industrial loft style" }
     ],
+    desert: [
+      { id: "dunes", name: "Wydmy", prompt: "golden sand dunes rolling to the horizon in the background, softly out of focus" },
+      { id: "rocky", name: "Skalista", prompt: "rocky desert with red sandstone buttes in the background, softly out of focus" },
+      { id: "cactus", name: "Kaktusy", add: "tall saguaro cacti" },
+      { id: "oasis", name: "Oaza", add: "a small oasis with palm trees in the distance" }
+    ],
+    park: [
+      { id: "alley", name: "Aleja", prompt: "tree-lined park alley with lamp posts in the background, softly out of focus" },
+      { id: "lawn", name: "Trawnik", prompt: "open park lawn with trees and city buildings beyond in the background, softly out of focus" },
+      { id: "fountain", name: "Fontanna", add: "a stone fountain" },
+      { id: "benches", name: "Ławki", add: "park benches along the path" }
+    ],
+    snowpeaks: [
+      { id: "peaks", name: "Szczyty", prompt: "snow-covered mountain peaks in the background, softly out of focus" },
+      { id: "woods", name: "Ośnieżony las", prompt: "snowy pine forest below snow-covered mountains in the background, softly out of focus" },
+      { id: "cabin", name: "Chatka", add: "a small wooden cabin with a warmly lit window" },
+      { id: "ski", name: "Stok", add: "a ski slope with ski tracks in the snow" }
+    ],
+    kitchen: [
+      { id: "modern", name: "Nowoczesna", prompt: "bright modern kitchen interior with cabinets and a counter in the background, softly out of focus" },
+      { id: "rustic", name: "Rustykalna", prompt: "rustic farmhouse kitchen with wooden cabinets and open shelves in the background, softly out of focus" },
+      { id: "herbs", name: "Zioła", add: "potted herbs on the windowsill" }
+    ],
     cafe: [
       { id: "cafe", name: "Kawiarnia", prompt: "cosy café interior with warm pendant lights in the background, softly out of focus" },
       { id: "bar", name: "Bar", prompt: "dimly lit bar interior with a counter and bottles in the background, softly out of focus" },
@@ -1223,7 +1250,7 @@
   const isBackLight = id => id.endsWith("-back");
   const isNaturalLight = id => id.startsWith("nat");
   // Na zewnątrz jest niebo: naturalne światło to słońce albo księżyc. We wnętrzu i studiu to okno.
-  const isOutdoor = bg => !["studio", "room", "cafe"].includes(bg);
+  const isOutdoor = bg => !["studio", "room", "cafe", "kitchen"].includes(bg);
   // Strona kamery i zwrot ciała. Manikun jest rysowany przodem w prawo. Kamera po lewej stronie postaci oznacza postać
   // zwróconą w lewą stronę kadru (tak zrobi generator), więc wtedy rysunek się odbija; odwrócenie się od kamery odbija z powrotem.
   const camSide = st => /^L/.test(st.camera) ? "L" : /^R/.test(st.camera) ? "R" : "C";
@@ -2567,7 +2594,7 @@
   // ---------- Tła w pełnej jakości (Próbny kadr, tutorial): perspektywa podłoża i trzy plany ----------
   // Szkic roboczy rysuje te same miejsca prościej (flatDraw). Daleki plan jasny i zamglony, średni nasycony,
   // bliski ciemniejszy i ostry; podłoże z fakturą, która gęstnieje ku horyzontowi.
-  const RICH_BG = ["beach", "forest", "meadow", "mountains", "lake", "river", "street", "rooftop", "room", "cafe", "studio"];
+  const RICH_BG = ["beach", "forest", "meadow", "mountains", "lake", "river", "street", "rooftop", "room", "cafe", "studio", "desert", "park", "snowpeaks", "kitchen"];
   const rnd01 = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   // Głębokość na podłożu: t 0 = horyzont, 1 = dół kadru (odstępy rosną ku widzowi)
   const depthY = (hz, H, t, top = hz) => top + (H - top) * Math.pow(t, 1.7);
@@ -3002,6 +3029,161 @@
     paint("rect", { x: f(W * 0.09), y: f(fy - H * 0.2), width: f(W * 0.012), height: f(H * 0.03) }, "#4A4E54", g);
   }
 
+  // ---------- Nowe miejsca: pustynia, park, góry zimą, kuchnia ----------
+  // Kaktus saguaro: pień i ramiona zaokrąglone, jaśniejszy pas od słońca
+  function cactus(g, x, base, h, sunLeft) {
+    const w = h * 0.12, c = "#5E8A4A", lt = "#86B06A";
+    strokeP(`M${f(x)},${f(base)} L${f(x)},${f(base - h)}`, c, w, 1, g);
+    strokeP(`M${f(x)},${f(base - h * 0.45)} L${f(x - h * 0.2)},${f(base - h * 0.45)} L${f(x - h * 0.2)},${f(base - h * 0.75)}`, c, w * 0.75, 1, g);
+    strokeP(`M${f(x)},${f(base - h * 0.6)} L${f(x + h * 0.18)},${f(base - h * 0.6)} L${f(x + h * 0.18)},${f(base - h * 0.85)}`, c, w * 0.75, 1, g);
+    strokeP(`M${f(x + (sunLeft ? -w * 0.22 : w * 0.22))},${f(base)} L${f(x + (sunLeft ? -w * 0.22 : w * 0.22))},${f(base - h * 0.97)}`, lt, w * 0.22, 0.7, g);
+  }
+  function smallPalm(g, x, base, h) {
+    strokeP(`M${f(x)},${f(base)} Q${f(x + h * 0.15)},${f(base - h * 0.5)} ${f(x + h * 0.08)},${f(base - h)}`, "#5A4632", Math.max(1, h * 0.07), 1, g);
+    [-150, -110, -70, -30, 10].forEach(a => { const ex = x + h * 0.08 + Math.cos(a * Math.PI / 180) * h * 0.45, ey = base - h + Math.sin(a * Math.PI / 180) * h * 0.3 + h * 0.12; strokeP(`M${f(x + h * 0.08)},${f(base - h)} Q${f((x + h * 0.08 + ex) / 2)},${f(base - h * 1.12)} ${f(ex)},${f(ey)}`, "#4E7A3E", Math.max(0.8, h * 0.06), 1, g); });
+  }
+  function richDesert(g, defs, uid, W, H, hz, gy, u, tod, skyX, rocky) {
+    const sunLeft = skyX < 0.5;
+    if (rocky) {
+      // Ostańce: płaskie szczyty, strona od słońca w cieniu
+      const mesa = (x0, w, h, base, c, sh) => {
+        paint("path", { d: `M${f(x0 * W)},${f(base)} L${f((x0 + w * 0.1) * W)},${f(base - h * H)} L${f((x0 + w * 0.9) * W)},${f(base - h * H)} L${f((x0 + w) * W)},${f(base)} Z` }, c, g);
+        const sx = sunLeft ? x0 + w * 0.55 : x0 + w * 0.1;
+        paint("path", { d: `M${f(sx * W)},${f(base - h * H)} L${f((sx + w * 0.35) * W)},${f(base - h * H)} L${f((sx + w * 0.45) * W)},${f(base)} L${f((sx - 0.02) * W)},${f(base)} Z` }, sh, g, 0.45);
+      };
+      [[-0.05, 0.3, 0.09], [0.32, 0.22, 0.13], [0.62, 0.42, 0.07]].forEach(([x, w, h]) => mesa(x, w, h, hz + H * 0.004, "#D9A88C", "#B98670"));
+      paint("rect", { x: 0, y: f(hz - H * 0.14), width: f(W), height: f(H * 0.15) }, vGrad(defs, uid + "dz", [[0, "rgba(248,232,214,0)"], [1, "rgba(248,232,214,0.55)"]]), g);
+      [[0.0, 0.18, 0.2], [0.78, 0.3, 0.16]].forEach(([x, w, h]) => mesa(x, w, h, hz + H * 0.02, "#B8664A", "#7E3E2C"));
+    } else {
+      const crest = (base, h, k, ph, c, seed) => {
+        const fn = x => base - h * Math.pow(Math.abs(Math.sin(x * k + ph)), 0.8) * (0.7 + 0.3 * Math.sin(x * 3 + seed));
+        paint("path", { d: ridge(W, base, fn, 0.01, base + H * 0.02) }, c, g);
+        // Zawietrzna strona każdej wydmy w cieniu
+        for (let n = -1; n < k; n++) {
+          const xc = (Math.PI / 2 + n * Math.PI - ph) / k; if (xc < -0.2 || xc > 1.2) continue;
+          const half = Math.PI / k / 2 * (sunLeft ? 1 : -1);
+          paint("path", { d: `M${f(xc * W)},${f(fn(xc))} L${f((xc + half) * W)},${f(fn(xc + half))} L${f((xc + half) * W)},${f(base + H * 0.02)} L${f(xc * W)},${f(base + H * 0.02)} Z` }, "#8A5A30", g, 0.3);
+        }
+      };
+      crest(hz + H * 0.004, H * 0.06, 7, 0.4, "#E2C08A", 1);
+      paint("rect", { x: 0, y: f(hz - H * 0.08), width: f(W), height: f(H * 0.09) }, vGrad(defs, uid + "dz", [[0, "rgba(250,236,214,0)"], [1, "rgba(250,236,214,0.3)"]]), g);
+      crest(hz + H * 0.035, H * 0.09, 4, 1.3, "#D2A060", 2);
+    }
+    const top = hz + H * 0.045;
+    paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, vGrad(defs, uid + "ds", rocky ? [[0, "#D8A27A"], [1, "#B27852"]] : [[0, "#DDB477"], [0.5, "#D6AA6C"], [1, "#BF8E52"]]), g);
+    for (let r = 1; r <= 12; r++) {
+      const t = r / 13, y = depthY(hz, H, t, top), a = u * (0.2 + t * 0.7);
+      let d = `M0,${f(y)}`;
+      for (let x = 0.07; x <= 1.0001; x += 0.07) d += ` Q${f((x - 0.035) * W)},${f(y - a * (rnd01(r * 3 + x * 13) > 0.5 ? 1 : -1))} ${f(x * W)},${f(y)}`;
+      strokeP(d, rocky ? "#9A5E3E" : "#B08850", 0.4 + t * 0.9, 0.16 + t * 0.18, g);
+    }
+    for (let k = 0; k < (rocky ? 40 : 20); k++) {
+      const t = 0.1 + rnd01(k * 1.9) * 0.9, y = depthY(hz, H, t, top), x = rnd01(k * 3.1) * W, r = u * (0.15 + t * (rocky ? 1.1 : 0.4));
+      paint("ellipse", { cx: f(x), cy: f(y), rx: f(r * 1.3), ry: f(r * 0.6) }, rocky ? "#8A5A44" : "#A88458", g, 0.75);
+    }
+    // Drżące powietrze nad horyzontem
+    paint("rect", { x: 0, y: f(hz - H * 0.01), width: f(W), height: f(H * 0.02) }, "#FFF4E2", g, 0.15);
+  }
+
+  function richPark(g, defs, uid, W, H, hz, gy, u, tod, skyX, lawn) {
+    const nightW = Math.max(0, Math.min(1, tod - 1)), sunLeft = skyX < 0.5;
+    // Miasto za parkiem w mgiełce
+    for (let k = 0; k < 14; k++) { const x = (k / 14) * W, h = H * (0.08 + rnd01(k * 7) * (lawn ? 0.2 : 0.12)); paint("rect", { x: f(x), y: f(hz - h), width: f(W / 14 + 1), height: f(h + 2) }, "#A9B4C2", g); }
+    paint("rect", { x: 0, y: f(hz - H * 0.22), width: f(W), height: f(H * 0.23) }, vGrad(defs, uid + "pz", [[0, "rgba(228,236,240,0)"], [1, "rgba(228,236,240,0.5)"]]), g);
+    paint("path", { d: crownRow(W, hz + H * 0.006, H * 0.07, H * 0.12, lawn ? 12 : 20, 5) }, "#8FA58A", g);
+    if (!lawn) paint("path", { d: crownRow(W, hz + H * 0.02, H * 0.12, H * 0.2, 9, 11) }, "#62804F", g);
+    const top = hz + H * 0.015;
+    paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, vGrad(defs, uid + "pg", [[0, "#97B670"], [1, "#5F8445"]]), g);
+    grassField(g, W, H, hz, top + H * 0.01, "#56763C", "#B4CB8A", 12, 30);
+    // Alejka żwirowa w perspektywie z obrzeżem
+    const pd = lawn ? `M${f(W * 0.62)},${f(top)} C${f(W * 0.66)},${f(top + (H - top) * 0.3)} ${f(W * 0.95)},${f(top + (H - top) * 0.6)} ${f(W * 1.2)},${f(H)} L${f(W * 0.8)},${f(H)} C${f(W * 0.7)},${f(top + (H - top) * 0.6)} ${f(W * 0.6)},${f(top + (H - top) * 0.3)} ${f(W * 0.6)},${f(top)} Z`
+      : `M${f(W * 0.47)},${f(top)} L${f(W * 0.53)},${f(top)} L${f(W * 0.86)},${f(H)} L${f(W * 0.14)},${f(H)} Z`;
+    el("path", { d: pd, style: `fill:none;stroke:#8E8270;stroke-width:${f(u * 0.8)}` }, g);
+    paint("path", { d: pd }, vGrad(defs, uid + "pp", [[0, "#D6CAAD"], [1, "#B9A884"]]), g);
+    // Drzewa przy krawędziach i latarnie przy alejce
+    [[0.07, 0.64], [0.95, 0.6]].forEach(([x, h], i) => richTree(g, x * W, Math.min(gy, H * 0.96) + H * 0.02, H * h, "#4F6E42", "#7FA060", sunLeft, i));
+    if (!lawn) [[0.33, 2.2], [0.67, 2.2], [0.24, 1.3], [0.76, 1.3]].forEach(([x, d], i) => {
+      const bx = W * 0.5 + (x * W - W * 0.5) * 1, by = top + (H - top) / d * 0.9, h = H * 0.42 / d;
+      strokeP(`M${f(bx)},${f(by)} L${f(bx)},${f(by - h)}`, "#2E3036", Math.max(1, u * 0.7 / d * 1.5), 1, g);
+      if (nightW > 0) radGlow(g, defs, uid + "pl" + i, bx, by - h, h * 0.4, "#FFD68A", f(0.6 * nightW));
+      paint("circle", { cx: f(bx), cy: f(by - h), r: f(h * 0.06) }, nightW > 0.3 ? "#FFE8B0" : "#E8ECEF", g);
+    });
+  }
+
+  function richSnow(g, defs, uid, W, H, hz, gy, u, tod, skyX, woods) {
+    const sunLeft = skyX < 0.5;
+    range(g, W, H, hz + H * 0.01, [[0, 0.16], [0.12, 0.28], [0.24, 0.17], [0.38, 0.33], [0.5, 0.18], [0.63, 0.31], [0.76, 0.17], [0.88, 0.27], [1, 0.18]], "#C2D0E2", "#93A8C4", "#F7FAFD", 0.6, sunLeft);
+    paint("rect", { x: 0, y: f(hz - H * 0.2), width: f(W), height: f(H * 0.21) }, vGrad(defs, uid + "sz", [[0, "rgba(236,242,250,0)"], [1, "rgba(236,242,250,0.55)"]]), g);
+    range(g, W, H, hz + H * 0.03, [[0, 0.1], [0.16, 0.2], [0.31, 0.08], [0.48, 0.21], [0.64, 0.09], [0.8, 0.19], [1, 0.1]], "#93A9C4", "#6C83A2", "#EEF3F9", 0.45, sunLeft);
+    // Ośnieżone świerki: ciemna sylwetka i biała czapa na każdym piętrze
+    const rows = woods ? [[hz + H * 0.05, 0.05, 0.1, 26, 3], [hz + H * 0.09, 0.08, 0.15, 15, 9]] : [[hz + H * 0.05, 0.03, 0.06, 34, 3]];
+    rows.forEach(([b, h0, h1, n, sd]) => {
+      paint("path", { d: pineRow(W, b, H * h0, H * h1, n, sd) }, "#3E5A54", g);
+      paint("path", { d: pineRow(W, b - H * h0 * 0.35, H * h0 * 0.55, H * h1 * 0.55, n, sd) }, "#EEF4FA", g, 0.75);
+    });
+    const top = hz + (woods ? H * 0.085 : H * 0.045);
+    paint("rect", { x: 0, y: f(top), width: f(W), height: f(H - top) }, vGrad(defs, uid + "sg", [[0, "#F2F6FA"], [0.5, "#E3EBF3"], [1, "#CCD8E6"]]), g);
+    // Zaspy: miękkie niebieskawe cienie i iskrzenie śniegu
+    for (let r = 1; r <= 7; r++) {
+      const t = r / 8, y = depthY(hz, H, t, top);
+      paint("path", { d: `M0,${f(y)} C${f(W * 0.3)},${f(y - H * 0.02 * t)} ${f(W * 0.6)},${f(y + H * 0.015 * t)} ${f(W)},${f(y - H * 0.01)} L${f(W)},${f(y + H * 0.02 * t)} C${f(W * 0.6)},${f(y + H * 0.03 * t)} ${f(W * 0.3)},${f(y)} 0,${f(y + H * 0.015 * t)} Z` }, "#A9BCD2", g, 0.22);
+    }
+    for (let k = 0; k < 50; k++) { const t = rnd01(k * 2.3), y = depthY(hz, H, 0.05 + t * 0.95, top); paint("circle", { cx: f(rnd01(k * 4.7) * W), cy: f(y), r: f(u * (0.1 + t * 0.25)) }, "#FFFFFF", g, 0.9); }
+  }
+
+  // Kuchnia: szafki dolne z blatem za postacią, kafelki nad blatem, szafki górne albo otwarte półki, okno, lodówka, podłoga w płytki
+  function richKitchen(g, defs, uid, W, H, hz, gy, u, fy, tod, rustic, herbs) {
+    const nightW = Math.max(0, Math.min(1, tod - 1)), goldW = Math.max(0, 1 - Math.abs(tod - 1));
+    const cab = rustic ? "#8A6446" : "#3E4A58", cabL = rustic ? "#A47A56" : "#4E5C6C", top = rustic ? "#C9A57A" : "#DAD6CE";
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, rustic ? "#DCCAA8" : "#ECE8E1", g);
+    const cy = fy - H * 0.15;
+    // Kafelki nad blatem
+    paint("rect", { x: 0, y: f(cy - H * 0.16), width: f(W), height: f(H * 0.16) }, rustic ? "#E6D6BC" : "#F6F4F0", g);
+    for (let r = 0; r < 8; r++) for (let q = 0; q < 16; q++) el("rect", { x: f(q * W / 16 + (r % 2) * W / 32), y: f(cy - H * 0.16 + r * H * 0.02), width: f(W / 16), height: f(H * 0.02), style: `fill:none;stroke:${rustic ? "#C9B596" : "#D8D4CC"};stroke-width:0.5` }, g);
+    // Okno nad zlewem (lewa strona) z porą dnia
+    const wx = W * 0.05, wy = H * 0.1, ww = W * 0.26, wh = cy - H * 0.2 - wy;
+    paint("rect", { x: f(wx), y: f(wy), width: f(ww), height: f(wh) }, "#F2EEE6", g);
+    paint("rect", { x: f(wx + ww * 0.06), y: f(wy + wh * 0.06), width: f(ww * 0.88), height: f(wh * 0.88) }, vGrad(defs, uid + "kw", nightW > 0.5 ? [[0, "#0E1330"], [1, "#2A3360"]] : goldW > 0.5 ? [[0, "#7A5566"], [1, "#F2B56B"]] : [[0, "#9CC3E2"], [1, "#D6E8F2"]]), g);
+    paint("rect", { x: f(wx + ww * 0.48), y: f(wy), width: f(ww * 0.04), height: f(wh) }, "#F2EEE6", g);
+    paint("rect", { x: f(wx - ww * 0.05), y: f(wy + wh), width: f(ww * 1.1), height: f(H * 0.012) }, "#F7F4EE", g);
+    if (herbs) [0.18, 0.5, 0.82].forEach((t, i) => {
+      const px = wx + ww * t, py = wy + wh;
+      paint("path", { d: `M${f(px - ww * 0.06)},${f(py - H * 0.03)} L${f(px + ww * 0.06)},${f(py - H * 0.03)} L${f(px + ww * 0.045)},${f(py)} L${f(px - ww * 0.045)},${f(py)} Z` }, "#C27A58", g);
+      [0, 1, 2].forEach(k => paint("circle", { cx: f(px + (k - 1) * ww * 0.04), cy: f(py - H * (0.045 + (k % 2) * 0.01)), r: f(ww * 0.045) }, ["#4F7A45", "#5E8A4A", "#3F6A38"][(k + i) % 3], g));
+    });
+    // Szafki górne (nowoczesna) albo otwarte półki ze słojami (rustykalna)
+    if (rustic) [0.2, 0.32].forEach(t => {
+      paint("rect", { x: f(W * 0.36), y: f(H * t), width: f(W * 0.44), height: f(H * 0.01) }, "#7A5640", g);
+      for (let k = 0; k < 6; k++) paint("rect", { x: f(W * (0.38 + k * 0.07)), y: f(H * (t - 0.05)), width: f(W * 0.035), height: f(H * 0.05), rx: f(W * 0.008) }, ["#E8E2D6", "#D9A86A", "#B8C8C0", "#C27A58"][k % 4], g, 0.95);
+    });
+    else {
+      paint("rect", { x: f(W * 0.36), y: f(H * 0.06), width: f(W * 0.46), height: f(cy - H * 0.2 - H * 0.06) }, cab, g);
+      for (let k = 1; k < 4; k++) paint("rect", { x: f(W * 0.36 + k * W * 0.46 / 4), y: f(H * 0.06), width: 1, height: f(cy - H * 0.26) }, "#2A333E", g);
+      for (let k = 0; k < 4; k++) paint("rect", { x: f(W * (0.36 + 0.46 * (k + 0.5) / 4) - 0.6), y: f(cy - H * 0.24), width: f(W * 0.004), height: f(H * 0.025) }, "#C8CCD2", g);
+    }
+    // Szafki dolne, blat i drobiazgi na nim
+    paint("rect", { x: 0, y: f(cy), width: f(W), height: f(fy - cy) }, vGrad(defs, uid + "kc", [[0, cabL], [1, cab]]), g);
+    for (let k = 1; k < 8; k++) paint("rect", { x: f(k * W / 8), y: f(cy + H * 0.01), width: 1, height: f(fy - cy - H * 0.015) }, "#000", g, 0.3);
+    for (let k = 0; k < 8; k++) paint("rect", { x: f((k + 0.5) * W / 8 - W * 0.015), y: f(cy + H * 0.025), width: f(W * 0.03), height: f(H * 0.004) }, "#C8CCD2", g, 0.9);
+    paint("rect", { x: 0, y: f(cy - H * 0.012), width: f(W), height: f(H * 0.018) }, top, g);
+    paint("rect", { x: 0, y: f(cy + H * 0.006), width: f(W), height: f(H * 0.004) }, "#000", g, 0.25);
+    strokeP(`M${f(W * 0.12)},${f(cy - H * 0.012)} L${f(W * 0.12)},${f(cy - H * 0.06)} Q${f(W * 0.12)},${f(cy - H * 0.075)} ${f(W * 0.15)},${f(cy - H * 0.072)}`, "#B9BEC4", u * 0.6, 1, g);
+    paint("rect", { x: f(W * 0.6), y: f(cy - H * 0.04), width: f(W * 0.05), height: f(H * 0.028), rx: f(u * 0.5) }, rustic ? "#C27A58" : "#E8E2D6", g);
+    paint("ellipse", { cx: f(W * 0.72), cy: f(cy - H * 0.018), rx: f(W * 0.05), ry: f(H * 0.012) }, rustic ? "#E8E2D6" : "#7E95A8", g);
+    // Lodówka przy prawej krawędzi
+    paint("rect", { x: f(W * 0.85), y: f(H * 0.05), width: f(W * 0.17), height: f(fy - H * 0.05) }, vGrad(defs, uid + "kf", [[0, "#E4E7EA"], [1, "#C9CED3"]]), g);
+    paint("rect", { x: f(W * 0.85), y: f(H * 0.32), width: f(W * 0.17), height: 1 }, "#9AA0A6", g);
+    paint("rect", { x: f(W * 0.87), y: f(H * 0.2), width: f(W * 0.008), height: f(H * 0.08) }, "#9AA0A6", g);
+    paint("rect", { x: f(W * 0.87), y: f(H * 0.36), width: f(W * 0.008), height: f(H * 0.1) }, "#9AA0A6", g);
+    // Podłoga w płytki w perspektywie
+    paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, rustic ? "#B8704E" : "#D6D2CA", g);
+    const vx = W * 0.5, vy = fy - (H - fy) * 1.5;
+    for (let k = -10; k <= 10; k++) { const xb = vx + k * W * 0.14, xt = vx + (xb - vx) * (fy - vy) / (H - vy); strokeP(`M${f(xt)},${f(fy)} L${f(xb)},${f(H)}`, rustic ? "#8A4E34" : "#AAA59C", 0.6, 0.6, g); }
+    for (let r = 1; r < 6; r++) { const y = fy + (H - fy) * Math.pow(r / 6, 1.35); strokeP(`M0,${f(y)} L${f(W)},${f(y)}`, rustic ? "#8A4E34" : "#AAA59C", 0.6, 0.6, g); }
+    paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "kfl", [[0, "rgba(0,0,0,0.18)"], [1, "rgba(0,0,0,0.04)"]]), g);
+    if (nightW > 0) radGlow(g, defs, uid + "ul", W * 0.55, cy - H * 0.08, W * 0.35, "#FFE2B0", f(0.35 * nightW), H * 0.08);
+  }
+
   function drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null) {
     // Miękka plama światła (latarnie, lampy w kawiarni)
     // v: podstawa tła i jego dodatki
@@ -3311,6 +3493,79 @@
         paint("circle", { cx: f(tx + W * 0.04), cy: f(ty - H * 0.085), r: f(H * 0.042) }, "#3A4E31", g);
       }
       if (!flatDraw) groundTime(g, W, H, hz - H * 0.13, tod);
+      return;
+    }
+    if (kind === "desert") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#4A6A92"], [1, "#E8D2B0"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      const rocky = is("rocky");
+      if (!flatDraw) richDesert(g, defs, uid, W, H, hz, gy, u, tod, skyX, rocky);
+      else {
+        paint("path", { d: ridge(W, hz, x => hz - H * (rocky ? 0.08 : 0.04) * Math.abs(Math.sin(x * 5 + 0.4)), 0.02, hz + H * 0.03) }, rocky ? "#B87A5E" : "#D9BD8A", g);
+        paint("rect", { x: 0, y: f(hz + H * 0.03), width: f(W), height: f(H) }, rocky ? "#B98060" : "#CFAE78", g);
+      }
+      if (is("oasis")) {
+        const ox = W * 0.28, oy = hz + H * 0.035;
+        paint("ellipse", { cx: f(ox), cy: f(oy), rx: f(W * 0.12), ry: f(H * 0.012) }, "#5FA7B4", g);
+        [-0.06, 0, 0.05].forEach((dx, i) => smallPalm(g, ox + dx * W, oy, H * (0.07 + i * 0.01)));
+      }
+      if (is("cactus")) { cactus(g, W * 0.08, H * 0.98, H * 0.34, skyX < 0.5); cactus(g, W * 0.93, H * 0.92, H * 0.26, skyX < 0.5); cactus(g, W * 0.72, hz + H * 0.07, H * 0.06, skyX < 0.5); }
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.2, tod);
+      return;
+    }
+    if (kind === "park") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#40526A"], [1, "#9AABB6"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      if (!flatDraw) richPark(g, defs, uid, W, H, hz, gy, u, tod, skyX, is("lawn"));
+      else {
+        paint("path", { d: crownRow(W, hz + H * 0.01, H * 0.08, H * 0.14, 10, 5) }, "#5A7159", g);
+        paint("rect", { x: 0, y: f(hz + H * 0.01), width: f(W), height: f(H) }, "#4E6A44", g);
+        if (!is("lawn")) paint("path", { d: `M${f(W * 0.47)},${f(hz)} L${f(W * 0.53)},${f(hz)} L${f(W * 0.86)},${f(H)} L${f(W * 0.14)},${f(H)} Z` }, "#8E846E", g);
+      }
+      if (is("fountain")) {
+        const fx0 = W * 0.27, fy0 = hz + H * 0.07;
+        paint("ellipse", { cx: f(fx0), cy: f(fy0), rx: f(W * 0.11), ry: f(H * 0.022) }, "#B9B4AA", g);
+        paint("ellipse", { cx: f(fx0), cy: f(fy0 - H * 0.004), rx: f(W * 0.095), ry: f(H * 0.015) }, "#8FC2D8", g);
+        paint("rect", { x: f(fx0 - W * 0.008), y: f(fy0 - H * 0.05), width: f(W * 0.016), height: f(H * 0.05) }, "#A8A398", g);
+        if (!flatDraw) [-1, -0.4, 0.4, 1].forEach(k => strokeP(`M${f(fx0)},${f(fy0 - H * 0.05)} Q${f(fx0 + k * W * 0.04)},${f(fy0 - H * 0.08)} ${f(fx0 + k * W * 0.07)},${f(fy0 - H * 0.01)}`, "#E6F2F8", u * 0.35, 0.8, g));
+      }
+      if (is("benches")) [[0.22, 0.13, -1], [0.78, 0.13, 1]].forEach(([x, dy, s]) => {
+        const bx = x * W, by = hz + H * dy, w = W * 0.12;
+        paint("rect", { x: f(bx - w / 2), y: f(by - H * 0.03), width: f(w), height: f(H * 0.008) }, "#8A6446", g);
+        paint("rect", { x: f(bx - w / 2), y: f(by - H * 0.055), width: f(w), height: f(H * 0.012) }, "#8A6446", g);
+        [-0.42, 0.42].forEach(k => paint("rect", { x: f(bx + k * w - 0.6), y: f(by - H * 0.03), width: 1.4, height: f(H * 0.03) }, "#2E3036", g));
+      });
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.25, tod);
+      return;
+    }
+    if (kind === "snowpeaks") {
+      paint("rect", { x: 0, y: 0, width: f(W), height: f(hz) }, vGrad(defs, uid + "k", [[0, "#4E6688"], [1, "#B9C8D8"]]), g);
+      drawSky(g, defs, uid, W, H, hz, u, tod, cel, skyX);
+      if (!flatDraw) richSnow(g, defs, uid, W, H, hz, gy, u, tod, skyX, is("woods"));
+      else {
+        paint("path", { d: peaks([[0, 0.14], [0.14, 0.26], [0.3, 0.13], [0.48, 0.28], [0.66, 0.12], [0.84, 0.24], [1, 0.15]], W, hz, H) }, "#AFC0D4", g);
+        paint("rect", { x: 0, y: f(hz), width: f(W), height: f(H) }, "#DCE5EE", g);
+      }
+      if (is("cabin")) {
+        const cx = W * 0.76, cb = hz + H * 0.075, cw = W * 0.12, ch = H * 0.05;
+        paint("rect", { x: f(cx - cw / 2), y: f(cb - ch), width: f(cw), height: f(ch) }, "#7A5236", g);
+        paint("path", { d: `M${f(cx - cw * 0.62)},${f(cb - ch)} L${f(cx)},${f(cb - ch * 1.9)} L${f(cx + cw * 0.62)},${f(cb - ch)} Z` }, "#F4F7FA", g);
+        if (!flatDraw && tod > 1) radGlow(g, defs, uid + "cw", cx + cw * 0.18, cb - ch * 0.5, cw * 0.6, "#FFD58A", f(0.6 * Math.min(1, tod - 1)));
+        paint("rect", { x: f(cx + cw * 0.08), y: f(cb - ch * 0.7), width: f(cw * 0.22), height: f(ch * 0.38) }, "#FFD58A", g);
+      }
+      if (is("ski")) [0, 1].forEach(k => strokeP(`M${f(W * 0.5 + k * 3)},${f(hz + H * 0.06)} C${f(W * 0.35)},${f(hz + H * 0.15)} ${f(W * 0.62)},${f(hz + H * 0.25)} ${f(W * 0.18 + k * W * 0.03)},${f(H)}`, "#9FB2C8", u * (0.4 + k * 0.1), 0.8, g));
+      if (!flatDraw) groundTime(g, W, H, hz - H * 0.3, tod);
+      return;
+    }
+    if (kind === "kitchen") {
+      const fy = Math.min(gy, H * 0.92) - H * 0.12;
+      if (!flatDraw) richKitchen(g, defs, uid, W, H, hz, gy, u, fy, tod, is("rustic"), is("herbs"));
+      else {
+        paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, is("rustic") ? "#7E6A52" : "#6E7074", g);
+        paint("rect", { x: 0, y: f(fy - H * 0.15), width: f(W), height: f(H * 0.15) }, is("rustic") ? "#5E4532" : "#3E4A58", g);
+        paint("rect", { x: f(W * 0.05), y: f(H * 0.1), width: f(W * 0.26), height: f(H * 0.2) }, "#8093A3", g);
+        paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, is("rustic") ? "#6E4A36" : "#55575C", g);
+      }
       return;
     }
     if (kind === "room") {
@@ -4650,7 +4905,7 @@
 
   // Komentarze Manikuna: tylko przy wyborach wartych uwagi (mocny kolor, nietypowe zestawienie)
   const BOLD_COLORS = { red: "Czerwień? Odważnie.", pink: "Róż? Lubię to.", orange: "Pomarańcz, widać z daleka.", mustard: "Musztarda. Klasa.", mint: "Mięta, świeżo.", burgundy: "Bordo, elegancko." };
-  const NATURE = ["forest", "mountains", "beach", "meadow", "lake", "river"];
+  const NATURE = ["forest", "mountains", "beach", "meadow", "lake", "river", "desert", "snowpeaks"];
   function wizComment(q) {
     let text = "";
     if (q.id === "cpick") text = BOLD_COLORS[scene.wc[wiz.part]] || "";
@@ -6049,7 +6304,7 @@
     const rim = document.getElementById("figRim").cloneNode(true), defs0 = trialSvg.querySelector("defs");
     rim.id = "trialRim";
     const tc = scene.background === "studio" ? null : { golden: "#FFB070", night: "#8AA6FF" }[scene.time];
-    const RIM_BG = { studio: "#FFFFFF", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", cafe: "#FFC88C" };
+    const RIM_BG = { studio: "#FFFFFF", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", desert: "#FFD9A0", park: "#DDEFC4", snowpeaks: "#E6F0FF", kitchen: "#FFF0D8", cafe: "#FFC88C" };
     rim.querySelectorAll("[id]").forEach(n => { n.id = "trial-" + n.id; });
     const flood = rim.querySelector("feFlood"), off = rim.querySelector("feOffset");
     flood.setAttribute("flood-color", tc || RIM_BG[scene.background] || "#FFFFFF");
