@@ -4481,73 +4481,151 @@
 
   // ---------- Losowo: cała scena losowana w granicach reguł aplikacji ----------
   const anyOf = list => list[Math.floor(Math.random() * list.length)];
-  // Losowe tło: podstawa i czasem jeden dodatek
-  function randomBgLook() {
-    const bg = scene.background, list = BG_VARIANTS[bg];
-    scene.bgv = { ...scene.bgv, [bg]: anyOf(list.filter(v => !v.add)).id };
-    const adds = list.filter(v => v.add);
-    scene.bga = { ...(scene.bga || {}), [bg]: adds.length && Math.random() < 0.4 ? [anyOf(adds).id] : [] };
+  // Motywy losowania: spójne pomysły na scenę. W motywie losuje się wszystko inne (warianty miejsca, pora, pogoda,
+  // strój i jego części, rzeczy, zwierzak, poza, styl); pole pominięte = pełny zakres aplikacji.
+  // bg: miejsce → dozwolone warianty (podstawy i dodatki); pet: zwierzaki, petCoat: umaszczenia; style: ulubione style motywu
+  const R_THEMES = [
+    { id: "dogWalk", bg: { park: ["alley", "lawn", "fountain", "benches"] }, time: ["day", "golden"], fx: ["leaves"], outfit: ["casual", "street", "coat"], parts: { acc: ["bag", "scarf"] }, things: ["bench"], thingOdds: 0.25, pet: ["dog"], petOdds: 0.9, pose: ["stride", "stand", "contra", "crouch"] },
+    { id: "autumnPark", bg: { park: ["alley", "benches", "fountain"] }, time: ["golden"], fx: ["leaves", "fog"], outfit: ["coat"], parts: { acc: ["scarf"], hat: ["beanie", "hat"] }, things: ["bench"], thingOdds: 0.6, pet: ["dog", "cat"], petOdds: 0.35, pose: ["stride", "sit", "legsCrossed", "stand"], style: ["water", "vintage", "cinema"] },
+    { id: "winter", bg: { snowpeaks: ["peaks", "woods", "cabin", "ski"] }, time: ["day", "golden"], fx: ["snow", "fog"], outfit: ["coat", "sport", "casual"], parts: { outer: ["jacket", "coat"], hat: ["beanie"], acc: ["scarf"] }, pet: ["dog", "dragon"], petCoat: { dragon: ["blue"] }, petOdds: 0.35, pose: ["stand", "contra", "wide", "stride"] },
+    { id: "cafe", bg: { cafe: ["cafe", "restaurant"] }, time: ["day", "golden", "night"], outfit: ["casual", "elegant", "coat", "dress"], parts: { top: ["sweater", "turtleneck", "shirt"] }, things: ["table", "chair", "stool"], thingOdds: 0.85, pet: ["cat"], petOdds: 0.15, pose: ["sit", "legsCrossed", "edge", "stand", "leanOn"] },
+    { id: "barNight", bg: { cafe: ["bar"] }, time: ["night"], outfit: ["elegant", "street", "dress"], things: ["bar", "stool"], thingOdds: 0.9, pose: ["leanOn", "stand", "contra", "sit", "edge"], style: ["noir", "cinema", "cyber"] },
+    { id: "beach", bg: { beach: ["sand", "rocks", "palms", "pier"] }, time: ["day", "golden"], outfit: ["casual"], parts: { top: ["tank", "tshirt", "shirt"], bottom: ["shorts"], hat: ["cap", "hat"] }, things: ["umbrella", "rock"], thingOdds: 0.4, pet: ["dog"], petOdds: 0.35, pose: ["stride", "wide", "stand", "sit", "cross", "back"] },
+    { id: "dragonForest", bg: { forest: ["conifer", "leafy", "clearing", "stream", "path"] }, time: ["golden", "night", "day"], fx: ["fog", "fire"], outfit: ["coat", "casual", "dress"], parts: { top: ["plaid"], acc: ["bag"] }, things: ["stump", "rock"], thingOdds: 0.35, pet: ["dragon"], petOdds: 0.95, pose: ["wide", "stand", "crouch", "sit", "kneeUp"], style: ["fantasy", "toon", "anime", "water"] },
+    { id: "campfire", bg: { forest: ["clearing", "conifer"], meadow: ["tree"] }, time: ["night", "golden"], fx: ["fire"], outfit: ["casual", "coat"], parts: { top: ["plaid", "sweater"], outer: ["vest", "jacket"], hat: ["beanie"] }, things: ["stump", "crate", "rock"], thingOdds: 0.8, pet: ["dog"], petOdds: 0.3, pose: ["sit", "cross", "kneeUp", "lean"] },
+    { id: "neonCity", bg: { street: ["neon", "modern", "rain"] }, time: ["night"], fx: ["neon", "puddles", "rain", "lamp"], outfit: ["street", "sport"], parts: { top: ["hoodie", "tank"], outer: ["denim", "jacket"], hat: ["cap"] }, things: ["bike", "car"], thingOdds: 0.35, pose: ["contra", "stride", "stand", "crouch", "leanOn"], style: ["cyber", "cinema", "anime", "noir"] },
+    { id: "rainyStreet", bg: { street: ["old", "rain"] }, time: ["night", "day"], fx: ["rain", "puddles", "lamp"], outfit: ["coat", "elegant"], parts: { acc: ["scarf", "bag"], hat: ["hat"] }, pose: ["stride", "stand", "contra"], style: ["noir", "cinema", "water", "vintage"] },
+    { id: "rooftop", bg: { rooftop: ["panorama", "towers", "terrace"] }, time: ["golden", "night"], outfit: ["elegant", "street", "dress", "casual"], things: ["stool", "chair", "bar"], thingOdds: 0.35, pose: ["contra", "stand", "leanOn", "sit", "edge"] },
+    { id: "desert", bg: { desert: ["dunes", "rocky", "cactus", "oasis"] }, time: ["golden", "day"], outfit: ["casual", "coat"], parts: { top: ["shirt", "tank"], hat: ["hat", "cap"], acc: ["bag", "scarf"], bottom: ["chinos", "shorts"] }, pet: ["dog", "dragon"], petCoat: { dragon: ["red"] }, petOdds: 0.3, pose: ["stride", "wide", "stand", "crouch"] },
+    { id: "cozyHome", bg: { room: ["living", "bedroom", "loft"] }, time: ["golden", "night"], outfit: ["casual"], parts: { top: ["sweater", "turtleneck", "hoodie"], bottom: ["joggers", "jeans"] }, things: ["armchair", "sofa", "floorLamp", "plant", "shelf", "coffeeTable", "pouf"], thingOdds: 0.9, pet: ["cat", "dog"], petOdds: 0.5, pose: ["sit", "legsCrossed", "sprawl", "cross", "back", "side"] },
+    { id: "office", bg: { room: ["office", "loft"] }, time: ["day", "golden"], outfit: ["elegant", "casual"], parts: { top: ["shirt", "blazer", "turtleneck"] }, things: ["desk", "chair", "shelf", "plant"], thingOdds: 0.9, pose: ["sit", "stand", "leanOn", "contra"] },
+    { id: "kitchen", bg: { kitchen: ["modern", "rustic", "herbs"] }, time: ["day", "golden"], outfit: ["casual"], parts: { top: ["shirt", "sweater", "tshirt"] }, things: ["table", "stool"], thingOdds: 0.6, pet: ["cat", "dog"], petOdds: 0.3, pose: ["stand", "contra", "leanOn", "sit"] },
+    { id: "lake", bg: { lake: ["calm", "jetty", "reeds"], river: ["calm", "bridge"] }, time: ["golden", "day"], fx: ["fog"], outfit: ["coat", "casual"], parts: { acc: ["scarf"] }, things: ["rock", "stump", "crate"], thingOdds: 0.5, pet: ["dog"], petOdds: 0.3, pose: ["sit", "kneeUp", "cross", "stand", "stride"] },
+    { id: "hike", bg: { mountains: ["peaks", "lake", "alp"], river: ["rocky"] }, time: ["day", "golden"], fx: ["fog"], outfit: ["sport", "casual"], parts: { outer: ["jacket", "vest"], hat: ["cap", "beanie"], acc: ["bag"] }, things: ["rock"], thingOdds: 0.3, pet: ["dog"], petOdds: 0.35, pose: ["wide", "stride", "stand", "crouch"] },
+    { id: "meadowKid", child: 0.85, bg: { meadow: ["green", "flowers", "tree", "wheat"] }, time: ["day", "golden"], outfit: ["casual"], parts: { top: ["tshirt", "tank"], bottom: ["shorts", "jeans"], hat: ["cap", "hat"] }, pet: ["bunny", "dog", "dragon"], petOdds: 0.85, pose: ["cross", "sit", "stand", "wide", "back", "belly"], style: ["toon", "water", "anime", "fantasy"] },
+    { id: "fashion", bg: { studio: ["grey", "white", "black", "color"] }, outfit: ["elegant", "street", "dress", "coat"], parts: { outer: ["coat", "denim", "jacket"], hat: ["hat", "cap"] }, things: ["stool", "pouf", "crate", "chair"], thingOdds: 0.45, pet: ["dog"], petCoat: { dog: ["dalmatian", "black"] }, petOdds: 0.2, pose: ["contra", "stand", "wide", "crouch", "edge", "sit"], style: ["real", "cinema", "vintage", "noir"] },
+    { id: "sportCity", bg: { rooftop: ["towers", "panorama"], street: ["modern", "old"] }, time: ["day", "golden", "night"], outfit: ["sport"], parts: { top: ["tank", "tshirt", "hoodie"], hat: ["cap"] }, things: ["bike"], thingOdds: 0.3, pose: ["crouch", "wide", "stride", "contra"] },
+    { id: "fairyMeadow", bg: { meadow: ["flowers", "tree"], forest: ["leafy", "stream"] }, time: ["golden", "day"], fx: ["fog"], outfit: ["dress", "coat", "casual"], pet: ["dragon", "bunny"], petOdds: 0.8, pose: ["stand", "cross", "sit", "wide"], style: ["fantasy", "toon", "water", "anime"] }
+  ];
+  // Ostatnie losowania: to samo miejsce, motyw i styl nie wypadają tuż po sobie
+  const rollRecent = { bg: [], theme: [], style: [] };
+  const remember = (k, v, n) => { rollRecent[k] = [v, ...rollRecent[k].filter(x => x !== v)].slice(0, n); };
+  const shuffled = list => list.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+  function pickTheme() {
+    for (let k = 0; ; k++) {
+      // Co piąte losowanie bez motywu: całkiem dowolna scena
+      const th = Math.random() < 0.2 ? null : anyOf(R_THEMES);
+      const bg = th ? anyOf(Object.keys(th.bg)) : anyOf(leavesOf("background")).id;
+      if (k < 8 && (rollRecent.bg.includes(bg) || (th && rollRecent.theme.includes(th.id)))) continue;
+      return { th, bg };
+    }
+  }
+  // Tło: podstawa z wariantów motywu, dodatki czasem (u eksperta częściej i nawet dwa)
+  function randomBgLook(allowed = null) {
+    const bg = scene.background, list = BG_VARIANTS[bg], ok = v => !allowed || allowed.includes(v.id), expert = level === "expert";
+    const bases = list.filter(v => !v.add && ok(v)), adds = shuffled(list.filter(v => v.add && ok(v)));
+    scene.bgv = { ...scene.bgv, [bg]: anyOf(bases.length ? bases : list.filter(v => !v.add)).id };
+    const n = !adds.length ? 0 : expert ? (Math.random() < 0.65 ? (Math.random() < 0.4 ? 2 : 1) : 0) : (Math.random() < 0.4 ? 1 : 0);
+    scene.bga = { ...(scene.bga || {}), [bg]: adds.slice(0, n).map(v => v.id) };
+  }
+  // Pogoda i efekty: z puli motywu albo dowolne; u eksperta czasem dwa naraz (bez wykluczających się)
+  function randomFx(pool, odds) {
+    const fx = [], expert = level === "expert";
+    if (Math.random() >= odds) return fx;
+    for (const x of shuffled(pool)) {
+      if (fx.length >= (expert && Math.random() < 0.5 ? 2 : 1)) break;
+      if (!fx.some(y => (FX[y].excl || []).includes(x) || (FX[x].excl || []).includes(y))) fx.push(x);
+    }
+    return fx;
   }
   function randomize(quiet = false) {
-    const fit = o => fitsBody(o, scene);
+    const fit = o => fitsBody(o, scene), expert = level === "expert";
+    const { th, bg } = pickTheme(), T = th || {};
+    remember("bg", bg, 3); if (th) remember("theme", th.id, 3);
     scene.format[scene.mode] = anyOf(FORMATS[scene.mode]).id;
-    scene.background = anyOf(leavesOf("background")).id;
-    randomBgLook();
-    scene.fx = Math.random() < 0.3 ? [anyOf(FX_LIST).id] : [];
-    scene.time = anyOf(optionsOf("time")).id;
+    scene.background = bg;
+    randomBgLook(th ? th.bg[bg] : null);
+    scene.fx = randomFx(T.fx || FX_LIST.map(x => x.id), T.fx ? 0.6 : 0.3);
+    scene.time = anyOf(T.time || optionsOf("time").map(o => o.id));
     scene.light = anyOf(leavesOf("light")).id;
     if (scene.subject === "object") {
       scene.item = anyOf(optionsOf("item")).id;
       scene.base = anyOf(optionsOf("base")).id;
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     } else {
+      const child = Math.random() < (T.child ?? 0.12);
       scene.body = anyOf(optionsOf("body")).id;
-      // Losowy zestaw, czasem z innymi kolorami góry i dołu oraz z nakryciem głowy
-      const d = dressIn(anyOf(optionsOf("outfit").filter(fit)).id);
+      // Zestaw z motywu (albo dowolny), czasem z innymi kolorami i nakryciem głowy
+      const sets = optionsOf("outfit").filter(o => fit(o) && (!T.outfit || T.outfit.includes(o.id)));
+      const d = dressIn(anyOf(sets.length ? sets : optionsOf("outfit").filter(fit)).id);
       if (Math.random() < 0.5) d.wc.top = anyOf(COLORS).id;
       if (Math.random() < 0.5) d.wc.bottom = anyOf(COLORS).id;
-      if (Math.random() < 0.25) { d.wear.hat = anyOf(WEAR.hat.options.slice(1)).id; d.wc.hat = anyOf(COLORS).id; d.outfit = "custom"; }
-      // Połowa losowań składa strój z pojedynczych części, żeby pokazać wszystkie (krata, golf, top, kamizelka, szalik, torba...)
-      const part = (k, odds, list = WEAR[k].options) => { if (Math.random() < odds) { const o = anyOf(list.filter(o => !o.hidden && fitsBody(o, scene))); d.wear[k] = o.id; d.wc[k] = Math.random() < 0.5 ? o.def || anyOf(COLORS).id : anyOf(COLORS).id; d.outfit = "custom"; } };
-      if (Math.random() < 0.5 && d.wear.bottom !== "dress") {
-        part("top", 0.8); part("bottom", 0.5); part("shoes", 0.4);
-        part("outer", 0.35, WEAR.outer.options.slice(1));
+      // Część stroju: z listy motywu albo z wszystkich dostępnych
+      const part = (k, odds, ids = null) => {
+        if (Math.random() >= odds) return;
+        const list = WEAR[k].options.filter(o => !o.hidden && fitsBody(o, scene) && (ids ? ids.includes(o.id) : true));
+        if (!list.length) return;
+        const o = anyOf(list);
+        d.wear[k] = o.id; d.wc[k] = Math.random() < 0.5 ? o.def || anyOf(COLORS).id : anyOf(COLORS).id; d.outfit = "custom";
+      };
+      if (d.wear.bottom !== "dress") {
+        const tp = T.parts || {};
+        Object.keys(tp).forEach(k => part(k, 0.6, tp[k]));
+        // Poza motywem połowa losowań składa strój z pojedynczych części, żeby pokazać wszystkie
+        if (!th && Math.random() < 0.5) { part("top", 0.8); part("bottom", 0.5); part("shoes", 0.4); part("outer", 0.35, WEAR.outer.options.slice(1).map(o => o.id)); }
       }
-      part("acc", 0.3, WEAR.acc.options.slice(1));
+      if (!(T.parts || {}).hat) part("hat", 0.2, WEAR.hat.options.slice(1).map(o => o.id));
+      if (!(T.parts || {}).acc) part("acc", 0.25, WEAR.acc.options.slice(1).map(o => o.id));
       Object.assign(scene, d);
       const male = scene.body === "male";
       scene.look = {
         hair: anyOf(LOOK.hair).id, hairPicked: true, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
         expr: randomExpr(),
-        beard: male && Math.random() < 0.5 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.beardColor).id,
-        lips: !male && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
-        glasses: Math.random() < 0.3 ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id,
-        gaze: Math.random() < 0.6 ? "auto" : anyOf(GAZE.filter(o => !o.expert || level === "expert")).id
+        beard: male && !child && Math.random() < 0.5 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.beardColor).id,
+        lips: !male && !child && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
+        glasses: Math.random() < (expert ? 0.35 : 0.25) ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id,
+        gaze: Math.random() < 0.6 ? "auto" : anyOf(GAZE.filter(o => !o.expert || expert)).id
       };
       // Cechy: zwykle dorosły o przeciętnej budowie i średnim wzroście, kolor skóry z całej palety, detale od czasu do czasu
       const pick = (k, odds) => Math.random() < odds ? anyOf(TRAITS[k].options.filter(o => o.id !== TRAIT0[k])).id : TRAIT0[k];
-      const child = Math.random() < 0.15;
       scene.traits = {
         skin: anyOf(TRAITS.skin.options).id, age: child ? "child" : "adult", build: pick("build", 0.45), height: pick("height", 0.4),
-        freckles: pick("freckles", 0.15), tattoo: child ? "none" : pick("tattoo", 0.15), earrings: pick("earrings", male ? 0.12 : 0.35)
+        freckles: pick("freckles", child ? 0.35 : 0.15), tattoo: child ? "none" : pick("tattoo", expert ? 0.25 : 0.12), earrings: pick("earrings", male ? 0.12 : 0.35)
       };
-      if (child) scene.look = { ...scene.look, beard: "none", lips: "none" };
-      scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
-      const armOpts = optionsOf("arms").filter(o => fitsBody(o, scene));
+      // Rzeczy: najpierw rzecz, potem poza, żeby poza pasowała (siedzisko, oparcie). Ekspert czasem dostaje drugą rzecz do wystroju
+      const allThings = THINGS.filter(t => !t.pet).map(t => t.id);
+      scene.things = Math.random() < (T.thingOdds ?? 0.4) ? [{ id: anyOf(T.things || allThings) }] : [];
+      const decor = ["floorLamp", "plant", "shelf", "umbrella", "bike"].filter(id => (T.things || allThings).includes(id) && !scene.things.some(it => it.id === id));
+      if (expert && scene.things.length && decor.length && Math.random() < 0.4) scene.things.push({ id: anyOf(decor) });
+      // Zwierzak: z motywu (czasem pewny), poza motywem raz na kilka losowań
+      if (Math.random() < (T.petOdds ?? 0.25)) {
+        const pt = anyOf(T.pet || THINGS.filter(t => t.pet).map(t => t.id)), coats = (T.petCoat || {})[pt];
+        scene.things.push({ id: pt, pose: anyOf(PET_POSES).id, coat: coats ? anyOf(coats) : anyOf(PET_COATS[pt]).id });
+      }
+      const poses = leavesOf("pose").filter(o => fit(o) && (!T.pose || T.pose.includes(o.id)));
+      scene.pose = anyOf(poses.length ? poses : leavesOf("pose").filter(fit)).id;
+      const armOpts = optionsOf("arms").filter(fit);
       if (armOpts.length) scene.arms = anyOf(armOpts).id;
-      scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS.filter(t => !t.pet)).id }] : [];
-      if (Math.random() < 0.2) { const pt = anyOf(THINGS.filter(t => t.pet)).id; scene.things.push({ id: pt, pose: anyOf(PET_POSES).id, coat: anyOf(PET_COATS[pt]).id }); }
-      scene.items = surfaceOf(scene) && Math.random() < 0.6 ? [{ id: anyOf(ALL_ITEMS).id }] : [];
-      scene.shot = anyOf(["full", "full", "portrait", "face"]);
-      // Zwrot ciała tylko w trybie eksperta (tam jest kategoria, w której można go zmienić)
-      scene.turn = level === "expert" && Math.random() < 0.3 ? anyOf(optionsOf("turn")).id : "camera";
+      scene.items = surfaceOf(scene) && Math.random() < (expert ? 0.85 : 0.5) ? [{ id: anyOf(ALL_ITEMS).id }] : [];
+      // Zwierzak zawsze w kadrze: cała postać. Bez zwierzaka czasem portret albo twarz
+      const petI = scene.things.findIndex(isPet);
+      scene.shot = petI >= 0 ? "full" : anyOf(["full", "full", "full", "portrait", "portrait", "face"]);
+      // Zwrot ciała i spojrzenie na zwierzaka lub rzecz tylko u eksperta (tam są te kategorie)
+      scene.turn = expert && Math.random() < 0.3 ? anyOf(optionsOf("turn")).id : "camera";
+      if (expert && scene.things.length && Math.random() < 0.35) scene.look.gaze = "t" + (petI >= 0 ? petI : 0);
     }
-    scene.camera = anyOf(leavesOf("camera").filter(fit)).id;
+    // Ze zwierzakiem bez dalekich ujęć z góry (zwierzak byłby kropką)
+    const cams = leavesOf("camera").filter(o => fit(o) && !((scene.things || []).some(isPet) && ["D", "T"].includes(o.id)));
+    scene.camera = anyOf(cams).id;
     if (scene.camera === "D") scene.shot = "full";
     if (scene.mode === "video") scene.motion = anyOf(optionsOf("motion")).id;
     // Kierunek światła z dozwolonych stref (render dopilnuje reguł lampy i pory dnia)
     scene.lightZone = anyOf(lightZones(scene));
-    scene.style = anyOf(optionsOf("style")).id;
+    // Styl: ulubiony motywu (zwykle) albo dowolny; nie ten sam co ostatnio
+    const styles = optionsOf("style").map(o => o.id).filter(id => !rollRecent.style.includes(id));
+    const fav = (T.style || []).filter(id => styles.includes(id));
+    scene.style = fav.length && Math.random() < 0.7 ? anyOf(fav) : anyOf(styles);
+    remember("style", scene.style, 2);
     lastPreset = null;
     // Pośrednie szkice przy losowaniu: bez odświeżania menu (to najdroższe), tylko podgląd
     if (quiet) { fixScene(); sceneChanged(); } else render();

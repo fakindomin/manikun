@@ -425,3 +425,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Postać z rzeczami rysuje się w grupie `[data-part="subj"]`; stary Manikun to klon tej grupy z poprzedniej klatki (`belt.old`). Kamera, lampa i poza ustawiają się od razu, rusza się tylko dekoracja i taśma.
 - Przy ograniczeniu animacji w systemie scena zmienia się od razu.
 - Każda zmiana tła (menu, gotowce, Kreator), także zmiana podstawy w tym samym miejscu, to opuszczana z góry dekoracja ze stuknięciem przy lądowaniu. Manikun zostaje na miejscu i rozgląda się po nowym miejscu; taśma tylko przy Losuj. Dodatki tła zmieniają się od razu. Stare przejście (tło chowane w dół, nowe wysuwane od dołu) usunięte.
+
+## Losuj z motywami
+
+- `R_THEMES`: 21 motywów (spacer z psem, jesień w parku, zima, kawiarnia, bar nocą, plaża, smok w lesie, ognisko, neonowe miasto, deszczowa ulica, dach, pustynia, przytulny dom, biuro, kuchnia, nad wodą, wędrówka, dziecko na łące, sesja w studiu, sport w mieście, bajkowa łąka). Motyw zawęża miejsce z wariantami, porę, pogodę, zestaw i części stroju, rzeczy, zwierzaka (z umaszczeniem), pozy i ulubione style; reszta losuje się w pełnym zakresie. Co piąte losowanie bez motywu (dowolna scena).
+- Bez powtórek: ostatnie 3 miejsca i motywy oraz 2 style nie wypadają ponownie (`rollRecent`).
+- Zwierzak: ok. 39% losowań, zawsze ujęcie całej postaci i bez kamer z góry/drona, więc zawsze widoczny (wcześniej widoczny w ok. 13%).
+- Rzecz losowana przed pozą, więc poza do niej pasuje (siedzi na krześle, opiera się o ladę).
+- Ekspert: dwa efekty naraz (ok. 15%), do dwóch dodatków tła (ok. 50%), druga rzecz do wystroju, przedmioty na blacie częściej, zwrot ciała (ok. 22%), spojrzenie na zwierzaka lub rzecz (ok. 25%), częściej tatuaże i okulary.
+- Test 2000 losowań (podstawowy i ekspert): 0 błędów, wszystkie 21 motywów i 15 miejsc.
