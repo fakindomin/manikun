@@ -4543,7 +4543,7 @@
   // Losuj jak maszyna losująca: kilka świeżo wylosowanych szkiców przelatuje coraz wolniej, ostatni zostaje
   let snapScene = false, rollSeq = 0;
   // Odstępy między 4 szkicami: ostatni zostaje
-  const ROLL_MS = [70, 95, 130];
+  const ROLL_MS = [40, 50, 65];
   function rollRandom() {
     const id = ++rollSeq;
     if (reduceMotion.matches) { randomize(); return; }
