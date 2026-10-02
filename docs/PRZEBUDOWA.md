@@ -416,3 +416,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 - Przelot 7 świeżo losowanych szkiców, 45→130 ms (razem ok. 0,5 s zamiast ok. 1 s). Każdy szkic to pełne `randomize`, bez gotowej puli.
 - Losowanie pokazuje całą aplikację: w połowie losowań strój z pojedynczych części (wszystkie góry, okrycia, doły, buty), dodatki (szalik, torba), spojrzenie, a w trybie eksperta także zwrot ciała. Test 800 losowań: wszystkie części, zwroty, spojrzenia i miejsca się pojawiają, 0 błędów.
+- Wycofane: pełna klatka po losowaniu (`#previewStill`) psuła efekt przelotu. Losuj kończy się na zwykłym szkicu; pełna jakość zostaje tylko w próbnym kadrze.

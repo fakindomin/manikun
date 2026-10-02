@@ -321,9 +321,6 @@
   .ink .shade path, .ink .shade circle, .ink .shade ellipse { fill: #000; stroke: none; }
   #preview { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   [data-phase="start"] #preview { cursor: pointer; }
-  /* Wylosowany kadr: jedna nieruchoma klatka w pełnej jakości nad szkicem, znika przy każdej zmianie */
-  .preview-still { position: absolute; pointer-events: none; opacity: 0; transition: opacity 280ms ease-out; }
-  .preview-still.on { opacity: 1; }
   /* Podpis przy przeciąganiu kamery lub lampy: unosi się nad dołem kadru, nie zajmuje miejsca */
   .readout {
     position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); pointer-events: none;
@@ -724,7 +721,6 @@
 
   <div class="stage">
     <svg id="preview" class="ink" role="img" aria-label="Podgląd kadru z Manikunem" preserveAspectRatio="xMidYMid meet"></svg>
-    <svg id="previewStill" class="ink preview-still" aria-hidden="true" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="readout" id="readout" hidden></div>
     <!-- Filtry Manikuna w kadrze: światło lampy na bryłach, kontra na krawędzi i miękkie cienie (jednostki Manikuna) -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -4544,13 +4540,12 @@
     // Pośrednie szkice przy losowaniu: bez odświeżania menu (to najdroższe), tylko podgląd
     if (quiet) { fixScene(); sceneChanged(); } else render();
   }
-  // Losuj jak maszyna losująca: kilka szkiców przelatuje coraz wolniej, ostatni zatrzymuje się
-  // i „wywołuje” w pełnej jakości (jedna nieruchoma klatka nad szkicem, bez rysowania co klatkę)
-  let snapScene = false, rollSeq = 0, stillFP = null;
+  // Losuj jak maszyna losująca: kilka świeżo wylosowanych szkiców przelatuje coraz wolniej, ostatni zostaje
+  let snapScene = false, rollSeq = 0;
   const ROLL_MS = [45, 50, 55, 65, 80, 100, 130];
   function rollRandom() {
     const id = ++rollSeq;
-    if (reduceMotion.matches) { randomize(); showStill(); return; }
+    if (reduceMotion.matches) { randomize(); return; }
     let k = 0;
     const step = () => {
       if (id !== rollSeq) return;
@@ -4559,38 +4554,11 @@
       snapScene = true;
       try { randomize(!last); } finally { snapScene = false; }
       sfx(last ? "klap" : "tik");
-      if (last) { nod("nod"); setTimeout(() => { if (id === rollSeq) showStill(); }, 140); return; }
+      if (last) { nod("nod"); return; }
       setTimeout(step, ROLL_MS[k++]);
     };
     step();
   }
-  const stillSvg = document.getElementById("previewStill");
-  // Odcisk sceny bez stanu menu (otwarta kategoria nie zmienia kadru)
-  const stillKey = () => JSON.stringify({ ...scene, open: null });
-  function clearStill() {
-    if (!stillSvg.classList.contains("on") && !stillSvg.firstChild) return;
-    stillSvg.classList.remove("on");
-    stillSvg.replaceChildren();
-    stillFP = null;
-  }
-  function showStill() {
-    if (phase !== "director") return;
-    const fmt = currentFormat(), H = 300, W = H * fmt.w / fmt.h;
-    const layers = ["ground", "camera", "light", "background", "things"];
-    if (scene.mode === "video" && !isSelfie(scene.camera)) layers.push("motion");
-    // Ta sama geometria co szkic pod spodem, tylko pełna jakość i miękki materiał postaci
-    const r = preview.getBoundingClientRect(), sr = preview.parentElement.getBoundingClientRect();
-    Object.assign(stillSvg.style, { left: (r.left - sr.left) + "px", top: (r.top - sr.top) + "px", width: r.width + "px", height: r.height + "px" });
-    trialMat = true; trialDetail = scene.shot !== "full";
-    try { renderScene(stillSvg, { ...scene, props: { ...targetProps(), reveal: 1 } }, W, H, new Set(layers), { corners: true, lit: true, draft: false }); }
-    finally { trialMat = false; trialDetail = false; }
-    // Poświata lampy wokół sylwetki to znak szkicu; w pełnej klatce światło robi materiał
-    stillSvg.querySelectorAll(".glow").forEach(n => n.remove());
-    stillSvg.classList.remove("on");
-    stillFP = stillKey();
-    requestAnimationFrame(() => requestAnimationFrame(() => stillSvg.classList.add("on")));
-  }
-  window.addEventListener("resize", () => clearStill());
 
   // Kafelek: obrazek i opis. redraw() odświeża rysunek, opis i zaznaczenie bez ponownej animacji wejścia.
   // Kafelki trafiają do rzędu, który jest właśnie budowany (tileHost); kliknięcie idzie przez nawigację.
@@ -6010,7 +5978,6 @@
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
     const tp = targetProps();
-    if (stillFP && stillFP !== stillKey()) clearStill();
     if (!prev || !shown || reduceMotion.matches || snapScene) {
       figAnim = null;
       shown = baseShown();
@@ -7096,7 +7063,6 @@
       return;
     }
     preview.setPointerCapture(e.pointerId);
-    clearStill();
     drag = { what, sx: e.clientX, sy: e.clientY, grabbed: false, near: what === "camera" ? scene.camera : scene.lightZone };
     drag.timer = setTimeout(() => {
       if (!drag) return;
