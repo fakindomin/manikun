@@ -1720,13 +1720,14 @@
   const LYING = ["back", "side", "belly"];
   const ARMS = {
     down: {},
-    hipOne: { nearUpper: -38, nearFore: 48 },
-    hips: { nearUpper: -38, nearFore: 48, farUpper: 36, farFore: -50 },
-    chin: { nearUpper: 28, nearFore: 172, head: 176 },
-    shade: { nearUpper: -150, nearFore: 95, head: 184 },
+    // nearHand / farHand: ułożenie dłoni w Próbnym kadrze (luźna, płaska, pięść, na biodrze)
+    hipOne: { nearUpper: -38, nearFore: 48, nearHand: "hip" },
+    hips: { nearUpper: -38, nearFore: 48, farUpper: 36, farFore: -50, nearHand: "hip", farHand: "hip" },
+    chin: { nearUpper: 28, nearFore: 172, head: 176, nearHand: "fist" },
+    shade: { nearUpper: -150, nearFore: 95, head: 184, nearHand: "flat" },
     // Selfie: dalsza ręka wyciągnięta w górę i w bok z telefonem; bliższa zostaje wolna na gest z kategorii Ręce
-    selfie: { farUpper: 142, farFore: 172, head: 186 },
-    selfieR: { nearUpper: -142, nearFore: -172, head: 174 },
+    selfie: { farUpper: 142, farFore: 172, head: 186, farHand: "fist" },
+    selfieR: { nearUpper: -142, nearFore: -172, head: 174, nearHand: "fist" },
     // Na plecach: dłonie splecione pod głową (łokcie w górę) albo na brzuchu
     behindHead: { nearUpper: -156, nearFore: -12, farUpper: -162, farFore: -20 },
     onBelly: { nearUpper: 112, nearFore: 66, farUpper: 108, farFore: 60 },
@@ -1742,9 +1743,9 @@
   const armsDefault = st => LIE_ARMS[st.pose] ? LIE_ARMS[st.pose][0] : "down";
   // Te same gesty wykonane dalszą ręką
   const ARMS_FAR = {
-    hipOne: { farUpper: 36, farFore: -50 },
-    chin: { farUpper: -80, farFore: 122, farFront: 1, head: 176 },
-    shade: { farUpper: 150, farFore: -95, farFront: 1, head: 184 }
+    hipOne: { farUpper: 36, farFore: -50, farHand: "hip" },
+    chin: { farUpper: -80, farFore: 122, farFront: 1, head: 176, farHand: "fist" },
+    shade: { farUpper: 150, farFore: -95, farFront: 1, head: 184, farHand: "flat" }
   };
   // Klucz pozy: postawa i ręce ("stand+hips"). Obiekty są zapamiętywane, więc ta sama poza to ten sam obiekt.
   // Mina zmienia postawę głowy i tułowia (radość w górę, smutek i płacz w dół, zamyślenie z przechyłem)

@@ -63,6 +63,29 @@ function limbPath(A, B, C, rA, rB, rC) {
   d += arc(A, rA, iN1, oN1, [-d1[0], -d1[1]]);
   return d + " Z";
 }
+// Dłoń w Próbnym kadrze: jeden kształt dłoni z palcami i kciuk wyrastający z boku, w układzie nadgarstka
+// (x wzdłuż przedramienia, y w stronę kciuka). gest: relaxed (palce lekko zgięte), flat (wyprostowana, nad oczami),
+// fist (pięść pod brodą), hip (palce mocno zgięte, dłoń oparta na biodrze).
+const HAND_SHAPES = {
+  relaxed: { body: [[0, -2.2], "C", [2, -2.6], [5, -3], [6.8, -2.9], "C", [8.8, -2.8], [10.6, -1.8], [11, 0], "C", [11.3, 1.4], [10.4, 2.6], [9.2, 2.5], "C", [8.2, 2.4], [7.4, 2.2], [6.6, 2.7], "C", [4.8, 3.3], [2.2, 2.9], [0, 2.2]],
+    thumb: [[1.8, 2.2], "C", [3.4, 4.2], [6, 4.6], [7.2, 3.9], "C", [7.9, 3.4], [7.4, 2.7], [6.6, 2.8], "C", [5, 3], [3.4, 2.6], [2.6, 1.8]],
+    gaps: [[[7.4, -2.2], [10.2, -1.2]], [[7.6, -0.9], [10.7, 0.4]], [[7.4, 0.5], [10.2, 1.8]]] },
+  flat: { body: [[0, -2.1], "C", [2, -2.5], [5, -2.7], [7, -2.6], "L", [11.6, -2.1], "C", [12.6, -2], [12.8, -0.4], [12.6, 0.4], "C", [12.4, 1.6], [11.8, 1.9], [11, 1.9], "L", [7.2, 2.3], "C", [4.8, 2.8], [2.2, 2.7], [0, 2.1]],
+    thumb: [[2, 2], "C", [3.5, 3.4], [6.5, 3.6], [7.8, 3.1], "C", [8.4, 2.8], [8.1, 2.2], [7.4, 2.3], "C", [5.5, 2.5], [3.6, 2.3], [2.6, 1.6]],
+    gaps: [[[7.4, -1.2], [12.2, -1]], [[7.4, 0], [12.5, 0.2]], [[7.4, 1.1], [12, 1.3]]] },
+  fist: { body: [[0, -2.3], "C", [2, -2.8], [4.6, -3.2], [6.4, -3.2], "C", [8.6, -3.2], [9.4, -1.6], [9.4, 0.2], "C", [9.4, 2.2], [8.4, 3.4], [6.6, 3.4], "C", [4.6, 3.4], [2.4, 3], [0, 2.3]],
+    thumb: [[2.2, 2.4], "C", [3.6, 4.2], [6.2, 4.4], [7.6, 3.6], "C", [8.2, 3.2], [7.8, 2.4], [7, 2.5], "C", [5.4, 2.7], [3.8, 2.6], [2.8, 1.8]],
+    gaps: [[[8.1, -2.4], [9.2, -1.4]], [[8.5, -0.9], [9.4, 0.1]], [[8.4, 0.8], [9.2, 1.6]]] },
+  hip: { body: [[0, -2.2], "C", [2, -2.7], [5, -3], [6.8, -2.9], "C", [8.6, -2.8], [9.8, -1.6], [9.9, 0.2], "C", [10, 2], [9.6, 3.8], [8.6, 4.4], "C", [7.8, 4.8], [7.2, 4], [7.2, 3.2], "C", [6.4, 3.2], [3, 3], [0, 2.2]],
+    thumb: [[1.8, 2.2], "C", [3.4, 4.2], [6, 4.6], [7.2, 3.9], "C", [7.9, 3.4], [7.4, 2.7], [6.6, 2.8], "C", [5, 3], [3.4, 2.6], [2.6, 1.8]],
+    gaps: [[[7.4, -2.2], [9.6, -0.9]], [[7.6, -0.8], [9.8, 1]], [[7.4, 0.8], [9.2, 3.2]]] }
+};
+function handPaths(info) {
+  const H = HAND_SHAPES[info.gest] || HAND_SHAPES.relaxed, k = info.k;
+  const T = ([x, y]) => { const px = info.W[0] + info.fd[0] * x * k + info.fp[0] * y * k, py = info.W[1] + info.fd[1] * x * k + info.fp[1] * y * k; return f(px) + "," + f(py); };
+  const path = list => "M" + list.map(v => typeof v === "string" ? " " + v + " " : T(v)).join(" ").replace(/ ([A-Z]) /g, " $1") + " Z";
+  return { body: path(H.body), thumb: path(H.thumb), gaps: H.gaps.map(([a, b]) => `M${T(a)} L${T(b)}`) };
+}
 // Gładka krzywa przez punkty (Catmull-Rom zamieniony na krzywe Béziera), bez początkowego M
 function smoothThrough(pts) {
   let d = "";
@@ -194,9 +217,13 @@ function computeFigure(pose, RIG, cloth = null) {
     }
     // Dłoń jak u manekina rysownika: kciuk z boku, śródręcze i nieco węższe palce (widać stopień przy kostkach)
     const fd = dir(pose[side + "Fore"]), fp = [fd[1], -fd[0]];
-    push(cap(add(add(W, fd, 3), fp, 2.4), add(add(W, fd, 9), fp, 4.4), 1.8, 1.4));
+    const thumb = cap(add(add(W, fd, 3), fp, 2.4), add(add(W, fd, 9), fp, 4.4), 1.8, 1.4);
+    thumb.thumb = true;
+    push(thumb);
     const palm = cap(add(W, fd, 0.5), add(W, fd, 12.5), 3.7, 2.7);
     palm.hand = true;
+    // Dane do pełnej dłoni w Próbnym kadrze: nadgarstek, osie i ułożenie z gestu rąk
+    palm.handInfo = { W, fd, fp, gest: pose[side + "Hand"] || "relaxed", k: RIG.headRx / 11 };
     push(palm, [Hc, 9]);
     hands[side] = Hc;
     tag = null;
@@ -549,7 +576,8 @@ function paintFigure(g, shapes, m) {
         i++;
       } else merged.push(a);
     }
-    shapes = merged.filter(s => !(s.t === "circle" && joints.some(j => near(j, [s.cx, s.cy]))));
+    shapes = merged.filter(s => !(s.t === "circle" && joints.some(j => near(j, [s.cx, s.cy]))) && !(s.thumb && !s.cloth))
+      .map(s => s.hand && s.handInfo ? { ...s, t: "handP", hp: handPaths(s.handInfo), d: handPaths(s.handInfo).body } : s);
   }
   const defs = el("defs", {}, g);
   const pre = "mk" + (++gradSeq) + "-";
@@ -559,7 +587,7 @@ function paintFigure(g, shapes, m) {
   const grainLine = (d, w = 0.8, op = 0.6) => m.grain && el("path", { d, style: `fill:none;stroke:${m.grain};stroke-width:${w};opacity:${op}` }, g);
   let n = 0;
   // Cień bliższej ręki na reszcie ciała (Próbny kadr): rozmyta sylwetka ręki przesunięta od światła, przycięta do obrysu ciała
-  const geom = (s, parent, style) => s.t === "cap" || s.t === "cap2" || s.t === "poly" ? el("path", { d: s.d, style }, parent)
+  const geom = (s, parent, style) => s.t === "cap" || s.t === "cap2" || s.t === "poly" || s.t === "handP" ? el("path", { d: s.d, style }, parent)
     : s.t === "circle" ? el("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r, style }, parent)
     : el("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})`, style }, parent);
   let armShadow = null;
@@ -628,6 +656,16 @@ function paintFigure(g, shapes, m) {
           fold(`M${f(w0[0])},${f(w0[1])} Q${f(wc[0])},${f(wc[1])} ${f(w1[0])},${f(w1[1])}`, dk, 0.9, 0.4);
         }
       }
+      return;
+    }
+    if (s.t === "handP") {
+      // Pełna dłoń: cieniowanie w poprzek dłoni, kciuk z cieniem przy dłoni, szczeliny między palcami w zbliżeniu
+      const id = pre + "h" + (++n), I = s.handInfo, r = 3.2 * I.k, c = add(I.W, I.fd, 5 * I.k);
+      const lg = el("linearGradient", { id, gradientUnits: "userSpaceOnUse", x1: f(c[0] - I.fp[0] * r), y1: f(c[1] - I.fp[1] * r), x2: f(c[0] + I.fp[0] * r), y2: f(c[1] + I.fp[1] * r) }, defs);
+      stops(lg, [[0, m.dark], [0.4, m.light], [0.75, m.mid], [1, m.dark]]);
+      shape("path", { d: s.hp.body }, `url(#${id})`);
+      s.hp.gaps.forEach(d => el("path", { d, style: `fill:none;stroke:${m.dark};stroke-width:${m.detail ? 0.6 : 0.45};stroke-linecap:round;opacity:${m.detail ? 0.6 : 0.4}` }, g));
+      shape("path", { d: s.hp.thumb }, `url(#${id})`);
       return;
     }
     if (s.t === "cap2") {
