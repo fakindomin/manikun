@@ -412,8 +412,12 @@ let gradSeq = 0;
 
 // Rysuje kształty manekina do grupy g. Bez materiału rysuje zwykłe kształty (styl z CSS).
 // Materiał z flat: true rysuje uproszczonego Manikuna (szkic roboczy podczas ustawiania sceny).
+// Materiał z soft: true (Próbny kadr): miękki kontur w odcieniu bryły zamiast kreski i fałdy na ubraniu.
 function paintFigure(g, shapes, m) {
-  const shape = (tag, attrs, fill) => el(tag, m ? { ...attrs, style: `fill:${fill};stroke:${m.line}` } : attrs, g);
+  const shape = (tag, attrs, fill, line) => el(tag, m ? { ...attrs, style: m.soft
+    ? `fill:${fill};stroke:${line || m.line};stroke-opacity:${line ? 0.45 : 0.3};stroke-width:0.7`
+    : `fill:${fill};stroke:${m.line}` } : attrs, g);
+  const fold = (d, c, w, op) => el("path", { d, style: `fill:none;stroke:${c};stroke-width:${w};stroke-linecap:round;opacity:${op}` }, g);
   if (!m) {
     shapes.forEach(s => {
       if (s.t === "deco") return;
@@ -458,11 +462,34 @@ function paintFigure(g, shapes, m) {
         const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
         x1 = mx - dy / len * rr; y1 = my + dx / len * rr; x2 = mx + dy / len * rr; y2 = my - dx / len * rr;
       }
-      if (s.t === "ellipse") shape("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` }, shadeHex(s.cloth, -0.12));
+      const cl = m.soft ? shadeHex(s.cloth, -0.5) : null;
+      if (s.t === "ellipse") shape("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` }, shadeHex(s.cloth, -0.12), cl);
       else {
         const lg = el("linearGradient", { id, gradientUnits: "userSpaceOnUse", x1: f(x1), y1: f(y1), x2: f(x2), y2: f(y2) }, defs);
         stops(lg, [[0, shadeHex(s.cloth, -0.22)], [0.35, shadeHex(s.cloth, 0.12)], [0.65, s.cloth], [1, shadeHex(s.cloth, -0.25)]]);
-        shape("path", { d: s.d }, `url(#${id})`);
+        shape("path", { d: s.d }, `url(#${id})`, cl);
+      }
+      if (m.soft) {
+        const dk = shadeHex(s.cloth, -0.38), lt = shadeHex(s.cloth, 0.28);
+        if (s.t === "cap") {
+          // Fałdy w poprzek rękawa albo nogawki: łuki wygięte raz w jedną, raz w drugą stronę, nad nimi jasny refleks
+          const dx = s.B[0] - s.A[0], dy = s.B[1] - s.A[1], len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+          if (len > 8) [0.38, 0.72].forEach((t, i) => {
+            const r = (s.rA + (s.rB - s.rA) * t) * 0.8, cx = s.A[0] + dx * t, cy = s.A[1] + dy * t, bow = len * 0.05 * (i % 2 ? 1 : -1);
+            const a = [cx + nx * r, cy + ny * r], b = [cx - nx * r * 0.6, cy - ny * r * 0.6], c = [cx + nx * r * 0.2 + ux * bow, cy + ny * r * 0.2 + uy * bow];
+            fold(`M${f(a[0])},${f(a[1])} Q${f(c[0])},${f(c[1])} ${f(b[0])},${f(b[1])}`, dk, 0.9, 0.36);
+            fold(`M${f(a[0] - ux * 1.1)},${f(a[1] - uy * 1.1)} Q${f(c[0] - ux * 1.1)},${f(c[1] - uy * 1.1)} ${f(b[0] - ux * 1.1)},${f(b[1] - uy * 1.1)}`, lt, 0.6, 0.35);
+          });
+        } else if (s.t === "poly" && s.q && s.q.length === 4) {
+          // Tułów: dwie fałdy od ramion ku talii i zagniecenie nad paskiem
+          const [tn, tf, bf, bn] = s.q, L = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+          [[0.3, 0.42], [0.62, 0.55]].forEach(([a, b], i) => {
+            const p0 = L(L(tn, tf, a), L(bn, bf, a), 0.12), p1 = L(L(tn, tf, b), L(bn, bf, b), 0.7), c = L(L(tn, tf, (a + b) / 2 + 0.06), L(bn, bf, (a + b) / 2), 0.45);
+            fold(`M${f(p0[0])},${f(p0[1])} Q${f(c[0])},${f(c[1])} ${f(p1[0])},${f(p1[1])}`, dk, 0.9, 0.35);
+          });
+          const w0 = L(L(tn, bn, 0.86), L(tf, bf, 0.86), 0.15), w1 = L(L(tn, bn, 0.86), L(tf, bf, 0.86), 0.85), wc = L(L(tn, bn, 0.9), L(tf, bf, 0.9), 0.5);
+          fold(`M${f(w0[0])},${f(w0[1])} Q${f(wc[0])},${f(wc[1])} ${f(w1[0])},${f(w1[1])}`, dk, 0.9, 0.4);
+        }
       }
       return;
     }
@@ -520,7 +547,7 @@ function paintFigure(g, shapes, m) {
         lines.forEach((k, i) => {
           const x = s.cx + s.rx * k, y1 = s.cy - s.ry * 0.78, y2 = s.cy + s.ry * 0.78;
           el("path", { d: `M${f(x)},${f(y1)} Q${f(x + s.rx * (i % 2 ? -0.25 : 0.25))},${f(s.cy)} ${f(x)},${f(y2)}`,
-            style: `fill:none;stroke:${m.grain};stroke-width:${s.head ? 0.8 : 0.6};opacity:0.55` }, gg);
+            style: `fill:none;stroke:${m.grain};stroke-width:${s.head ? 0.8 : 0.6};opacity:${m.soft && s.head ? 0.22 : 0.55}` }, gg);
         });
       }
     }

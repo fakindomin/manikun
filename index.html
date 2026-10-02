@@ -2323,7 +2323,7 @@
     }, parent);
     let host = lit ? el("g", { filter: "url(#figLit)" }, el("g", { filter: "url(#figRim)" }, holder)) : holder;
     if (pl.mir != null) host = el("g", { transform: `translate(${f(2 * b.minX + b.w)} 0) scale(-1 1)` }, host);
-    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : material) : null);
+    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : trialMat ? { ...material, soft: true, line: material.dark } : material) : null);
   }
 
   // Światło na Manikunie: kierunek od środka postaci do lampy. Światło z tyłu przygasza przód i rozświetla krawędź,
@@ -6036,6 +6036,30 @@
     let G;
     try { G = renderScene(trialSvg, st, W, H, layers, { lit: true, draft: false, split: true }); } finally { trialMat = false; }
     const look = TRIAL[scene.style] || TRIAL.real, u = G.u, NS = "http://www.w3.org/2000/svg";
+    // Kontra na krawędzi Manikuna w kolorze miejsca i pory dnia (własna kopia filtra, szkic i start się nie zmieniają)
+    const rim = document.getElementById("figRim").cloneNode(true), defs0 = trialSvg.querySelector("defs");
+    rim.id = "trialRim";
+    const tc = scene.background === "studio" ? null : { golden: "#FFB070", night: "#8AA6FF" }[scene.time];
+    const RIM_BG = { studio: "#FFFFFF", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", cafe: "#FFC88C" };
+    rim.querySelectorAll("[id]").forEach(n => { n.id = "trial-" + n.id; });
+    const flood = rim.querySelector("feFlood"), off = rim.querySelector("feOffset");
+    flood.setAttribute("flood-color", tc || RIM_BG[scene.background] || "#FFFFFF");
+    flood.setAttribute("flood-opacity", f(Math.min(1, +flood.getAttribute("flood-opacity") + 0.25)));
+    off.setAttribute("dx", f(+off.getAttribute("dx") * 1.4)); off.setAttribute("dy", f(+off.getAttribute("dy") * 1.4));
+    defs0.appendChild(rim);
+    trialSvg.querySelectorAll('[filter="url(#figRim)"]').forEach(n => n.setAttribute("filter", "url(#trialRim)"));
+    // Światło na bryle bez prążków: wynik oświetlenia (liczony z 8-bitowej wypukłości) lekko rozmyty
+    const lit = document.getElementById("figLit").cloneNode(true);
+    lit.id = "trialLitF";
+    lit.querySelectorAll("[id]").forEach(n => { n.id = "trial-" + n.id; });
+    [["diff", "diffS"], ["spec", "specS"]].forEach(([a, b]) => {
+      const src = lit.querySelector(`[result="${a}"]`), bl = document.createElementNS(NS, "feGaussianBlur");
+      bl.setAttribute("in", a); bl.setAttribute("stdDeviation", "1.4"); bl.setAttribute("result", b);
+      src.after(bl);
+      lit.querySelectorAll(`[in="${a}"]`).forEach(n => { if (n !== bl) n.setAttribute("in", b); });
+    });
+    defs0.appendChild(lit);
+    trialSvg.querySelectorAll('[filter="url(#figLit)"]').forEach(n => n.setAttribute("filter", "url(#trialLitF)"));
     trialSvg.setAttribute("width", f(W));
     trialSvg.setAttribute("height", f(H));
     trialSvg.querySelector(":scope > .frame")?.remove();

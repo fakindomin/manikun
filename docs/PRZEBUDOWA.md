@@ -332,3 +332,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Pokój: jasna ściana, listwa, podłoga z desek w perspektywie, okno z ramą, parapetem i zasłonami, smuga światła z okna na podłodze (nie nocą), obraz na ścianie, dywan pod postacią, roślina w donicy, jaśniejsze meble.
 - Kawiarnia: ciepła ściana z boazerią, podłoga w szachownicę w perspektywie, lada z ekspresem, tablica z menu, półki z kubkami, lampy świecące na ścianę i stożki światła w dół.
 - Studio: bezszwowe tło w kolorze wariantu (szare, białe, czarne, kolorowe), ściana łagodnie przechodzi w podłogę, plama światła za postacią i miękka winieta.
+
+## Postać w Próbnym kadrze
+
+- Bez kreskówkowego konturu: krawędź w odcieniu bryły, półprzezroczysta (drewno ciemniejszym drewnem, ubranie ciemniejszym kolorem materiału).
+- Fałdy na ubraniu: po dwie na rękawie i nogawce (ciemny łuk z jasnym refleksem), na tułowiu dwie od ramion ku talii i zagniecenie nad paskiem.
+- Kontra na krawędzi w kolorze miejsca i pory dnia (las zielonkawo, plaża i pokój ciepło, złota godzina pomarańczowo, noc niebiesko), wyraźniejsza niż w szkicu.
+- Światło na bryle wygładzone (bez prążków przy dużym planie), słoje na twarzy przygaszone.
+- Ekran startowy, tutorial i szkic roboczy zostają bez zmian.
+
