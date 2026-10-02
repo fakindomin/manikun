@@ -50,14 +50,14 @@ const BODIES = {
   male: {
     pelvisDown: 6, pelvisUp: 14, waistTop: 20, chest: 45, neck: 9, headRx: 11, headRy: 15,
     upperArm: 36, forearm: 32, thigh: 46, shin: 44, foot: 16,
-    shoulderNear: 17, shoulderFar: 12, hipNear: 9, hipFar: 7,
-    chestTop: [19, 14], chestBottom: [11, 9], pelvisTop: [11, 9], pelvisBottom: [13, 10]
+    shoulderNear: 18, shoulderFar: 13, hipNear: 9, hipFar: 7,
+    chestTop: [20, 15], chestBottom: [10, 8], pelvisTop: [11, 9], pelvisBottom: [13, 10]
   },
   female: {
     pelvisDown: 6, pelvisUp: 14, waistTop: 19, chest: 41, neck: 9, headRx: 10, headRy: 14,
     upperArm: 33, forearm: 30, thigh: 44, shin: 42, foot: 14,
     shoulderNear: 14, shoulderFar: 10, hipNear: 10, hipFar: 8,
-    chestTop: [16, 12], chestBottom: [9, 7], pelvisTop: [11, 9], pelvisBottom: [15, 12]
+    chestTop: [16, 12], chestBottom: [8, 6], pelvisTop: [11, 9], pelvisBottom: [16, 13]
   }
 };
 
@@ -114,7 +114,9 @@ const HAIR_SHAPES = {
 function computeFigure(pose, RIG, cloth = null) {
   const P = [0, 0], u = dir(pose.spine), r = [-u[1], u[0]];
   const shapes = [], pts = [];
-  const push = (s, ...ps) => { shapes.push(s); pts.push(...ps); };
+  // tag: znacznik kształtów bliższej ręki (cień ręki na ciele w Próbnym kadrze)
+  let tag = null;
+  const push = (s, ...ps) => { if (tag) s[tag] = true; shapes.push(s); pts.push(...ps); };
   const cap = (A, B, rA, rB) => ({ t: "cap", A, B, rA, rB, d: capsule(A, B, rA, rB) });
   const quad = q => ({ t: "poly", q, d: poly(q) });
   const Ct = add(P, u, RIG.waistTop + RIG.chest), Cb = add(P, u, RIG.waistTop);
@@ -122,12 +124,13 @@ function computeFigure(pose, RIG, cloth = null) {
   const hip = side => add(P, r, side === "near" ? -RIG.hipNear : RIG.hipFar);
 
   const lerpP = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-  const wear = (shape, color) => { shape.cloth = color; shapes.push(shape); };
+  const wear = (shape, color) => { shape.cloth = color; if (tag) shape[tag] = true; shapes.push(shape); };
   const clothPoly = (pts, color) => wear({ t: "poly", q: pts, d: poly(pts) }, color);
   const loose = cloth && cloth.loose ? 1.2 : 1;
 
   const hands = {};
   function arm(side) {
+    tag = side === "near" ? "nearArm" : null;
     const S = shoulder(side);
     const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
     const W = add(E, dir(pose[side + "Fore"]), RIG.forearm);
@@ -151,8 +154,11 @@ function computeFigure(pose, RIG, cloth = null) {
     // Dłoń jak u manekina rysownika: kciuk z boku, śródręcze i nieco węższe palce (widać stopień przy kostkach)
     const fd = dir(pose[side + "Fore"]), fp = [fd[1], -fd[0]];
     push(cap(add(add(W, fd, 3), fp, 2.4), add(add(W, fd, 9), fp, 4.4), 1.8, 1.4));
-    push(cap(add(W, fd, 0.5), add(W, fd, 12.5), 3.7, 2.7), [Hc, 9]);
+    const palm = cap(add(W, fd, 0.5), add(W, fd, 12.5), 3.7, 2.7);
+    palm.hand = true;
+    push(palm, [Hc, 9]);
     hands[side] = Hc;
+    tag = null;
   }
   const knees = {};
   function leg(side) {
@@ -497,8 +503,26 @@ function paintFigure(g, shapes, m) {
   stops(ball, [[0, m.light], [0.55, m.mid], [1, m.dark]]);
   const grainLine = (d, w = 0.8, op = 0.6) => m.grain && el("path", { d, style: `fill:none;stroke:${m.grain};stroke-width:${w};opacity:${op}` }, g);
   let n = 0;
+  // Cień bliższej ręki na reszcie ciała (Próbny kadr): rozmyta sylwetka ręki przesunięta od światła, przycięta do obrysu ciała
+  const geom = (s, parent, style) => s.t === "cap" || s.t === "poly" ? el("path", { d: s.d, style }, parent)
+    : s.t === "circle" ? el("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r, style }, parent)
+    : el("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})`, style }, parent);
+  let armShadow = null;
+  if (m.soft && m.shadowDir && shapes.some(s => s.nearArm)) {
+    const clip = el("clipPath", { id: pre + "body" }, defs);
+    shapes.forEach(s => { if (!s.nearArm && s.t !== "deco") geom(s, clip, ""); });
+    const bl = el("filter", { id: pre + "ash", x: "-30%", y: "-30%", width: "160%", height: "160%" }, defs);
+    el("feGaussianBlur", { stdDeviation: "1.8" }, bl);
+    armShadow = () => {
+      const cg = el("g", { "clip-path": `url(#${pre}body)` }, g);
+      const sg = el("g", { filter: `url(#${pre}ash)`, transform: `translate(${f(m.shadowDir[0])} ${f(m.shadowDir[1])})`, opacity: "0.32" }, cg);
+      shapes.forEach(s => { if (s.nearArm && s.t !== "deco") geom(s, sg, "fill:#1A0E06;stroke:none"); });
+      armShadow = null;
+    };
+  }
 
   shapes.forEach((s, idx) => {
+    if (s.nearArm && armShadow) armShadow();
     // Detale twarzy (okulary, szminka, cień zarostu) mają własny styl
     if (s.t === "deco") { el("path", { d: s.d, style: s.style }, g); return; }
     if (s.cloth) {
@@ -554,7 +578,18 @@ function paintFigure(g, shapes, m) {
         x1: f(mx + nx * r), y1: f(my + ny * r), x2: f(mx - nx * r), y2: f(my - ny * r) }, defs);
       stops(lg, [[0, m.dark], [0.35, m.light], [0.6, m.mid], [1, m.dark]]);
       shape("path", { d: s.d }, `url(#${id})`);
-      if (m.grain && len > 6) {
+      // Dłoń w zbliżeniu (Próbny kadr): cztery palce z zaokrąglonymi końcami na końcu dłoni, bez słojów
+      const fingers = s.hand && m.detail;
+      if (fingers) {
+        const at = (t, kk) => { const rr = s.rA + (s.rB - s.rA) * t; return [s.A[0] + dx * t + nx * rr * kk, s.A[1] + dy * t + ny * rr * kk]; };
+        [-0.62, -0.2, 0.22, 0.62].forEach((kk, i) => {
+          const fr = s.rB * (i === 0 || i === 3 ? 0.3 : 0.34), a = at(0.55, kk), b = at(i === 0 ? 0.98 : i === 3 ? 1.0 : 1.06, kk * 0.95);
+          shape("path", { d: capsule(a, b, fr, fr * 0.9) }, `url(#${id})`);
+        });
+        const k0 = at(0.55, 0.95), k1 = at(0.55, -0.95), kc = at(0.6, 0);
+        el("path", { d: `M${f(k0[0])},${f(k0[1])} Q${f(kc[0])},${f(kc[1])} ${f(k1[0])},${f(k1[1])}`, style: `fill:none;stroke:${m.dark};stroke-width:0.6;opacity:0.45` }, g);
+      }
+      if (m.grain && len > 6 && !fingers) {
         // Słoje: kilka falistych linii wzdłuż członu, każda trochę inna
         [-0.55, -0.18, 0.2, 0.55].forEach((k, i) => {
           const at = (t, kk) => {

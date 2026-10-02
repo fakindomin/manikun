@@ -745,6 +745,7 @@
           <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
         </filter>
         <filter id="figBlur" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="1.6"/></filter>
+        <filter id="figBlurS" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="0.5"/></filter>
         <filter id="figSoft" x="-30%" y="-300%" width="160%" height="700%"><feGaussianBlur stdDeviation="2.2"/></filter>
       </defs>
     </svg>
@@ -2323,15 +2324,20 @@
     }, parent);
     let host = lit ? el("g", { filter: "url(#figLit)" }, el("g", { filter: "url(#figRim)" }, holder)) : holder;
     if (pl.mir != null) host = el("g", { transform: `translate(${f(2 * b.minX + b.w)} 0) scale(-1 1)` }, host);
-    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : trialMat ? { ...material, soft: true, line: material.dark } : material) : null);
+    // Próbny kadr: cień ręki pada od światła (w układzie postaci; przy odbiciu oś x odwrócona)
+    const sd = [-Math.cos(figLightA) * 3.2 * (pl.mir != null ? -1 : 1), -Math.sin(figLightA) * 3.2];
+    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : trialMat ? { ...material, soft: true, line: material.dark, shadowDir: sd, detail: trialDetail } : material) : null);
   }
 
   // Światło na Manikunie: kierunek od środka postaci do lampy. Światło z tyłu przygasza przód i rozświetla krawędź,
   // naturalne jest ciepłe, lampa chłodna.
   const setAttr = (id, k, v) => { const n = document.getElementById(id); if (n) n.setAttribute(k, v); };
+  // Kierunek światła na postaci (radiany, od postaci do lampy) i szczegóły dłoni w zbliżeniach Próbnego kadru
+  let figLightA = -Math.PI / 4, trialDetail = false;
   function figLight(litPt, target, lightT, kindT) {
     const az = Math.atan2(litPt[1] - target[1], litPt[0] - target[0]) * 180 / Math.PI;
     const a = az * Math.PI / 180, warm = kindT < 0.5;
+    figLightA = a;
     setAttr("figDL", "azimuth", f(az)); setAttr("figSL", "azimuth", f(az));
     setAttr("figDiff", "diffuseConstant", f(1.28 - 0.3 * lightT));
     setAttr("figSpec", "specularConstant", f(0.32 * (1 - lightT)));
@@ -2354,6 +2360,8 @@
       const k = clamp(-(lx / n) * (1.1 + 0.6 * lightT), -1.8, 1.8), d = 0.24 - 0.5 * lightT;
       const cg = el("g", { transform: `matrix(1 0 ${f(-k)} ${f(d)} ${f(k * G)} ${f((1 - d) * G)})`, opacity: f(0.3 + 0.08 * lightT), filter: "url(#figBlur)" }, g);
       drawFigureAt(cg, pl, "shade");
+      // Próbny kadr: ostrzejszy rdzeń cienia (wyraźny zarys sylwetki na podłodze, miękki brzeg zostaje)
+      if (trialMat) drawFigureAt(el("g", { transform: `matrix(1 0 ${f(-k)} ${f(d)} ${f(k * G)} ${f((1 - d) * G)})`, opacity: f(0.2 + 0.06 * lightT), filter: "url(#figBlurS)" }, g), pl, "shade");
     }
     el("ellipse", { cx: f(cxF), cy: f(G + 0.8), rx: f(Math.max(pl.w * 0.42, 8)), ry: f(Math.max(2.4, pl.h * 0.018)), filter: "url(#figSoft)", style: "fill:#000;stroke:none;opacity:0.62" }, g);
   }
@@ -6032,9 +6040,9 @@
     const fmt = currentFormat(), H = 600, W = H * fmt.w / fmt.h;
     pvEl("previewFrame").style.setProperty("--ar", `${fmt.w} / ${fmt.h}`);
     const st = { ...scene, props: { reveal: 1 } }, layers = new Set(["ground", "background", "things"]);
-    trialMat = true;
+    trialMat = true; trialDetail = scene.shot !== "full";
     let G;
-    try { G = renderScene(trialSvg, st, W, H, layers, { lit: true, draft: false, split: true }); } finally { trialMat = false; }
+    try { G = renderScene(trialSvg, st, W, H, layers, { lit: true, draft: false, split: true }); } finally { trialMat = false; trialDetail = false; }
     const look = TRIAL[scene.style] || TRIAL.real, u = G.u, NS = "http://www.w3.org/2000/svg";
     // Kontra na krawędzi Manikuna w kolorze miejsca i pory dnia (własna kopia filtra, szkic i start się nie zmieniają)
     const rim = document.getElementById("figRim").cloneNode(true), defs0 = trialSvg.querySelector("defs");

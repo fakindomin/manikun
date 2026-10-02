@@ -341,4 +341,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Światło na bryle wygładzone (bez prążków przy dużym planie), słoje na twarzy przygaszone.
 - Ekran startowy, tutorial i szkic roboczy zostają bez zmian.
 - Krój góry (wszędzie, także w szkicu): gładki obrys z zaokrągloną klatką, materiał spada prosto od piersi do bioder i przylega do nich (bez rozkloszowania „klapką”), dekolt i lekko wygięty dół. Kurtka i płaszcz w tym samym kroju, szersze. Bluzy mają ściągacz na dole, bluza z kapturem kieszeń kangurkę (pomijaną przy zgiętych nogach, gdy chowa się pod udami).
+- Cień bliższej ręki na reszcie ciała (Próbny kadr): rozmyta sylwetka ręki przesunięta od światła, przycięta do obrysu ciała (pada na tułów, udo, a przy dłoni nad oczami na twarz). Cień na podłodze ma ostrzejszy rdzeń pod miękkim brzegiem.
+- Dłoń w zbliżeniu (portret, twarz w Próbnym kadrze): cztery palce z zaokrąglonymi końcami i linia kostek zamiast gładkiej dłoni ze słojami.
+- Proporcje: mężczyzna ma szersze ramiona i węższą talię, kobieta węższą talię i szersze biodra.
 
