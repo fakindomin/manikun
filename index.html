@@ -827,8 +827,30 @@
     { id: "plant", name: "Roślina w donicy", at: "left", phrase: "a large potted plant", box: [-36, 36, 110] },
     { id: "umbrella", name: "Parasol plażowy", at: "behind", phrase: "a beach umbrella", box: [-100, 100, 215] },
     { id: "bike", name: "Rower", at: "right", phrase: "a bicycle", box: [-87, 87, 102] },
-    { id: "car", name: "Samochód", at: "background", phrase: "a car", box: [-212, 212, 138] }
+    { id: "car", name: "Samochód", at: "background", phrase: "a car", box: [-212, 212, 138] },
+    // Zwierzaki (kategoria Zwierzaki): poza i umaszczenie przy każdym, rysunek w kolorze sierści już w szkicu
+    { id: "dog", name: "Manidog", pet: true, at: "right", phrase: "a dog", box: [-34, 40, 58] },
+    { id: "cat", name: "Manicat", pet: true, at: "right", phrase: "a cat", box: [-28, 30, 46] },
+    { id: "bunny", name: "Manibun", pet: true, at: "right", phrase: "a rabbit", box: [-18, 24, 46] },
+    { id: "dragon", name: "Manidragon", pet: true, at: "right", phrase: "a small friendly dragon", box: [-40, 44, 74] }
   ];
+  // Umaszczenie (hex: kolor sierści; word: opis zwierzęcia w Maniscrypcie) i pozy zwierzaków
+  const PET_COATS = {
+    dog: [{ id: "golden", name: "Złoty", hex: "#C9A060", word: "golden retriever dog" }, { id: "black", name: "Czarny", hex: "#3A3532", word: "black labrador dog" },
+      { id: "choco", name: "Czekoladowy", hex: "#7A5232", word: "chocolate labrador dog" }, { id: "dalmatian", name: "Dalmatyńczyk", hex: "#F0EDE6", word: "dalmatian dog", spots: true }],
+    cat: [{ id: "ginger", name: "Rudy", hex: "#D8873A", word: "ginger cat", stripes: true }, { id: "black", name: "Czarny", hex: "#332F2D", word: "black cat" },
+      { id: "tabby", name: "Pręgowany", hex: "#8E9198", word: "grey tabby cat", stripes: true }, { id: "white", name: "Biały", hex: "#F0EDE6", word: "white cat" }],
+    bunny: [{ id: "white", name: "Biały", hex: "#F2EFE8", word: "fluffy white rabbit" }, { id: "grey", name: "Szary", hex: "#9A9A9E", word: "fluffy grey rabbit" },
+      { id: "brown", name: "Brązowy", hex: "#9A6A42", word: "fluffy brown rabbit" }],
+    dragon: [{ id: "green", name: "Zielony", hex: "#5EA66A", word: "small friendly green cartoon dragon" }, { id: "red", name: "Czerwony", hex: "#C9523E", word: "small friendly red cartoon dragon" },
+      { id: "purple", name: "Fioletowy", hex: "#8A64C2", word: "small friendly purple cartoon dragon" }, { id: "blue", name: "Niebieski", hex: "#4E86C8", word: "small friendly blue cartoon dragon" }]
+  };
+  const PET_POSES = [{ id: "sit", name: "Siedzi", word: "sitting" }, { id: "stand", name: "Stoi", word: "standing" }, { id: "lie", name: "Leży", word: "lying down" }];
+  const isPet = it => !!(it && THING[it.id] && THING[it.id].pet);
+  const petCoat = it => PET_COATS[it.id].find(c => c.id === it.coat) || PET_COATS[it.id][0];
+  const petPose = it => PET_POSES.find(p => p.id === it.pose) || PET_POSES[0];
+  // Rzeczy bez zwierzaków (siedzisko, oparcie, blat)
+  const propsOf = st => (st.things || []).filter(it => !isPet(it));
   const THING = Object.fromEntries(THINGS.map(t => [t.id, t]));
 
   // ---------- Drobiazgi na blacie ----------
@@ -982,7 +1004,9 @@
       { id: "back", name: "Tyłem", short: "Tyłem" }
     ]},
     // Rzeczy przy postaci; kafelki buduje makeTiles (scene.things to lista), tu nazwy dla wyszukiwarki
-    { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.map(t => ({ id: t.id, name: t.name, short: t.name }))] },
+    { id: "things", label: "Obiekty", subjects: ["person"], patch: "#8C7A5B", options: [{ id: "none", name: "Nic", short: "Nic" }, ...THINGS.filter(t => !t.pet).map(t => ({ id: t.id, name: t.name, short: t.name }))] },
+    // Zwierzaki: rzeczy z pozą i umaszczeniem (THINGS z pet: true), kafelki buduje petTiles()
+    { id: "pets", label: "Zwierzaki", subjects: ["person"], patch: "#C98A4E", options: [{ id: "none", name: "Brak", short: "Brak" }, ...THINGS.filter(t => t.pet).map(t => ({ id: t.id, name: t.name, short: t.name }))] },
     // Drobiazgi na blacie: kafelki i wyszukiwarkę buduje kod (katalog ALL_ITEMS, słownik pl → en)
     { id: "items", label: "Na blacie", subjects: ["person"], patch: "#A88A5B", options: [] },
     // Kolory rzeczy (tylko Ekspert): najpierw rzecz, potem paleta
@@ -1631,7 +1655,7 @@
   };
   // Opcja pasuje do postaci (np. sukienka tylko dla kobiety)
   // Czy opcja pasuje do reszty sceny: sylwetka, obiekt/postać, dron tylko w plenerze i bez zbliżeń
-  const fitsBody = (o, st) => (!o.poses || o.poses.includes(st.pose)) && (!o.standOnly || STANDING.includes(st.pose)) && (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject)) && (!o.needsThing || (st.things || []).length > 0)
+  const fitsBody = (o, st) => (!o.poses || o.poses.includes(st.pose)) && (!o.standOnly || STANDING.includes(st.pose)) && (!o.bodies || o.bodies.includes(st.body)) && (!o.subjects || o.subjects.includes(st.subject)) && (!o.needsThing || (st.things || []).some(it => !isPet(it)))
     && (!o.noDrone || st.camera !== "D") && (!o.outdoor || isOutdoor(st.background));
 
   // Własne zdjęcie twarzy: wybór tylko na czas kopiowania (panel "Kopiuj"), nie jest częścią sceny
@@ -1931,7 +1955,7 @@
   const CHAIRLIKE = ["chair", "lean", "edge", "sprawl", "legsCrossed"];
   const GROUND_OF = { sprawl: "lounge", legsCrossed: "lounge", edge: "sit" };
   function poseGeom(st) {
-    if (st.pose === "leanOn") return (st.things || []).length ? "leanOn" : "stand";
+    if (st.pose === "leanOn") return leanIndex(st) >= 0 ? "leanOn" : "stand";
     const seat = seatOf(st);
     if (!seat) return GROUND_OF[st.pose] || st.pose;
     const low = seat.seat === "low";
@@ -1948,7 +1972,7 @@
     return CHAIRLIKE.includes(g) || g === "stone" ? seat.top - (buildFigure(g, st.body).box.maxY - 6) : seat.top;
   }
   // Rzecz, o którą opiera się postać (pierwsza w scenie)
-  const leanIndex = st => st.pose === "leanOn" && (st.things || []).length ? 0 : -1;
+  const leanIndex = st => st.pose === "leanOn" ? (st.things || []).findIndex(it => !isPet(it)) : -1;
 
   // Proste rysunki w stylu rekwizytów Manikuna: x = punkt odniesienia, G = linia podłoża, s = skala, wysokości w górę od podłoża
   // fill: kolor rzeczy (Ekspert) zamiast domyślnego ciemnego wypełnienia rekwizytów
@@ -1956,6 +1980,7 @@
     const X = a => f(x + a * s), Y = h => f(G - h * s);
     const mk = (tag, attrs, parent) => el(tag, fill && attrs.class === "prop" ? { ...attrs, style: `fill:${fill}` } : attrs, parent);
     return {
+      s, X, Y,
       rect: (a, b, top, bottom = 0, rx = 1.5, cls = "prop") => mk("rect", { x: X(a), y: Y(top), width: f((b - a) * s), height: f((top - bottom) * s), rx: f(rx * s), class: cls }, g),
       line: (pts, cls = "prop-line") => mk("path", { d: pts.map(([a, h], i) => (i ? "L" : "M") + X(a) + "," + Y(h)).join(" "), class: cls }, g),
       poly: (pts, cls = "prop") => mk("path", { d: "M" + pts.map(([a, h]) => X(a) + "," + Y(h)).join(" L") + " Z", class: cls }, g),
@@ -2048,7 +2073,85 @@
       [-130, 130].forEach(a => { p.circle(a, 26, 26); p.circle(a, 26, 10, "prop-line"); });
     }
   };
-  function drawThing(g, id, x, G, s, fill = null) { THING_DRAW[id](thingPen(g, x, G, s, fill)); }
+
+  // ---------- Zwierzaki: rysunki w stylu Manikuna (obłe bryły, stawy), x w prawo = przód zwierzaka, h w górę ----------
+  // Elipsa (z obrotem) i kapsuła jako wielokąty: współrzędne przechodzą przez pisak (skala i położenie rzeczy)
+  const ellP = (cx, cy, rx, ry, rot = 0, n = 22) => { const c = Math.cos(rot * Math.PI / 180), sn = Math.sin(rot * Math.PI / 180); return "M" + Array.from({ length: n }, (_, k) => { const a = k / n * Math.PI * 2, x = Math.cos(a) * rx, y = Math.sin(a) * ry; return f(cx + x * c - y * sn) + "," + f(cy + x * sn + y * c); }).join(" L") + " Z"; };
+  const capP = (x1, y1, x2, y2, r1, r2 = r1) => {
+    const a = Math.atan2(y2 - y1, x2 - x1), nx = -Math.sin(a), ny = Math.cos(a), pts = [];
+    for (let k = 0; k <= 8; k++) { const t = Math.PI / 2 - k / 8 * Math.PI; pts.push([x2 + (Math.cos(a) * Math.cos(t) - Math.sin(a) * Math.sin(t)) * r2, y2 + (Math.sin(a) * Math.cos(t) + Math.cos(a) * Math.sin(t)) * r2]); }
+    for (let k = 0; k <= 8; k++) { const t = -Math.PI / 2 - k / 8 * Math.PI; pts.push([x1 + (Math.cos(a) * Math.cos(t) - Math.sin(a) * Math.sin(t)) * r1, y1 + (Math.sin(a) * Math.cos(t) + Math.cos(a) * Math.sin(t)) * r1]); }
+    return "M" + pts.map(([x, y]) => f(x) + "," + f(y)).join(" L") + " Z";
+  };
+  const PET_KIND = {
+    dog: { k: 1, ears: "flop", snout: 1, tail: "dog", collar: "#C0392B" },
+    cat: { k: 0.74, ears: "point", snout: 0.45, tail: "cat", whiskers: true },
+    bunny: { k: 0.68, ears: "long", snout: 0.4, tail: "puff", whiskers: true, round: true },
+    dragon: { k: 1.12, ears: "horns", snout: 0.95, tail: "dragon", wings: true, belly: true }
+  };
+  function drawPet(p, it) {
+    const K = PET_KIND[it.id], coat = petCoat(it), pose = petPose(it).id, k = K.k, c = coat.hex;
+    const dk = shadeHex(c, -0.28), lt = shadeHex(c, 0.22), line = shadeHex(c, -0.5), S = v => v * k;
+    const st = (fill, extra = "") => `fill:${fill};stroke:${line};stroke-width:${f(Math.max(0.6, 0.9 * p.s * k))};stroke-linejoin:round${extra}`;
+    const E = (cx, cy, rx, ry, rot, fill = c) => p.styled(ellP(S(cx), S(cy), S(rx), S(ry), rot), st(fill));
+    const C = (x1, y1, x2, y2, r1, r2, fill = c) => p.styled(capP(S(x1), S(y1), S(x2), S(y2), S(r1), S(r2)), st(fill));
+    const round = K.round;
+    // Układ ciała dla pozy: biodro, tułów, nogi, głowa (jednostki psa; mniejsze zwierzaki skalowane przez k)
+    let head, rear;
+    const tailAt = (x, y) => {
+      if (K.tail === "dog") C(x, y, x - 11, y + 9, 2.6, 1.8);
+      else if (K.tail === "cat") p.styled(`M${f(S(x))},${f(S(y))} Q${f(S(x - 16))},${f(S(y + 2))} ${f(S(x - 13))},${f(S(y + 22))}`, `fill:none;stroke:${c};stroke-width:${f(5 * p.s * k)};stroke-linecap:round`);
+      else if (K.tail === "puff") E(x - 1, y, 5, 5, 0, "#F6F3EC");
+      else { p.styled(`M${f(S(x))},${f(S(y))} Q${f(S(x - 18))},${f(S(y - 6))} ${f(S(x - 26))},${f(S(y + 4))}`, `fill:none;stroke:${c};stroke-width:${f(6 * p.s * k)};stroke-linecap:round`); p.styled(`M${f(S(x - 30))},${f(S(y + 2))} L${f(S(x - 24))},${f(S(y + 10))} L${f(S(x - 21))},${f(S(y + 1))} Z`, st(dk)); }
+    };
+    if (pose === "sit") {
+      tailAt(-14, 6);
+      C(-2, 4, 6, 2, 3.4, 3.2, dk);                       // dalsza tylna łapa
+      E(-6, round ? 13 : 14, round ? 14 : 13, round ? 13 : 12, 0);  // udo / zad
+      E(4, 27, 9, 17, -22);                              // tułów
+      C(9, 20, 11, 1, 3.2, 2.8, dk); C(13, 22, 15, 1, 3.4, 3);        // przednie łapy
+      E(-4, 3, 9, 3.2, 0);                               // tylna łapa
+      head = [15, 46];
+    } else if (pose === "stand") {
+      // Łapy krótsze i grubsze (królik przycupnięty niżej)
+      const ty = round ? 17 : 24, lt0 = ty - 4;
+      C(13, lt0, 15, 0, 3.8, 3.2, dk); C(-14, lt0, -16, 0, 4, 3.2, dk); // dalsze łapy
+      rear = [-20, ty + 4]; tailAt(rear[0], rear[1]);
+      E(0, ty, 21, round ? 12 : 10, 0);                 // tułów
+      C(11, lt0, 12, 0, 4, 3.4); C(-12, lt0, -12, 0, 4.2, 3.4);       // bliższe łapy
+      C(17, ty + 3, 24, ty + 11, 5.5, 5);                // szyja
+      head = [27, ty + 14];
+    } else {
+      rear = [-22, 9]; tailAt(rear[0], rear[1]);
+      E(-2, 9, 22, round ? 10 : 8.5, 0);                // tułów
+      C(12, 4, 31, 3, 3, 2.8, dk); C(12, 3, 30, 2, 3.2, 3);            // przednie łapy
+      head = [24, 18];
+    }
+    // Skrzydła i jaśniejszy brzuch smoka
+    if (K.wings) { const wx = pose === "lie" ? -4 : pose === "stand" ? -4 : -2, wy = pose === "lie" ? 16 : pose === "stand" ? 31 : 36; p.styled(`M${f(S(wx))},${f(S(wy))} L${f(S(wx - 16))},${f(S(wy + 16))} L${f(S(wx - 10))},${f(S(wy + 6))} L${f(S(wx - 18))},${f(S(wy + 4))} L${f(S(wx - 6))},${f(S(wy - 2))} Z`, st(lt)); }
+    if (K.belly && pose !== "lie") E(pose === "sit" ? 7 : 2, pose === "sit" ? 24 : 20, pose === "sit" ? 5 : 13, pose === "sit" ? 12 : 4, pose === "sit" ? -22 : 0, shadeHex(c, 0.45));
+    // Plamy dalmatyńczyka i pręgi kota
+    if (coat.spots) [[-6, 16], [4, 30], [-10, 9], [8, 22], [0, 12]].forEach(([x, y]) => pose === "sit" && E(x, y, 2, 1.6, 0, "#2E2A28"));
+    if (coat.spots && pose !== "sit") [[-10, 26], [4, 23], [12, 27], [-2, 28]].forEach(([x, y]) => E(x, pose === "lie" ? y - 15 : y, 2, 1.6, 0, "#2E2A28"));
+    if (coat.stripes) { const by = pose === "sit" ? 30 : pose === "stand" ? 29 : 13; [-6, 0, 6].forEach(x => p.styled(`M${f(S(x))},${f(S(by + 4))} L${f(S(x + 2))},${f(S(by - 4))}`, `fill:none;stroke:${dk};stroke-width:${f(1.4 * p.s * k)};stroke-linecap:round`)); }
+    // Głowa: uszy z tyłu, czaszka, pysk, nos, oko, wąsy, obroża
+    const [hx, hy] = head;
+    if (K.ears === "flop") E(hx - 3, hy + 2, 3.6, 8, 22, dk);
+    if (K.ears === "point") { [[-5, 0], [1, 1]].forEach(([dx]) => p.styled(`M${f(S(hx + dx))},${f(S(hy + 5))} L${f(S(hx + dx + 2))},${f(S(hy + 15))} L${f(S(hx + dx + 6))},${f(S(hy + 6))} Z`, st(c))); }
+    if (K.ears === "long") { E(hx - 3, hy + 15, 2.8, 10, -10, c); E(hx + 2, hy + 15, 2.8, 10, 8, c); E(hx + 2, hy + 15, 1.3, 7, 8, "#F0B8B0"); }
+    if (K.collar && pose !== "lie") p.styled(capP(S(hx - 6), S(hy - 6), S(hx + 2), S(hy - 8), S(1.6)), `fill:${K.collar};stroke:none`);
+    E(hx, hy, round ? 8 : 9.5, round ? 7.5 : 8.5, 0);
+    if (K.ears === "horns") { [[-4, 0], [1, 0]].forEach(([dx]) => p.styled(`M${f(S(hx + dx))},${f(S(hy + 6))} L${f(S(hx + dx + 1.5))},${f(S(hy + 13))} L${f(S(hx + dx + 4))},${f(S(hy + 6))} Z`, st("#F2E6C4"))); }
+    const sn = K.snout, sx = hx + 8 * sn + 2, sy = hy - 3;
+    E(sx, sy, 2 + 5 * sn, 2.5 + 2.5 * sn, 0, lt);
+    E(sx + 2 + 4.5 * sn, sy + 1, 1.6, 1.3, 0, "#2A2220");
+    p.styled(ellP(S(hx + 3.5), S(hy + 2), S(K.ears === "horns" ? 2.4 : 1.5), S(K.ears === "horns" ? 2.6 : 1.5)), `fill:${K.ears === "horns" ? "#FFFFFF" : "#1E1A18"};stroke:none`);
+    if (K.ears === "horns") p.styled(ellP(S(hx + 4.2), S(hy + 1.6), S(1.2), S(1.4)), "fill:#1E1A18;stroke:none");
+    p.styled(ellP(S(hx + 4), S(hy + 2.6), S(0.5), S(0.5)), "fill:#FFFFFF;stroke:none");
+    if (K.whiskers) [[2, 1], [0, -0.5]].forEach(([dy, dx]) => p.styled(`M${f(S(sx + 1))},${f(S(sy + dy * 0.3))} L${f(S(sx + 8 + dx))},${f(S(sy + dy))}`, `fill:none;stroke:${line};stroke-width:${f(0.5 * p.s)}`));
+  }
+  ["dog", "cat", "bunny", "dragon"].forEach(id => { THING_DRAW[id] = (p, it) => drawPet(p, { id, ...it }); });
+  function drawThing(g, id, x, G, s, fill = null, it = null) { THING_DRAW[id](thingPen(g, x, G, s, fill), it || { id }); }
   // Kafelek rzeczy: sam rysunek, wyśrodkowany
   function thingTile(svg, id, color = null) {
     if (id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
@@ -2114,9 +2217,9 @@
   }
   // Maniscrypt: siedzenie na rzeczy i rzeczy wokół postaci (z kolorem, jeśli wybrany w Ekspercie)
   const ANCHOR_WORDS = Object.fromEntries(Object.entries(ANCHORS).map(([k, v]) => [k, v.words]));
-  const thingPhrase = it => { const t = THING[it.id]; return it.color ? an(colorOf(it.color).word + " " + t.phrase.replace(/^(an?|the) /, "")) : t.phrase; };
+  const thingPhrase = it => { const t = THING[it.id]; if (t.pet) return `${an(petCoat(it).word)} ${petPose(it).word}`; return it.color ? an(colorOf(it.color).word + " " + t.phrase.replace(/^(an?|the) /, "")) : t.phrase; };
   function sitPrompt(st) {
-    if (st.pose === "leanOn") return (st.things || []).length ? `leaning back casually against ${thingPhrase(st.things[0])}, legs crossed at the ankles, hands relaxed, facing the camera` : optionOf("pose", "stand").prompt;
+    if (st.pose === "leanOn") return leanIndex(st) >= 0 ? `leaning back casually against ${thingPhrase(st.things[leanIndex(st)])}, legs crossed at the ankles, hands relaxed, facing the camera` : optionOf("pose", "stand").prompt;
     const seat = seatOf(st);
     const it = seat && st.things[resolveAnchors(st).indexOf("under")], on = !seat ? "the ground" : seat.sitOn ? seat.sitOn(thingPhrase(it)) : thingPhrase(it);
     // Na plecach i na brzuchu: ułożenie rąk z kategorii Ręce
@@ -2217,7 +2320,10 @@
   let trialMat = false;
   function drawThingWithItems(g, st, o) {
     // Rzecz odbita razem z postacią; drobiazgi na blacie (też z napisami) rysowane normalnie
-    drawThing(o.flip ? el("g", { transform: `translate(${f(2 * o.x)} 0) scale(-1 1)` }, g) : g, o.t.id, o.x, o.G, o.s, o.color ? colorOf(o.color).hex : trialMat ? TRIAL_MAT[o.t.id] || null : null);
+    // Zwierzak patrzy w stronę postaci: po prawej odwrócony w lewo
+    const flip = o.t.pet ? (o.flip ? 1 : 0) ^ (["right", "rightFar", "background", "behind", "front"].includes(o.anchor) ? 1 : 0) : o.flip;
+    const it = (st.things || [])[o.i] || { id: o.t.id };
+    drawThing(flip ? el("g", { transform: `translate(${f(2 * o.x)} 0) scale(-1 1)` }, g) : g, o.t.id, o.x, o.G, o.s, o.t.pet ? petCoat(it).hex : o.color ? colorOf(o.color).hex : trialMat ? TRIAL_MAT[o.t.id] || null : null, it);
     const items = o.t.surf ? itemsOn(st, o.i) : [], top = o.G - (o.t.surf || 0) * o.s;
     if (!items.length) return;
     items.forEach((it, i) => drawSmall(g, it, o.x + (i - (items.length - 1) / 2) * 30 * o.s, top, o.s));
@@ -4149,6 +4255,7 @@
 
   // ---------- Ikony paska kategorii ----------
   const CAT_ICONS = {
+    pets: svg => { el("ellipse", { cx: 12, cy: 15.5, rx: 4.5, ry: 3.8 }, svg); [[6, 10], [9.5, 6.5], [14.5, 6.5], [18, 10]].forEach(([cx, cy]) => el("ellipse", { cx, cy, rx: 1.8, ry: 2.2 }, svg)); },
     traits: svg => { el("circle", { cx: 10, cy: 8, r: 3.5 }, svg); el("path", { d: "M3.5 20c1-4 3.5-6 6.5-6s5.5 2 6.5 6" }, svg); el("circle", { cx: 18.5, cy: 7, r: 2.5, style: "fill:currentColor;opacity:0.5" }, svg); },
     things: svg => { el("path", { d: "M6 4v16 M6 12h11 M17 12v8 M6 16h11" }, svg); el("path", { d: "M14 8h6" }, svg); },
     thingColor: svg => { el("circle", { cx: 12, cy: 12, r: 8 }, svg); el("path", { d: "M12 4v16 M4.5 9.5l15 5" }, svg); },
@@ -4195,7 +4302,8 @@
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "outfit") return setName();
-    if (cat.id === "things") return scene.things.length ? THING[scene.things[0].id].name : "Nic";
+    if (cat.id === "things") { const pr = propsOf(scene); return pr.length ? THING[pr[0].id].name : "Nic"; }
+    if (cat.id === "pets") { const pl = (scene.things || []).filter(isPet); return pl.length ? pl.map(it => THING[it.id].name).join(", ") : "Brak"; }
     if (cat.id === "thingColor") return (scene.things || []).filter(it => it.color).length ? (scene.things || []).filter(it => it.color).map(it => colorOf(it.color).name).join(", ") : "Domyślne";
     if (cat.id === "fx") return bgExtras(scene).length ? bgExtras(scene).map(x => FX[x].name).join(", ") : "Brak";
     if (cat.id === "items") { const a = activeItems(scene); return a.length ? a.map(it => itemInfo(it).name).join(", ") : "Nic"; }
@@ -4322,7 +4430,8 @@
       scene.pose = anyOf(leavesOf("pose").filter(o => fitsBody(o, scene))).id;
       const armOpts = optionsOf("arms").filter(o => fitsBody(o, scene));
       if (armOpts.length) scene.arms = anyOf(armOpts).id;
-      scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS).id }] : [];
+      scene.things = Math.random() < 0.4 ? [{ id: anyOf(THINGS.filter(t => !t.pet)).id }] : [];
+      if (Math.random() < 0.2) { const pt = anyOf(THINGS.filter(t => t.pet)).id; scene.things.push({ id: pt, pose: anyOf(PET_POSES).id, coat: anyOf(PET_COATS[pt]).id }); }
       scene.items = surfaceOf(scene) && Math.random() < 0.6 ? [{ id: anyOf(ALL_ITEMS).id }] : [];
       scene.shot = anyOf(["full", "full", "portrait", "face"]);
     }
@@ -4482,6 +4591,40 @@
     t.btn.classList.add("back");
     return t;
   };
+  // Zwierzaki: kafelki zwierzaków; wybrany zwierzak otwiera swoje pozy i umaszczenie
+  function petThumb(svg, it) {
+    if (it.id === "none") { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); return; }
+    const [x0, x1, h] = THING[it.id].box, side = Math.max(x1 - x0, h) + 8, cx = (x0 + x1) / 2;
+    svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(-h / 2 - side / 2)} ${f(side)} ${f(side)}`);
+    drawThing(svg, it.id, 0, 0, 1, petCoat(it).hex, it);
+  }
+  function petTiles() {
+    const list = scene.things || [], sub = scene.sub, multi = level === "expert";
+    const idxOf = id => list.findIndex(x => x.id === id);
+    if (sub && sub.startsWith("pet:")) {
+      const i = +sub.slice(4), it = list[i];
+      if (!isPet(it)) { scene.sub = null; return petTiles(); }
+      const upd = patch => { scene.things = scene.things.map((x, j) => j === i ? { ...x, ...patch } : x); render(); };
+      const out = [backTile(null)];
+      PET_POSES.forEach(po => out.push(tile("opt-petpose-" + po.id, po.name, () => petPose(scene.things[i] || it).id === po.id, () => upd({ pose: po.id }), svg => petThumb(svg, { ...it, ...scene.things[i], pose: po.id }))));
+      PET_COATS[it.id].forEach(co => out.push(tile("opt-petcoat-" + co.id, co.name, () => petCoat(scene.things[i] || it).id === co.id, () => upd({ coat: co.id }), svg => petThumb(svg, { ...it, ...scene.things[i], coat: co.id }))));
+      out.push(tile("opt-petdel", "Usuń", () => false, () => { removeThingAt(i); scene.sub = null; render(); }, svg => { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); }));
+      return out;
+    }
+    return [{ id: "none", name: "Brak" }, ...THINGS.filter(t => t.pet)].map(o => tile("opt-pets-" + o.id, o.name,
+      () => o.id === "none" ? !list.some(isPet) && !(scene.things || []).some(isPet) : idxOf(o.id) >= 0 || (scene.things || []).some(x => x.id === o.id),
+      () => {
+        const cur = scene.things || [];
+        if (o.id === "none") { scene.things = cur.filter(x => !isPet(x)); render(); return; }
+        const at = cur.findIndex(x => x.id === o.id);
+        if (at >= 0) { scene.sub = "pet:" + at; render(); return; }
+        // Podstawowy: jeden zwierzak (nowy zastępuje poprzedniego); Ekspert: kilka
+        const base = multi ? cur : cur.filter(x => !isPet(x));
+        scene.things = [...base, { id: o.id, pose: "sit", coat: PET_COATS[o.id][0].id }];
+        scene.sub = "pet:" + (scene.things.length - 1);
+        render();
+      }, svg => petThumb(svg, (scene.things || []).find(x => x.id === o.id) || { id: o.id })));
+  }
   // Cechy: grupy (Skóra, Wiek, Budowa, Wzrost, Piegi, Tatuaże, Kolczyki), w grupie warianty z miniaturą Manikuna
   function traitThumb(svg, k, id) {
     if (k === "skin") { svg.setAttribute("viewBox", "0 0 64 64"); const o = traitOpt("skin", id); swatch(svg, o.wood ? o.wood[1] : MATERIALS[0].mid); return; }
@@ -4613,18 +4756,20 @@
     }
     if (catId === "things") {
       // Podstawowy: jedna rzecz. Ekspert: kafelki włączają i wyłączają rzeczy, nowa od razu czeka na wskazanie miejsca w kadrze
-      const multi = level === "expert", has = id => (scene.things || []).some(x => x.id === id);
-      return [{ id: "none", name: "Nic" }, ...THINGS].map(o => tile("opt-things-" + o.id, o.name,
-        () => o.id === "none" ? !(scene.things || []).length : multi ? has(o.id) : ((scene.things || [])[0] || {}).id === o.id,
+      // Zwierzaki zostają w scenie niezależnie od rzeczy (mają własną kategorię)
+      const multi = level === "expert", has = id => (scene.things || []).some(x => x.id === id), pets = () => (scene.things || []).filter(isPet);
+      return [{ id: "none", name: "Nic" }, ...THINGS.filter(t => !t.pet)].map(o => tile("opt-things-" + o.id, o.name,
+        () => o.id === "none" ? !propsOf(scene).length : multi ? has(o.id) : (propsOf(scene)[0] || {}).id === o.id,
         () => {
-          if (o.id === "none") scene.things = [];
-          else if (!multi) scene.things = [{ id: o.id }];
+          if (o.id === "none") scene.things = pets();
+          else if (!multi) scene.things = [{ id: o.id }, ...pets()];
           else if (has(o.id)) removeThingAt(scene.things.findIndex(x => x.id === o.id));
           else { scene.things = [...(scene.things || []), { id: o.id }]; render(); startAnchorPick(scene.things.length - 1); return; }
           render();
           checkFit();
         }, svg => thingTile(svg, o.id)));
     }
+    if (catId === "pets") return petTiles();
     if (catId === "thingColor") {
       const sub = scene.sub, list = scene.things || [];
       if (sub && sub.startsWith("c:")) {
@@ -4634,8 +4779,8 @@
           () => { setThingColor(i, c.id); render(); },
           svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, c.id === "auto" ? "#3A3833" : c.hex, c.id === "auto"); }));
       }
-      return list.map((it, i) => groupMark(tile("opt-tc-thing-" + i, THING[it.id].name, () => !!it.color, () => { scene.sub = "c:" + i; render(); },
-        svg => thingTile(svg, it.id, (scene.things[i] || {}).color), () => (scene.things[i] || {}).color ? colorOf(scene.things[i].color).name : "Domyślny")));
+      return list.map((it, i) => isPet(it) ? null : groupMark(tile("opt-tc-thing-" + i, THING[it.id].name, () => !!it.color, () => { scene.sub = "c:" + i; render(); },
+        svg => thingTile(svg, it.id, (scene.things[i] || {}).color), () => (scene.things[i] || {}).color ? colorOf(scene.things[i].color).name : "Domyślny"))).filter(Boolean);
     }
     if (catId === "background" && scene.sub && scene.sub.startsWith("v:")) return variantTiles(scene.sub.slice(2));
     if (catId === "itemColor") {
@@ -4769,7 +4914,7 @@
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Postać", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
-    { id: "stuff", label: "Rzeczy", cats: ["things", "items", "thingColor"], subjects: ["person"], icon: "things" },
+    { id: "stuff", label: "Rzeczy", cats: ["things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
@@ -4855,15 +5000,16 @@
     { id: "arms", say: "A ręce?", cat: "arms", when: () => armsApply(scene) },
     { id: "turn", say: "Jak stoi względem kamery?", cat: "turn", when: () => level === "expert" && !catOff("turn") },
     { id: "gaze", say: "Gdzie patrzy?", cat: "look", sub: "gaze" },
-    { id: "things", say: () => scene.pose === "leanOn" && !(scene.things || []).length ? "O co się opiera? Lada, samochód, regał…" : seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things", when: () => level !== "expert" },
+    { id: "things", say: () => scene.pose === "leanOn" && !propsOf(scene).length ? "O co się opiera? Lada, samochód, regał…" : seated(scene) ? "Na czym siedzi? Albo co ma obok?" : "Coś obok? Krzesło, stół, rower…", cat: "things", when: () => level !== "expert" },
     { id: "items", say: () => `Co leży na ${surfaceOf(scene).on}? Szukaj znajdzie też banana.`, cat: "items", when: () => level !== "expert" && !!surfaceOf(scene) },
     // Ekspert: rozdział Rzeczy. Pętla: co dodajemy → gdzie (wskazanie w kadrze) → co leży na blacie → kolor → znowu co dodajemy,
     // aż do „Rzeczy gotowe”. wiz.thingIdx to rzecz, którą właśnie ustawiamy.
-    { id: "stuffGate", ch: "stuff", say: () => scene.pose === "leanOn" && !(scene.things || []).length ? "Oparty potrzebuje czegoś za plecami. Dodajemy?" : "Dodajemy coś do sceny? Meble, siedziska, rower…", yesno: true, when: () => level === "expert" },
-    { id: "stuffPick", say: () => wiz.thingIdx == null && (scene.things || []).length ? "Coś jeszcze? Wybierz albo stuknij Rzeczy gotowe." : scene.pose === "leanOn" && !(scene.things || []).length ? "O co się opiera?" : seated(scene) && !seatOf(scene) ? "Co dodajemy? Może coś do siedzenia?" : "Co dodajemy?", stuffPick: true, when: () => level === "expert" && wiz.ans.stuffGate === true },
+    { id: "stuffGate", ch: "stuff", say: () => scene.pose === "leanOn" && !propsOf(scene).length ? "Oparty potrzebuje czegoś za plecami. Dodajemy?" : "Dodajemy coś do sceny? Meble, siedziska, rower…", yesno: true, when: () => level === "expert" },
+    { id: "stuffPick", say: () => wiz.thingIdx == null && (scene.things || []).length ? "Coś jeszcze? Wybierz albo stuknij Rzeczy gotowe." : scene.pose === "leanOn" && !propsOf(scene).length ? "O co się opiera?" : seated(scene) && !seatOf(scene) ? "Co dodajemy? Może coś do siedzenia?" : "Co dodajemy?", stuffPick: true, when: () => level === "expert" && wiz.ans.stuffGate === true },
     { id: "stuffWhere", say: () => `Wskaż na ekranie, gdzie ma stać: ${THING[scene.things[wiz.thingIdx].id].name.toLowerCase()}.`, where: true, when: () => level === "expert" && wiz.thingIdx != null && !!scene.things[wiz.thingIdx] },
     { id: "stuffItems", say: () => `Co leży na ${THING[scene.things[wiz.thingIdx].id].on}? Możesz wybrać kilka.`, cat: "items", sub: () => "s:" + wiz.thingIdx, when: () => level === "expert" && wiz.thingIdx != null && isSurface(scene, wiz.thingIdx) },
     { id: "stuffColor", say: () => `Jaki kolor: ${THING[scene.things[wiz.thingIdx].id].name.toLowerCase()}?`, cat: "thingColor", sub: () => "c:" + wiz.thingIdx, next: () => { wiz.thingIdx = null; return "stuffPick"; }, when: () => level === "expert" && wiz.thingIdx != null && !!scene.things[wiz.thingIdx] },
+    { id: "pets", say: "A może zwierzak? Pies, kot, królik albo smok.", cat: "pets" },
     { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
     { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
     { id: "fx", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, deszcz…", cat: "fx" },
@@ -5996,7 +6142,7 @@
     body: "plec kobieta mezczyzna", look: "twarz glowa", outfit: "ubranie stroj ciuchy", pose: "pozycja", arms: "dlonie gest",
     background: "miejsce lokacja otoczenie", time: "godzina", light: "oswietlenie lampa slonce", shot: "kadrowanie zblizenie plan",
     camera: "obiektyw kat ujecie", format: "proporcje rozmiar", motion: "ruch kamery", style: "wyglad",
-    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", acc: "akcesoria", traits: "cechy wyglad karnacja", skin: "karnacja cera kolor skory", age: "wiek dziecko", build: "sylwetka figura", height: "wzrost", freckles: "piegi", tattoo: "tatuaz dziara", earrings: "kolczyki", scarf: "szal", bag: "torebka listonoszka", plaid: "krata flanela", turtleneck: "golf", tank: "ramiaczka bezrekawnik", vest: "bezrekawnik", sun: "przeciwsloneczne",
+    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", acc: "akcesoria", pets: "zwierzeta zwierzak pupil", dog: "pies piesek manidog", cat: "kot kotek manicat", bunny: "krolik zajac manibun", dragon: "smok smoczek manidragon", traits: "cechy wyglad karnacja", skin: "karnacja cera kolor skory", age: "wiek dziecko", build: "sylwetka figura", height: "wzrost", freckles: "piegi", tattoo: "tatuaz dziara", earrings: "kolczyki", scarf: "szal", bag: "torebka listonoszka", plaid: "krata flanela", turtleneck: "golf", tank: "ramiaczka bezrekawnik", vest: "bezrekawnik", sun: "przeciwsloneczne",
     stand: "stanie stoi", stride: "chod idzie spacer krok", crouch: "kucanie kucnij przysiad", wide: "rozkrok",
     things: "przedmiot rekwizyt meble obiekt", sofa: "sofa", stool: "stolek", floorLamp: "lampa", shelf: "polka ksiazki", umbrella: "parasol",
     car: "auto", bike: "rowerek", crate: "pudlo", stump: "pieniek", table: "stolik",

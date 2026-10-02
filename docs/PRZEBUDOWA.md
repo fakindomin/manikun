@@ -371,3 +371,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Piegi (kropki na policzkach i nosie), Tatuaże (motyw na przedramieniu albo rękawy na obu rękach, widoczne spod krótkich rękawów i bez rękawów), Kolczyki (wkrętki albo złote koła w płatku ucha).
 - Kreator: „Jaki kolor skóry?” przy dopracowaniu twarzy.
 
+## Zwierzaki: Manidog, Manicat, Manibun, Manidragon
+
+- Nowa kategoria Zwierzaki w grupie Rzeczy. Zwierzak to rzecz z pozą (Siedzi, Stoi, Leży) i umaszczeniem: pies (złoty, czarny, czekoladowy, dalmatyńczyk), kot (rudy, czarny, pręgowany, biały), królik (biały, szary, brązowy), smok (zielony, czerwony, fioletowy, niebieski).
+- Po wybraniu zwierzaka rząd pokazuje jego pozy, umaszczenie i Usuń. Podstawowy: jeden zwierzak; Ekspert: kilka. Zwierzaki nie zastępują rzeczy (krzesło zostaje) i nie są siedziskiem ani rzeczą, o którą się opiera.
+- Rysunki: obłe bryły jak Manikun, w kolorze sierści już w szkicu; zwierzak patrzy w stronę postaci. Ustawiają się w punktach zaczepienia jak rzeczy (domyślnie obok z prawej).
+- Maniscrypt: „with a golden retriever dog sitting next to them on the right”, „a small friendly green cartoon dragon standing…”.
+- Kreator pyta „A może zwierzak? Pies, kot, królik albo smok.” (oba poziomy). Losowanie czasem dodaje zwierzaka. Wyszukiwarka zna „pies”, „kot”, „królik”, „smok”.
+
