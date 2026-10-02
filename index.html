@@ -930,6 +930,8 @@
     ]},
     // Twarz: włosy, zarost, usta i okulary. Opcje są w LOOK niżej, kafelki buduje lookTiles()
     { id: "look", label: "Głowa", subjects: ["person"], patch: "#C9A24A", options: [] },
+    // Cechy: kolor skóry, wiek, budowa, wzrost, piegi, tatuaże, kolczyki. Opcje w TRAITS, kafelki buduje traitsTiles()
+    { id: "traits", label: "Cechy", subjects: ["person"], patch: "#B98A5E", options: [] },
     { id: "pose", label: "Poza", subjects: ["person"], patch: "#C29682", options: [
       { id: "standing", name: "Stoi", children: [
         { id: "stand", name: "Prosto", short: "Stoi", prompt: "standing upright, weight evenly on both feet" },
@@ -1205,7 +1207,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1535,19 +1537,19 @@
     const beardColor = lk.beardColor === "auto" ? DEFAULT_HAIR : lookOpt("beardColor", lk.beardColor).hex;
     return {
       hair: lk.hair === "bald" ? null : lk.hair, hairColor, beardColor,
-      beard: body === "male" ? lk.beard : "none",
+      beard: body === "male" && !isChild() ? lk.beard : "none",
       lips: lk.lips === "none" ? null : lookOpt("lips", lk.lips).hex,
       glasses: lk.glasses, glassesColor: lookOpt("glassesColor", lk.glassesColor).hex
     };
   }
   // Opis wyglądu do promptu: ", with short dark brown hair, a short neat beard and round black-framed eyeglasses"
   function lookPrompt() {
-    const lk = scene.look, parts = [];
+    const lk = scene.look, parts = [...traitWords(scene, withPhoto)];
     const hc = lk.hairColor === "auto" ? "" : lookOpt("hairColor", lk.hairColor).word + " ";
     // Fryzura zawsze w prompcie (bez niej modele i tak dorysowują włosy); przy "Mojej twarzy" tylko wybrana ręcznie
     if (!withPhoto || lk.hairPicked) parts.push(lookOpt("hair", lk.hair).prompt(hc));
     const bc = lk.beardColor === "auto" ? "" : lookOpt("beardColor", lk.beardColor).word + " ";
-    if (scene.body === "male" && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt(bc));
+    if (scene.body === "male" && !isChild() && lk.beard !== "none") parts.push(lookOpt("beard", lk.beard).prompt(bc));
     if (lk.lips !== "none") parts.push(lookOpt("lips", lk.lips).prompt);
     if (lk.glasses !== "none") parts.push(lookOpt("glasses", lk.glasses).prompt(lookOpt("glassesColor", lk.glassesColor).word + " "));
     if (!parts.length) return "";
@@ -1555,9 +1557,72 @@
   }
 
   // Moja twarz: generator bierze twarz z dołączonego zdjęcia, reszta sceny zostaje z kafelków
+  // ---------- Cechy postaci: kolor skóry, wiek, budowa, wzrost, piegi, tatuaże, kolczyki ----------
+  // Kolor skóry na Manikunie to odcień drewna (od brzozy po heban); w Maniscrypcie prosty opis skóry.
+  const TRAITS = {
+    skin: { name: "Skóra", options: [
+      { id: "auto", name: "Domyślna" },
+      { id: "fair", name: "Bardzo jasna", word: "very fair skin", wood: ["#FBEBD3", "#EBCFA6", "#BE9466", "#6A4A2A", "#A8805A"] },
+      { id: "light", name: "Jasna", word: "light skin", wood: ["#F6DDB4", "#E3B97F", "#A97A45", "#5A3818", "#8E5E30"] },
+      { id: "olive", name: "Oliwkowa", word: "olive skin", wood: ["#E2C08A", "#C49558", "#8A6034", "#4A2E14", "#74481F"] },
+      { id: "tan", name: "Śniada", word: "tan skin", wood: ["#D9A774", "#B57A44", "#7A4A22", "#3E2410", "#6A3C16"] },
+      { id: "brown", name: "Brązowa", word: "brown skin", wood: ["#B07A4E", "#8A5530", "#5A3418", "#2E1A0C", "#4E2C12"] },
+      { id: "deep", name: "Ciemna", word: "deep dark skin", wood: ["#8A5C3C", "#664028", "#3E2414", "#1E120A", "#2E1A0E"] }
+    ]},
+    age: { name: "Wiek", options: [{ id: "adult", name: "Dorosły" }, { id: "child", name: "Dziecko" }] },
+    build: { name: "Budowa", options: [
+      { id: "average", name: "Przeciętna" }, { id: "slim", name: "Szczupła", word: "a slim build" },
+      { id: "athletic", name: "Wysportowana", word: "an athletic, muscular build" }, { id: "stocky", name: "Krępa", word: "a sturdy, heavier-set build" }
+    ]},
+    height: { name: "Wzrost", options: [{ id: "short", name: "Niski", word: "short" }, { id: "average", name: "Średni" }, { id: "tall", name: "Wysoki", word: "tall" }] },
+    freckles: { name: "Piegi", options: [{ id: "none", name: "Brak" }, { id: "yes", name: "Piegi", word: "freckles" }] },
+    tattoo: { name: "Tatuaże", options: [{ id: "none", name: "Brak" }, { id: "arm", name: "Na przedramieniu", word: "a tattoo on the forearm" }, { id: "sleeve", name: "Rękawy", word: "full sleeve tattoos on both arms" }] },
+    earrings: { name: "Kolczyki", options: [{ id: "none", name: "Brak" }, { id: "studs", name: "Wkrętki", word: "small stud earrings" }, { id: "hoops", name: "Koła", word: "gold hoop earrings" }] }
+  };
+  const TRAIT0 = { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" };
+  const traitsOf = (st = scene) => ({ ...TRAIT0, ...(st.traits || {}) });
+  const traitOpt = (k, id) => TRAITS[k].options.find(o => o.id === id) || TRAITS[k].options.find(o => o.id === TRAIT0[k]);
+  const isChild = (st = scene) => traitsOf(st).age === "child";
+  // Proporcje ciała z wieku, budowy i wzrostu (ten sam obiekt dla tych samych cech, żeby animacja nie startowała w kółko)
+  const rigCache = {};
+  function rigOf(bodyId = scene.body, st = scene) {
+    const t = traitsOf(st), key = [bodyId, t.age, t.build, t.height].join("/");
+    if (rigCache[key]) return rigCache[key];
+    const B = BODIES[bodyId], r = JSON.parse(JSON.stringify(B));
+    const len = (k) => ["pelvisDown", "pelvisUp", "waistTop", "chest", "neck", "upperArm", "forearm", "thigh", "shin", "foot"].forEach(n => { r[n] *= k; });
+    const wid = (shoulder, waist, hip) => {
+      r.chestTop = r.chestTop.map(v => v * shoulder); r.shoulderNear *= shoulder; r.shoulderFar *= shoulder;
+      r.chestBottom = r.chestBottom.map(v => v * waist);
+      r.pelvisTop = r.pelvisTop.map(v => v * hip); r.pelvisBottom = r.pelvisBottom.map(v => v * hip); r.hipNear *= hip; r.hipFar *= hip;
+    };
+    const BUILD = { slim: [0.9, 0.88, 0.92, 0.86], athletic: [1.16, 1.02, 1.02, 1.2], stocky: [1.12, 1.38, 1.16, 1.22] }[t.build];
+    if (BUILD) { wid(BUILD[0], BUILD[1], BUILD[2]); r.limb *= BUILD[3]; }
+    if (t.height === "short") len(0.92); else if (t.height === "tall") len(1.07);
+    // Dziecko: krótsze ciało i kończyny, węższe barki i biodra, głowa względnie duża
+    if (t.age === "child") { len(0.64); wid(0.72, 0.85, 0.75); r.limb *= 0.78; r.headRx *= 0.9; r.headRy *= 0.88; r.neck *= 0.8; }
+    return (rigCache[key] = r);
+  }
+  // Materiał Manikuna z kolorem skóry: drewno w odcieniu skóry (biały materiał zostaje biały)
+  const matCache = {};
+  function figMat() {
+    const sk = traitOpt("skin", traitsOf().skin);
+    if (material.id !== "wood" || !sk.wood) return material;
+    const [light, mid, dark, line, grain] = sk.wood;
+    return matCache[sk.id] || (matCache[sk.id] = { ...material, light, mid, dark, line, grain });
+  }
+  // Cechy w Maniscrypcie: wzrost przed słowem "man/woman", reszta jako "with ..."
+  const traitWords = (st = scene, photo = false) => {
+    const t = traitsOf(st), w = [];
+    if (traitOpt("build", t.build).word) w.push(traitOpt("build", t.build).word);
+    if (!photo && traitOpt("skin", t.skin).word) w.push(traitOpt("skin", t.skin).word);
+    ["freckles", "tattoo", "earrings"].forEach(k => { const o = traitOpt(k, t[k]); if (o.word) w.push(o.word); });
+    return w;
+  };
   const bodyPrompt = () => {
-    if (!withPhoto) return optionOf("body", scene.body).prompt;
-    const [who, pro] = scene.body === "female" ? ["woman", "her"] : ["man", "his"];
+    const t = traitsOf(), tall = traitOpt("height", t.height).word, male = scene.body === "male";
+    const person = isChild() ? (male ? "young boy, about eight years old," : "young girl, about eight years old,") : `adult ${male ? "man" : "woman"}`;
+    if (!withPhoto) return `of a single ${tall ? tall + " " : ""}${person}`;
+    const [who, pro] = male ? [isChild() ? "boy" : "man", "his"] : [isChild() ? "girl" : "woman", "her"];
     // Wybrana fryzura zastępuje tę ze zdjęcia
     const keep = !scene.look.hairPicked ? "face, facial features, skin tone and hairstyle" : "face, facial features and skin tone";
     // W stylach rysowanych twarz ma być rozpoznawalna, a nie skopiowana jak na zdjęciu
@@ -2307,18 +2372,20 @@
     if (w.hat !== "none") c.hat = { kind: w.hat, color: hex("hat") };
     if (w.acc && w.acc !== "none") c.acc = { kind: w.acc, color: hex("acc") };
     c.shoes = { kind: w.shoes, color: hex("shoes") };
-    c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st), view: turnedAway(st) ? turnOf(st) : null };
+    const tr = traitsOf(st);
+    c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st), view: turnedAway(st) ? turnOf(st) : null,
+      freckles: tr.freckles === "yes", tattoo: tr.tattoo !== "none" ? tr.tattoo : null, earrings: tr.earrings !== "none" ? tr.earrings : null };
     return c;
   }
 
   // dressed: z ubraniem ze sceny (część kafelków rysuje samego manekina)
   function buildFigure(poseId, bodyId = "male", dressed = null) {
-    const key = [poseId, bodyId, !!dressed, dressed && JSON.stringify([scene.wear, scene.wc, scene.look, turnOf(scene)]), dressed && exprOf(scene)].join("/");
-    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), BODIES[bodyId], dressed ? clothOf(bodyId) : null));
+    const key = [poseId, bodyId, !!dressed, JSON.stringify(traitsOf()), dressed && JSON.stringify([scene.wear, scene.wc, scene.look, turnOf(scene)]), dressed && exprOf(scene)].join("/");
+    return figCache[key] || (figCache[key] = computeFigure(poseOf(poseId), rigOf(bodyId), dressed ? clothOf(bodyId) : null));
   }
 
   // Wzorzec skali: stojący mężczyzna. Każda poza ma ten sam rozmiar ciała, kobieta jest nieco niższa.
-  const REF = buildFigure("stand", "male").box;
+  const REF = computeFigure(POSES.stand, BODIES.male).box;
 
   // Materiał Manikuna: drewno albo biały (przełącznik w pasku górnym)
   let material = MATERIALS[0];
@@ -2367,7 +2434,7 @@
     if (pl.mir != null) host = el("g", { transform: `translate(${f(2 * b.minX + b.w)} 0) scale(-1 1)` }, host);
     // Próbny kadr: cień ręki pada od światła (w układzie postaci; przy odbiciu oś x odwrócona)
     const sd = [-Math.cos(figLightA) * 3.2 * (pl.mir != null ? -1 : 1), -Math.sin(figLightA) * 3.2];
-    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...material, flat: true } : trialMat ? { ...material, soft: true, line: material.dark, shadowDir: sd, detail: trialDetail } : material) : null);
+    paintFigure(el("g", { class: cls }, host), pl.fig.shapes, cls === "fig" ? (flatDraw ? { ...figMat(), flat: true } : trialMat ? { ...figMat(), soft: true, line: figMat().dark, shadowDir: sd, detail: trialDetail } : figMat()) : null);
   }
 
   // Światło na Manikunie: kierunek od środka postaci do lampy. Światło z tyłu przygasza przód i rozświetla krawędź,
@@ -4082,6 +4149,7 @@
 
   // ---------- Ikony paska kategorii ----------
   const CAT_ICONS = {
+    traits: svg => { el("circle", { cx: 10, cy: 8, r: 3.5 }, svg); el("path", { d: "M3.5 20c1-4 3.5-6 6.5-6s5.5 2 6.5 6" }, svg); el("circle", { cx: 18.5, cy: 7, r: 2.5, style: "fill:currentColor;opacity:0.5" }, svg); },
     things: svg => { el("path", { d: "M6 4v16 M6 12h11 M17 12v8 M6 16h11" }, svg); el("path", { d: "M14 8h6" }, svg); },
     thingColor: svg => { el("circle", { cx: 12, cy: 12, r: 8 }, svg); el("path", { d: "M12 4v16 M4.5 9.5l15 5" }, svg); },
     fx: svg => { el("path", { d: "M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.5 1.5 3.3 3.3 0 0 1-.5 6.5z" }, svg); el("path", { d: "M8 18l-1 2.5 M12 18l-1 2.5 M16 18l-1 2.5" }, svg); },
@@ -4115,7 +4183,7 @@
   function miniFigure(svg, poseId, bodyId, outfitId = null) {
     const fig = buildFigure(poseId, bodyId, outfitId), b = fig.box, s = 22 / Math.max(b.w, b.h);
     const holder = el("svg", { viewBox: `${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}`, x: f(12 - b.w * s / 2), y: f(23 - b.h * s), width: f(b.w * s), height: f(b.h * s) }, svg);
-    paintFigure(el("g", { class: "fig" }, holder), fig.shapes, material);
+    paintFigure(el("g", { class: "fig" }, holder), fig.shapes, figMat());
   }
 
   // ---------- Interfejs ----------
@@ -4131,6 +4199,10 @@
     if (cat.id === "thingColor") return (scene.things || []).filter(it => it.color).length ? (scene.things || []).filter(it => it.color).map(it => colorOf(it.color).name).join(", ") : "Domyślne";
     if (cat.id === "fx") return bgExtras(scene).length ? bgExtras(scene).map(x => FX[x].name).join(", ") : "Brak";
     if (cat.id === "items") { const a = activeItems(scene); return a.length ? a.map(it => itemInfo(it).name).join(", ") : "Nic"; }
+    if (cat.id === "traits") {
+      const t = traitsOf(), on = Object.keys(TRAITS).filter(k => t[k] !== TRAIT0[k]).map(k => traitOpt(k, t[k]).name);
+      return on.length ? on.join(", ") : "Domyślne";
+    }
     if (cat.id === "look") {
       const lk = scene.look;
       if (lk.expr !== "neutral") return exprLabel(lk.expr);
@@ -4308,7 +4380,7 @@
   function wearThumb(svg, patch, region) {
     const saved = { wear: scene.wear, wc: scene.wc };
     Object.assign(scene, patch);
-    const fig = computeFigure(POSES.stand, BODIES[scene.body], clothOf(scene.body));
+    const fig = computeFigure(POSES.stand, rigOf(scene.body), clothOf(scene.body));
     Object.assign(scene, saved);
     const b = fig.box, cx = (b.minX + b.maxX) / 2;
     if (region === "head") {
@@ -4320,7 +4392,7 @@
       const top = region === "full" ? b.minY - 4 : b.minY + y0 * b.h;
       svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(top)} ${f(side)} ${f(side)}`);
     }
-    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, figMat());
   }
   const PART_REGION = { top: "top", outer: "top", bottom: "bottom", hat: "head", shoes: "shoes", acc: "top" };
   const OUTFIT_SUBS = [["sets", "Zestawy"], ...PARTS.map(p => [p, WEAR[p].name])];
@@ -4370,10 +4442,10 @@
   // Głowa Manikuna z danym wyglądem, powiększona na kafelek
   // Kafelek spojrzenia: głowa z przechyłem i strzałka kierunku (w obiektyw: znak obiektywu przed twarzą)
   function gazeTile(svg, o) {
-    const fig = computeFigure({ ...POSES.stand, head: 180 + (o.tilt || 0) }, BODIES[scene.body], clothOf(scene.body));
+    const fig = computeFigure({ ...POSES.stand, head: 180 + (o.tilt || 0) }, rigOf(scene.body), clothOf(scene.body));
     const [hx, hy] = fig.head, r = 30;
     svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r + 2)} ${f(r * 2)} ${f(r * 2)}`);
-    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, figMat());
     const st = "fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round";
     const arrowTo = (x1, y1, x2, y2) => {
       const a = Math.atan2(y2 - y1, x2 - x1), k = 4.5;
@@ -4388,11 +4460,11 @@
   function headTile(svg, lk) {
     const saved = scene.look;
     scene.look = lk;
-    const fig = computeFigure(POSES.stand, BODIES[scene.body], clothOf(scene.body));
+    const fig = computeFigure(POSES.stand, rigOf(scene.body), clothOf(scene.body));
     scene.look = saved;
     const [hx, hy] = fig.head, r = 30;
     svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r + 2)} ${f(r * 2)} ${f(r * 2)}`);
-    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+    paintFigure(el("g", { class: "fig" }, svg), fig.shapes, figMat());
   }
   const backTile = to => {
     const t = tile("opt-back", "Wróć", () => false, () => { scene.sub = to; render(); }, svg => {
@@ -4402,6 +4474,37 @@
     t.btn.classList.add("back");
     return t;
   };
+  // Cechy: grupy (Skóra, Wiek, Budowa, Wzrost, Piegi, Tatuaże, Kolczyki), w grupie warianty z miniaturą Manikuna
+  function traitThumb(svg, k, id) {
+    if (k === "skin") { svg.setAttribute("viewBox", "0 0 64 64"); const o = traitOpt("skin", id); swatch(svg, o.wood ? o.wood[1] : MATERIALS[0].mid); return; }
+    const saved = scene.traits;
+    scene.traits = { ...traitsOf(), [k]: id };
+    try {
+      // Tatuaż widać tylko bez rękawów: miniatura w topie bez rękawów
+      const st = k === "tattoo" ? { ...scene, wear: { ...scene.wear, top: "tank", outer: "none", bottom: isDress() ? "jeans" : scene.wear.bottom } } : scene;
+      const fig = computeFigure(POSES.stand, rigOf(scene.body), clothOf(scene.body, st)), b = fig.box;
+      if (k === "freckles" || k === "earrings") {
+        const [hx, hy] = fig.head, r = 22;
+        svg.setAttribute("viewBox", `${f(hx - r)} ${f(hy - r + 4)} ${f(r * 2)} ${f(r * 2)}`);
+      } else if (k === "tattoo") {
+        const side = 0.42 * b.h;
+        svg.setAttribute("viewBox", `${f((b.minX + b.maxX) / 2 - side / 2)} ${f(b.minY + 0.15 * b.h)} ${f(side)} ${f(side)}`);
+      } else {
+        // Ta sama skala dla wszystkich: dziecko i niski wzrost są mniejsze na kafelku
+        const side = REF.h + 10, cx = (b.minX + b.maxX) / 2;
+        svg.setAttribute("viewBox", `${f(cx - side / 2)} ${f(b.maxY + 5 - side)} ${f(side)} ${f(side)}`);
+      }
+      paintFigure(el("g", { class: "fig" }, svg), fig.shapes, figMat());
+    } finally { scene.traits = saved; }
+  }
+  function traitsTiles() {
+    const sub = scene.sub;
+    const set = (k, id) => { scene.traits = { ...traitsOf(), [k]: id }; render(); };
+    if (sub && TRAITS[sub]) return [backTile(null)].concat(TRAITS[sub].options.map(o => tile("opt-trait-" + sub + "-" + o.id, o.name,
+      () => traitsOf()[sub] === o.id, () => set(sub, o.id), svg => traitThumb(svg, sub, o.id))));
+    return Object.keys(TRAITS).map(k => groupMark(tile("opt-traits-" + k, TRAITS[k].name, () => traitsOf()[k] !== TRAIT0[k],
+      () => { scene.sub = k; render(); }, svg => traitThumb(svg, k, traitsOf()[k]), () => traitOpt(k, traitsOf()[k]).name)));
+  }
   const groupMark = t => {
     t.btn.classList.add("group");
     const badge = document.createElement("span");
@@ -4439,7 +4542,7 @@
       () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), svg => headTile(svg, with_({ glassesColor: o.id })))));
     if (sub === "gaze") return [backTile(null)].concat(gazeList().map(o => tile("opt-gaze-" + o.id, o.name, () => gazeOpt(scene).id === o.id,
       () => set({ gaze: o.id }), svg => gazeTile(svg, o))));
-    const groups = [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male");
+    const groups = [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || (scene.body === "male" && !isChild()));
     // Kafelek grupy pokazuje bieżący wybór, a gdy go nie ma, przykład danej części twarzy
     const SAMPLE = { expr: { expr: "neutral" }, hair: { hair: "short" }, beard: { beard: "short" }, lips: { lips: "red" }, glasses: { glasses: "round" } };
     const chosen = k => k === "expr" ? lk.expr !== SCENE0.look.expr : k === "hair" ? lk.hairPicked : k === "gaze" ? gazeOpt(scene).id !== "auto" : lk[k] !== "none";
@@ -4475,6 +4578,7 @@
     if (catId === "style") return optionsOf("style").map(o => tile("opt-style-" + o.id, o.name, () => scene.style === o.id,
       () => { scene.style = o.id; render(); }, svg => renderScene(svg, { ...scene, style: o.id }, 100, 100, new Set(["ground"]), { styleFrame: true, corners: false })));
     if (catId === "look") return lookTiles();
+    if (catId === "traits") return traitsTiles();
     if (catId === "fx") return [{ id: "none", name: "Brak" }, ...FX_LIST].map(o => tile("opt-fx-" + o.id, o.name,
       () => o.id === "none" ? !bgExtras(scene).length : bgExtras(scene).includes(o.id),
       () => { pickFx(o.id); render(); },
@@ -4641,7 +4745,7 @@
       svg.setAttribute("viewBox", `${f(x)} ${f(y)} ${f(side)} ${f(side)}`);
       el("line", { x1: f(x), y1: f(G), x2: f(x + side), y2: f(G), class: "thin" }, svg);
       if (seat) drawThing(svg, seat.id, 0, G, 1);
-      paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
+      paintFigure(el("g", { class: "fig" }, svg), fig.shapes, figMat());
       return;
     }
     renderScene(svg, { ...scene, [catId]: leafId }, 100, 100, new Set(TILE_LAYERS[catId]));
@@ -4656,7 +4760,7 @@
   // Powrót: strzałka przypięta po lewej w dolnym rzędzie albo stuknięcie w otwarty kafelek.
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
-    { id: "person", label: "Postać", cats: ["body", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
+    { id: "person", label: "Postać", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["things", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
@@ -4715,6 +4819,7 @@
   const partLabel = p => p === "bottom" && isDress() ? "Sukienka" : WEAR[p].name;
   const WIZ_Q = [
     { id: "body", ch: "person", say: "Kogo ustawiamy?", cat: "body" },
+    { id: "age", say: "Dorosły czy dziecko?", cat: "traits", sub: "age" },
     { id: "dress", say: () => `Jak ${him()} ubierzemy?`, choice: [["set", "Gotowy zestaw", "gotowe"], ["own", "Składam sam", "część po części"]] },
     { id: "set", say: "Który zestaw?", cat: "outfit", sub: "sets", when: () => wiz.ans.dress === "set" },
     { id: "top", say: "Jaka góra?", cat: "outfit", sub: "top", when: own },
@@ -4730,9 +4835,10 @@
     { id: "face", say: "Dopracujemy twarz?", yesno: true },
     { id: "hair", say: "Jaka fryzura?", cat: "look", sub: "hair", when: face },
     { id: "hairColor", say: "Kolor włosów?", cat: "look", sub: "hairColor", when: () => face() && hasHairColor() },
+    { id: "skin", say: "Jaki kolor skóry?", cat: "traits", sub: "skin", when: face },
     { id: "expr", say: "Jaka mina?", cat: "look", sub: "expr", when: face },
     { id: "exprLvl", say: "Jak mocno?", cat: "look", sub: "exprLvl", when: () => face() && exprGroup(scene.look.expr).levels.length > 1 },
-    { id: "beard", say: "Zarost?", cat: "look", sub: "beard", when: () => face() && scene.body === "male" },
+    { id: "beard", say: "Zarost?", cat: "look", sub: "beard", when: () => face() && scene.body === "male" && !isChild() },
     { id: "beardColor", say: "Kolor zarostu?", cat: "look", sub: "beardColor", when: () => face() && scene.body === "male" && scene.look.beard !== "none" },
     { id: "lips", say: "Usta?", cat: "look", sub: "lips", when: () => face() && scene.body === "female" },
     { id: "glasses", say: "Okulary?", cat: "look", sub: "glasses", when: face },
@@ -5429,7 +5535,7 @@
     drone: scene.camera === "D" ? 1 : 0
   });
   const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX", "subj", "drone"];
-  const baseShown = () => ({ pose: curPose(), rig: BODIES[scene.body] });
+  const baseShown = () => ({ pose: curPose(), rig: rigOf(scene.body) });
   const ensureLoop = () => { if (!loopFrame) loopFrame = requestAnimationFrame(tick); };
 
   function tick(now) {
@@ -5440,10 +5546,10 @@
     if (figAnim) {
       const fr = figAnim.frames[figAnim.k];
       const t = Math.min(1, (now - figAnim.start) / fr.dur);
-      shown = { pose: blendPose(figAnim.from.pose, fr.pose, t), rig: blendRig(figAnim.from.rig, BODIES[scene.body], t) };
+      shown = { pose: blendPose(figAnim.from.pose, fr.pose, t), rig: blendRig(figAnim.from.rig, rigOf(scene.body), t) };
       if (t >= 1) {
         figAnim.k++;
-        if (figAnim.k >= figAnim.frames.length) { figAnim = null; shown = { pose: fr.pose, rig: BODIES[scene.body] }; }
+        if (figAnim.k >= figAnim.frames.length) { figAnim = null; shown = { pose: fr.pose, rig: rigOf(scene.body) }; }
         else { figAnim.from = shown; figAnim.start = now; }
       }
       if (figAnim) active = true;
@@ -5489,7 +5595,7 @@
     const up = gaze.what === "camera" && scene.camera === "D";
     gaze.turn += ((up ? 16 : headTurn(d)) - gaze.turn) * k;
     gaze.lean += ((up ? 2.5 : clamp(d * 0.05, -6, 6)) - gaze.lean) * k;
-    shown = { pose: variant({}, { head: gaze.turn, spine: gaze.lean }), rig: BODIES[scene.body] };
+    shown = { pose: variant({}, { head: gaze.turn, spine: gaze.lean }), rig: rigOf(scene.body) };
     const keys = gaze.what === "camera" ? ["camX", "camY"] : ["litX", "litY"];
     if (gaze.hold || keys.some(key => propAnim[key])) gaze.release = 0;
     else if (!gaze.release) gaze.release = now + GAZE_HOLD;
@@ -5502,7 +5608,7 @@
 
   function playFrames(frames) {
     gaze = null;
-    if (reduceMotion.matches) { figAnim = null; shown = { pose: frames[frames.length - 1].pose, rig: BODIES[scene.body] }; ensureLoop(); return; }
+    if (reduceMotion.matches) { figAnim = null; shown = { pose: frames[frames.length - 1].pose, rig: rigOf(scene.body) }; ensureLoop(); return; }
     figAnim = { frames, k: 0, from: shown, start: performance.now() };
     ensureLoop();
   }
@@ -5517,7 +5623,7 @@
     if (!reduceMotion.matches && scene.subject !== "object") {
       const base = shown || baseShown();
       st.fig = computeFigure(livePose(base.pose, performance.now()), base.rig, clothOf(scene.body));
-    } else if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== BODIES[scene.body])) {
+    } else if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== rigOf(scene.body))) {
       st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
     const grabbed = drag && drag.grabbed ? drag.what : null;
@@ -5882,7 +5988,7 @@
     body: "plec kobieta mezczyzna", look: "twarz glowa", outfit: "ubranie stroj ciuchy", pose: "pozycja", arms: "dlonie gest",
     background: "miejsce lokacja otoczenie", time: "godzina", light: "oswietlenie lampa slonce", shot: "kadrowanie zblizenie plan",
     camera: "obiektyw kat ujecie", format: "proporcje rozmiar", motion: "ruch kamery", style: "wyglad",
-    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", acc: "akcesoria", scarf: "szal", bag: "torebka listonoszka", plaid: "krata flanela", turtleneck: "golf", tank: "ramiaczka bezrekawnik", vest: "bezrekawnik", sun: "przeciwsloneczne",
+    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", acc: "akcesoria", traits: "cechy wyglad karnacja", skin: "karnacja cera kolor skory", age: "wiek dziecko", build: "sylwetka figura", height: "wzrost", freckles: "piegi", tattoo: "tatuaz dziara", earrings: "kolczyki", scarf: "szal", bag: "torebka listonoszka", plaid: "krata flanela", turtleneck: "golf", tank: "ramiaczka bezrekawnik", vest: "bezrekawnik", sun: "przeciwsloneczne",
     stand: "stanie stoi", stride: "chod idzie spacer krok", crouch: "kucanie kucnij przysiad", wide: "rozkrok",
     things: "przedmiot rekwizyt meble obiekt", sofa: "sofa", stool: "stolek", floorLamp: "lampa", shelf: "polka ksiazki", umbrella: "parasol",
     car: "auto", bike: "rowerek", crate: "pudlo", stump: "pieniek", table: "stolik",
@@ -5931,8 +6037,16 @@
     if (cat === "preset") { PRESETS[scene.subject].forEach(pr => add(pr.name, path, () => jump([...base, opts(cat, null)], "opt-preset-" + pr.id))); return; }
     if (cat === "style") { optionsOf("style").forEach(o => add(o.name, path, () => jump([...base, opts(cat, null)], "opt-style-" + o.id))); return; }
     if (cat === "format") { FORMATS[scene.mode].forEach(fm => add(fm.name, path, () => jump([...base, opts(cat, null)], "opt-format-" + fm.id))); return; }
+    if (cat === "traits") {
+      Object.keys(TRAITS).forEach(k => {
+        const lvl = [...base, opts(cat, null, "opt-traits-" + k)];
+        add(TRAITS[k].name, path, () => jump([...lvl, opts(cat, k)]));
+        TRAITS[k].options.forEach(o => add(o.name, [...path, TRAITS[k].name], () => jump([...lvl, opts(cat, k)], "opt-trait-" + k + "-" + o.id)));
+      });
+      return;
+    }
     if (cat === "look") {
-      [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || scene.body === "male").forEach(([k, name]) => {
+      [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || (scene.body === "male" && !isChild())).forEach(([k, name]) => {
         const lvl = [...base, opts(cat, null, "opt-look-" + k)];
         add(name, path, () => jump([...lvl, opts(cat, k)]));
         if (k === "gaze") { gazeList().forEach(o => add(o.name, [...path, name], () => jump([...lvl, opts(cat, k)], "opt-gaze-" + o.id))); return; }
@@ -6149,6 +6263,7 @@
     return [
       ["Postać", null, [
         ["Sylwetka", optionOf("body", st.body).name],
+        ["Cechy", null, Object.keys(TRAITS).filter(k => traitsOf(st)[k] !== TRAIT0[k]).map(k => [TRAITS[k].name, traitOpt(k, traitsOf(st)[k]).name])],
         ["Głowa", null, head],
         ["Ubiór", st.outfit === "custom" ? "Własny" : "Zestaw " + optionOf("outfit", st.outfit).name, wear],
         ["Poza", treePath(parentName("pose", st.pose), optionOf("pose", st.pose).name)],

@@ -362,3 +362,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Nowa część Dodatki (kafelek w Ubiorze, pytanie w Kreatorze „Jakieś dodatki?”, własny kolor): Szalik (owinięty wokół szyi, koniec na piersi) i Torba przez ramię (pasek przez pierś, torba przy biodrze).
 - Maniscrypt: „with a navy baseball cap and a burgundy knit scarf”. Gotowe zestawy mają dodatki „Brak”.
 
+## Cechy postaci
+
+- Nowa kategoria Cechy w grupie Postać (po Sylwetce): Skóra, Wiek, Budowa, Wzrost, Piegi, Tatuaże, Kolczyki. Kafelki z miniaturą Manikuna (ta sama skala, więc dziecko i niski wzrost są mniejsze), w drzewku sceny gałąź Cechy z tym, co zmienione.
+- Skóra: Bardzo jasna, Jasna, Oliwkowa, Śniada, Brązowa, Ciemna. Na Manikunie odcień drewna (od brzozy po heban) w szkicu, Próbnym kadrze i kafelkach; biały materiał zostaje biały. W Maniscrypcie „with olive skin” (pomijane przy zdjęciu własnej twarzy, bo skóra jest ze zdjęcia).
+- Wiek: Dorosły albo Dziecko (krótsze ciało i kończyny, węższe barki, względnie duża głowa; „of a single young girl, about eight years old,”). Dziecko nie ma zarostu. Kreator pyta „Dorosły czy dziecko?” po wyborze postaci.
+- Budowa: Przeciętna, Szczupła, Wysportowana (szersze barki, grubsze kończyny), Krępa (szersza talia i biodra). Wzrost: Niski, Średni, Wysoki („of a single tall adult man”).
+- Piegi (kropki na policzkach i nosie), Tatuaże (motyw na przedramieniu albo rękawy na obu rękach, widoczne spod krótkich rękawów i bez rękawów), Kolczyki (wkrętki albo złote koła w płatku ucha).
+- Kreator: „Jaki kolor skóry?” przy dopracowaniu twarzy.
+

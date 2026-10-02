@@ -112,13 +112,13 @@ function hull(points) {
 // Proporcje ciała. Strona bliższa widzowi jest szersza: widok 3/4.
 const BODIES = {
   male: {
-    pelvisDown: 6, pelvisUp: 14, waistTop: 20, chest: 45, neck: 9, headRx: 11, headRy: 15,
+    pelvisDown: 6, pelvisUp: 14, waistTop: 20, chest: 45, neck: 9, headRx: 11, headRy: 15, limb: 1,
     upperArm: 36, forearm: 32, thigh: 46, shin: 44, foot: 16,
     shoulderNear: 18, shoulderFar: 13, hipNear: 9, hipFar: 7,
     chestTop: [20, 15], chestBottom: [10, 8], pelvisTop: [11, 9], pelvisBottom: [13, 10]
   },
   female: {
-    pelvisDown: 6, pelvisUp: 14, waistTop: 19, chest: 41, neck: 9, headRx: 10, headRy: 14,
+    pelvisDown: 6, pelvisUp: 14, waistTop: 19, chest: 41, neck: 9, headRx: 10, headRy: 14, limb: 1,
     upperArm: 33, forearm: 30, thigh: 44, shin: 42, foot: 14,
     shoulderNear: 14, shoulderFar: 10, hipNear: 10, hipFar: 8,
     chestTop: [16, 12], chestBottom: [8, 6], pelvisTop: [11, 9], pelvisBottom: [16, 13]
@@ -182,6 +182,9 @@ function computeFigure(pose, RIG, cloth = null) {
   let tag = null;
   const push = (s, ...ps) => { if (tag) s[tag] = true; shapes.push(s); pts.push(...ps); };
   const cap = (A, B, rA, rB) => ({ t: "cap", A, B, rA, rB, d: capsule(A, B, rA, rB) });
+  // Grubość kończyn z budowy ciała i wieku (RIG.limb, domyślnie 1)
+  const LK = RIG.limb || 1;
+  const capL = (A, B, rA, rB) => cap(A, B, rA * LK, rB * LK);
   const quad = q => ({ t: "poly", q, d: poly(q) });
   const Ct = add(P, u, RIG.waistTop + RIG.chest), Cb = add(P, u, RIG.waistTop);
   const shoulder = side => add(add(Ct, u, -6), r, side === "near" ? -RIG.shoulderNear : RIG.shoulderFar);
@@ -200,28 +203,46 @@ function computeFigure(pose, RIG, cloth = null) {
     const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
     const W = add(E, dir(pose[side + "Fore"]), RIG.forearm);
     const Hc = add(W, dir(pose[side + "Fore"]), 7);
-    push(cap(S, E, 5, 4), [S, 6], [E, 5]);
-    push(cap(E, W, 4, 3), [W, 4]);
-    push({ t: "circle", cx: E[0], cy: E[1], r: 3.5 });
-    push({ t: "circle", cx: S[0], cy: S[1], r: 5.5 });
+    push(capL(S, E, 5, 4), [S, 6], [E, 5]);
+    push(capL(E, W, 4, 3), [W, 4]);
+    push({ t: "circle", cx: E[0], cy: E[1], r: 3.5 * LK });
+    push({ t: "circle", cx: S[0], cy: S[1], r: 5.5 * LK });
+    // Tatuaż na drewnie (widać go spod krótkiego rękawa albo bez rękawów): na ramieniu motyw na przedramieniu bliższej ręki,
+    // rękawy z tatuaży to wzór na całych rękach
+    const tat = cloth && cloth.look && cloth.look.tattoo;
+    if (tat && (tat === "sleeve" || side === "near")) {
+      const segs = tat === "sleeve" ? [[S, E, 4.6], [E, W, 3.6]] : [[lerpP(E, W, 0.2), lerpP(E, W, 0.8), 3.4]];
+      const ink = "fill:none;stroke:#2B3A4E;stroke-linecap:round;opacity:0.72;stroke-width:" + f(0.7 * LK);
+      segs.forEach(([A, B, rr], j) => {
+        const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len * rr * LK * 0.7, ny = dx / len * rr * LK * 0.7;
+        let d = "";
+        const n = Math.max(3, Math.round(len / 7));
+        for (let k = 0; k < n; k++) {
+          const t0 = (k + 0.15) / n, t1 = (k + 0.85) / n, p0 = [A[0] + dx * t0, A[1] + dy * t0], p1 = [A[0] + dx * t1, A[1] + dy * t1], s2 = (k + j) % 2 ? 1 : -1;
+          d += ` M${f(p0[0] + nx * s2)},${f(p0[1] + ny * s2)} Q${f((p0[0] + p1[0]) / 2 - nx * s2)},${f((p0[1] + p1[1]) / 2 - ny * s2)} ${f(p1[0] + nx * s2 * 0.4)},${f(p1[1] + ny * s2 * 0.4)}`;
+          if (tat === "sleeve" || k === Math.floor(n / 2)) { const c = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2], r0 = rr * LK * 0.32; d += ` M${f(c[0] - r0)},${f(c[1])} a${f(r0)},${f(r0)} 0 1,0 ${f(r0 * 2)},0 a${f(r0)},${f(r0)} 0 1,0 ${f(-r0 * 2)},0`; }
+        }
+        shapes.push({ t: "deco", d, style: ink, ...(side === "near" ? { nearArm: true } : {}) });
+      });
+    }
     // Rękaw na ramieniu, dłoń zostaje drewniana i wychodzi spod mankietu
     if (cloth && cloth.top && cloth.sleeve === "long") {
-      wear(cap(S, E, 6.6 * loose, 5.6 * loose), cloth.top);
-      wear(cap(E, lerpP(E, W, 0.92), 5.6 * loose, 4.6 * loose), cloth.top);
+      wear(capL(S, E, 6.6 * loose, 5.6 * loose), cloth.top);
+      wear(capL(E, lerpP(E, W, 0.92), 5.6 * loose, 4.6 * loose), cloth.top);
     } else if (cloth && cloth.top && cloth.sleeve === "short") {
-      wear(cap(S, lerpP(S, E, 0.45), 6.8, 6.2), cloth.top);
+      wear(capL(S, lerpP(S, E, 0.45), 6.8, 6.2), cloth.top);
     }
     // Okrycie na wierzchu: szersze rękawy niż góra, kończą się tuż nad dłonią
     if (cloth && cloth.outer && !cloth.outer.vest) {
-      wear(cap(S, E, 7.6, 6.6), cloth.outer.color);
-      wear(cap(E, lerpP(E, W, 0.88), 6.6, 5.6), cloth.outer.color);
+      wear(capL(S, E, 7.6, 6.6), cloth.outer.color);
+      wear(capL(E, lerpP(E, W, 0.88), 6.6, 5.6), cloth.outer.color);
     }
     // Dłoń jak u manekina rysownika: kciuk z boku, śródręcze i nieco węższe palce (widać stopień przy kostkach)
     const fd = dir(pose[side + "Fore"]), fp = [fd[1], -fd[0]];
-    const thumb = cap(add(add(W, fd, 3), fp, 2.4), add(add(W, fd, 9), fp, 4.4), 1.8, 1.4);
+    const thumb = capL(add(add(W, fd, 3), fp, 2.4), add(add(W, fd, 9), fp, 4.4), 1.8, 1.4);
     thumb.thumb = true;
     push(thumb);
-    const palm = cap(add(W, fd, 0.5), add(W, fd, 12.5), 3.7, 2.7);
+    const palm = capL(add(W, fd, 0.5), add(W, fd, 12.5), 3.7, 2.7);
     palm.hand = true;
     // Dane do pełnej dłoni w Próbnym kadrze: nadgarstek, osie i ułożenie z gestu rąk
     palm.handInfo = { W, fd, fp, gest: pose[side + "Hand"] || "relaxed", k: RIG.headRx / 11 };
@@ -237,18 +258,18 @@ function computeFigure(pose, RIG, cloth = null) {
     const A = add(K, dir(pose[side + "Shin"]), RIG.shin);
     const T = add(A, dir(pose[side + "Foot"]), RIG.foot);
     knees[side] = { H, K, A };
-    push(cap(H, K, 7, 5), [H, 8], [K, 6]);
-    push(cap(K, A, 5, 3.5), [A, 5]);
-    push({ t: "circle", cx: A[0], cy: A[1], r: 3 });
-    push({ t: "circle", cx: K[0], cy: K[1], r: 4.5 });
+    push(capL(H, K, 7, 5), [H, 8], [K, 6]);
+    push(capL(K, A, 5, 3.5), [A, 5]);
+    push({ t: "circle", cx: A[0], cy: A[1], r: 3 * LK });
+    push({ t: "circle", cx: K[0], cy: K[1], r: 4.5 * LK });
     // Nogawki: długie do kostki albo krótkie do połowy uda; stopa wychodzi spod nogawki
     if (cloth && cloth.pants) {
-      if (cloth.shorts) wear(cap(H, lerpP(H, K, 0.6), 8.6, 7.6), cloth.pants);
+      if (cloth.shorts) wear(capL(H, lerpP(H, K, 0.6), 8.6, 7.6), cloth.pants);
       else {
-        wear(cap(H, K, 8.4 * loose, 6.6 * loose), cloth.pants);
-        wear(cap(K, lerpP(K, A, 0.94), 6.6 * loose, 5.2 * loose), cloth.pants);
+        wear(capL(H, K, 8.4 * loose, 6.6 * loose), cloth.pants);
+        wear(capL(K, lerpP(K, A, 0.94), 6.6 * loose, 5.2 * loose), cloth.pants);
         // Dres: ściągacz nad kostką
-        if (cloth.cuffs) wear(cap(lerpP(K, A, 0.82), lerpP(K, A, 0.96), 5.4, 5), cloth.cuffs);
+        if (cloth.cuffs) wear(capL(lerpP(K, A, 0.82), lerpP(K, A, 0.96), 5.4, 5), cloth.cuffs);
       }
     }
     // Stopa w układzie podeszwy: kostka leży nad piętą, linia kostka–palce opada, więc podeszwa jest obrócona
@@ -261,14 +282,14 @@ function computeFigure(pose, RIG, cloth = null) {
     const F = (x, y) => [A[0] + sd[0] * x + sn[0] * y, A[1] + sd[1] * x + sn[1] * y];
     const X = fl * cs, Y = fl * sn20 + 2.4;
     // Drewniana stopa: pięta pod kostką, śródstopie i palce
-    push(cap(A, F(-0.6, Y - 3.2), 3.3, 3.2));
-    push(cap(F(-0.6, Y - 3.2), F(X * 0.62, Y - 3), 3.2, 2.9), [F(-3.8, Y), 1]);
-    push(cap(F(X * 0.6, Y - 2.6), F(X + 1, Y - 2.1), 2.6, 2.1), [F(X + 3, Y), 1]);
+    push(capL(A, F(-0.6, Y - 3.2), 3.3, 3.2));
+    push(capL(F(-0.6, Y - 3.2), F(X * 0.62, Y - 3), 3.2, 2.9), [F(-3.8, Y), 1]);
+    push(capL(F(X * 0.6, Y - 2.6), F(X + 1, Y - 2.1), 2.6, 2.1), [F(X + 3, Y), 1]);
     // Buty: profil z piętą, noskiem i podeszwą. Sportowe pełniejsze z grubą jasną podeszwą,
     // eleganckie smukłe z cienką ciemną, botki z cholewką za kostkę
     if (cloth && cloth.shoes) {
       const sh = cloth.shoes, sport = sh.kind === "sneakers", soleH = sport ? 2.2 : 1.1;
-      if (sh.kind === "boots") wear(cap(lerpP(K, A, 0.74), A, 5.8, 5.2), sh.color);
+      if (sh.kind === "boots") wear(capL(lerpP(K, A, 0.74), A, 5.8, 5.2), sh.color);
       // Obrys buta krzywymi: kołnierz, podbicie, zaokrąglony nosek, płaska podeszwa, zaokrąglona pięta
       const tip = X + (sport ? 3 : 4.2), hTop = F(-4.4, sport ? -1.8 : -0.8), col = F(2.6, sport ? -2.6 : -1.6);
       const toeTop = F(X - 1, Y - (sport ? 5 : 4)), toeBot = F(tip - 1.4, Y), heelBot = F(-4.2, Y);
@@ -409,7 +430,19 @@ function computeFigure(pose, RIG, cloth = null) {
   // Zwrot ciała: tyłem widać tył głowy (włosy na całej głowie), półtyłem włosy zakrywają większość głowy; twarzy nie rysujemy
   const turned = look && (look.view === "back" || look.view === "away");
   if (turned && hair) clothPoly(arc(0, 360, 28, a => look.view === "back" ? E(a, 1.07, 1.06, 0.02) : L(-0.26 + Math.cos(rad(a)) * 0.86, 0.04 + Math.sin(rad(a)) * 1.04)), look.hairColor);
+  // Kolczyki w płatku ucha (ucho w widoku 3/4 leży za środkiem głowy): wkrętka albo koło
+  if (look && look.earrings && look.view !== "back") {
+    const lobe = L(-0.5, -0.38), k = RIG.headRx / 11;
+    if (look.earrings === "hoops") shapes.push({ t: "deco", d: `M${f(lobe[0])},${f(lobe[1])} a${f(2.6 * k)},${f(2.9 * k)} 0 1,0 0.1,0`, style: `fill:none;stroke:#E2B23A;stroke-width:${f(1.5 * k)}` });
+    else shapes.push({ t: "deco", d: `M${f(lobe[0] - 1.5 * k)},${f(lobe[1])} a${f(1.5 * k)},${f(1.5 * k)} 0 1,0 ${f(3 * k)},0 a${f(1.5 * k)},${f(1.5 * k)} 0 1,0 ${f(-3 * k)},0`, style: "fill:#F2DE9A;stroke:#9C7A2E;stroke-width:0.6" });
+  }
   if (look && !turned) {
+    // Piegi na policzkach i nosie (drobne kropki)
+    if (look.freckles) {
+      const dots = [[0.18, -0.2], [0.3, -0.3], [0.38, -0.16], [0.48, -0.26], [0.27, -0.42], [0.58, -0.14], [0.66, -0.32], [0.52, -0.4], [0.76, -0.22], [0.42, -0.06], [0.7, -0.08], [0.6, -0.48], [0.84, -0.12], [0.2, -0.34]];
+      const d = dots.map(([x, y]) => { const c = L(x, y), rr = 0.32; return `M${f(c[0] - rr)},${f(c[1])} a${rr},${rr} 0 1,0 ${f(rr * 2)},0 a${rr},${rr} 0 1,0 ${f(-rr * 2)},0`; }).join(" ");
+      shapes.push({ t: "deco", d, style: "fill:#7A4A2A;stroke:none;opacity:0.45" });
+    }
     // Zarost: pełna i krótka broda jako materiał, kilkudniowy jako półprzezroczysty cień
     if (look.beard && look.beard !== "none") {
       const low = look.beard === "full" ? -0.3 : -0.42;
