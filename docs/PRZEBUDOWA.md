@@ -411,3 +411,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 - Przy kamerze z lewej postać jest odbijana lustrzanie. Oś szła przez środek sylwetki, a w leżących i rozpartych pozach głowa jest daleko od niego, więc w zbliżeniu (portret, twarz) odbita postać wypadała poza kadr. Szkic był pusty, a Maniscrypt i tak opisywał twarz.
 - Przy zbliżeniach oś odbicia przechodzi przez głowę. Test wszystkich póz × kamer × ujęć × formatów: 0 pustych kadrów (wcześniej 41).
+
+## Losuj: szybszy przelot i losowanie ze wszystkich elementów
+
+- Przelot 7 świeżo losowanych szkiców, 45→130 ms (razem ok. 0,5 s zamiast ok. 1 s). Każdy szkic to pełne `randomize`, bez gotowej puli.
+- Losowanie pokazuje całą aplikację: w połowie losowań strój z pojedynczych części (wszystkie góry, okrycia, doły, buty), dodatki (szalik, torba), spojrzenie, a w trybie eksperta także zwrot ciała. Test 800 losowań: wszystkie części, zwroty, spojrzenia i miejsca się pojawiają, 0 błędów.
