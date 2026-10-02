@@ -355,3 +355,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Kuchnia (Wnętrze): Nowoczesna (granatowe szafki, białe kafelki) albo Rustykalna (drewno, otwarte półki ze słojami, podłoga z terakoty), dodatek Zioła na parapecie. Okno z porą dnia, lodówka, blat z czajnikiem i miską, nocą ciepłe światło pod szafkami.
 - Każde miejsce ma prostą wersję w szkicu roboczym i opis w Maniscrypcie (podstawa, wariant i dodatki).
 
+## Nowe ubrania i dodatki
+
+- Góra: Koszula w kratę (wzór kraty na tułowiu i rękawach, także w szkicu), Golf (wywinięty kołnierz wokół szyi), Top bez rękawów (węższe ramiączka, gołe ramiona).
+- Okrycie: Kamizelka (bez rękawów, pikowana, rozpięta z przodu).
+- Nowa część Dodatki (kafelek w Ubiorze, pytanie w Kreatorze „Jakieś dodatki?”, własny kolor): Szalik (owinięty wokół szyi, koniec na piersi) i Torba przez ramię (pasek przez pierś, torba przy biodrze).
+- Maniscrypt: „with a navy baseball cap and a burgundy knit scarf”. Gotowe zestawy mają dodatki „Brak”.
+

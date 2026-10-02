@@ -188,7 +188,8 @@ function computeFigure(pose, RIG, cloth = null) {
   const hip = side => add(P, r, side === "near" ? -RIG.hipNear : RIG.hipFar);
 
   const lerpP = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-  const wear = (shape, color) => { shape.cloth = color; if (tag) shape[tag] = true; shapes.push(shape); };
+  // Wzór góry (krata) na tułowiu i rękawach: kształty w kolorze góry dostają wzór
+  const wear = (shape, color) => { shape.cloth = color; if (cloth && cloth.pattern && color === cloth.top) shape.pattern = cloth.pattern; if (tag) shape[tag] = true; shapes.push(shape); };
   const clothPoly = (pts, color) => wear({ t: "poly", q: pts, d: poly(pts) }, color);
   const loose = cloth && cloth.loose ? 1.2 : 1;
 
@@ -211,7 +212,7 @@ function computeFigure(pose, RIG, cloth = null) {
       wear(cap(S, lerpP(S, E, 0.45), 6.8, 6.2), cloth.top);
     }
     // Okrycie na wierzchu: szersze rękawy niż góra, kończą się tuż nad dłonią
-    if (cloth && cloth.outer) {
+    if (cloth && cloth.outer && !cloth.outer.vest) {
       wear(cap(S, E, 7.6, 6.6), cloth.outer.color);
       wear(cap(E, lerpP(E, W, 0.88), 6.6, 5.6), cloth.outer.color);
     }
@@ -282,13 +283,15 @@ function computeFigure(pose, RIG, cloth = null) {
   }
 
   // Punkty obrysu ubrania na tułowiu: e zapas nad bryłą, hemY wysokość dołu (od bioder wzdłuż kręgosłupa), hw połowy szerokości dołu
-  function torsoPts(e, hemY, hw) {
+  function torsoPts(e, hemY, hw, narrow) {
     const [ctn, ctf] = RIG.chestTop, [cbn, cbf] = RIG.chestBottom, wT = RIG.waistTop, ch = RIG.chest;
     const at = (y, w) => add(add(P, u, y), r, w);
     const wAt = (t, a, b) => a + (b - a) * t;
     const armY = wT + ch - 10, armT = 10 / ch;
-    const nearSide = [at(wT + ch, -ctn - e), at(armY, -(wAt(armT, ctn, cbn) + e + 1.2)), at(wT + ch * 0.35, -(wAt(0.65, ctn, cbn) + e + 0.6)), at(wT, -cbn - e)];
-    const farSide = [at(wT + ch, ctf + e), at(armY, wAt(armT, ctf, cbf) + e + 1), at(wT + ch * 0.35, wAt(0.65, ctf, cbf) + e + 0.5), at(wT, cbf + e)];
+    // narrow: top bez rękawów, ramiączka węższe niż barki (widać drewniane ramię)
+    const tk = narrow ? 0.62 : 1;
+    const nearSide = [at(wT + ch, (-ctn - e) * tk), at(armY, -(wAt(armT, ctn, cbn) + e + 1.2) * (narrow ? 0.92 : 1)), at(wT + ch * 0.35, -(wAt(0.65, ctn, cbn) + e + 0.6)), at(wT, -cbn - e)];
+    const farSide = [at(wT + ch, (ctf + e) * tk), at(armY, (wAt(armT, ctf, cbf) + e + 1) * (narrow ? 0.92 : 1)), at(wT + ch * 0.35, wAt(0.65, ctf, cbf) + e + 0.5), at(wT, cbf + e)];
     if (hemY < wT - 4) {
       const midY = (wT + hemY) / 2;
       nearSide.push(at(midY, -((cbn + e + hw[0]) / 2 + 0.3)));
@@ -297,8 +300,8 @@ function computeFigure(pose, RIG, cloth = null) {
     nearSide.push(at(hemY, -hw[0])); farSide.push(at(hemY, hw[1]));
     return { nearSide, farSide, hem: [nearSide[nearSide.length - 1], farSide[farSide.length - 1]], top: [nearSide[0], farSide[0]] };
   }
-  function torsoCloth(color, e, hemY, hw) {
-    const { nearSide, farSide, hem, top } = torsoPts(e, hemY, hw);
+  function torsoCloth(color, e, hemY, hw, narrow) {
+    const { nearSide, farSide, hem, top } = torsoPts(e, hemY, hw, narrow);
     const mid = [(hem[0][0] + hem[1][0]) / 2, (hem[0][1] + hem[1][1]) / 2], hemC = add(mid, u, -1.2);
     const neckC = add(add(Ct, r, -(RIG.chestTop[0] - RIG.chestTop[1]) / 2), u, -3);
     const d = `M${f(top[0][0])},${f(top[0][1])}` + smoothThrough(nearSide) +
@@ -336,7 +339,7 @@ function computeFigure(pose, RIG, cloth = null) {
       // Obrys góry: zaokrąglona klatka, materiał spada prosto do bioder i przylega (bez rozkloszowania), dół lekko wygięty
       const hemY = hipLen ? -RIG.pelvisDown + 1 : RIG.pelvisUp * 0.4;
       const hw = hipLen ? [Math.max(pbn, cbn) + e * 0.8, Math.max(pbf, cbf) + e * 0.8] : [ptn + e, ptf + e];
-      torsoCloth(cloth.top, e, hemY, hw);
+      torsoCloth(cloth.top, e, hemY, hw, cloth.sleeve === "none");
       // Bluza: ściągacz na dole; z kapturem także kieszeń kangurka
       if (cloth.loose && hipLen) {
         const band = torsoPts(e - 0.4, hemY, [hw[0] - 0.4, hw[1] - 0.4]), b0 = band.hem, k = 3.2;
@@ -362,15 +365,45 @@ function computeFigure(pose, RIG, cloth = null) {
     if (cloth.outer) {
       const oc = cloth.outer.color, e = 2.6, low = add(pb, u, -2);
       torsoCloth(oc, e, -RIG.pelvisDown - 2, [Math.max(pbn, cbn) + 3.2, Math.max(pbf, cbf) + 3.2]);
+      // Kamizelka pikowana: poziome przeszycia
+      if (cloth.outer.vest) for (let k = 1; k <= 6; k++) {
+        const y = -RIG.pelvisDown + (RIG.waistTop + RIG.chest - 8 + RIG.pelvisDown) * k / 7, t = Math.min(1, Math.max(0, (y - RIG.waistTop) / RIG.chest));
+        const wn = (y > RIG.waistTop ? cbn + (ctn - cbn) * t : Math.max(pbn, cbn)) + 2.4, wf = (y > RIG.waistTop ? cbf + (ctf - cbf) * t : Math.max(pbf, cbf)) + 2.4;
+        const a = add(add(P, u, y), r, -wn), b = add(add(P, u, y), r, wf);
+        shapes.push({ t: "deco", d: `M${f(a[0])},${f(a[1])} L${f(b[0])},${f(b[1])}`, style: `fill:none;stroke:${shadeHex(oc, -0.3)};stroke-width:0.7;opacity:0.6` });
+      }
       const mid = add(Ct, r, -(ctn - ctf) / 2), mlow = add(low, r, -(pbn - pbf) / 2);
       if (cloth.top) clothPoly([add(mid, r, -3), add(mid, r, 3), add(mlow, r, 2.2), add(mlow, r, -2.2)], cloth.top);
       clothPoly([add(mid, r, -ctn * 0.55), add(mid, r, -2.5), add(add(mid, u, -14), r, -2)], oc);
       clothPoly([add(mid, r, 2.5), add(mid, r, ctf * 0.55), add(add(mid, u, -14), r, 2)], oc);
     }
   }
+  // Dodatki: szalik owinięty wokół szyi z końcem na piersi, torba z paskiem przez pierś przy bliższym biodrze
+  if (cloth && cloth.acc) {
+    const ac = cloth.acc.color;
+    if (cloth.acc.kind === "scarf") {
+      const nk = add(Ct, u, 1), mid = add(Ct, r, -(RIG.chestTop[0] - RIG.chestTop[1]) / 2);
+      wear({ t: "ellipse", cx: nk[0], cy: nk[1], rx: RIG.chestTop[0] * 0.62, ry: 5.2, rot: 180 - pose.spine }, ac);
+      wear(cap(add(add(mid, r, -4), u, -2), add(add(mid, r, -6), u, -26), 3.4, 3.8), ac);
+      const e0 = add(add(mid, r, -6), u, -24), e1 = add(add(mid, r, -6), u, -27);
+      shapes.push({ t: "deco", d: `M${f(e0[0] - 3)},${f(e0[1])} L${f(e0[0] + 3)},${f(e0[1])} M${f(e1[0] - 3)},${f(e1[1])} L${f(e1[0] + 3)},${f(e1[1])}`, style: `fill:none;stroke:${shadeHex(ac, -0.35)};stroke-width:0.7;opacity:0.7` });
+    } else if (cloth.acc.kind === "bag") {
+      const s0 = add(add(Ct, u, -4), r, RIG.chestTop[1] * 0.7), bagC = add(add(P, u, 1), r, -RIG.pelvisTop[0] - 3);
+      wear(cap(s0, add(bagC, u, 5), 0.9, 0.9), shadeHex(ac, -0.15));
+      const bw = 7, bh = 6.5, q = [add(add(bagC, r, -bw), u, bh), add(add(bagC, r, bw * 0.6), u, bh), add(add(bagC, r, bw * 0.6), u, -bh), add(add(bagC, r, -bw), u, -bh)];
+      wear({ t: "poly", q, d: poly(q), noFold: true }, ac);
+      const fl = [q[0], q[1], add(add(bagC, r, bw * 0.6), u, 0), add(add(bagC, r, -bw), u, 0)];
+      wear({ t: "poly", q: fl, d: poly(fl), noFold: true }, shadeHex(ac, -0.12));
+    }
+  }
   // Pasmo długich włosów opadające z przodu po stronie twarzy
   if (hair && hair.front) clothPoly(hair.front, look.hairColor);
   push(cap(Ct, N1, 3.5, 3.5));
+  // Golf: wywinięty kołnierz wokół szyi
+  if (cloth && cloth.turtle && cloth.top) {
+    wear(cap(add(Ct, u, -1), add(Ct, hd, RIG.neck * 0.7), 5.6, 5), cloth.top);
+    [0.3, 0.55].forEach(t => { const c = add(Ct, hd, RIG.neck * t), a = add(c, [-hd[1], hd[0]], -5.4), b = add(c, [-hd[1], hd[0]], 5.4); shapes.push({ t: "deco", d: `M${f(a[0])},${f(a[1])} L${f(b[0])},${f(b[1])}`, style: `fill:none;stroke:${shadeHex(cloth.top, -0.3)};stroke-width:0.6;opacity:0.6` }); });
+  }
   push({ t: "ellipse", cx: Hc[0], cy: Hc[1], rx: RIG.headRx, ry: RIG.headRy, rot: 180 - pose.head, head: true }, [Hc, RIG.headRy + 1]);
   if (hair && hair.cap) clothPoly(hair.cap, look.hairColor);
   // Zwrot ciała: tyłem widać tył głowy (włosy na całej głowie), półtyłem włosy zakrywają większość głowy; twarzy nie rysujemy
@@ -557,6 +590,14 @@ function paintFigure(g, shapes, m) {
     shapes.forEach(s => {
       if (s.t === "deco") { el("path", { d: s.d, style: s.style }, g); return; }
       const fill = s.cloth || (s.t === "circle" ? m.light : m.mid);
+      if (s.pattern === "plaid" && s.t !== "ellipse") {
+        shape("path", { d: s.d }, fill);
+        const dk = shadeHex(s.cloth, -0.3), id = "mkflp" + (++gradSeq);
+        const pt = el("pattern", { id, patternUnits: "userSpaceOnUse", width: 9, height: 9 }, el("defs", {}, g));
+        el("rect", { x: 0, y: 0, width: 9, height: 3, style: `fill:${dk};opacity:0.5` }, pt); el("rect", { x: 0, y: 0, width: 3, height: 9, style: `fill:${dk};opacity:0.5` }, pt);
+        el("path", { d: s.d, style: `fill:url(#${id});stroke:none` }, g);
+        return;
+      }
       if (s.t === "cap" || s.t === "poly") shape("path", { d: s.d }, fill);
       else if (s.t === "circle") shape("circle", { cx: f(s.cx), cy: f(s.cy), r: s.r }, fill);
       else shape("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})` }, fill);
@@ -581,6 +622,22 @@ function paintFigure(g, shapes, m) {
   }
   const defs = el("defs", {}, g);
   const pre = "mk" + (++gradSeq) + "-";
+  // Krata: pasy w ciemniejszym odcieniu materiału i cienka jasna linia (wzór w jednostkach postaci)
+  const plaid = {};
+  const plaidOver = s => {
+    if (s.pattern !== "plaid" || !(s.d || s.t === "ellipse")) return;
+    const c = s.cloth;
+    if (!plaid[c]) {
+      const id = pre + "pl" + Object.keys(plaid).length, pt = el("pattern", { id, patternUnits: "userSpaceOnUse", width: 9, height: 9, patternTransform: "rotate(8)" }, defs);
+      el("rect", { x: 0, y: 0, width: 9, height: 3.2, style: `fill:${shadeHex(c, -0.38)};opacity:0.55` }, pt);
+      el("rect", { x: 0, y: 0, width: 3.2, height: 9, style: `fill:${shadeHex(c, -0.38)};opacity:0.55` }, pt);
+      el("rect", { x: 0, y: 6, width: 9, height: 0.6, style: `fill:${shadeHex(c, 0.45)};opacity:0.7` }, pt);
+      el("rect", { x: 6, y: 0, width: 0.6, height: 9, style: `fill:${shadeHex(c, 0.45)};opacity:0.7` }, pt);
+      plaid[c] = id;
+    }
+    if (s.t === "ellipse") el("ellipse", { cx: f(s.cx), cy: f(s.cy), rx: s.rx, ry: s.ry, transform: `rotate(${f(s.rot)} ${f(s.cx)} ${f(s.cy)})`, style: `fill:url(#${plaid[c]});stroke:none` }, g);
+    else el("path", { d: s.d, style: `fill:url(#${plaid[c]});stroke:none` }, g);
+  };
   const stops = (grad, list) => list.forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, grad));
   const ball = el("radialGradient", { id: pre + "ball", cx: "0.38", cy: "0.32", r: "0.72" }, defs);
   stops(ball, [[0, m.light], [0.55, m.mid], [1, m.dark]]);
@@ -628,6 +685,7 @@ function paintFigure(g, shapes, m) {
         stops(lg, [[0, shadeHex(s.cloth, -0.22)], [0.35, shadeHex(s.cloth, 0.12)], [0.65, s.cloth], [1, shadeHex(s.cloth, -0.25)]]);
         shape("path", { d: s.d }, `url(#${id})`, cl);
       }
+      plaidOver(s);
       if (m.soft) {
         const dk = shadeHex(s.cloth, -0.38), lt = shadeHex(s.cloth, 0.28);
         // Fałdy w poprzek rękawa albo nogawki: łuki wygięte raz w jedną, raz w drugą stronę, nad nimi jasny refleks

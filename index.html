@@ -921,12 +921,12 @@
     // Ubiór: prompt może zależeć od postaci; sukienka tylko dla kobiety
     // Ubiór: zestawy (ustawiają wszystkie części naraz) oraz osobne części z WEAR niżej; kafelki buduje wearTiles()
     { id: "outfit", label: "Ubiór", subjects: ["person"], patch: "#5E7FA3", options: [
-      { id: "casual", name: "Codzienny", short: "Codzienny", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, colors: { top: "grey", bottom: "denim", shoes: "white" } },
-      { id: "elegant", name: "Elegancki", short: "Elegancki", wear: { top: "blazer", outer: "none", bottom: "suit", hat: "none", shoes: "formal" }, colors: { top: "graphite", bottom: "graphite", shoes: "black" } },
-      { id: "sport", name: "Sportowy", short: "Sportowy", wear: { top: "tshirt", outer: "none", bottom: "joggers", hat: "none", shoes: "sneakers" }, colors: { top: "bottle", bottom: "black", shoes: "white" } },
-      { id: "street", name: "Streetwear", short: "Street", wear: { top: "hoodie", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, colors: { top: "khaki", bottom: "denim", shoes: "white" } },
-      { id: "coat", name: "Płaszcz", short: "Płaszcz", wear: { top: "sweater", outer: "coat", bottom: "chinos", hat: "none", shoes: "boots" }, colors: { top: "cream", outer: "caramel", bottom: "graphite", shoes: "brown" } },
-      { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"], wear: { top: "tshirt", outer: "none", bottom: "dress", hat: "none", shoes: "formal" }, colors: { bottom: "burgundy", shoes: "black" } }
+      { id: "casual", name: "Codzienny", short: "Codzienny", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, colors: { top: "grey", bottom: "denim", shoes: "white" } },
+      { id: "elegant", name: "Elegancki", short: "Elegancki", wear: { top: "blazer", outer: "none", bottom: "suit", hat: "none", shoes: "formal", acc: "none" }, colors: { top: "graphite", bottom: "graphite", shoes: "black" } },
+      { id: "sport", name: "Sportowy", short: "Sportowy", wear: { top: "tshirt", outer: "none", bottom: "joggers", hat: "none", shoes: "sneakers", acc: "none" }, colors: { top: "bottle", bottom: "black", shoes: "white" } },
+      { id: "street", name: "Streetwear", short: "Street", wear: { top: "hoodie", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, colors: { top: "khaki", bottom: "denim", shoes: "white" } },
+      { id: "coat", name: "Płaszcz", short: "Płaszcz", wear: { top: "sweater", outer: "coat", bottom: "chinos", hat: "none", shoes: "boots", acc: "none" }, colors: { top: "cream", outer: "caramel", bottom: "graphite", shoes: "brown" } },
+      { id: "dress", name: "Sukienka", short: "Sukienka", bodies: ["female"], wear: { top: "tshirt", outer: "none", bottom: "dress", hat: "none", shoes: "formal", acc: "none" }, colors: { bottom: "burgundy", shoes: "black" } }
     ]},
     // Twarz: włosy, zarost, usta i okulary. Opcje są w LOOK niżej, kafelki buduje lookTiles()
     { id: "look", label: "Głowa", subjects: ["person"], patch: "#C9A24A", options: [] },
@@ -1205,7 +1205,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white" }, wcPicked: {}, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1337,13 +1337,17 @@
       { id: "sweatshirt", name: "Bluza", def: "graphite", phrase: "crewneck sweatshirt", cloth: { sleeve: "long", topLen: "hip", loose: true } },
       { id: "hoodie", name: "Bluza z kapturem", def: "khaki", phrase: "hoodie", cloth: { sleeve: "long", topLen: "hip", loose: true, hood: true } },
       { id: "sweater", name: "Sweter", def: "cream", phrase: "knit sweater", cloth: { sleeve: "long", topLen: "hip" } },
-      { id: "blazer", name: "Marynarka", def: "graphite", phrase: "tailored blazer over a crisp white shirt", cloth: { sleeve: "long", topLen: "hip", collar: "#E9E6DF" } }
+      { id: "blazer", name: "Marynarka", def: "graphite", phrase: "tailored blazer over a crisp white shirt", cloth: { sleeve: "long", topLen: "hip", collar: "#E9E6DF" } },
+      { id: "plaid", name: "Koszula w kratę", def: "red", phrase: "plaid flannel shirt", cloth: { sleeve: "long", collarShade: 0.28, pattern: "plaid" } },
+      { id: "turtleneck", name: "Golf", def: "black", phrase: "turtleneck sweater", cloth: { sleeve: "long", topLen: "hip", turtle: true } },
+      { id: "tank", name: "Top bez rękawów", def: "white", phrase: "sleeveless tank top", cloth: { sleeve: "none" } }
     ]},
     outer: { name: "Okrycie", icon: "outer", options: [
       { id: "none", name: "Brak" },
       { id: "jacket", name: "Kurtka", def: "black", phrase: "jacket" },
       { id: "coat", name: "Płaszcz", def: "caramel", phrase: "long wool coat", coat: true },
-      { id: "denim", name: "Kurtka jeansowa", def: "denim", phrase: "denim jacket" }
+      { id: "denim", name: "Kurtka jeansowa", def: "denim", phrase: "denim jacket" },
+      { id: "vest", name: "Kamizelka", def: "olive", phrase: "quilted vest", vest: true }
     ]},
     bottom: { name: "Dół", icon: "bottom", options: [
       { id: "jeans", name: "Jeansy", def: "denim", phrase: "jeans", cloth: {} },
@@ -1361,6 +1365,11 @@
       { id: "beanie", name: "Beanie", def: "mustard", phrase: "beanie" },
       { id: "hat", name: "Kapelusz", def: "brown", phrase: "fedora hat" }
     ]},
+    acc: { name: "Dodatki", icon: "acc", options: [
+      { id: "none", name: "Brak" },
+      { id: "scarf", name: "Szalik", def: "burgundy", phrase: "knit scarf" },
+      { id: "bag", name: "Torba przez ramię", def: "brown", phrase: "leather crossbody bag" }
+    ]},
     shoes: { name: "Buty", icon: "shoes", options: [
       { id: "sneakers", name: "Sneakersy", def: "white", phrase: "sneakers" },
       { id: "formal", name: "Eleganckie", def: "black", phrase: "leather dress shoes" },
@@ -1368,7 +1377,8 @@
     ]}
   };
   const PARTS = Object.keys(WEAR);
-  const wearOpt = (part, id) => WEAR[part].options.find(o => o.id === id);
+  // Brak części w starszej scenie (np. bez dodatków): pierwsza opcja, czyli zwykle "Brak"
+  const wearOpt = (part, id) => WEAR[part].options.find(o => o.id === id) || WEAR[part].options[0];
   const isDress = (st = scene) => st.wear.bottom === "dress";
   // Zestaw: wszystkie części i ich kolory (brakujące kolory z domyślnych danej części)
   function dressIn(setId, colors = {}) {
@@ -1402,7 +1412,9 @@
     }
     items.push(`${word("shoes")} ${ph("shoes")}`);
     let txt = "wearing " + (w.outer !== "none" ? an(`${word("outer")} ${ph("outer")}`) + " over " : "") + andList(items);
-    if (w.hat !== "none") txt += ", with " + an(`${word("hat")} ${ph("hat")}`);
+    // Nakrycie głowy i dodatki: "with a navy baseball cap and a burgundy knit scarf"
+    const extra = ["hat", "acc"].filter(p => w[p] && w[p] !== "none").map(p => an(`${word(p)} ${ph(p)}`));
+    if (extra.length) txt += ", with " + andList(extra);
     return txt;
   }
   // Wygląd twarzy: tylko proste, dobrze znane modelom elementy
@@ -2291,8 +2303,9 @@
         if (bo.cuffs) c.cuffs = shadeHex(c.pants, -0.22);
       }
     }
-    if (w.outer !== "none") c.outer = { color: hex("outer"), coat: !!wearOpt("outer", w.outer).coat };
+    if (w.outer !== "none") c.outer = { color: hex("outer"), coat: !!wearOpt("outer", w.outer).coat, vest: !!wearOpt("outer", w.outer).vest };
     if (w.hat !== "none") c.hat = { kind: w.hat, color: hex("hat") };
+    if (w.acc && w.acc !== "none") c.acc = { kind: w.acc, color: hex("acc") };
     c.shoes = { kind: w.shoes, color: hex("shoes") };
     c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st), view: turnedAway(st) ? turnOf(st) : null };
     return c;
@@ -4309,7 +4322,7 @@
     }
     paintFigure(el("g", { class: "fig" }, svg), fig.shapes, material);
   }
-  const PART_REGION = { top: "top", outer: "top", bottom: "bottom", hat: "head", shoes: "shoes" };
+  const PART_REGION = { top: "top", outer: "top", bottom: "bottom", hat: "head", shoes: "shoes", acc: "top" };
   const OUTFIT_SUBS = [["sets", "Zestawy"], ...PARTS.map(p => [p, WEAR[p].name])];
   const setName = () => scene.outfit === "custom" ? "Własny" : optionOf("outfit", scene.outfit).name;
   const partValue = p => (p === "top" || p === "bottom") && isDress() ? "Sukienka" : wearOpt(p, scene.wear[p]).name;
@@ -4698,7 +4711,7 @@
   const own = () => wiz.ans.dress === "own";
   const face = () => wiz.ans.face === true;
   const hasHairColor = () => !(LOOK.hair.find(o => o.id === scene.look.hair) || {}).noColor;
-  const wornParts = () => PARTS.filter(p => scene.wear[p] !== "none" && !(p === "top" && isDress()));
+  const wornParts = () => PARTS.filter(p => scene.wear[p] && scene.wear[p] !== "none" && !(p === "top" && isDress()));
   const partLabel = p => p === "bottom" && isDress() ? "Sukienka" : WEAR[p].name;
   const WIZ_Q = [
     { id: "body", ch: "person", say: "Kogo ustawiamy?", cat: "body" },
@@ -4709,6 +4722,7 @@
     { id: "bottom", say: "A na dół?", cat: "outfit", sub: "bottom", when: own },
     { id: "shoes", say: "Jakie buty?", cat: "outfit", sub: "shoes", when: own },
     { id: "hat", say: "Coś na głowę?", cat: "outfit", sub: "hat", when: own },
+    { id: "acc", say: "Jakieś dodatki?", cat: "outfit", sub: "acc", when: own },
     { id: "colors", say: "Zmieniamy kolory?", yesno: true },
     { id: "cpart", say: () => Object.keys(scene.wcPicked || {}).length ? "Coś jeszcze? Wybierz część albo stuknij Kolory gotowe." : "Którą część?", parts: true, when: () => wiz.ans.colors === true },
     // Po kolorze wraca wybór części; kafelek "Kolory gotowe" kończy zmiany kolorów
@@ -5868,7 +5882,7 @@
     body: "plec kobieta mezczyzna", look: "twarz glowa", outfit: "ubranie stroj ciuchy", pose: "pozycja", arms: "dlonie gest",
     background: "miejsce lokacja otoczenie", time: "godzina", light: "oswietlenie lampa slonce", shot: "kadrowanie zblizenie plan",
     camera: "obiektyw kat ujecie", format: "proporcje rozmiar", motion: "ruch kamery", style: "wyglad",
-    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", sun: "przeciwsloneczne",
+    top: "koszulka bluzka", bottom: "spodnie", hat: "czapka", outer: "kurtka", shoes: "obuwie", acc: "akcesoria", scarf: "szal", bag: "torebka listonoszka", plaid: "krata flanela", turtleneck: "golf", tank: "ramiaczka bezrekawnik", vest: "bezrekawnik", sun: "przeciwsloneczne",
     stand: "stanie stoi", stride: "chod idzie spacer krok", crouch: "kucanie kucnij przysiad", wide: "rozkrok",
     things: "przedmiot rekwizyt meble obiekt", sofa: "sofa", stool: "stolek", floorLamp: "lampa", shelf: "polka ksiazki", umbrella: "parasol",
     car: "auto", bike: "rowerek", crate: "pudlo", stump: "pieniek", table: "stolik",
