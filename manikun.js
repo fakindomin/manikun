@@ -22,6 +22,16 @@ function capsule(A, B, rA, rB) {
   return `M${f(p1[0])},${f(p1[1])} L${f(p2[0])},${f(p2[1])} A${rB},${rB} 0 0 0 ${f(p3[0])},${f(p3[1])} L${f(p4[0])},${f(p4[1])} A${rA},${rA} 0 0 0 ${f(p1[0])},${f(p1[1])} Z`;
 }
 const poly = pts => "M" + pts.map(p => f(p[0]) + "," + f(p[1])).join(" L") + " Z";
+// Gładka krzywa przez punkty (Catmull-Rom zamieniony na krzywe Béziera), bez początkowego M
+function smoothThrough(pts) {
+  let d = "";
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(p2[0])},${f(p2[1])}`;
+  }
+  return d;
+}
 // Otoczka wypukła punktów (łańcuch monotoniczny)
 function hull(points) {
   const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -197,6 +207,31 @@ function computeFigure(pose, RIG, cloth = null) {
     }
   }
 
+  // Punkty obrysu ubrania na tułowiu: e zapas nad bryłą, hemY wysokość dołu (od bioder wzdłuż kręgosłupa), hw połowy szerokości dołu
+  function torsoPts(e, hemY, hw) {
+    const [ctn, ctf] = RIG.chestTop, [cbn, cbf] = RIG.chestBottom, wT = RIG.waistTop, ch = RIG.chest;
+    const at = (y, w) => add(add(P, u, y), r, w);
+    const wAt = (t, a, b) => a + (b - a) * t;
+    const armY = wT + ch - 10, armT = 10 / ch;
+    const nearSide = [at(wT + ch, -ctn - e), at(armY, -(wAt(armT, ctn, cbn) + e + 1.2)), at(wT + ch * 0.35, -(wAt(0.65, ctn, cbn) + e + 0.6)), at(wT, -cbn - e)];
+    const farSide = [at(wT + ch, ctf + e), at(armY, wAt(armT, ctf, cbf) + e + 1), at(wT + ch * 0.35, wAt(0.65, ctf, cbf) + e + 0.5), at(wT, cbf + e)];
+    if (hemY < wT - 4) {
+      const midY = (wT + hemY) / 2;
+      nearSide.push(at(midY, -((cbn + e + hw[0]) / 2 + 0.3)));
+      farSide.push(at(midY, (cbf + e + hw[1]) / 2 + 0.3));
+    }
+    nearSide.push(at(hemY, -hw[0])); farSide.push(at(hemY, hw[1]));
+    return { nearSide, farSide, hem: [nearSide[nearSide.length - 1], farSide[farSide.length - 1]], top: [nearSide[0], farSide[0]] };
+  }
+  function torsoCloth(color, e, hemY, hw) {
+    const { nearSide, farSide, hem, top } = torsoPts(e, hemY, hw);
+    const mid = [(hem[0][0] + hem[1][0]) / 2, (hem[0][1] + hem[1][1]) / 2], hemC = add(mid, u, -1.2);
+    const neckC = add(add(Ct, r, -(RIG.chestTop[0] - RIG.chestTop[1]) / 2), u, -3);
+    const d = `M${f(top[0][0])},${f(top[0][1])}` + smoothThrough(nearSide) +
+      ` Q${f(hemC[0])},${f(hemC[1])} ${f(hem[1][0])},${f(hem[1][1])}` + smoothThrough(farSide.slice().reverse()) +
+      ` Q${f(neckC[0])},${f(neckC[1])} ${f(top[0][0])},${f(top[0][1])} Z`;
+    wear({ t: "poly", q: [top[0], top[1], hem[1], hem[0]], d }, color);
+  }
   leg("far");
   // farFront: dalsza ręka przed tułowiem i głową (np. dłoń przy twarzy, gdy bliższa trzyma telefon)
   const farFront = (pose.farFront || 0) > 0.5;
@@ -223,9 +258,25 @@ function computeFigure(pose, RIG, cloth = null) {
     // Spodnie na miednicy, potem góra: dopasowana do talii albo dłuższa, do bioder
     if (cloth.pants) clothPoly([add(pt, r, -ptn - 1.5), add(pt, r, ptf + 1.5), add(pb, r, pbf + 1.5), add(pb, r, -pbn - 1.5)], cloth.pants);
     if (cloth.top) {
-      const e = 1.5 * loose, low = cloth.topLen === "hip" ? add(pb, u, -1) : add(P, u, RIG.pelvisUp * 0.4);
-      const [lw, rw] = cloth.topLen === "hip" ? [pbn + 2.5, pbf + 2.5] : [ptn + 1.5, ptf + 1.5];
-      clothPoly([add(Ct, r, -ctn - e), add(Ct, r, ctf + e), add(Cb, r, cbf + e), add(low, r, rw), add(low, r, -lw), add(Cb, r, -cbn - e)], cloth.top);
+      const e = 1.5 * loose, hipLen = cloth.topLen === "hip";
+      // Obrys góry: zaokrąglona klatka, materiał spada prosto do bioder i przylega (bez rozkloszowania), dół lekko wygięty
+      const hemY = hipLen ? -RIG.pelvisDown + 1 : RIG.pelvisUp * 0.4;
+      const hw = hipLen ? [Math.max(pbn, cbn) + e * 0.8, Math.max(pbf, cbf) + e * 0.8] : [ptn + e, ptf + e];
+      torsoCloth(cloth.top, e, hemY, hw);
+      // Bluza: ściągacz na dole; z kapturem także kieszeń kangurka
+      if (cloth.loose && hipLen) {
+        const band = torsoPts(e - 0.4, hemY, [hw[0] - 0.4, hw[1] - 0.4]), b0 = band.hem, k = 3.2;
+        const bq = [b0[0], b0[1], add(b0[1], u, k), add(b0[0], u, k)];
+        wear({ t: "poly", q: bq, d: poly(bq), noFold: true }, shadeHex(cloth.top, -0.07));
+        // Kieszeń tylko przy prostych nogach (w siadzie i kucaniu chowa się pod udami)
+        const bent = Math.abs(pose.nearThigh) > 40 || Math.abs(pose.farThigh) > 40;
+        if (cloth.hood && !bent) {
+          const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], cx = mid(b0[0], b0[1]), wN = (hw[0] + hw[1]) * 0.3;
+          const y0 = add(cx, u, k + 1), y1 = add(cx, u, k + 13);
+          const pq = [add(y1, r, -wN * 0.75), add(y1, r, wN * 0.75), add(y0, r, wN), add(y0, r, -wN)];
+          wear({ t: "poly", q: pq, d: poly(pq), noFold: true }, shadeHex(cloth.top, -0.06));
+        }
+      }
       // Dekolt z koszulą i krawat (elegancki)
       const mid = add(Ct, r, -(ctn - ctf) / 2);
       if (cloth.collar) clothPoly([add(mid, r, -5), add(mid, r, 5), add(mid, u, -17)], cloth.collar);
@@ -236,7 +287,7 @@ function computeFigure(pose, RIG, cloth = null) {
     // Okrycie: tułów do bioder, rozpięte (pas góry widoczny pośrodku), z kołnierzem przy szyi
     if (cloth.outer) {
       const oc = cloth.outer.color, e = 2.6, low = add(pb, u, -2);
-      clothPoly([add(Ct, r, -ctn - e), add(Ct, r, ctf + e), add(Cb, r, cbf + e), add(low, r, pbf + 4), add(low, r, -pbn - 4), add(Cb, r, -cbn - e)], oc);
+      torsoCloth(oc, e, -RIG.pelvisDown - 2, [Math.max(pbn, cbn) + 3.2, Math.max(pbf, cbf) + 3.2]);
       const mid = add(Ct, r, -(ctn - ctf) / 2), mlow = add(low, r, -(pbn - pbf) / 2);
       if (cloth.top) clothPoly([add(mid, r, -3), add(mid, r, 3), add(mlow, r, 2.2), add(mlow, r, -2.2)], cloth.top);
       clothPoly([add(mid, r, -ctn * 0.55), add(mid, r, -2.5), add(add(mid, u, -14), r, -2)], oc);
@@ -480,7 +531,7 @@ function paintFigure(g, shapes, m) {
             fold(`M${f(a[0])},${f(a[1])} Q${f(c[0])},${f(c[1])} ${f(b[0])},${f(b[1])}`, dk, 0.9, 0.36);
             fold(`M${f(a[0] - ux * 1.1)},${f(a[1] - uy * 1.1)} Q${f(c[0] - ux * 1.1)},${f(c[1] - uy * 1.1)} ${f(b[0] - ux * 1.1)},${f(b[1] - uy * 1.1)}`, lt, 0.6, 0.35);
           });
-        } else if (s.t === "poly" && s.q && s.q.length === 4) {
+        } else if (s.t === "poly" && s.q && s.q.length === 4 && !s.noFold) {
           // Tułów: dwie fałdy od ramion ku talii i zagniecenie nad paskiem
           const [tn, tf, bf, bn] = s.q, L = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
           [[0.3, 0.42], [0.62, 0.55]].forEach(([a, b], i) => {

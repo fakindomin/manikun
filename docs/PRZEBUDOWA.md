@@ -340,4 +340,5 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Kontra na krawędzi w kolorze miejsca i pory dnia (las zielonkawo, plaża i pokój ciepło, złota godzina pomarańczowo, noc niebiesko), wyraźniejsza niż w szkicu.
 - Światło na bryle wygładzone (bez prążków przy dużym planie), słoje na twarzy przygaszone.
 - Ekran startowy, tutorial i szkic roboczy zostają bez zmian.
+- Krój góry (wszędzie, także w szkicu): gładki obrys z zaokrągloną klatką, materiał spada prosto od piersi do bioder i przylega do nich (bez rozkloszowania „klapką”), dekolt i lekko wygięty dół. Kurtka i płaszcz w tym samym kroju, szersze. Bluzy mają ściągacz na dole, bluza z kapturem kieszeń kangurkę (pomijaną przy zgiętych nogach, gdy chowa się pod udami).
 
