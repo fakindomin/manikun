@@ -317,3 +317,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Spojrzenie (Głowa): Naturalnie (bez opisu), W obiektyw, Przed siebie, W dal; w Ekspercie także W dół i Na rzecz ze sceny („looking at the wooden table”). W obiektyw przy postaci odwróconej: spojrzenie przez ramię. Na rysunku spojrzenie przechyla głowę.
 - Kreator: po rękach „Jak stoi względem kamery?” (Ekspert) i „Gdzie patrzy?” (oba poziomy). Drzewko sceny pokazuje Spojrzenie i Zwrot (gdy inny niż Do kamery).
 - Tutorial: po skopiowaniu Maniscryptu, zanim pokaże się zdjęcie, przez 1,5 s w kadrze kręci się logo generatora (jak kółko ładowania), zmieniając się co 250 ms: ChatGPT, Gemini, Midjourney, Leonardo, Ideogram, Kling. Manikun mówi „Ciekawe, co AI nam zaproponuje…” (przy Fantasy: „Zobaczmy, co AI zrobi z Fantasy…”). Widać, że obraz robi AI z zewnątrz.
+
+## Próbny kadr 3D (gałąź `claude/manikun-kadr3d`)
+
+- Próbny kadr pokazuje scenę w 3D: ten sam model manekina co głowa na przycisku, ubrany według sceny 2D. Dane idą tylko w jedną stronę (scena → kadr), w 3D niczego się nie ustawia.
+- Poza: kąty stawów z rysunku 2D przełożone na kości modelu. Dłoń przy twarzy (nad oczami, pod brodą) dochodzi do środka twarzy: łokieć w bok, przedramię do środka, dłoń płasko nad oczami albo pięść pod brodą.
+- Ubiór z tych samych danych co rysunek (clothOf): kolor i grubość materiału według części ciała (góra z krótkim albo długim rękawem, do talii albo bioder, spodnie, szorty, ściągacze dresu, buty, botki do pół łydki), okrycie rozpięte z przodu, płaszcz z połami, spódnica i sukienka, kaptur, kołnierzyk, krawat, czapka z daszkiem, beanie, kapelusz, fryzury (w tym długie, kucyk, kok, kręcone), broda, twarz z miną, szminką i okularami.
+- Kamera ze strefy, zwrotu i planu (skala jak w szkicu, stojąca postać zawsze tej samej wielkości), światło ze strefy lampy (przód albo kontra, pora dnia), rzeczy w punktach zaczepienia, siedzisko pod postacią, drobiazgi na blacie, tło zawsze za postacią.
+- Klimat stylu jak w 2D: ta sama gradacja koloru, poświata, winieta, ziarno, pasy kinowe i podpis „PRÓBNY KADR 3D”. „Zapisz kadr” zapisuje PNG 1500 px na dłuższym boku.
+- Przełącznik 3D | 2D w rogu kadru (zapamiętany). Przy Obiekcie i bez WebGL zostaje kadr 2D. Najpierw szkic roboczy, a gdy kadr 3D jest gotowy, „zapalają się światła”.

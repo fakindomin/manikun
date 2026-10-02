@@ -249,7 +249,15 @@
   .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
   .preview-frame > svg { width: 100%; height: 100%; display: block; }
   /* Włączenie świateł: szkic roboczy leży na pełnym kadrze i gaśnie z krótkim mrugnięciem jak lampy na planie */
-  .preview-frame > svg.trial-draft { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+  .preview-frame > svg.trial-draft { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 2; }
+  /* Próbny kadr 3D: gotowy obraz z ubranym Manikunem (trial3d.js) na miejscu rysunku 2D; przełącznik 3D | 2D w rogu */
+  .preview-frame > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .trial-sw { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; padding: 3px; gap: 2px; border-radius: 999px; background: rgba(9, 9, 11, 0.72); border: 1px solid var(--line); }
+  .trial-sw button { font: 700 12px/1 var(--mono); letter-spacing: 0.04em; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+  .trial-sw button[aria-pressed="true"] { color: var(--on-accent); background: var(--accent); }
+  .trial-sw button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .trial-wait { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 3; pointer-events: none; white-space: nowrap;
+    font: 500 11px/1 var(--mono); color: var(--ink); background: rgba(9, 9, 11, 0.72); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; }
   .preview-frame > svg.trial-draft.on { opacity: 1; }
   .preview-frame > svg.trial-draft.go { animation: lightsOn 1100ms ease-out 250ms both; }
   @keyframes lightsOn { 0% { opacity: 1; } 22% { opacity: 1; } 30% { opacity: 0.45; } 38% { opacity: 0.95; } 52% { opacity: 0.25; } 100% { opacity: 0; } }
@@ -712,7 +720,10 @@
     </div>
     <div class="preview-frame" id="previewFrame">
       <svg id="trialSvg" class="ink" role="img" aria-label="Próbny kadr: makieta ujęcia z Manikunem"></svg>
+      <canvas id="trialCanvas" role="img" aria-label="Próbny kadr 3D: ubrany Manikun w scenie" hidden></canvas>
       <svg id="trialDraft" class="ink trial-draft" aria-hidden="true"></svg>
+      <div class="trial-sw" id="trialSw" role="group" aria-label="Rodzaj makiety" hidden><button type="button" data-v="3d">3D</button><button type="button" data-v="2d">2D</button></div>
+      <div class="trial-wait" id="trialWait" hidden>Zapalam światła…</div>
     </div>
     <p class="sheet-lead">To makieta: kadr, poza, światło i klimat na drewnianym Manikunie. <b class="preview-better">Prawdziwe ujęcie zrobi generator z listy, np. ChatGPT, Gemini, Midjourney czy Kling:</b> skopiuj Maniscrypt i wklej go tam. Zapisany kadr możesz też dołączyć jako szkic kompozycji.</p>
     <div class="preview-actions">
@@ -4949,7 +4960,7 @@
       html: `
         <p class="lead">Manikun to wirtualny reżyser ujęć. Ustawiasz scenę na drewnianym manekinie: postać, ubiór, pozę, kamerę, światło i tło, a Manikun zamienia ją w Maniscrypt, czyli gotowy opis dla generatora zdjęć i wideo AI.</p>
         <p>Ponad miliard możliwych ujęć, bez pisania ani jednego słowa po angielsku.</p>
-        <section><h3>Podziękowania</h3><p>Głowa 3D na przycisku Manikuna: model „<a href="https://sketchfab.com/3d-models/wooden-mannequin-rigged-8040cfbe4be54693bacbefe992da5cf4" target="_blank" rel="noopener">Wooden Mannequin (Rigged)</a>”, autor: zionmuoria, licencja <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p></section>
+        <section><h3>Podziękowania</h3><p>Głowa 3D na przycisku Manikuna i Manikun w Próbnym kadrze 3D: model „<a href="https://sketchfab.com/3d-models/wooden-mannequin-rigged-8040cfbe4be54693bacbefe992da5cf4" target="_blank" rel="noopener">Wooden Mannequin (Rigged)</a>”, autor: zionmuoria, licencja <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p></section>
         <section><h3>Wersja</h3><p>Wersja testowa przebudowy. Obiekty, zwierzęta i sceny dowolne są w przygotowaniu.</p></section>`
     }
   };
@@ -5646,15 +5657,118 @@
     document.body.classList.toggle("preview-open", open);
     pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
   }
-  // Szkic roboczy tej samej sceny na wierzchu; po otwarciu „zapalają się światła” i widać pełny kadr
+  // ---------- Próbny kadr 3D ----------
+  // Ta sama scena na ubranym Manikunie w 3D (trial3d.js): poza z kątów 2D, ubiór z clothOf, kamera, światło, rzeczy i tło.
+  // Obraz powstaje raz, w jedną stronę; gradacja stylu, poświata, winieta, ziarno i podpis jak w kadrze 2D.
+  // Kadr 2D zostaje: przełącznik 3D | 2D i zapas, gdy WebGL nie działa. Przedmiot (bez postaci) zawsze w 2D.
+  let trialMode = "3d", t3dLoad = null, t3dFail = false, trialToken = 0, grainTile = null;
+  try { if (localStorage.getItem("manikun-trial") === "2d") trialMode = "2d"; } catch (e) {}
+  const trialCanvas = pvEl("trialCanvas");
+  const can3d = () => scene.subject === "person" && !t3dFail;
+  function trial3dData() {
+    const st = scene, res = resolveAnchors(st), z = ZONES[st.lightZone] || ZONES.R1;
+    return {
+      pose: poseOf(poseKey(st)), body: st.body, cloth: clothOf(st.body, st), turn: turnOf(st), camera: st.camera, selfie: isSelfie(st.camera), shot: st.shot,
+      things: (st.things || []).map((it, i) => ({ id: it.id, anchor: res[i], color: it.color ? colorOf(it.color).hex : null, items: itemsOn(st, i).map(x => x.id) })),
+      background: st.background, variant: bgVariant(st), time: timeApplies(st) ? st.time : "day", fog: (st.fx || []).includes("fog"),
+      light: { x: z.x, y: z.y, back: isBackLight(st.light), natural: isNaturalLight(st.light) }
+    };
+  }
+  // Gradacja i nakładki stylu na gotowym obrazie 3D (te same macierze koloru co w kadrze 2D)
+  function paintTrial3d(src, W, H) {
+    trialCanvas.width = W; trialCanvas.height = H;
+    const x = trialCanvas.getContext("2d", { willReadFrequently: true }), look = TRIAL[scene.style] || TRIAL.real, m = look.m || GRADE_ID, u = H / 100;
+    x.drawImage(src, 0, 0, W, H);
+    const img = x.getImageData(0, 0, W, H), p = img.data, lv = look.post, q = v => lv ? Math.round(v * (lv - 1)) / (lv - 1) : v;
+    const c = v => v < 0 ? 0 : v > 1 ? 1 : v;
+    for (let i = 0; i < p.length; i += 4) {
+      const r = p[i] / 255, g = p[i + 1] / 255, b = p[i + 2] / 255;
+      p[i] = 255 * q(c(m[0] * r + m[1] * g + m[2] * b + m[4]));
+      p[i + 1] = 255 * q(c(m[5] * r + m[6] * g + m[7] * b + m[9]));
+      p[i + 2] = 255 * q(c(m[10] * r + m[11] * g + m[12] * b + m[14]));
+    }
+    x.putImageData(img, 0, 0);
+    if (look.wash) { x.globalAlpha = look.wash === "#F4E9D2" ? 0.1 : 0.14; x.fillStyle = look.wash; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
+    const R = Math.max(W, H), glow = (cx, cy, r, color, op) => {
+      const gr = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+      gr.addColorStop(0, color + Math.round(op * 255).toString(16).padStart(2, "0")); gr.addColorStop(1, color + "00");
+      x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    };
+    const z = ZONES[scene.lightZone] || ZONES.R1;
+    x.globalCompositeOperation = "screen";
+    if (!isBackLight(scene.light)) glow(W * z.x, H * z.y, R * 0.6, isNaturalLight(scene.light) ? "#FFE3B0" : "#EAF2FF", 0.16);
+    if (look.glow) look.glow.forEach((col, i) => glow(i ? W * 0.95 : W * 0.05, H * (i ? 0.35 : 0.7), R * 0.5, col, 0.2));
+    x.globalCompositeOperation = "source-over";
+    // Ziarno i winieta
+    if (!grainTile) {
+      grainTile = document.createElement("canvas"); grainTile.width = grainTile.height = 160;
+      const gx = grainTile.getContext("2d"), gd = gx.createImageData(160, 160);
+      for (let i = 0; i < gd.data.length; i += 4) { const v = Math.random() * 255; gd.data[i] = gd.data[i + 1] = gd.data[i + 2] = v; gd.data[i + 3] = 255; }
+      gx.putImageData(gd, 0, 0);
+    }
+    x.globalAlpha = scene.style === "noir" || scene.style === "vintage" ? 0.12 : 0.06;
+    x.globalCompositeOperation = "overlay"; x.fillStyle = x.createPattern(grainTile, "repeat"); x.fillRect(0, 0, W, H);
+    x.globalCompositeOperation = "source-over"; x.globalAlpha = 1;
+    const vg = x.createRadialGradient(W / 2, H / 2, R * 0.38, W / 2, H / 2, R * 0.78);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.5)");
+    x.fillStyle = vg; x.fillRect(0, 0, W, H);
+    const fmt = currentFormat();
+    if (look.bars && fmt.w >= fmt.h) { x.fillStyle = "#000"; x.fillRect(0, 0, W, H * 0.07); x.fillRect(0, H * 0.93, W, H * 0.07); }
+    // Podpis jak na klapsie
+    x.font = `700 ${Math.round(u * 2.2)}px "JetBrains Mono", ui-monospace, monospace`;
+    x.fillStyle = "rgba(255,255,255,0.75)";
+    x.fillText(`PRÓBNY KADR 3D · MANIKUN · ${fmt.short}`, u * 3, H - u * 3);
+  }
+  // Render 3D na żądanie: moduł i model wczytują się przy pierwszym otwarciu, potem kadr powstaje od razu
+  function renderTrial3d() {
+    if (!t3dLoad) t3dLoad = import("./trial3d.js").then(mod => mod.createTrial3d());
+    return t3dLoad.then(r => {
+      const fmt = currentFormat(), k = 1500 / Math.max(fmt.w * 5, fmt.h * 5), W = Math.round(fmt.w * 5 * k), H = Math.round(fmt.h * 5 * k);
+      paintTrial3d(r.render(trial3dData(), W, H), W, H);
+      return true;
+    }).catch(err => { console.warn("Próbny kadr 3D:", err); t3dFail = true; return false; });
+  }
+  const shows3d = () => !trialCanvas.hidden;
+  function syncTrialSw() {
+    const sw = pvEl("trialSw");
+    sw.hidden = !can3d();
+    sw.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (can3d() ? trialMode : "2d"))));
+  }
+  pvEl("trialSw").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    if (trialMode === b.dataset.v) return;
+    trialMode = b.dataset.v;
+    try { localStorage.setItem("manikun-trial", trialMode); } catch (e) {}
+    sfx("tok");
+    lightsOn();
+  }));
+
+  // Szkic roboczy tej samej sceny na wierzchu; po otwarciu „zapalają się światła” i widać pełny kadr (2D albo 3D)
   function lightsOn() {
-    const d = pvEl("trialDraft"), { W, H } = renderTrial();
+    const d = pvEl("trialDraft"), { W, H } = renderTrial(), want3d = trialMode === "3d" && can3d(), token = ++trialToken;
+    syncTrialSw();
     d.classList.remove("go", "on");
-    if (reduceMotion.matches) return;
-    renderScene(d, { ...scene, props: { reveal: 1 } }, W, H, new Set(["ground", "background", "things"]), { draft: true });
-    d.querySelector(":scope > .frame")?.remove();
-    d.classList.add("on");
-    requestAnimationFrame(() => requestAnimationFrame(() => d.classList.add("go")));
+    pvEl("trialWait").hidden = true;
+    if (!want3d) { trialCanvas.hidden = true; trialSvg.style.visibility = ""; }
+    // Bez animacji (ograniczony ruch) szkic pojawia się tylko na czas liczenia kadru 3D
+    if (!reduceMotion.matches || want3d) {
+      renderScene(d, { ...scene, props: { reveal: 1 } }, W, H, new Set(["ground", "background", "things"]), { draft: true });
+      d.querySelector(":scope > .frame")?.remove();
+      d.classList.add("on");
+    }
+    const reveal = () => {
+      if (reduceMotion.matches) { d.classList.remove("on"); return; }
+      requestAnimationFrame(() => requestAnimationFrame(() => d.classList.add("go")));
+    };
+    if (!want3d) { reveal(); return; }
+    const wait = setTimeout(() => { if (token === trialToken) pvEl("trialWait").hidden = false; }, 350);
+    renderTrial3d().then(ok => {
+      clearTimeout(wait);
+      if (token !== trialToken) return;
+      pvEl("trialWait").hidden = true;
+      trialCanvas.hidden = !ok; trialSvg.style.visibility = ok ? "hidden" : "";
+      if (!ok) { syncTrialSw(); say("Kadr 3D nie działa na tym urządzeniu. Pokazuję makietę 2D.", 5000); }
+      reveal();
+    });
   }
   pvEl("sheetPreview").addEventListener("click", () => {
     setSheet(false);
@@ -5666,6 +5780,7 @@
   // Zapis: kopia SVG z wpisanymi stylami (klasy i zmienne CSS strony nie działają poza nią), potem PNG przez canvas
   const TRIAL_PROPS = ["fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity", "display", "visibility", "font-family", "font-size", "font-weight", "letter-spacing", "stop-color", "stop-opacity", "mix-blend-mode", "paint-order"];
   function trialPng(done) {
+    if (shows3d()) { trialCanvas.toBlob(done, "image/png"); return; }
     const { W, H } = renderTrial();
     const copy = trialSvg.cloneNode(true), src = trialSvg.querySelectorAll("*"), dst = copy.querySelectorAll("*");
     src.forEach((n, i) => {
