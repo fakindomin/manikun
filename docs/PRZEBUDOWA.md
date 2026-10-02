@@ -434,3 +434,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Rzecz losowana przed pozą, więc poza do niej pasuje (siedzi na krześle, opiera się o ladę).
 - Ekspert: dwa efekty naraz (ok. 15%), do dwóch dodatków tła (ok. 50%), druga rzecz do wystroju, przedmioty na blacie częściej, zwrot ciała (ok. 22%), spojrzenie na zwierzaka lub rzecz (ok. 25%), częściej tatuaże i okulary.
 - Test 2000 losowań (podstawowy i ekspert): 0 błędów, wszystkie 21 motywów i 15 miejsc.
+
+## Stukanie w szkic
+
+- Manikun: pierwsze stuknięcie zaznacza go (przerywana ramka) i otwiera w dolnym menu Postać; kolejne stuknięcie w jego część otwiera jej kategorię: głowa → Głowa, górna część głowy z nakryciem → Ubiór/Nakrycie głowy, tułów → Ubiór/Góra (Okrycie, gdy jest; Sukienka przy sukience), ręce → Ręce (gdy dostępne, inaczej Góra), nogi → Ubiór/Dół, stopy → Ubiór/Buty. Pierwszy raz Manikun podpowiada w dymku, w co stukać.
+- Zwierzak → jego poza i umaszczenie; rzecz → Rzeczy (u eksperta drugie stuknięcie w zaznaczoną rzecz: przestawianie); tło → Miejsce; krótkie stuknięcie w kamerę → Kamera, w światło → Światło (przytrzymanie dalej przeciąga).
+- Część postaci rozpoznawana po stawach z `computeFigure` (`fig.joints`: głowa, szyja, klatka, biodra, ręce, nogi ze stopami), z uwzględnieniem odbicia przy kamerze z lewej.
+- Zaznaczenie widać, dopóki menu jest w grupie, którą otworzyło stuknięcie. Działa w Swobodzie; w Kreatorze i tutorialu stukanie w szkic nic nie robi.

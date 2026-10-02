@@ -201,13 +201,14 @@ function computeFigure(pose, RIG, cloth = null) {
   const clothPoly = (pts, color) => wear({ t: "poly", q: pts, d: poly(pts) }, color);
   const loose = cloth && cloth.loose ? 1.2 : 1;
 
-  const hands = {};
+  const hands = {}, armJ = {};
   function arm(side) {
     tag = side === "near" ? "nearArm" : null;
     const S = shoulder(side);
     const E = add(S, dir(pose[side + "Upper"]), RIG.upperArm);
     const W = add(E, dir(pose[side + "Fore"]), RIG.forearm);
     const Hc = add(W, dir(pose[side + "Fore"]), 7);
+    armJ[side] = { S, E, W, Hc };
     push(capL(S, E, 5, 4), [S, 6], [E, 5]);
     push(capL(E, W, 4, 3), [W, 4]);
     push({ t: "circle", cx: E[0], cy: E[1], r: 3.5 * LK });
@@ -262,7 +263,7 @@ function computeFigure(pose, RIG, cloth = null) {
     const K = add(H, dir(pose[side + "Thigh"]), RIG.thigh * (pose[side + "ThighLen"] ?? 1));
     const A = add(K, dir(pose[side + "Shin"]), RIG.shin);
     const T = add(A, dir(pose[side + "Foot"]), RIG.foot);
-    knees[side] = { H, K, A };
+    knees[side] = { H, K, A, T };
     push(capL(H, K, 7, 5), [H, 8], [K, 6]);
     push(capL(K, A, 5, 3.5), [A, 5]);
     push({ t: "circle", cx: A[0], cy: A[1], r: 3 * LK });
@@ -595,7 +596,9 @@ function computeFigure(pose, RIG, cloth = null) {
     minX = Math.min(minX, p[0] - rr); maxX = Math.max(maxX, p[0] + rr);
     minY = Math.min(minY, p[1] - rr); maxY = Math.max(maxY, p[1] + rr);
   });
-  return { shapes, head: Hc, hands, box: { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY } };
+  // joints: stawy do rozpoznania, w którą część postaci stuknięto na szkicu
+  const joints = { head: Hc, headR: RIG.headRy, neck: N1, chest: Ct, waist: Cb, hip: P, arms: armJ, legs: knees, hd };
+  return { shapes, head: Hc, hands, joints, box: { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY } };
 }
 
 // Materiały: light/mid/dark to cieniowanie w poprzek członu, line to kontur, grain to słoje.
