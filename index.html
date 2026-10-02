@@ -248,11 +248,9 @@
   /* Próbny kadr: makieta ujęcia w wybranym formacie, rysowana silnikiem Manikuna */
   .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
   .preview-frame > svg { width: 100%; height: 100%; display: block; }
-  /* Włączenie świateł: szkic roboczy leży na pełnym kadrze i gaśnie z krótkim mrugnięciem jak lampy na planie */
+  /* Magiczna różdżka: szkic roboczy leży na pełnym kadrze i znika tam, gdzie przeleci różdżka */
   .preview-frame > svg.trial-draft { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
   .preview-frame > svg.trial-draft.on { opacity: 1; }
-  .preview-frame > svg.trial-draft.go { animation: lightsOn 1100ms ease-out 250ms both; }
-  @keyframes lightsOn { 0% { opacity: 1; } 22% { opacity: 1; } 30% { opacity: 0.45; } 38% { opacity: 0.95; } 52% { opacity: 0.25; } 100% { opacity: 0; } }
   .preview-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .preview-better { color: var(--ink); font-weight: 600; }
   .sheet-copy .done-ico, .sheet-copy.done .copy-ico { display: none; }
@@ -6127,6 +6125,19 @@
     return audioCtx;
   }
   // Uderzenie w drewno: krótki ton ze spadkiem wysokości i stuk szumu przez filtr
+  // Czarodziejskie „dzyń”: szybkie arpeggio w górę z długim, cichym wybrzmieniem
+  function chime(c, t) {
+    [1046.5, 1318.5, 1568, 2093, 2637, 3136].forEach((freq, i) => {
+      const o = c.createOscillator(), g = c.createGain(), at = t + i * 0.075;
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq, at);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.07, at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.9);
+      o.connect(g).connect(c.destination);
+      o.start(at); o.stop(at + 0.95);
+    });
+  }
   function knock(c, t, freq, dur, gain) {
     const o = c.createOscillator(), g = c.createGain();
     o.type = "triangle";
@@ -6179,6 +6190,7 @@
     else if (type === "puk") { knock(c, t, 430, 0.1, 0.26); }
     else if (type === "tuk") { knock(c, t, 170, 0.22, 0.5); knock(c, t, 340, 0.12, 0.2); }
     else if (type === "klap") { clap(c, t, 0.5); knock(c, t + 0.005, 900, 0.07, 0.25); }
+    else if (type === "magia") chime(c, t + 0.25);
     else if (type === "krrr") { creak(c, t); knock(c, t + 0.24, 1300, 0.05, 0.16); }
   }
   soundBtn.addEventListener("click", () => {
@@ -6818,21 +6830,84 @@
     document.body.classList.toggle("preview-open", open);
     pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
   }
-  // Szkic roboczy tej samej sceny na wierzchu; po otwarciu „zapalają się światła” i widać pełny kadr
+  // Szkic roboczy tej samej sceny na wierzchu; po otwarciu przelatuje magiczna różdżka:
+  // tam, gdzie przeleci, szkic się rozpuszcza i spod niego wychodzi pełny kadr, za nią zostają iskierki
+  let wandRun = 0;
   function lightsOn() {
     const d = pvEl("trialDraft"), { W, H } = renderTrial();
-    d.classList.remove("go", "on");
+    const run = ++wandRun;
+    d.classList.remove("on");
+    d.replaceChildren();
     if (reduceMotion.matches) return;
     renderScene(d, { ...scene, props: { reveal: 1 } }, W, H, new Set(["ground", "background", "things"]), { draft: true });
     d.querySelector(":scope > .frame")?.remove();
+    // Szkic do grupy z maską; maska: biała plansza, czarne miękkie koła zostawiane przez różdżkę
+    const defs = el("defs", {}, d), art = el("g", { mask: "url(#wandMask)" }, d);
+    [...d.childNodes].filter(n => n !== defs && n !== art).forEach(n => art.appendChild(n));
+    const soft = el("radialGradient", { id: "wandSoft" }, defs);
+    el("stop", { offset: "0.55", "stop-color": "#000", "stop-opacity": "1" }, soft);
+    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": "0" }, soft);
+    const glow = el("radialGradient", { id: "wandGlow" }, defs);
+    el("stop", { offset: "0", "stop-color": "#FFFFFF", "stop-opacity": "1" }, glow);
+    el("stop", { offset: "0.35", "stop-color": "#FFE9A8", "stop-opacity": "0.8" }, glow);
+    el("stop", { offset: "1", "stop-color": "#FFD27A", "stop-opacity": "0" }, glow);
+    const mask = el("mask", { id: "wandMask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: W, height: H }, defs);
+    el("rect", { x: 0, y: 0, width: W, height: H, style: "fill:#fff;stroke:none" }, mask);
+    const fx = el("g", {}, d), sparks = el("g", {}, fx), flash = el("rect", { x: 0, y: 0, width: W, height: H, style: "fill:#FFF8E6;stroke:none", opacity: 0 }, fx);
+    // Różdżka: ciemny patyczek z jasną końcówką i świecącą gwiazdką
+    const m = Math.min(W, H), star = (r, k = 0.38) => Array.from({ length: 8 }, (_, i) => { const a = Math.PI / 4 * i - Math.PI / 2, q = i % 2 ? r * k : r; return `${i ? "L" : "M"}${(Math.cos(a) * q).toFixed(2)},${(Math.sin(a) * q).toFixed(2)}`; }).join("") + "Z";
+    const wand = el("g", { opacity: 0 }, fx);
+    el("line", { x1: 0, y1: 0, x2: m * 0.2, y2: m * 0.3, style: `stroke:#2B2320;stroke-width:${(m * 0.022).toFixed(2)};vector-effect:none` }, wand);
+    el("line", { x1: 0, y1: 0, x2: m * 0.035, y2: m * 0.052, style: `stroke:#F4EEDF;stroke-width:${(m * 0.024).toFixed(2)};vector-effect:none` }, wand);
+    el("circle", { cx: 0, cy: 0, r: m * 0.12, style: "fill:url(#wandGlow);stroke:none" }, wand);
+    const tipStar = el("path", { d: star(m * 0.05), style: "fill:#FFF3C4;stroke:#F2B84B;stroke-width:1" }, wand);
     d.classList.add("on");
-    requestAnimationFrame(() => requestAnimationFrame(() => d.classList.add("go")));
+    // Tor różdżki: łuk od lewego dołu do prawej góry z małym zawijasem
+    const P = [[-0.04 * W, 0.98 * H], [0.12 * W, 0.2 * H], [0.62 * W, 0.95 * H], [1.04 * W, 0.04 * H]];
+    const at = t => [0, 1].map(j => (1 - t) ** 3 * P[0][j] + 3 * (1 - t) ** 2 * t * P[1][j] + 3 * (1 - t) * t * t * P[2][j] + t ** 3 * P[3][j]);
+    const ease = t => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    const R = 0.42 * Math.hypot(W, H), DELAY = 250, DUR = 1150, GROW = 450, END = 420;
+    const holes = [], flies = [], t0 = performance.now();
+    const tick = now => {
+      if (run !== wandRun) return;
+      const e = now - t0 - DELAY, p = Math.max(0, Math.min(1, e / DUR));
+      if (e >= 0 && p < 1) {
+        const [x, y] = at(ease(p));
+        wand.setAttribute("transform", `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+        wand.setAttribute("opacity", Math.min(1, e / 120).toFixed(2));
+        tipStar.setAttribute("transform", `rotate(${(e * 0.4) % 360})`);
+        holes.push({ c: el("circle", { cx: x, cy: y, r: 0, style: "fill:url(#wandSoft);stroke:none" }, mask), born: now });
+        // Iskierki: kilka na klatkę, rozlatują się i gasną
+        for (let k = 0; k < 2; k++) {
+          const a = Math.random() * Math.PI * 2, v = m * (0.02 + Math.random() * 0.06);
+          flies.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v + m * 0.03, r: m * (0.012 + Math.random() * 0.02), born: now, life: 500 + Math.random() * 400,
+            n: el("path", { d: star(1, 0.35), style: `fill:${["#FFF3C4", "#FFFFFF", "#FFD27A", "#F7C6FF"][Math.floor(Math.random() * 4)]};stroke:none` }, sparks) });
+        }
+      } else if (p >= 1) wand.setAttribute("opacity", Math.max(0, 1 - (e - DUR) / 200).toFixed(2));
+      holes.forEach(h => h.c.setAttribute("r", (R * Math.min(1, (now - h.born) / GROW) ** 0.7).toFixed(1)));
+      for (let i = flies.length - 1; i >= 0; i--) {
+        const s = flies[i], k = (now - s.born) / s.life;
+        if (k >= 1) { s.n.remove(); flies.splice(i, 1); continue; }
+        const dt = (now - s.born) / 1000;
+        s.n.setAttribute("transform", `translate(${(s.x + s.vx * dt).toFixed(1)},${(s.y + s.vy * dt).toFixed(1)}) scale(${(s.r * (1 - k * 0.6) * (0.75 + 0.25 * Math.sin(now / 40 + i))).toFixed(2)}) rotate(${(k * 120).toFixed(0)})`);
+        s.n.setAttribute("opacity", (1 - k).toFixed(2));
+      }
+      // Na koniec błysk; resztki szkicu gasną
+      const fe = e - DUR;
+      if (fe > 0) {
+        flash.setAttribute("opacity", (0.35 * Math.max(0, 1 - fe / END) * Math.min(1, fe / 60)).toFixed(2));
+        art.setAttribute("opacity", Math.max(0, 1 - fe / END).toFixed(2));
+      }
+      if (fe < END || flies.length) requestAnimationFrame(tick);
+      else { d.classList.remove("on"); d.replaceChildren(); }
+    };
+    requestAnimationFrame(tick);
   }
   pvEl("sheetPreview").addEventListener("click", () => {
     setSheet(false);
     lightsOn();
     setPreview(true);
-    sfx("klap");
+    sfx("magia");
     nod("nod");
   });
   // Zapis: kopia SVG z wpisanymi stylami (klasy i zmienne CSS strony nie działają poza nią), potem PNG przez canvas

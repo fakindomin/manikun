@@ -391,3 +391,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Szkic kuchni (podgląd roboczy) ma ten sam układ co próbny kadr: okno, szafki górne albo półki ze słojami, szafki dolne z blatem i kranem, lodówka, zioła na parapecie, w stonowanych barwach szkicu.
 
 - Kręcone włosy na szkicu: zamiast prostego pasma za głową puszysta chmura loków do linii żuchwy, z brzegiem z okrągłych garbków (`hairCloud` w manikun.js).
+
+## Magiczna różdżka przy otwarciu próbnego kadru
+
+- Zamiast „zapalania świateł” (mrugnięcie szkicu) przez kadr przelatuje różdżka z gwiazdką, łukiem od lewego dołu do prawej góry (ok. 1,2 s).
+- Szkic roboczy leży na pełnym kadrze w grupie z maską SVG; różdżka zostawia w masce miękkie, rosnące koła (gradient radialny), więc szkic rozpuszcza się tam, gdzie przeleciała. Za nią lecą iskierki-gwiazdki, na koniec krótki błysk i resztki szkicu gasną.
+- Dźwięk `magia`: arpeggio sinusów w górę (`chime`) zamiast `klap`, z przyciskiem wyciszenia jak inne dźwięki.
+- Przy ograniczeniu animacji w systemie kadr pokazuje się od razu. Zapis PNG bez zmian (to tylko warstwa `#trialDraft`).
+- Uwaga: klasa `.ink` nadpisuje atrybuty fill/stroke, dlatego elementy różdżki mają style w atrybucie `style`.
