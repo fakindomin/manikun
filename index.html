@@ -6247,12 +6247,17 @@
     }
   }
   // Przykładowe zdjęcie: głowa i ramiona Manikuna na wprost, na jasnym tle, z owalem pokazującym, gdzie ma być twarz
+  // Przykład dobrego zdjęcia twarzy: zawsze postać stojąca na wprost, bez rzeczy i elementów miejsca (ubiór i twarz ze sceny).
+  // Rysunek jest szerszy niż miniatura, a widok wycina okno wyśrodkowane na głowie, więc twarz zawsze jest w kadrze.
   function drawGuidePhoto() {
     const svg = document.getElementById("guidePhoto");
     const saved = { ...scene };
-    Object.assign(scene, { shot: "face", camera: "L2", background: "studio", bgv: { studio: "white" }, style: "real", look: { ...scene.look, expr: "neutral", glasses: "none" } });
-    const g = renderScene(svg, { ...scene, props: null }, 80, 100, new Set(["background"]));
-    Object.assign(scene, saved);
+    Object.assign(scene, { shot: "face", camera: "L2", background: "studio", bgv: { studio: "white" }, bga: {}, fx: [], style: "real", pose: "stand", arms: "down", turn: "camera",
+      things: [], items: [], subject: "person", look: { ...scene.look, expr: "neutral", glasses: "none", gaze: "auto" } });
+    let g;
+    try { g = renderScene(svg, { ...scene, props: null }, 200, 100, new Set(["background"])); } finally { Object.assign(scene, saved); }
+    const x0 = clamp(g.head[0] - 40, 0, 120);
+    svg.setAttribute("viewBox", `${f(x0)} 0 80 100`);
     el("ellipse", { cx: f(g.head[0]), cy: f(g.head[1]), rx: 27, ry: 33, style: "fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:4 3" }, svg);
   }
   // Kopiowanie tekstu Maniscryptu (z akapitem o zdjęciu, gdy przełącznik jest włączony)
