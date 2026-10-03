@@ -494,6 +494,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Serwer: `POST /api/generate` { prompt, aspect } i `GET /api/generate/<id>` (aplikacja odpytuje co 2,5 s).
   - Kredyt schodzi jednym zapytaniem tylko, gdy saldo wystarcza; jedno zlecenie naraz na konto.
   - Higgsfield: `POST https://api.higgsfield.ai/<model>` z nagłówkiem `Authorization: Key KEY_ID:KEY_SECRET`, potem `GET /requests/<request_id>/status` (queued → in_progress → completed / failed / nsfw).
-  - Model domyślnie Seedream 4 (`bytedance/seedream/v4/text-to-image`, 2K); 4:5 idzie jako 3:4. Zmienna `HF_MODEL` zmienia model, `GEN_COST` cenę w kredytach.
+  - Model domyślnie Soul 2 (`higgsfield-ai/soul/v2/standard`, potwierdzony adres API; Seedream pod `bytedance/seedream/v4/text-to-image` API nie zna). Gdy API odpowie `model_not_found`, serwer próbuje kolejnego z listy; przy 422 ponawia z samym promptem. 4:5 idzie jako 3:4. Zmienna `HF_MODEL` zmienia model, `GEN_COST` cenę w kredytach.
+  - Przy odrzuconym zleceniu odpowiedź Higgsfield trafia do kolumny `detail` (diagnoza; przy 401 także kształt klucza, bez treści).
   - Błąd, odrzucenie treści albo brak wyniku po 10 minutach: kredyt wraca raz (wpis `refund`).
 - Tabela `generations` (`migrations/0002_generowanie.sql`): zlecenia z promptem, statusem i adresem zdjęcia. Zdjęcie jest na razie pod adresem Higgsfield (nie kopiujemy go do siebie).

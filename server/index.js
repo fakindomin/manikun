@@ -137,7 +137,9 @@ async function logout(request, env) {
 
 // ---------- Generowanie obrazów (Higgsfield) ----------
 const HF_API = "https://api.higgsfield.ai";
-const HF_MODEL = "bytedance/seedream/v4/text-to-image";
+// Soul 2 (Higgsfield): potwierdzony adres w API; zapasowo kolejne, gdy API odpowie model_not_found
+const HF_MODEL = "higgsfield-ai/soul/v2/standard";
+const HF_FALLBACK = ["higgsfield-ai/soul/v2/standard", "higgsfield-ai/soul/standard"];
 const GEN_COST = 1;
 const MAX_PROMPT = 6000;
 // Formaty z aplikacji → proporcje, które przyjmuje model (4:5 nie ma, najbliższe 3:4)
@@ -193,20 +195,29 @@ async function generate(request, env, user) {
     "INSERT INTO generations (id, user_id, model, aspect, cost, prompt, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)"
   ).bind(id, user.id, hfModel(env), aspect, cost, prompt, t, t).run();
 
-  let res, data = null, raw = "";
-  try {
-    res = await fetch((env.HF_API_URL || HF_API) + "/" + hfModel(env), {
-      method: "POST", headers: hfHeaders(env),
-      body: JSON.stringify({ prompt, aspect_ratio: aspect, resolution: "2K" }),
-      signal: AbortSignal.timeout(30000)
-    });
-    raw = await res.text();
-    try { data = JSON.parse(raw); } catch { data = null; }
-  } catch (e) {
-    raw = "fetch: " + e;
+  // Model z HF_MODEL, a gdy API go nie zna, kolejne z listy; przy 422 (nieznany parametr) jeszcze raz z samym promptem
+  let res, data = null, raw = "", model = hfModel(env);
+  const log = [];
+  const models = [model, ...HF_FALLBACK.filter(m => m !== model)];
+  attempts: for (const m of models) {
+    for (const body of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
+      model = m; data = null;
+      try {
+        res = await fetch((env.HF_API_URL || HF_API) + "/" + m, {
+          method: "POST", headers: hfHeaders(env), body: JSON.stringify(body), signal: AbortSignal.timeout(30000)
+        });
+        raw = await res.text();
+        try { data = JSON.parse(raw); } catch { data = null; }
+      } catch (e) { res = null; raw = "fetch: " + e; }
+      log.push(m + " " + (res ? res.status : "-") + " " + raw.slice(0, 300));
+      if (res && res.status === 422) continue;
+      if (res && res.status === 404 && /model_not_found/.test(raw)) continue attempts;
+      break attempts;
+    }
   }
+  if (model !== hfModel(env)) await env.DB.prepare("UPDATE generations SET model = ? WHERE id = ?").bind(model, g.id).run();
   if (!res || !res.ok || !data || !data.request_id) {
-    const detail = (res ? res.status + " " : "") + raw.slice(0, 800) + (res && res.status === 401 ? " | " + hfKeyShape(env) : "");
+    const detail = log.join(" || ").slice(0, 1500) + (res && res.status === 401 ? " | " + hfKeyShape(env) : "");
     console.log("Higgsfield start: " + detail);
     await env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind(detail, g.id).run();
     await refund(env, g, "failed", "Generator nie przyjął zlecenia. Kredyt wrócił na konto.");
