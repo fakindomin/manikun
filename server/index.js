@@ -188,19 +188,22 @@ async function generate(request, env, user) {
     "INSERT INTO generations (id, user_id, model, aspect, cost, prompt, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)"
   ).bind(id, user.id, hfModel(env), aspect, cost, prompt, t, t).run();
 
-  let res, data = null;
+  let res, data = null, raw = "";
   try {
     res = await fetch((env.HF_API_URL || HF_API) + "/" + hfModel(env), {
       method: "POST", headers: hfHeaders(env),
       body: JSON.stringify({ prompt, aspect_ratio: aspect, resolution: "2K" }),
       signal: AbortSignal.timeout(30000)
     });
-    data = await res.json().catch(() => null);
+    raw = await res.text();
+    try { data = JSON.parse(raw); } catch { data = null; }
   } catch (e) {
-    console.log("Higgsfield: " + e);
+    raw = "fetch: " + e;
   }
   if (!res || !res.ok || !data || !data.request_id) {
-    console.log("Higgsfield start: " + (res && res.status) + " " + JSON.stringify(data).slice(0, 500));
+    const detail = (res ? res.status + " " : "") + raw.slice(0, 800);
+    console.log("Higgsfield start: " + detail);
+    await env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind(detail, g.id).run();
     await refund(env, g, "failed", "Generator nie przyjął zlecenia. Kredyt wrócił na konto.");
     return json(genView(g, await balance(env, user.id)), 502);
   }
