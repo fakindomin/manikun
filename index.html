@@ -278,7 +278,21 @@
   .gen-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width 0.5s linear; }
   .gen-time { justify-self: end; font: 600 11px var(--mono), monospace; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
   @media (prefers-reduced-motion: reduce) { .gen-talk { animation: none; } .gen-frame img { transition: opacity 0.3s ease; filter: none; } }
-  body.tutorial #copySheet .sheet-gen, body.tutorial #copySheet .gen-model { display: none; }
+  body.tutorial #copySheet .sheet-gen, body.tutorial #copySheet .gen-model, body.tutorial #copySheet .sheet-or, body.tutorial #copySheet .sheet-more { display: none; }
+  /* Uproszczony panel Maniscryptu: zdjęcie tutaj jako główny przycisk, kopiowanie jako drugi, dodatki drobnym drukiem */
+  .steps[hidden] { display: none; }
+  #copySheet.has-gen .sheet-gen { background: var(--accent); color: var(--on-accent); border-color: transparent; box-shadow: 0 8px 24px var(--accent-soft); padding: 14px; }
+  #copySheet.has-gen .sheet-gen svg { stroke: currentColor; }
+  #copySheet.has-gen .sheet-gen b { font-size: 16px; }
+  #copySheet.has-gen .sheet-gen small { color: inherit; opacity: 0.8; }
+  #copySheet.has-gen .sheet-copy { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); box-shadow: none; font-size: 15px; padding: 12px; }
+  .sheet-or { margin: 4px 0 -4px; font-size: 12.5px; color: var(--muted); }
+  .sheet-more { display: flex; justify-content: center; gap: 18px; margin-top: 2px; }
+  .sheet-link { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 4px 2px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: underline; text-underline-offset: 3px; }
+  .sheet-link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #copySheet .scene-tree { background: none; border: 0; padding: 0; }
+  #copySheet .scene-tree > summary { display: none; }
+  #copySheet .scene-tree:not([open]) { display: none; }
   .gen-model { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
   .gen-model select { font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px 8px; max-width: 70%; }
   body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
@@ -695,45 +709,22 @@
       <h2>Maniscrypt</h2>
       <button class="icon-btn" type="button" id="sheetClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <p class="sheet-lead">Maniscrypt to gotowy opis ujęcia (prompt) dla generatora AI.</p>
     <p class="tut-note">Skopiuj i wklej w generatorze AI.</p>
+    <!-- Uproszczony panel: 1) z twarzą czy bez, 2) zdjęcie tutaj (główne), 3) albo kopiuj i wklej w innym generatorze, 4) dodatki na dole -->
     <button class="switch-row" type="button" id="faceSwitch" role="switch" aria-checked="false">
-      <span class="switch-text"><b>Dołączę zdjęcie swojej twarzy</b><small>Generator weźmie twarz z Twojego zdjęcia, a resztę z Maniscryptu</small></span>
+      <span class="switch-text"><b>Z moją twarzą</b><small>twarz z Twojego zdjęcia, reszta z Maniscryptu</small></span>
       <span class="switch" aria-hidden="true"><span></span></span>
     </button>
     <div class="face-guide" id="faceGuide" hidden>
       <div class="guide-row">
         <svg id="guidePhoto" class="ink guide-photo" aria-label="Przykład dobrego zdjęcia: twarz na wprost, głowa i ramiona w kadrze"></svg>
         <ul class="guide-list">
-          <li>Twarz na wprost, wzrok w obiektyw</li>
-          <li>Głowa i ramiona w kadrze, twarz duża</li>
-          <li>Równe, dzienne światło, bez ostrych cieni</li>
-          <li>Jedna osoba, bez okularów przeciwsłonecznych i czapki</li>
-          <li>Spokojna mina lub lekki uśmiech, bez filtrów</li>
+          <li>Twarz na wprost, duża w kadrze</li>
+          <li>Dzienne światło, bez filtrów</li>
+          <li>Jedna osoba, bez okularów i czapki</li>
         </ul>
       </div>
     </div>
-    <!-- Trzy kroki; trzeci mówi o zdjęciu, gdy przełącznik jest włączony -->
-    <ol class="steps" aria-label="Jak użyć">
-      <li><b>1</b>Skopiuj</li>
-      <li class="step-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg></li>
-      <li><b>2</b>Otwórz generator</li>
-      <li class="step-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg></li>
-      <li><b>3</b><span id="stepPaste">Wklej</span></li>
-    </ol>
-    <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
-    <div class="gens" id="gens" role="list" aria-label="Generatory"></div>
-    <!-- Drzewko sceny: wszystkie wybory ułożone jak nawigacja, tylko do obejrzenia -->
-    <details class="scene-tree" id="sceneTree">
-      <summary>Drzewko sceny <small>wszystkie Twoje wybory</small></summary>
-      <div class="tree" id="sceneTreeBody"></div>
-      <p class="tree-legend"><span class="tree-mine">Wyróżnione</span> to Twoje zmiany, przygaszone są domyślne.</p>
-    </details>
-    <!-- Próbny kadr: makieta ujęcia od razu, bez AI -->
-    <button class="sheet-preview" type="button" id="sheetPreview">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
-      <span class="sp-text"><b>Próbny kadr</b><small>makieta ujęcia od razu; prawdziwe zdjęcie zrobi generator</small></span>
-    </button>
     <!-- Zdjęcie od AI tutaj, za kredyty (tylko z serwerem i kontem) -->
     <button class="sheet-preview sheet-gen" type="button" id="sheetGen" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7l1.3-2h5l1.3 2h1.7A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
@@ -742,12 +733,35 @@
     <input type="file" id="faceFile" accept="image/*" hidden>
     <!-- Tylko właściciel: wybór modelu do testów -->
     <label class="gen-model" id="genModelRow" hidden><span>Model (test)</span><select id="genModel"></select></label>
+    <p class="sheet-or" id="sheetOr">Skopiuj i wklej w generatorze:</p>
+    <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
+    <div class="gens" id="gens" role="list" aria-label="Generatory"></div>
     <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
     <button class="sheet-copy" type="button" id="sheetCopy">
       <span id="sheetCopyLabel">Kopiuj Maniscrypt</span>
       <svg viewBox="0 0 24 24" aria-hidden="true" class="copy-ico"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>
       <svg viewBox="0 0 24 24" aria-hidden="true" class="done-ico"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
     </button>
+    <!-- Dodatki: Próbny kadr (makieta bez AI) i Drzewko sceny (wszystkie wybory); kroki 1-2-3 zostają ukryte (stepPaste dla JS) -->
+    <div class="sheet-more">
+      <button class="sheet-link" type="button" id="sheetPreview">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
+      <span>Próbny kadr</span>
+    </button>
+      <button class="sheet-link" type="button" id="treeLink" aria-controls="sceneTree" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M5 8h6M5 14h6M11 8h8M11 14h8"/></svg><span>Drzewko sceny</span></button>
+    </div>
+    <details class="scene-tree" id="sceneTree">
+      <summary>Drzewko sceny</summary>
+      <div class="tree" id="sceneTreeBody"></div>
+      <p class="tree-legend"><span class="tree-mine">Wyróżnione</span> to Twoje zmiany, przygaszone są domyślne.</p>
+    </details>
+    <ol class="steps" hidden aria-label="Jak użyć">
+      <li><b>1</b>Skopiuj</li>
+      <li class="step-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg></li>
+      <li><b>2</b>Otwórz generator</li>
+      <li class="step-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg></li>
+      <li><b>3</b><span id="stepPaste">Wklej</span></li>
+    </ol>
   </section>
   <!-- Okno informacji z menu -->
   <div class="sheet-scrim" id="infoScrim"></div>
@@ -6717,12 +6731,20 @@
   const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetCopyLabel = document.getElementById("sheetCopyLabel");
   const gensEl = document.getElementById("gens"), stepPaste = document.getElementById("stepPaste");
   const withFace = () => sheetPhoto && scene.subject === "person";
+  // Drzewko sceny otwierane linkiem obok Próbnego kadru (samo podsumowanie <summary> ukryte)
+  const treeLink = document.getElementById("treeLink"), sceneTreeEl = document.getElementById("sceneTree");
+  treeLink.addEventListener("click", () => {
+    sceneTreeEl.open = !sceneTreeEl.open;
+    treeLink.setAttribute("aria-expanded", String(sceneTreeEl.open));
+    if (sceneTreeEl.open) sceneTreeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
   function syncSheet() {
     const person = scene.subject === "person";
     faceSwitch.hidden = !person;
     faceSwitch.setAttribute("aria-checked", String(withFace()));
     faceGuide.hidden = !withFace();
     stepPaste.textContent = withFace() ? "Wklej i dołącz zdjęcie" : "Wklej";
+    try { syncOr(); } catch (e) {}
     if (withFace()) drawGuidePhoto();
     renderGens();
     renderSceneTree();
@@ -7644,6 +7666,12 @@
     genModel.value = list.some(m => m.id === saved) ? saved : account.model;
   }
   genModel.addEventListener("change", () => { try { localStorage.setItem("manikun-gen-model", genModel.value); } catch (e) {} });
+  // Podpis nad generatorami: przy zdjęciu tutaj to druga droga („albo…”), przy zdjęciu twarzy przypomnienie o dołączeniu
+  function syncOr() {
+    const gen = !sheetGen.hidden, face = withFace();
+    document.getElementById("copySheet").classList.toggle("has-gen", gen);
+    document.getElementById("sheetOr").textContent = (gen ? "Albo skopiuj i wklej w innym generatorze" : "Skopiuj i wklej w generatorze") + (face ? ", potem dołącz zdjęcie twarzy:" : ":");
+  }
   function syncGenBtn() {
     syncGenModels();
     const a = account, u = a && a.user;
@@ -7653,6 +7681,7 @@
     else sheetGenNote.textContent = (withFace() ? (faceAllowed() ? "z Twoim zdjęciem twarzy · " : "zdjęcie twarzy: na razie w generatorze z listy · ") : "")
       + a.cost + " " + creditsWord(a.cost) + " za zdjęcie · masz " + a.credits;
     syncShotsMenu();
+    syncOr();
   }
   function setGen(open) {
     if (open && genReady) genSeen();

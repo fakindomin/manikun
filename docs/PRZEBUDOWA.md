@@ -535,3 +535,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Na razie tylko właściciel (konto nr 1); innym przycisk mówi, że zdjęcie z twarzą zrobią w generatorze z listy. Serwer przyjmuje tylko adresy zdjęć z Higgsfield (cloudfront).
 - Testy na prawdziwym API (3.10.2026): Soul 2 image-to-image 22–25 s (5 zdjęć), Ideogram 4.0 28 s, Qwen Image 3 edit 55 s. Decyzja: zostaje Soul 2. Zdjęcie twarzy włączone dla wszystkich zalogowanych (wysłanie zdjęcia wymaga kredytu na zdjęcie); lista modeli do testów nadal tylko dla właściciela.
 - Okno „Zdjęcie od AI” ma przycisk „Kopiuj Maniscrypt” (w trakcie i po): kopiuje dokładnie ten tekst, który dostał generator (z akapitem o twarzy, jeśli było zdjęcie), żeby czekając wkleić go w innym generatorze.
+
+## Uproszczony panel Maniscryptu
+
+- Kolejność: „Z moją twarzą” (przełącznik; przy włączonym krótka podpowiedź zdjęcia z 3 punktami), „Zrób zdjęcie tutaj” jako główny przycisk (pełny kolor), potem podpis „Albo skopiuj i wklej w innym generatorze:”, ikony generatorów i „Kopiuj Maniscrypt” jako drugi przycisk (obrys), na dole linki „Próbny kadr” i „Drzewko sceny” (drzewko rozwija się pod spodem).
+- Bez zdjęcia tutaj (Vercel, niezalogowany bez serwera) „Kopiuj Maniscrypt” zostaje głównym przyciskiem, a podpis brzmi „Skopiuj i wklej w generatorze:”. Przy zdjęciu twarzy podpis dodaje „…potem dołącz zdjęcie twarzy”.
+- Usunięte: zdanie wyjaśniające na górze i kroki 1-2-3 (kroki zostały w kodzie jako ukryte). Tutorial bez zmian: pokazuje tylko „Skopiuj i wklej w generatorze AI.” i przycisk kopiowania. Wysokość panelu: 648 → 469 px (bez zdjęcia twarzy).
