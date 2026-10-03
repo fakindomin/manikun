@@ -20,6 +20,13 @@ Zdania ze wstawkami są nagrywane w każdym wariancie, np. „Jaki kolor: krzes�
 - Zdania z jednej wypowiedzi grają jedno po drugim, np. „Cześć, jestem Manikun.” i „Reżyseruję sceny filmowe.”. Każde musi więc brzmieć dobrze samo i w ciągu, bez opadającej „końcowej” intonacji na wszystkim.
 - Ten sam głos, mikrofon i odległość we wszystkich nagraniach. Przy generatorze głosu: ten sam głos i te same ustawienia dla całej listy.
 
+## Głos i wymowa (generator Higgsfield)
+
+- Głos: **Fraser** (preset `6705e465-7b52-5915-a1d8-b1222885e01d`), silnik ElevenLabs (`text2speech_v2`, wariant `elevenlabs`).
+- Słowa, których generator nie zna, zapisujemy fonetycznie tylko w tekście dla generatora (nagranie i tak należy do zdania z dymka):
+  - „Maniscrypt” → „maniskrypt” (małą literą). Pisane „Maniscrypt” albo „Maniskrypt” dawało długą pauzę przed słowem.
+- Każde zdanie generujemy osobno. Generator przyjmuje 2 zlecenia naraz.
+
 ## Format plików
 
 - MP3, mono, 44,1 kHz, 64–96 kb/s.

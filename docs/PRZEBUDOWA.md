@@ -471,3 +471,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Sterowanie: głośnik wycisza wszystko (domyślnie włączony, chyba że ktoś go wyłączył), menu → „Głos Manikuna” wyłącza sam głos.
 - Lista do nagrania: `docs/voice/lines.csv` (237 zdań, warianty ze wstawkami rozpisane), zbierana przez `tools/voice/collect.cjs`; po dodaniu plików `tools/voice/manifest.cjs` odświeża manifest. Instrukcja dla lektora i format plików: `docs/voice/README.md`.
 - Powitanie przed pierwszym dotknięciem (przeglądarka blokuje wtedy dźwięk) gra przy pierwszym dotknięciu ekranu, jeśli wciąż jest w dymku (`voiceBlocked`).
+- Pierwsze nagrania: oba powitania głosem Fraser (Higgsfield, ElevenLabs), 5 zdań. W tutorialu pierwsze dotknięcie tylko odtwarza powitanie (nie przechodzi do kolejnego kroku); porównanie wypowiedzi z dymkiem pomija dopisek „Dotknij, aby kontynuować”.

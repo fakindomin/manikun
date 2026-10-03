@@ -7358,11 +7358,18 @@
   // wtedy wypowiedź gra przy pierwszym dotknięciu, jeśli wciąż jest w dymku
   let voiceOn = true, voiceSet = null, voiceAudio = null, voiceSeq = 0, voiceBusy = false, voiceHush = false, voiceBlocked = null;
   try { voiceOn = localStorage.getItem("manikun-voice") !== "0"; } catch (e) {}
-  ["pointerdown", "keydown"].forEach(ev => addEventListener(ev, () => {
+  // W tutorialu to dotknięcie tylko odtwarza powitanie (inaczej od razu przeszłoby do następnego kroku i przerwało głos)
+  let voiceSwallow = false;
+  ["pointerdown", "keydown"].forEach(ev => addEventListener(ev, e => {
     const t = voiceBlocked;
     voiceBlocked = null;
-    if (t && !bubbleEl.hidden && voiceNorm(bubbleText.textContent) === voiceNorm(t)) speak(t);
+    // Porównanie samych zdań wypowiedzi (w tutorialu dymek ma jeszcze dopisek „Dotknij, aby kontynuować”)
+    const shown = voiceNorm([...bubbleText.querySelectorAll(".s")].map(x => x.textContent).join(" "));
+    if (!t || bubbleEl.hidden || shown !== voiceNorm(t)) return;
+    speak(t);
+    if (tut) { voiceSwallow = true; e.stopPropagation(); e.preventDefault(); }
   }, { capture: true }));
+  addEventListener("click", e => { if (voiceSwallow) { voiceSwallow = false; e.stopPropagation(); e.preventDefault(); } }, { capture: true });
   const voiceList = () => voiceSet || (voiceSet = fetch("assets/voice/manifest.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : []).then(a => new Set(a)).catch(() => new Set()));
   function voiceStop() {
     voiceSeq++;
