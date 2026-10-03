@@ -138,9 +138,10 @@ async function logout(request, env) {
 
 // ---------- Generowanie obrazów (Higgsfield) ----------
 const HF_API = "https://api.higgsfield.ai";
-// Recraft 4.1: w porównaniu ok. 10 s i najlepsza jakość na Maniscrypcie (Soul 2: ok. 20 s); zapasowo Soul 2
-const HF_MODEL = "recraft/v4.1/text-to-image";
-const HF_FALLBACK = ["recraft/v4.1/text-to-image", "higgsfield-ai/soul/v2/standard"];
+// Soul 2: najlepszy stosunek ceny do jakości (ok. 20 s). Recraft 4.1 był szybszy (ok. 10 s), ale za drogi.
+// Zapasowo tylko Soul Standard, żeby awaria nie przełączała na droższy model.
+const HF_MODEL = "higgsfield-ai/soul/v2/standard";
+const HF_FALLBACK = ["higgsfield-ai/soul/v2/standard", "higgsfield-ai/soul/standard"];
 const GEN_COST = 1;
 const MAX_PROMPT = 6000;
 // Formaty z aplikacji → proporcje, które przyjmuje model (Recraft ma 4:5, nie ma 21:9; Soul nie ma 4:5)
