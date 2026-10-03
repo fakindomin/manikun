@@ -9,6 +9,9 @@ const SESSION_COOKIE = "mk_s";
 const OAUTH_COOKIE = "mk_oauth";
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
+// Identyfikator klienta jest publiczny; zmienna GOOGLE_CLIENT_ID (wrangler.jsonc albo panel) ma pierwszeństwo
+const GOOGLE_CLIENT_ID = "331864294353-thj64786rfai33kid9v7sbahg52vicb3.apps.googleusercontent.com";
+const clientId = env => env.GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID;
 
 const now = () => Math.floor(Date.now() / 1000);
 const json = (data, status = 200, headers = {}) =>
@@ -68,10 +71,10 @@ function sameOrigin(request, url) {
 }
 
 async function googleStart(url, env) {
-  if (!env.GOOGLE_CLIENT_ID) return json({ error: "Logowanie nie jest jeszcze skonfigurowane." }, 503);
+  if (!env.GOOGLE_CLIENT_SECRET) return json({ error: "Logowanie nie jest jeszcze skonfigurowane." }, 503);
   const state = randomToken(16), verifier = randomToken(32);
   const q = new URLSearchParams({
-    client_id: env.GOOGLE_CLIENT_ID,
+    client_id: clientId(env),
     redirect_uri: url.origin + "/api/auth/google/callback",
     response_type: "code",
     scope: "openid email profile",
@@ -95,13 +98,13 @@ async function googleCallback(request, url, env) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code, code_verifier: verifier, grant_type: "authorization_code",
-      client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET,
+      client_id: clientId(env), client_secret: env.GOOGLE_CLIENT_SECRET,
       redirect_uri: url.origin + "/api/auth/google/callback"
     })
   });
   if (!res.ok) { console.log("Google token: " + res.status + " " + (await res.text()).slice(0, 300)); return fail("token"); }
   let claims;
-  try { claims = idTokenClaims((await res.json()).id_token, env.GOOGLE_CLIENT_ID); } catch { claims = null; }
+  try { claims = idTokenClaims((await res.json()).id_token, clientId(env)); } catch { claims = null; }
   if (!claims) return fail("claims");
 
   const t = now();
@@ -133,7 +136,7 @@ async function logout(request, env) {
 
 async function me(request, env) {
   const user = await currentUser(request, env);
-  if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_ID });
+  if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_SECRET, v: 2 });
   return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id) });
 }
 
