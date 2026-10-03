@@ -287,6 +287,7 @@
   .info-body .lead { font-size: 15px; color: var(--ink); }
   .menu-item:not(:disabled):active { background: var(--surface-2); }
   .menu-item .soon { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 7px; }
+  .menu-item .acct-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu-item .soon.level { color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-strong); }
   .chip {
     font: inherit; font-size: 13px; font-weight: 600;
@@ -637,6 +638,8 @@
   <div class="menu-scrim" id="menuScrim"></div>
   <nav class="menu" id="menu" aria-label="Menu" aria-hidden="true">
     <h2><em>Manikun</em> · menu</h2>
+    <button class="menu-item" type="button" id="menuAccount" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span class="acct-name" id="menuAccountLabel">Zaloguj przez Google</span><span class="soon level" id="menuAccountVal" hidden></span></button>
+    <button class="menu-item" type="button" id="menuLogout" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>Wyloguj</button>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="soon level" id="menuLevelVal">Podstawowy</span></button>
     <button class="menu-item" type="button" id="menuVoice"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>Głos Manikuna<span class="soon level" id="menuVoiceVal">Włączony</span></button>
@@ -7494,6 +7497,44 @@
     menuVoiceVal.textContent = voiceOn ? "Włączony" : "Wyłączony";
     if (!voiceOn) voiceStop();
   });
+  // Konto: logowanie przez Google i kredyty (serwer /api na Cloudflare; bez serwera pozycje zostają ukryte)
+  const menuAccount = document.getElementById("menuAccount"), menuLogout = document.getElementById("menuLogout");
+  const menuAccountLabel = document.getElementById("menuAccountLabel"), menuAccountVal = document.getElementById("menuAccountVal");
+  let account = null;
+  const creditsWord = n => n === 1 ? "kredyt" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? "kredyty" : "kredytów";
+  function showAccount() {
+    const u = account && account.user;
+    menuAccount.hidden = !account || (!u && !account.login);
+    menuLogout.hidden = !u;
+    menuAccountLabel.textContent = u ? (u.name || u.email) : "Zaloguj przez Google";
+    menuAccountVal.hidden = !u;
+    if (u) menuAccountVal.textContent = account.credits + " " + creditsWord(account.credits);
+  }
+  async function loadAccount() {
+    try {
+      const r = await fetch("/api/me", { credentials: "same-origin" });
+      account = r.ok && (r.headers.get("Content-Type") || "").includes("json") ? await r.json() : null;
+    } catch (e) { account = null; }
+    showAccount();
+    return account;
+  }
+  menuAccount.addEventListener("click", () => {
+    if (!account || account.user) return;
+    location.href = "/api/auth/google";
+  });
+  menuLogout.addEventListener("click", async () => {
+    try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}
+    await loadAccount();
+    setMenu(false);
+    say("Wylogowano. Do zobaczenia!", 3500);
+  });
+  // Powrót z logowania (?konto=ok|blad): zamiast powitania Manikun mówi, jak poszło
+  const accountBack = new URLSearchParams(location.search).get("konto");
+  if (accountBack) history.replaceState(null, "", location.pathname + location.hash);
+  loadAccount().then(a => {
+    if (accountBack === "ok" && a && a.user) say("Jesteś zalogowany. Masz " + a.credits + " " + creditsWord(a.credits) + ".", 5000);
+    else if (accountBack) say("Nie udało się zalogować. Spróbuj jeszcze raz.", 5000);
+  });
   document.getElementById("menuLevel").addEventListener("click", () => {
     setLevel(level === "expert" ? "basic" : "expert");
     sfx("tok");
@@ -7788,6 +7829,6 @@
     showStart(SUBJECTS);
     greet();
     startIdle();
-    setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
+    if (!accountBack) setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
   }
 </script>

@@ -5,3 +5,9 @@ README.md
 docs
 tools
 worker
+server
+migrations
+.gitignore
+.dev.vars
+.wrangler
+node_modules

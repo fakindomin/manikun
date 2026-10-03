@@ -476,3 +476,13 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Wymowa: „styl/stylu”, „cyberpunk” i „Ty” brzmiały po angielsku. Kroki 8, 9, 10, 12 i 16 tutorialu nagrane od nowa, a 8, 9 i 16 jako całe wypowiedzi (odtwarzacz gra najdłuższy kawałek wypowiedzi z nagraniem, potem pojedyncze zdania). Zapisy dla generatora: „stil”, „stilu”, „sajberpank”, „ty” (docs/voice/README.md).
 - Tutorial przechodzi do następnego kroku dopiero, gdy Manikun skończy mówić (wcześniej „Ciekawe, co AI nam zaproponuje…” było ucinane). Zabezpieczenie: wypowiedź kończy się najpóźniej po długości nagrania + 1 s, więc tutorial nie utknie, gdy telefon nie zgłosi końca dźwięku.
 - Kreator nagrany głosem Fraser: 125 wypowiedzi (pytania z wariantami, np. „Jaki kolor: rower?”, komentarze do wyborów, zakończenie), każda jednym plikiem jako cała wypowiedź. Test: każda z 125 wypowiedzi gra dokładnie swoje nagranie.
+
+## Cloudflare: strona, konta i kredyty
+
+- Strona działa też na Cloudflare: Worker `manikun` (https://manikun.fakindomin.workers.dev), wdrażany sam z gita po pushu na gałąź produkcyjną. `wrangler.jsonc` opisuje Workera; `.assetsignore` pilnuje, żeby `docs`, `tools`, `worker`, `server`, `migrations` i `.git` nie były publiczne. Vercel działa równolegle.
+- Serwer `server/index.js` obsługuje tylko adresy `/api/*`, resztę podają statyczne pliki.
+  - Logowanie przez Google (OAuth z PKCE): `/api/auth/google` → Google → `/api/auth/google/callback`. Sesja w ciasteczku HttpOnly `mk_s` na 30 dni; w bazie tylko skrót tokenu. Wylogowanie `POST /api/auth/logout` (tylko z tej samej strony).
+  - `/api/me`: zalogowany użytkownik i saldo kredytów.
+- Baza D1 `manikun` (`migrations/0001_konta.sql`): `users`, `sessions`, `credits`. Saldo to suma wpisów w `credits`; każdy wpis ma unikalne (`reason`, `ref`), więc kredyty na start (5) dostaje się raz na konto, a zakup z jednej płatności nie doda się dwa razy.
+- W menu: „Zaloguj przez Google”, po zalogowaniu imię i saldo („5 kredytów”) oraz „Wyloguj”. Bez serwera (Vercel) albo bez skonfigurowanego Google te pozycje są ukryte. Po powrocie z logowania Manikun zamiast powitania mówi, czy się udało.
+- Konfiguracja: `GOOGLE_CLIENT_ID` w `wrangler.jsonc` (jest publiczny), `GOOGLE_CLIENT_SECRET` jako sekret w panelu Cloudflare. Test lokalny: `wrangler dev` z plikiem `.dev.vars` (poza gitem).
