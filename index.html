@@ -7719,20 +7719,88 @@
     if (person && scene.wear && scene.wear.hat !== "none") own.push("Czapka na głowie, kostiumy gotowe.");
     if (pose) own.push("Poza: " + low(pose) + ". Nie ruszać się!");
     if (style && scene.style !== "real") own.push("Generator maluje w stylu: " + low(style) + ".");
-    const film = [
-      "Wysyłam Maniscrypt na plan zdjęciowy…",
-      "Ustawiam światło i kamerę…",
-      "Cisza na planie! Kamera… akcja!",
-      "Wiesz, że AI zaczyna od samego szumu i krok po kroku wyciąga z niego obraz?",
-      "Pikseli są miliony, a każdy musi trafić na swoje miejsce.",
-      "Wywołuję zdjęcie… Jeszcze chwilka!"
-    ];
-    // Na zmianę: plan filmowy, ta scena, plan filmowy…; na koniec „wywołuję”
-    const out = [film[0]];
-    const mid = film.slice(1, -1);
-    for (let i = 0; i < Math.max(own.length, mid.length); i++) { if (own[i]) out.push(own[i]); if (mid[i]) out.push(mid[i]); }
-    out.push(film[film.length - 1], "Dobre zdjęcie lubi poczekać. Prawie gotowe!");
+    // Na start zawsze to samo, potem na zmianę: kwestia uniwersalna i (do dwóch, losowo) o tej scenie
+    const mine = shuffle(own).slice(0, 2), uni = genPick(5), out = ["Wysyłam Maniscrypt na plan zdjęciowy…"];
+    for (let i = 0; i < uni.length; i++) { out.push(uni[i]); if (mine[i]) out.push(mine[i]); }
     return out;
+  }
+  const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  // Kwestie uniwersalne na czas zdjęcia: plan filmowy, ciekawostki o AI, Manikun, wskazówki, żarty.
+  // Historia ostatnich (localStorage) pilnuje, żeby nie powtarzały się co chwilę, także między zdjęciami.
+  const GEN_SAY = [
+    "Klaps! Scena pierwsza, ujęcie pierwsze.",
+    "Charakteryzacja poprawia ostatni kosmyk włosów.",
+    "Operator czyści obiektyw. Ani jednej smugi!",
+    "Oświetleniowiec przesuwa lampę o centymetr. Teraz idealnie.",
+    "Reżyser woła: „Jeszcze raz, z uczuciem!”",
+    "Asystent biegnie z kawą dla całej ekipy.",
+    "Dźwiękowiec prosi o ciszę. Nawet mucha przestała bzyczeć.",
+    "Kostiumy wyprasowane na ostatnią chwilę.",
+    "Scenograf dokłada ostatni rekwizyt.",
+    "Ktoś zostawił kanapkę w kadrze. Już sprzątamy!",
+    "Kamera jedzie na wózku… powoli, powoli…",
+    "Sprawdzam ostrość. Wszystko jak brzytwa.",
+    "Światło złapane. Teraz tylko nie mrugać!",
+    "Statyści zajmują miejsca w tle.",
+    "Plan gotowy, ekipa wstrzymuje oddech.",
+    "Mikrofon wisi tuż nad kadrem. Byle się nie pokazał!",
+    "Ujęcie numer… straciłem rachubę. Ale to będzie najlepsze!",
+    "Gdzieś na planie zadzwonił telefon. Wszyscy patrzą groźnie.",
+    "Producent pyta, czy zdążymy przed obiadem. Zdążymy!",
+    "Zapalam reflektory. Jasno jak w południe.",
+    "Generator czyta Twój Maniscrypt słowo po słowie.",
+    "AI składa obraz z milionów drobnych decyzji: kolor tu, cień tam.",
+    "Każde zdjęcie z AI jest jedyne. Drugiego takiego nie będzie.",
+    "Generator najpierw układa kształty, potem dodaje szczegóły.",
+    "Najdłużej trwa malowanie dłoni. AI ciągle liczy palce.",
+    "Generator sprawdza, skąd pada światło i gdzie będą cienie.",
+    "Teraz AI dobiera kolory, żeby wszystko do siebie pasowało.",
+    "Szczegóły, szczegóły… AI dopracowuje tkaninę, skórę i drewno.",
+    "Generator pilnuje, żeby kamera stała tam, gdzie mówi Maniscrypt.",
+    "Im dokładniejszy Maniscrypt, tym mniej zgadywania dla AI.",
+    "Wiesz, że AI zaczyna od samego szumu i krok po kroku wyciąga z niego obraz?",
+    "Pikseli są miliony, a każdy musi trafić na swoje miejsce.",
+    "Trzymam kciuki. Drewniane, ale mocno.",
+    "Uwielbiam ten moment tuż przed pierwszym zdjęciem.",
+    "Nie podglądam, słowo! No… może troszkę.",
+    "Mój drewniany nos czuje, że wyjdzie świetnie.",
+    "Mam tremę, a przecież to nie ja stoję przed kamerą.",
+    "Puk, puk. Generatorze, gotowe? Jeszcze nie.",
+    "Tik-tak, tik-tak… Dobre rzeczy dzieją się powoli.",
+    "Liczę do dziesięciu. Raz, dwa, trzy…",
+    "Za chwilę zobaczysz, co wyczarowaliśmy.",
+    "Zdjęcie się suszy, jak w ciemni fotograficznej.",
+    "Kiedyś zdjęcia wywoływało się godzinami w ciemni. My mamy szybciej!",
+    "Pierwsze zdjęcie w historii naświetlało się kilka godzin. Nam wystarczy chwilka.",
+    "Wskazówka: złota godzina daje ciepłe, miękkie światło.",
+    "Wskazówka: kamera nisko sprawia, że postać wygląda na bohatera.",
+    "Wskazówka: zbliżenie na twarz najlepiej pokazuje emocje.",
+    "Wskazówka: wszystkie swoje zdjęcia znajdziesz w Moich ujęciach.",
+    "Wskazówka: możesz zamknąć to okno i dalej reżyserować.",
+    "Wskazówka: dron pokaże całą okolicę z góry.",
+    "Wskazówka: zwierzak w kadrze od razu dodaje scenie charakteru.",
+    "Wskazówka: światło z tyłu robi piękną poświatę wokół sylwetki.",
+    "Wskazówka: w Stylu zmienisz zdjęcie w komiks, anime albo obraz.",
+    "Wskazówka: Maniscrypt wkleisz też w innym generatorze i porównasz wyniki.",
+    "Wskazówka: z przełącznikiem „Z moją twarzą” zagrasz główną rolę.",
+    "Dlaczego kamera nie gra w chowanego? Bo zawsze wszystko widzi.",
+    "Mój ulubiony kolor? Każdy, byle w dobrym świetle.",
+    "Kot z sąsiedniego planu chciał wejść do kadru. Odmówiłem. Grzecznie.",
+    "Gdyby drewno umiało pozować… Chwila, przecież umie!",
+    "Plotka głosi, że ten generator uwielbia dobre Maniscrypty.",
+    "Żaden piksel nie ucierpiał podczas robienia tego zdjęcia.",
+    "Gdybym miał prawdziwe powieki, nie mrugałbym teraz."
+  ];
+  // Na koniec (ok. 85% szacowanego czasu) jedna z kwestii „zaraz będzie”
+  const GEN_CLOSE = ["Wywołuję zdjęcie… Jeszcze chwilka!", "Ostatnie poprawki koloru…", "Prawie gotowe! Uwaga, zaraz zobaczysz…", "Dobre zdjęcie lubi poczekać. Już prawie!"];
+  function genPick(n) {
+    let hist = [];
+    try { hist = JSON.parse(localStorage.getItem("manikun-gen-said") || "[]"); } catch (e) {}
+    const fresh = shuffle(GEN_SAY.map((_, i) => i).filter(i => !hist.includes(i)));
+    const pick = (fresh.length >= n ? fresh : [...fresh, ...shuffle(hist.slice(0, Math.max(0, n - fresh.length)))]).slice(0, n);
+    hist = [...hist.filter(i => !pick.includes(i)), ...pick].slice(-Math.floor(GEN_SAY.length * 0.7));
+    try { localStorage.setItem("manikun-gen-said", JSON.stringify(hist)); } catch (e) {}
+    return pick.map(i => GEN_SAY[i]);
   }
   let genTalkTimer = 0;
   function genTalk(run, t0, eta) {
@@ -7747,9 +7815,13 @@
       genDevelop(prog);
       document.getElementById("genTime").textContent = Math.floor(sec) + " s" + (sec < eta ? " / ok. " + eta + " s" : "");
     };
+    let closed = false;
     const say1 = () => {
       if (run !== genRun || genWait.hidden) return;
-      genWaitText.textContent = lines[Math.min(i++, lines.length - 1)];
+      const sec = (Date.now() - t0) / 1000;
+      // Pod koniec raz „zaraz będzie”; gdy kwestie się skończą (długie czekanie), dobieramy kolejne bez powtórek
+      if (!closed && sec > eta * 0.85) { closed = true; genWaitText.textContent = GEN_CLOSE[Math.floor(Math.random() * GEN_CLOSE.length)]; }
+      else { if (i >= lines.length) lines.push(...genPick(6)); genWaitText.textContent = lines[i++]; }
       genWaitText.style.animation = "none"; void genWaitText.offsetWidth; genWaitText.style.animation = "";
     };
     say1();
