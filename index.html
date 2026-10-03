@@ -260,11 +260,16 @@
   body.gen-open #genScrim { opacity: 1; pointer-events: auto; }
   /* Zdjęcie od AI (Higgsfield): obraz w formacie sceny, a do czasu jego przyjścia klaps i odliczanie */
   /* W trakcie: szkic tej sceny „wywołuje się” (pulsuje), Manikun opowiada w dymku, pasek i sekundy; potem zdjęcie przenika szkic */
-  .gen-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.9s ease; }
-  .gen-frame img.on { opacity: 1; }
-  .gen-draft { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 0.9s ease; animation: genDev 2.4s ease-in-out infinite; }
-  .gen-frame.done .gen-draft { opacity: 0; animation: none; }
-  @keyframes genDev { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
+  /* Szkic → Próbny kadr (wyostrza się i nabiera kolorów w tempie paska) → zdjęcie „wywołuje się” jak polaroid */
+  .gen-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; filter: blur(14px) saturate(0.2) brightness(1.45);
+    transition: opacity 1.4s ease, filter 2.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .gen-frame img.on { opacity: 1; filter: none; }
+  .gen-draft, .gen-trial { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 0.5s linear, filter 0.5s linear; }
+  .gen-trial { opacity: 0; }
+  .gen-trial > svg { width: 100%; height: 100%; display: block; }
+  .gen-frame.done .gen-draft { opacity: 0; }
+  /* Po wywołaniu zdjęcia Próbny kadr znika spod spodu (gdy proporcje zdjęcia trochę inne, nie wystaje na brzegach) */
+  .gen-frame.done .gen-trial { opacity: 0 !important; transition: opacity 0.6s ease 1.6s; }
   .gen-wait { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; gap: 8px; }
   .gen-wait[hidden] { display: none; }
   .gen-talk { margin: 0; justify-self: start; max-width: 92%; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 14px 14px 14px 4px; padding: 8px 12px; font-size: 13.5px; line-height: 1.35; box-shadow: 0 6px 18px rgba(0,0,0,0.25); animation: genIn 0.35s ease; }
@@ -272,7 +277,7 @@
   .gen-bar { height: 5px; border-radius: 99px; background: rgba(0,0,0,0.35); overflow: hidden; }
   .gen-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width 0.5s linear; }
   .gen-time { justify-self: end; font: 600 11px var(--mono), monospace; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
-  @media (prefers-reduced-motion: reduce) { .gen-draft, .gen-talk { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .gen-talk { animation: none; } .gen-frame img { transition: opacity 0.3s ease; filter: none; } }
   body.tutorial #copySheet .sheet-gen, body.tutorial #copySheet .gen-model { display: none; }
   .gen-model { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
   .gen-model select { font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px 8px; max-width: 70%; }
@@ -780,6 +785,7 @@
       <button class="icon-btn" type="button" id="genClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="preview-frame gen-frame" id="genFrame">
+      <div class="gen-trial" id="genTrial" aria-hidden="true"></div>
       <svg id="genDraft" class="ink gen-draft" aria-hidden="true"></svg>
       <img id="genImg" alt="Zdjęcie wygenerowane z Maniscryptu">
       <div class="gen-wait" id="genWait" role="status">
@@ -7724,7 +7730,9 @@
     const tick = () => {
       if (run !== genRun || genWait.hidden) { clearInterval(genTalkTimer); return; }
       const sec = (Date.now() - t0) / 1000;
-      document.getElementById("genBar").style.width = Math.min(95, 100 * (1 - Math.exp(-1.6 * sec / eta))) + "%";
+      const prog = 1 - Math.exp(-1.6 * sec / eta);
+      document.getElementById("genBar").style.width = Math.min(95, 100 * prog) + "%";
+      genDevelop(prog);
       document.getElementById("genTime").textContent = Math.floor(sec) + " s" + (sec < eta ? " / ok. " + eta + " s" : "");
     };
     const say1 = () => {
@@ -7738,12 +7746,30 @@
   }
   // Szkic tej sceny w kadrze na czas oczekiwania (jak w Próbnym kadrze, bez AI)
   function genSketch(fmt) {
-    const d = document.getElementById("genDraft"), H = 600, W = H * fmt.w / fmt.h;
-    d.replaceChildren();
+    const d = document.getElementById("genDraft"), tr = document.getElementById("genTrial"), H = 600, W = H * fmt.w / fmt.h;
+    d.replaceChildren(); tr.replaceChildren();
+    d.style.opacity = ""; tr.style.opacity = ""; tr.style.filter = "";
     try {
       renderScene(d, { ...scene, props: { reveal: 1 } }, W, H, new Set(["ground", "background", "things"]), { draft: true });
       d.querySelector(":scope > .frame")?.remove();
     } catch (e) { d.replaceChildren(); }
+    // Próbny kadr tej sceny: rysowany jak w oknie Próbnego kadru, kopiowany tutaj z własnymi id (bez napisu „PRÓBNY KADR”)
+    try {
+      renderTrial();
+      const src = trialSvg.outerHTML.replace(/ id="([^"]+)"/g, ' id="gen-$1"').replace(/url\(#([^)]+)\)/g, "url(#gen-$1)").replace(/href="#([^"]+)"/g, 'href="#gen-$1"');
+      tr.innerHTML = src;
+      const sv = tr.querySelector("svg");
+      if (sv) { sv.removeAttribute("width"); sv.removeAttribute("height"); sv.setAttribute("preserveAspectRatio", "xMidYMid slice"); sv.querySelectorAll("text").forEach(t => t.remove()); }
+    } catch (e) { tr.replaceChildren(); }
+  }
+  // Etap wywołania (p: 0 → 1 według szacowanego czasu): szkic gaśnie, Próbny kadr się wyostrza i nabiera kolorów
+  function genDevelop(p) {
+    const d = document.getElementById("genDraft"), tr = document.getElementById("genTrial");
+    if (!tr.firstChild) return;
+    const x = Math.min(1, Math.max(0, (p - 0.12) / 0.5)), s = x * x * (3 - 2 * x);
+    d.style.opacity = String(1 - s);
+    tr.style.opacity = String(s);
+    tr.style.filter = `blur(${((1 - s) * 7 + 0.6).toFixed(2)}px) saturate(${(0.35 + 0.65 * s).toFixed(2)})`;
   }
   async function genStart() {
     const fmt = currentFormat(), prompt = buildPrompt(false);
