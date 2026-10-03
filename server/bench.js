@@ -36,7 +36,8 @@ export async function bench(request, url, env, user, ctx) {
       await db.prepare("INSERT INTO bench (run, family, model, http, status, detail, started_ms) VALUES (?, 'katalog', ?, ?, 'info', ?, ?)")
         .bind(run, path, r ? r.status : null, raw.slice(0, 4000), Date.now()).run();
     }
-    for (const [family, paths] of FAMILIES) {
+    const pick = (url.searchParams.get("models") || "").split(",").map(x => x.trim()).filter(x => /^[\w.\/-]{3,80}$/.test(x)).slice(0, 12);
+    for (const [family, paths] of pick.length ? pick.map(m => [m, [m]]) : FAMILIES) {
       for (const model of paths) {
         let r, raw = "", data = null;
         const t0 = Date.now();
@@ -86,4 +87,28 @@ figcaption{padding:8px 10px;font-size:13px}.t{float:right;font-weight:700;color:
 <body><h1>Porównanie modeli Higgsfield</h1><p>${run ? "Start: " + new Date(Number(run)).toLocaleString("pl-PL") + (busy ? " · odświeża się samo…" : " · gotowe") : "Brak porównań."} · <a href="?start=1">Nowe porównanie</a></p>
 <div class="grid">${cards}</div>${misses ? `<h3>Nie przyjęte</h3><ul>${misses}</ul>` : ""}</body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
+// Katalog modeli z API (GET /models): zapis do bazy (wiersz 'katalog-pelny') i lista modeli obrazów z ceną
+export async function models(url, env, user, ctx) {
+  const { hfHeaders, apiBase, json } = ctx;
+  if (!user || user.id !== 1) return json({ error: "Tylko dla właściciela." }, 403);
+  const items = [];
+  for (let page = 1; page <= 10; page++) {
+    const r = await fetch(apiBase(env) + "/models?page=" + page + "&size=100&limit=100", { headers: hfHeaders(env), signal: AbortSignal.timeout(15000) });
+    if (!r.ok) break;
+    const d = await r.json();
+    const got = d.items || [];
+    for (const m of got) if (!items.some(x => x.slug === m.slug)) items.push(m);
+    if (!got.length || items.length >= (d.total || 0)) break;
+  }
+  const slim = items.map(m => ({ slug: m.slug, title: m.title, out: m.output_type, op: (m.operation_type || []).join("|"), credits: m.base_credits,
+    schema: m.input_schema && m.input_schema.properties ? Object.keys(m.input_schema.properties).join(",") : null }));
+  await env.DB.prepare("INSERT INTO bench (run, family, model, http, status, detail, started_ms) VALUES (?, 'katalog-pelny', '/models', 200, 'info', ?, ?)")
+    .bind(String(Date.now()), JSON.stringify(slim), Date.now()).run();
+  const img = slim.filter(m => m.out === "image");
+  const rows = img.map(m => `<tr><td><b>${esc(m.title)}</b></td><td><code>${esc(m.slug)}</code></td><td>${esc(m.op)}</td><td>${esc(m.credits)}</td></tr>`).join("");
+  return new Response(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Modele Higgsfield</title>
+<style>body{font:14px system-ui,sans-serif;margin:16px;background:#141416;color:#eee}td{padding:4px 8px;border-bottom:1px solid #333}code{color:#8fd3a8}</style></head>
+<body><h1>Modele obrazów w API (${img.length} z ${slim.length})</h1><table>${rows}</table></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
