@@ -158,8 +158,10 @@ const hfHeaders = env => ({ Authorization: "Key " + hfKey(env), "Content-Type": 
 // Kształt klucza do diagnozy (bez treści): liczba części i ich długości
 const hfKeyShape = env => "klucz: " + String(env.HF_KEY || "").trim().split(":").map(p => p.length).join("+") + " znaków";
 
+// Adres zdjęcia: nasza kopia (/api/photo/<id>), a dopóki jej nie ma, adres Higgsfield
+const photoUrl = g => g.stored ? "/api/photo/" + g.id : g.image_url || null;
 function genView(g, credits, eta) {
-  return { id: g.id, status: g.status, url: g.image_url || null, error: g.error || null,
+  return { id: g.id, status: g.status, url: photoUrl(g), error: g.error || null, seen: !!g.seen, cancelled: !!g.cancelled,
     ...(credits === undefined ? {} : { credits }), ...(eta ? { eta } : {}) };
 }
 
@@ -193,7 +195,11 @@ async function generate(request, env, user) {
   // Jedno zlecenie naraz na konto
   const busy = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND created_at > ?")
     .bind(user.id, now() - 600).first();
-  if (busy) return json({ error: "Poprzednie zdjęcie jeszcze się robi.", id: busy.id }, 409);
+  if (busy) {
+    // Może już skończone, tylko nikt nie zapytał: dopytujemy, zanim odmówimy
+    const b = await refresh(env, await env.DB.prepare("SELECT * FROM generations WHERE id = ?").bind(busy.id).first());
+    if (b.status === "queued" || b.status === "in_progress") return json({ error: "Poprzednie zdjęcie jeszcze się robi. Naraz robimy jedno.", id: busy.id }, 409);
+  }
 
   // Kredyty schodzą tylko, jeśli saldo wystarcza (jedno zapytanie, więc dwa kliknięcia naraz nie zejdą poniżej zera)
   const id = randomToken(12), cost = genCost(env), t = now();
@@ -242,9 +248,21 @@ async function generate(request, env, user) {
   return json(genView(g, await balance(env, user.id), await genEta(env, model)));
 }
 
-async function generationStatus(env, user, id) {
-  const g = await env.DB.prepare("SELECT * FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
-  if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+// Kopia zdjęcia u nas (KV PHOTOS): adresy Higgsfield wygasają, a Moje ujęcia mają zostać
+async function storePhoto(env, g) {
+  if (!env.PHOTOS || g.stored || !g.image_url) return;
+  try {
+    const r = await fetch(g.image_url, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) return;
+    const buf = await r.arrayBuffer();
+    await env.PHOTOS.put("gen/" + g.id, buf, { metadata: { type: r.headers.get("Content-Type") || "image/jpeg" } });
+    await env.DB.prepare("UPDATE generations SET stored = 1 WHERE id = ?").bind(g.id).run();
+    g.stored = 1;
+  } catch (e) { console.log("Zapis zdjęcia: " + e); }
+}
+
+// Dopytanie Higgsfield o zlecenie w toku i zapis wyniku (wspólne dla okna zdjęcia i Moich ujęć)
+async function refresh(env, g) {
   if ((g.status === "queued" || g.status === "in_progress") && g.request_id) {
     let data = null;
     try {
@@ -262,6 +280,8 @@ async function generationStatus(env, user, id) {
       await refund(env, g, "nsfw", "Generator odrzucił ten opis. Kredyt wrócił na konto.");
     } else if (data && data.status === "failed") {
       await refund(env, g, "failed", "Nie udało się zrobić zdjęcia. Kredyt wrócił na konto.");
+    } else if (data && data.status === "cancelled") {
+      await refund(env, g, "cancelled", "Anulowano. Kredyt wrócił na konto.");
     } else if (data && data.status && data.status !== g.status) {
       await env.DB.prepare("UPDATE generations SET status = ?, updated_at = ? WHERE id = ?").bind(data.status, now(), g.id).run();
       g.status = data.status;
@@ -269,13 +289,69 @@ async function generationStatus(env, user, id) {
       await refund(env, g, "failed", "Generator nie zdążył. Kredyt wrócił na konto.");
     }
   }
+  if (g.status === "completed") await storePhoto(env, g);
+  return g;
+}
+
+async function generationStatus(env, user, id) {
+  const g = await env.DB.prepare("SELECT * FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
+  if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+  await refresh(env, g);
   return json(genView(g, await balance(env, user.id)));
+}
+
+// Anulowanie: Higgsfield zatrzymuje tylko zlecenia w kolejce (wtedy kredyt wraca);
+// gdy zdjęcie już się robi, nie da się go przerwać, więc dokończy się i trafi do Moich ujęć
+async function generationCancel(env, user, id) {
+  const g = await env.DB.prepare("SELECT * FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
+  if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+  if (g.status !== "queued" && g.status !== "in_progress") return json(genView(g, await balance(env, user.id)));
+  let ok = false;
+  if (g.request_id) {
+    try {
+      const res = await fetch((env.HF_API_URL || HF_API) + "/requests/" + encodeURIComponent(g.request_id) + "/cancel", { method: "POST", headers: hfHeaders(env), signal: AbortSignal.timeout(15000) });
+      ok = res.ok;
+      if (!ok) console.log("Higgsfield cancel: " + res.status + " " + (await res.text()).slice(0, 200));
+    } catch (e) { console.log("Higgsfield cancel: " + e); }
+  }
+  await env.DB.prepare("UPDATE generations SET cancelled = 1 WHERE id = ?").bind(g.id).run();
+  g.cancelled = 1;
+  if (ok) await refund(env, g, "cancelled", "Anulowano. Kredyt wrócił na konto.");
+  const view = genView(g, await balance(env, user.id));
+  if (!ok) view.note = "Generator już robi to zdjęcie i nie da się go zatrzymać. Gdy będzie gotowe, znajdziesz je w Moich ujęciach.";
+  return json(view);
+}
+
+async function generationSeen(env, user, id) {
+  await env.DB.prepare("UPDATE generations SET seen = 1 WHERE id = ? AND user_id = ?").bind(id, user.id).run();
+  return json({ ok: true });
+}
+
+// Moje ujęcia: udane zdjęcia (nowe pierwsze); najpierw dopytanie o zlecenia w toku
+async function library(env, user) {
+  const open = await env.DB.prepare("SELECT * FROM generations WHERE user_id = ? AND (status IN ('queued', 'in_progress') OR (status = 'completed' AND stored = 0)) AND created_at > ?")
+    .bind(user.id, now() - 7 * 86400).all();
+  for (const g of open.results) await refresh(env, g);
+  const rows = await env.DB.prepare("SELECT * FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 60").bind(user.id).all();
+  return json({ photos: rows.results.map(g => ({ id: g.id, url: photoUrl(g), seen: !!g.seen, aspect: g.aspect, at: g.created_at })) });
+}
+
+async function photo(env, user, id) {
+  const g = await env.DB.prepare("SELECT id, stored, image_url FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
+  if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+  const obj = g.stored && env.PHOTOS ? await env.PHOTOS.getWithMetadata("gen/" + id, { type: "arrayBuffer" }) : null;
+  if (!obj || !obj.value) return g.image_url ? Response.redirect(g.image_url, 302) : json({ error: "Brak zdjęcia." }, 404);
+  return new Response(obj.value, { headers: { "Content-Type": (obj.metadata && obj.metadata.type) || "image/jpeg", "Cache-Control": "private, max-age=31536000, immutable" } });
 }
 
 async function me(request, env) {
   const user = await currentUser(request, env);
   if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_SECRET, v: 3 });
-  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env) });
+  const active = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND cancelled = 0 AND created_at > ? ORDER BY created_at DESC LIMIT 1")
+    .bind(user.id, now() - 600).first();
+  const unseen = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'completed' AND seen = 0").bind(user.id).first();
+  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env),
+    active: active ? active.id : null, unseen: unseen.n });
 }
 
 export default {
@@ -300,8 +376,17 @@ export default {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Zaloguj się." }, 401);
         if (route === "POST /api/generate") return await generate(request, env, user);
-        const m = url.pathname.match(/^\/api\/generate\/([\w-]{8,40})$/);
-        if (request.method === "GET" && m) return await generationStatus(env, user, m[1]);
+        const m = url.pathname.match(/^\/api\/generate\/([\w-]{8,40})(\/cancel|\/seen)?$/);
+        if (request.method === "GET" && m && !m[2]) return await generationStatus(env, user, m[1]);
+        if (request.method === "POST" && m && m[2] === "/cancel") return await generationCancel(env, user, m[1]);
+        if (request.method === "POST" && m && m[2] === "/seen") return await generationSeen(env, user, m[1]);
+      }
+      if (route === "GET /api/library" || url.pathname.startsWith("/api/photo/")) {
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Zaloguj się." }, 401);
+        if (route === "GET /api/library") return await library(env, user);
+        const m = url.pathname.match(/^\/api\/photo\/([\w-]{8,40})$/);
+        if (request.method === "GET" && m) return await photo(env, user, m[1]);
       }
       return json({ error: "Nie ma takiego adresu." }, 404);
     } catch (e) {

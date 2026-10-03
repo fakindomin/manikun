@@ -504,3 +504,13 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Decyzja po drugim porównaniu: wracamy do Soul 2 jako domyślnego (najładniejszy w stosunku do ceny; ok. 20 s maskuje oczekiwanie). Recraft 4.1 najszybszy (ok. 11 s), ale za drogi; Ideogram 4.0 ok. 30 s, Recraft Pro ok. 55 s, Qwen Image 3 ok. 84 s, Grok Imagine 2.0 najwolniejszy, Z-Image Turbo odrzuca długie prompty (400). Zapasowo tylko Soul Standard.
 - Zdjęcie w tle: zamknięcie okna „Zdjęcie od AI” nie przerywa generowania (w oknie podpowiedź „Możesz zamknąć to okno i dalej reżyserować…”). Gdy zdjęcie jest gotowe, a okno zamknięte, na przycisku Manikuna pulsuje czerwona kropka, a Manikun mówi „Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.”; stuknięcie otwiera zdjęcie. Przy błędzie mówi, co się stało. „Zrób zdjęcie tutaj” w trakcie albo z czekającym zdjęciem tylko otwiera okno.
 - Kwestie Manikuna o scenie: na zmianę z kwestiami z planu filmowego komentuje to, co jest w scenie: zwierzaki („Manidragon zajmuje miejsce na planie. Grzecznie!”), miejsce, światło z tyłu, złotą godzinę, noc, drona, selfie, kamerę z dołu, dziecko, czapkę, pozę i styl.
+
+## Zdjęcie od AI: anulowanie, powrót do zdjęcia, Moje ujęcia
+
+- Naraz jedno zdjęcie: serwer odmawia drugiego (409), ale najpierw dopytuje Higgsfield, czy poprzednie się już nie skończyło.
+- „Anuluj zdjęcie” w trakcie: Higgsfield zatrzymuje tylko zlecenia w kolejce, wtedy kredyt wraca („Anulowano. Kredyt wrócił na konto.”). Gdy zdjęcie już się robi, nie da się go przerwać: okno się zamyka, Manikun mówi, że zdjęcie trafi do Moich ujęć.
+- Przycisk Maniscryptu w trakcie zdjęcia (albo gdy gotowe czeka) otwiera okno zdjęcia, jeśli scena się nie zmieniła (ten sam Maniscrypt i format); po zmianie otwiera zwykły panel Maniscryptu.
+- Po odświeżeniu strony zlecenie w toku wraca do śledzenia (`/api/me` podaje `active`; scena z sessionStorage).
+- Moje ujęcia (menu, po zalogowaniu): siatka zdjęć od AI, nowe z plakietką „Nowe”; stuknięcie otwiera zdjęcie w pełnym rozmiarze i oznacza je jako obejrzane. Nieobejrzane zdjęcia zapalają czerwoną kropkę na Manikunie (stuknięcie otwiera Moje ujęcia), a w menu licznik „2 nowych”.
+- Zdjęcia zapisujemy u siebie (KV `manikun-zdjecia`, binding `PHOTOS`, klucz `gen/<id>`), bo adresy Higgsfield wygasają; podaje je `/api/photo/<id>` tylko właścicielowi. R2 wymaga włączenia w panelu Cloudflare, więc na razie KV.
+- Serwer: `POST /api/generate/<id>/cancel`, `POST /api/generate/<id>/seen`, `GET /api/library` (dopytuje o zlecenia w toku z ostatnich 7 dni i zapisuje gotowe), `GET /api/photo/<id>`. Kolumny `stored`, `seen`, `cancelled` (`migrations/0005_biblioteka.sql`).
