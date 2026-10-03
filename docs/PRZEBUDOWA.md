@@ -448,3 +448,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Stuknięcie w punkt postaci otwiera kategorię i płynnie przybliża podgląd (viewBox, 460 ms) na tę część: głowa → Głowa, tułów → Ubiór/Góra (Okrycie, Sukienka), ręka → Ręce (albo Góra), noga → Ubiór/Dół. Punkt aktywnej części świeci kolorem akcentu. Zbliżenie trwa, dopóki menu jest w tej kategorii; stuknięcie obok punktów, w punkt tła albo zmiana kategorii w menu oddala podgląd. Przy zbliżeniu narożniki i napis stylu są ukryte.
 - Rzecz → Rzeczy (u eksperta drugie stuknięcie w jej punkt: przestawianie), zwierzak → jego poza i umaszczenie, tło → Miejsce. Krótkie stuknięcie w kamerę lub światło: ich kategorie; przytrzymanie dalej przeciąga.
 - Usunięte: stukanie w całą sylwetkę, dwustopniowe zaznaczanie Manikuna i przerywana ramka.
+
+## Poprawka: wszystkie zestawy zaznaczone
+
+- Miniatury zestawów (`wearThumb`) na czas rysowania ubierały scenę w zestaw i przywracały tylko krój i kolory, a nazwa zestawu (`scene.outfit`) zostawała z ostatniej miniatury. Po otwarciu „Zestawów” scena miała zestaw Płaszcz, więc każdy kafelek pokazywał się jako wybrany (a Maniscrypt i podpis „Zestawy” mówiły „Płaszcz”). Teraz przywracane jest wszystko, co miniatura zmieniła.
+- Test: otwarcie każdej kategorii i podkategorii (podstawowy i ekspert) nie zmienia sceny.

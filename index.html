@@ -4695,10 +4695,11 @@
   }
   // Miniatura ubrania: Manikun w danym ubraniu, przycięty do części ciała (cała postać, góra, dół, głowa, stopy)
   function wearThumb(svg, patch, region) {
-    const saved = { wear: scene.wear, wc: scene.wc };
+    // Na czas rysowania scena przyjmuje strój miniatury; potem wraca wszystko, co zmieniono (także nazwa zestawu)
+    const saved = Object.fromEntries(Object.keys(patch).map(k => [k, scene[k]]));
     Object.assign(scene, patch);
-    const fig = computeFigure(POSES.stand, rigOf(scene.body), clothOf(scene.body));
-    Object.assign(scene, saved);
+    let fig;
+    try { fig = computeFigure(POSES.stand, rigOf(scene.body), clothOf(scene.body)); } finally { Object.assign(scene, saved); }
     const b = fig.box, cx = (b.minX + b.maxX) / 2;
     if (region === "head") {
       const [hx, hy] = fig.head, r = 34;
