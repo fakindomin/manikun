@@ -1439,11 +1439,10 @@
       items.push(w.bottom === "skirt" ? an(`${word("bottom")} ${ph("bottom")}`) : `${word("bottom")} ${ph("bottom")}`);
     }
     items.push(`${word("shoes")} ${ph("shoes")}`);
-    let txt = "wearing " + (w.outer !== "none" ? an(`${word("outer")} ${ph("outer")}`) + " over " : "") + andList(items);
-    // Nakrycie głowy i dodatki: "with a navy baseball cap and a burgundy knit scarf"
-    const extra = ["hat", "acc"].filter(p => w[p] && w[p] !== "none").map(p => an(`${word(p)} ${ph(p)}`));
-    if (extra.length) txt += ", with " + andList(extra);
-    return txt;
+    // Nakrycie głowy i dodatki na tej samej liście co ubranie ("…white sneakers and a navy baseball cap"),
+    // żeby opis postaci nie rozpadał się na kilka doklejonych "with …"
+    ["hat", "acc"].filter(p => w[p] && w[p] !== "none").forEach(p => items.push(an(`${word(p)} ${ph(p)}`)));
+    return "wearing " + (w.outer !== "none" ? an(`${word("outer")} ${ph("outer")}`) + " over " : "") + andList(items);
   }
   // Wygląd twarzy: tylko proste, dobrze znane modelom elementy
   const LOOK = {
@@ -1531,11 +1530,14 @@
     if (g.id === "lens" && turnedAway(st)) return "glancing back over the shoulder straight into the camera lens";
     return g.prompt;
   }
-  // Zwrot ciała w Maniscrypcie: zawsze też kierunek w kadrze, bo lewo i prawo kadru modele rozumieją pewniej niż strony postaci
+  // Zwrot ciała w Maniscrypcie. Przodem: po prostu "facing the camera" (kąt trzy czwarte opisuje już początek
+  // Maniscryptu; dodatkowy kierunek w kadrze był sprzeczny i obracał postać bokiem). Przy pozostałych zwrotach
+  // kierunek w kadrze zostaje, bo lewo i prawo kadru modele rozumieją pewniej niż strony postaci.
   function turnPrompt(st = scene) {
-    if (isSelfie(st.camera) || LYING.includes(st.pose)) return "";
-    const t = turnOf(st), side = camSide(st), dir = facesLeft(st) ? "left" : "right";
-    if (t === "camera") return side === "C" ? "facing the camera" : `body turned toward the camera, facing the ${dir} side of the frame`;
+    if (LYING.includes(st.pose)) return "";
+    if (isSelfie(st.camera)) return "facing the camera";
+    const t = turnOf(st), dir = facesLeft(st) ? "left" : "right";
+    if (t === "camera") return "facing the camera";
     if (t === "side") return `seen in side profile, body and face turned toward the ${dir} side of the frame`;
     if (t === "away") return `turned away from the camera in a three-quarter back view, facing into the scene toward the ${dir} side of the frame`;
     return "seen from behind with the back to the camera, facing away into the scene, face not visible";
