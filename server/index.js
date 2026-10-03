@@ -142,19 +142,6 @@ const HF_API = "https://api.higgsfield.ai";
 // Bez modelu zapasowego: Soul Standard kosztuje ok. 0,094 $ (30 razy więcej), więc awaria ma się zakończyć zwrotem kredytu.
 const HF_MODEL = "higgsfield-ai/soul/v2/standard";
 const HF_FALLBACK = [];
-// Modele do testów (tylko właściciel, konto nr 1, wybiera w panelu Maniscryptu); ceny z cennika Higgsfield API, 3.10.2026
-const TEST_MODELS = [
-  { id: "higgsfield-ai/soul/v2/standard", name: "Soul 2", price: 0.0032 },
-  { id: "marketing-studio/image/sunburst", name: "Marketing Studio 2.5 Sunburst", price: 0.0107 },
-  { id: "marketing-studio/image/flare", name: "Marketing Studio 2.5 Flare", price: 0.0107 },
-  { id: "marketing-studio/image", name: "Marketing Studio", price: 0.0107 },
-  { id: "z-image/turbo", name: "Z-Image Turbo", price: 0.015 },
-  { id: "ideogram/v4.0", name: "Ideogram 4.0", price: 0.03 },
-  { id: "recraft/v4.1/text-to-image", name: "Recraft 4.1", price: 0.035 },
-  { id: "alibaba/qwen-image-3/text-to-image", name: "Qwen Image 3", price: 0.04 },
-  { id: "xai/grok-imagine-image-2.0", name: "Grok Imagine 2.0", price: 0.04 }
-  // FLUX.2 klein z Cloudflare Workers AI (kod niżej) zdjęty z listy: na darmowym planie zlecenie wisiało i nie oddawało obrazu
-];
 const isWorkersAI = model => model.startsWith("@cf/");
 
 // Wymiary ok. 1 MP w proporcjach kadru, wielokrotność 16
@@ -279,9 +266,8 @@ async function generate(request, env, user, ctx) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return json({ error: "Brak Maniscryptu." }, 400);
   if (prompt.length > MAX_PROMPT) return json({ error: "Maniscrypt jest za długi." }, 413);
-  // Właściciel może wybrać model do testu; reszta zawsze dostaje model domyślny
-  const pick = isOwner(user) && TEST_MODELS.find(m => m.id === body.model);
-  const chosen = pick ? pick.id : hfModel(env);
+  // Zawsze model domyślny (Soul 2); porównania modeli zakończone 3.10.2026
+  const chosen = hfModel(env);
   const asked = String(body.aspect || ""), aspect = aspectFor(chosen, asked);
   // Zdjęcie twarzy (na razie tylko właściciel): model z wariantem przyjmującym obraz
   const face = body.face ? (faceUrlOk(body.face) ? body.face : "zły") : null;
@@ -470,7 +456,7 @@ async function me(request, env) {
     .bind(user.id, now() - 600).first();
   const unseen = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'completed' AND seen = 0").bind(user.id).first();
   return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env),
-    active: active ? active.id : null, unseen: unseen.n, ...(isOwner(user) ? { models: TEST_MODELS, model: hfModel(env) } : {}) });
+    active: active ? active.id : null, unseen: unseen.n });
 }
 
 export default {

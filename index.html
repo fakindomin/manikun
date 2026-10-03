@@ -278,7 +278,7 @@
   .gen-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width 0.5s linear; }
   .gen-time { justify-self: end; font: 600 11px var(--mono), monospace; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
   @media (prefers-reduced-motion: reduce) { .gen-talk { animation: none; } .gen-frame img { transition: opacity 0.3s ease; filter: none; } }
-  body.tutorial #copySheet .sheet-gen, body.tutorial #copySheet .gen-model, body.tutorial #copySheet .sheet-or, body.tutorial #copySheet .sheet-more { display: none; }
+  body.tutorial #copySheet .sheet-gen, body.tutorial #copySheet .sheet-or, body.tutorial #copySheet .sheet-more { display: none; }
   /* Uproszczony panel Maniscryptu: zdjęcie tutaj jako główny przycisk, kopiowanie jako drugi, dodatki drobnym drukiem */
   .steps[hidden] { display: none; }
   #copySheet.has-gen .sheet-gen { background: var(--accent); color: var(--on-accent); border-color: transparent; box-shadow: 0 8px 24px var(--accent-soft); padding: 14px; }
@@ -293,8 +293,6 @@
   #copySheet .scene-tree { background: none; border: 0; padding: 0; }
   #copySheet .scene-tree > summary { display: none; }
   #copySheet .scene-tree:not([open]) { display: none; }
-  .gen-model { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
-  .gen-model select { font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px 8px; max-width: 70%; }
   body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
   /* Próbny kadr: makieta ujęcia w wybranym formacie, rysowana silnikiem Manikuna */
   .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
@@ -731,8 +729,6 @@
       <span class="sp-text"><b>Zrób zdjęcie tutaj</b><small id="sheetGenNote">generator AI w Manikunie, za kredyty</small></span>
     </button>
     <input type="file" id="faceFile" accept="image/*" hidden>
-    <!-- Tylko właściciel: wybór modelu do testów -->
-    <label class="gen-model" id="genModelRow" hidden><span>Model (test)</span><select id="genModel"></select></label>
     <p class="sheet-or" id="sheetOr">Skopiuj i wklej w generatorze:</p>
     <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
     <div class="gens" id="gens" role="list" aria-label="Generatory"></div>
@@ -7651,21 +7647,6 @@
   let genRun = 0, genBusy = false, genReady = false, genJob = null;
   const genOpenNow = () => document.body.classList.contains("gen-open");
   const genCancel = document.getElementById("genCancel"), genFrame = document.getElementById("genFrame");
-  const genModel = document.getElementById("genModel"), genModelRow = document.getElementById("genModelRow");
-  function syncGenModels() {
-    const list = account && account.user && account.models;
-    genModelRow.hidden = !list;
-    if (!list || genModel.options.length) return;
-    let saved = null;
-    try { saved = localStorage.getItem("manikun-gen-model"); } catch (e) {}
-    for (const m of list) {
-      const o = document.createElement("option");
-      o.value = m.id; o.textContent = m.name + " · " + m.price.toFixed(4).replace(/0+$/, "").replace(".", ",") + " $";
-      genModel.appendChild(o);
-    }
-    genModel.value = list.some(m => m.id === saved) ? saved : account.model;
-  }
-  genModel.addEventListener("change", () => { try { localStorage.setItem("manikun-gen-model", genModel.value); } catch (e) {} });
   // Podpis nad generatorami: przy zdjęciu tutaj to druga droga („albo…”), przy zdjęciu twarzy przypomnienie o dołączeniu
   function syncOr() {
     const gen = !sheetGen.hidden, face = withFace();
@@ -7673,7 +7654,6 @@
     document.getElementById("sheetOr").textContent = (gen ? "Albo skopiuj i wklej w innym generatorze" : "Skopiuj i wklej w generatorze") + (face ? ", potem dołącz zdjęcie twarzy:" : ":");
   }
   function syncGenBtn() {
-    syncGenModels();
     const a = account, u = a && a.user;
     sheetGen.hidden = !a || (!u && !a.login) || (u && !a.gen);
     if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
@@ -7822,7 +7802,7 @@
     let d;
     try {
       const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({ prompt, aspect: fmt.short, ...(face ? { face } : {}), ...(genModelRow.hidden ? {} : { model: genModel.value }) }) });
+        body: JSON.stringify({ prompt, aspect: fmt.short, ...(face ? { face } : {}) }) });
       d = await r.json();
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
     if (run !== genRun) return;
@@ -7875,8 +7855,7 @@
       if (genJob) genJob.done = true;
       syncGenBtn();
       genFrame.classList.add("done"); genImg.classList.add("on");
-      const mname = !genModelRow.hidden && genModel.selectedOptions[0] ? " (" + genModel.selectedOptions[0].textContent + ")" : "";
-      genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s" + mname + "! Zdjęcie jest też w Moich ujęciach (menu).", false);
+      genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s! Zdjęcie jest też w Moich ujęciach (menu).", false);
       genAgain.hidden = false;
       if (genOpenNow()) { sfx("klap"); nod("nod"); markSeen(d.id); }
       else genNotify(true, "Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.");
