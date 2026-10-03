@@ -7873,11 +7873,11 @@
       setTimeout(loadShotsCount, 30000);
     }
   });
-  // ---------- Zdjęcie twarzy do zdjęcia od AI (na razie tylko właściciel) ----------
+  // ---------- Zdjęcie twarzy do zdjęcia od AI (Soul 2 image-to-image) ----------
   // Zdjęcie zmniejszone w przeglądarce (dłuższy bok 1280 px, JPEG), wysłane do Higgsfield jako plik tymczasowy; u nas nie zostaje
   const faceFile = document.getElementById("faceFile");
   let faceUrl = null;
-  const faceAllowed = () => !!(account && account.user && account.models);
+  const faceAllowed = () => !!(account && account.user);
   async function shrinkPhoto(file) {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
     const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));

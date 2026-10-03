@@ -204,7 +204,7 @@ async function generateWorkersAI(env, g, model, prompt, aspect) {
 }
 const isOwner = user => user && user.id === 1;
 
-// Zdjęcie twarzy: którym modelem i pod jakim polem (z komunikatów walidacji API, 3.10.2026).
+// Zdjęcie twarzy (dla wszystkich; wybrany po testach Soul 2 image-to-image): którym modelem i pod jakim polem (z komunikatów walidacji API, 3.10.2026).
 // Soul 2 i Qwen mają osobne warianty przyjmujące obraz; image_urls to lista, image_url pojedynczy adres.
 function faceRoute(model) {
   if (model === "higgsfield-ai/soul/v2/standard") return { model: "higgsfield-ai/soul/v2/image-to-image", field: "image_url" };
@@ -218,7 +218,8 @@ const faceUrlOk = u => typeof u === "string" && /^https:\/\/[\w-]+\.cloudfront\.
 
 // Wysłanie zdjęcia twarzy do Higgsfield (plik tymczasowy, znacznik retention=temporary); u nas nie zostaje
 async function uploadFace(request, env, user) {
-  if (!isOwner(user)) return json({ error: "Zdjęcie twarzy w Manikunie jest jeszcze w testach." }, 403);
+  // Wysłać zdjęcie może każdy zalogowany, kto ma kredyt na zdjęcie (bez tego wysyłanie nie ma po co się odbywać)
+  if (await balance(env, user.id) < genCost(env)) return json({ error: "Brak kredytów." }, 402);
   const type = (request.headers.get("Content-Type") || "").split(";")[0];
   if (!/^image\/(jpeg|png|webp)$/.test(type)) return json({ error: "To nie jest zdjęcie (JPG, PNG albo WebP)." }, 415);
   const buf = await request.arrayBuffer();
@@ -285,7 +286,6 @@ async function generate(request, env, user, ctx) {
   // Zdjęcie twarzy (na razie tylko właściciel): model z wariantem przyjmującym obraz
   const face = body.face ? (faceUrlOk(body.face) ? body.face : "zły") : null;
   if (face === "zły") return json({ error: "Zły adres zdjęcia twarzy." }, 400);
-  if (face && !isOwner(user)) return json({ error: "Zdjęcie twarzy w Manikunie jest jeszcze w testach." }, 403);
   const fr = face && faceRoute(chosen);
   if (face && !fr) return json({ error: "Ten model nie przyjmuje zdjęcia twarzy. Wybierz Soul 2." }, 400);
 
