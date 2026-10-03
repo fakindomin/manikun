@@ -25,10 +25,14 @@ export async function bench(request, url, env, user, ctx) {
   const db = env.DB, base = apiBase(env);
 
   if (url.searchParams.get("start") === "1") {
-    const last = await db.prepare("SELECT MAX(started_ms) AS t FROM bench WHERE family <> 'katalog-pelny'").first();
+    const last = await db.prepare("SELECT MAX(started_ms) AS t FROM bench WHERE family NOT IN ('katalog-pelny', 'prompt')").first();
     if (last && last.t && Date.now() - last.t < 5 * 60000) return Response.redirect(url.origin + "/api/admin/bench", 302);
-    const g = await db.prepare("SELECT prompt FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 1").bind(user.id).first();
-    const prompt = (g && g.prompt) || FALLBACK_PROMPT, run = String(Date.now());
+    // Prompt: zapisany do porównań (wiersz family='prompt', gdy ?prompt=1), inaczej ostatni udany Maniscrypt
+    const saved = url.searchParams.get("prompt") === "1" &&
+      await db.prepare("SELECT detail FROM bench WHERE family = 'prompt' ORDER BY id DESC LIMIT 1").first();
+    const g = saved ? null : await db.prepare("SELECT prompt FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 1").bind(user.id).first();
+    const prompt = (saved && saved.detail) || (g && g.prompt) || FALLBACK_PROMPT, run = String(Date.now());
+    const aspect = /^\d{1,2}:\d{1,2}$/.test(url.searchParams.get("aspect") || "") ? url.searchParams.get("aspect") : "3:4";
     // Katalog modeli (jeśli API go ma)
     for (const path of CATALOG) {
       let r, raw = "";
@@ -39,13 +43,17 @@ export async function bench(request, url, env, user, ctx) {
     const pick = (url.searchParams.get("models") || "").split(",").map(x => x.trim()).filter(x => /^[\w.\/-]{3,80}$/.test(x)).slice(0, 12);
     for (const [family, paths] of pick.length ? pick.map(m => [m, [m]]) : FAMILIES) {
       for (const model of paths) {
-        let r, raw = "", data = null;
-        const t0 = Date.now();
-        try {
-          r = await fetch(base + "/" + model, { method: "POST", headers: hfHeaders(env), body: JSON.stringify({ prompt, aspect_ratio: "3:4" }), signal: AbortSignal.timeout(30000) });
-          raw = await r.text();
-          try { data = JSON.parse(raw); } catch { data = null; }
-        } catch (e) { raw = String(e); }
+        let r, raw = "", data = null, t0;
+        // Przy 422 (model nie zna parametru albo proporcji) jeszcze raz z samym promptem
+        for (const body of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
+          t0 = Date.now(); data = null;
+          try {
+            r = await fetch(base + "/" + model, { method: "POST", headers: hfHeaders(env), body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+            raw = await r.text();
+            try { data = JSON.parse(raw); } catch { data = null; }
+          } catch (e) { r = null; raw = String(e); }
+          if (!(r && r.status === 422)) break;
+        }
         const ok = r && r.ok && data && data.request_id;
         await db.prepare("INSERT INTO bench (run, family, model, http, status, request_id, detail, started_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
           .bind(run, family, model, r ? r.status : null, ok ? "queued" : "rejected", ok ? data.request_id : null, raw.slice(0, 600), t0).run();
@@ -56,7 +64,7 @@ export async function bench(request, url, env, user, ctx) {
   }
 
   // Dopytanie o zlecenia w toku
-  const run = (await db.prepare("SELECT MAX(run) AS r FROM bench WHERE family <> 'katalog-pelny'").first() || {}).r;
+  const run = (await db.prepare("SELECT MAX(run) AS r FROM bench WHERE family NOT IN ('katalog-pelny', 'prompt')").first() || {}).r;
   const pending = await db.prepare("SELECT * FROM bench WHERE run = ? AND status IN ('queued', 'in_progress')").bind(run || "").all();
   await Promise.all(pending.results.map(async b => {
     try {
@@ -82,7 +90,7 @@ export async function bench(request, url, env, user, ctx) {
 <title>Porównanie modeli</title>${busy ? '<meta http-equiv="refresh" content="2">' : ""}
 <style>body{font:15px system-ui,sans-serif;margin:16px;background:#141416;color:#eee}a{color:#8fd3a8}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}figure{margin:0;background:#1e1e22;border-radius:12px;overflow:hidden}
-.img{aspect-ratio:3/4;display:grid;place-items:center;background:#000;color:#999}.img img{width:100%;height:100%;object-fit:cover;display:block}
+.img{aspect-ratio:var(--ar,3/4);display:grid;place-items:center;background:#000;color:#999}.img img{width:100%;height:100%;object-fit:contain;display:block}
 figcaption{padding:8px 10px;font-size:13px}.t{float:right;font-weight:700;color:#8fd3a8}code{font-size:11px;color:#aaa;word-break:break-all}li{margin:4px 0;font-size:13px}</style></head>
 <body><h1>Porównanie modeli Higgsfield</h1><p>${run ? "Start: " + new Date(Number(run)).toLocaleString("pl-PL") + (busy ? " · odświeża się samo…" : " · gotowe") : "Brak porównań."} · <a href="?start=1">Nowe porównanie</a></p>
 <div class="grid">${cards}</div>${misses ? `<h3>Nie przyjęte</h3><ul>${misses}</ul>` : ""}</body></html>`;
