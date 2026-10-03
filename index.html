@@ -476,7 +476,8 @@
   body.tutorial .chip.skip { display: flex; }
   /* Działa tylko wskazany element (pulsuje), reszta jest przygaszona i zablokowana; suwak trybu zablokowany do końca */
   body.tutorial #app * { pointer-events: none; }
-  body.tutorial #app .tut-target, body.tutorial #app .tut-target *, body.tutorial #bubble, body.tutorial #bubble *, body.tutorial #tutSkip, body.tutorial #tutSkip * { pointer-events: auto; }
+  body.tutorial #app .tut-target, body.tutorial #app .tut-target *, body.tutorial #bubble, body.tutorial #bubble *, body.tutorial #tutSkip, body.tutorial #tutSkip *,
+  body.tutorial #sound, body.tutorial #sound * { pointer-events: auto; }
   body.tutorial .row .tile:not(.tut-target) { opacity: 0.4; }
   body.tutorial .modes { opacity: 0.4; }
   .tile.tut-target, .square.tut-target, .sheet-copy.tut-target { animation: tutGlow 1.3s ease-in-out infinite; }

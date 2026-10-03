@@ -459,3 +459,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Przy zwrocie przodem znowu samo „facing the camera” (także przy selfie), jak przed lustrem. Dopisek „body turned toward the camera, facing the left/right side of the frame” był sprzeczny z opisem kąta kamery na początku i obracał postać bokiem. Kierunek w kadrze zostaje tylko przy zwrocie bokiem, w głąb kadru i tyłem.
 - Nakrycie głowy i dodatki na liście ubrań („…white sneakers and a white baseball cap”) zamiast osobnego „with …”; opis postaci ma najwyżej dwa „with” (wygląd, mina), jak w oryginale.
 - Test: 16 scen (8 gotowców × kobieta/mężczyzna) daje Maniscrypt słowo w słowo taki jak wersja sprzed lustra (2ac7b43^).
+
+## Poprawka: dźwięk w tutorialu
+
+- W tutorialu wszystkie elementy aplikacji poza wskazanym są nieklikalne (`pointer-events: none`), także przycisk dźwięku. Przycisk dźwięku jest teraz wyjątkiem, jak dymek i „Pomiń”.
