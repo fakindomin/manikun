@@ -138,13 +138,15 @@ async function logout(request, env) {
 
 // ---------- Generowanie obrazów (Higgsfield) ----------
 const HF_API = "https://api.higgsfield.ai";
-// Soul 2 (Higgsfield): potwierdzony adres w API; zapasowo kolejne, gdy API odpowie model_not_found
-const HF_MODEL = "higgsfield-ai/soul/v2/standard";
-const HF_FALLBACK = ["higgsfield-ai/soul/v2/standard", "higgsfield-ai/soul/standard"];
+// Recraft 4.1: w porównaniu ok. 10 s i najlepsza jakość na Maniscrypcie (Soul 2: ok. 20 s); zapasowo Soul 2
+const HF_MODEL = "recraft/v4.1/text-to-image";
+const HF_FALLBACK = ["recraft/v4.1/text-to-image", "higgsfield-ai/soul/v2/standard"];
 const GEN_COST = 1;
 const MAX_PROMPT = 6000;
-// Formaty z aplikacji → proporcje, które przyjmuje model (4:5 nie ma, najbliższe 3:4)
-const ASPECTS = { "4:5": "3:4", "2:3": "2:3", "1:1": "1:1", "3:2": "3:2", "9:16": "9:16", "16:9": "16:9", "21:9": "21:9", "3:4": "3:4", "4:3": "4:3" };
+// Formaty z aplikacji → proporcje, które przyjmuje model (Recraft ma 4:5, nie ma 21:9; Soul nie ma 4:5)
+const ASPECTS = { "4:5": "4:5", "2:3": "2:3", "1:1": "1:1", "3:2": "3:2", "9:16": "9:16", "16:9": "16:9", "21:9": "16:9", "3:4": "3:4", "4:3": "4:3" };
+const ASPECTS_SOUL = { "4:5": "3:4", "21:9": "21:9" };
+const aspectFor = (model, a) => (/soul/.test(model) && ASPECTS_SOUL[a]) || ASPECTS[a] || "1:1";
 
 const hfModel = env => env.HF_MODEL || HF_MODEL;
 const genCost = env => Number(env.GEN_COST) || GEN_COST;
@@ -165,7 +167,7 @@ async function genEta(env, model) {
   const row = await env.DB.prepare(
     "SELECT AVG(d) AS a FROM (SELECT updated_at - created_at AS d FROM generations WHERE model = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 20)"
   ).bind(model).first();
-  return Math.round(row && row.a) || 20;
+  return Math.round(row && row.a) || (/recraft/.test(model) ? 11 : 20);
 }
 
 // Zwrot kredytów za nieudane zlecenie: raz (unikalne reason + ref)
@@ -185,7 +187,7 @@ async function generate(request, env, user) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return json({ error: "Brak Maniscryptu." }, 400);
   if (prompt.length > MAX_PROMPT) return json({ error: "Maniscrypt jest za długi." }, 413);
-  const aspect = ASPECTS[body.aspect] || "1:1";
+  const asked = String(body.aspect || ""), aspect = aspectFor(hfModel(env), asked);
 
   // Jedno zlecenie naraz na konto
   const busy = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND created_at > ?")
@@ -210,7 +212,7 @@ async function generate(request, env, user) {
   const log = [];
   const models = [model, ...HF_FALLBACK.filter(m => m !== model)];
   attempts: for (const m of models) {
-    for (const body of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
+    for (const body of [{ prompt, aspect_ratio: aspectFor(m, asked) }, { prompt }]) {
       model = m; data = null;
       try {
         res = await fetch((env.HF_API_URL || HF_API) + "/" + m, {

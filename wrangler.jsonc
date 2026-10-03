@@ -1,7 +1,7 @@
 // Cloudflare: Worker "manikun". Statyczne pliki strony + serwer dla adresów /api/* (server/index.js).
 // Wdraża się sam z gita (Workers Builds) po każdym pushu na gałąź produkcyjną.
 // Sekrety (panel: Settings › Variables and Secrets): GOOGLE_CLIENT_SECRET, HF_KEY (Higgsfield, KEY_ID:KEY_SECRET).
-// Opcjonalnie zmienne: HF_MODEL (domyślnie higgsfield-ai/soul/v2/standard), GEN_COST (kredyty za zdjęcie, domyślnie 1).
+// Opcjonalnie zmienne: HF_MODEL (domyślnie recraft/v4.1/text-to-image), GEN_COST (kredyty za zdjęcie, domyślnie 1).
 {
   "name": "manikun",
   "main": "server/index.js",
