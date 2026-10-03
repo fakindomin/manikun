@@ -120,6 +120,10 @@
   .square:active { transform: scale(0.94); }
   .square svg { width: 26px; height: 26px; display: block; }
   .narrator { position: relative; overflow: hidden; }
+  /* Gotowe zdjęcie od AI czeka: kropka na przycisku Manikuna */
+  .narrator.has-photo::after { content: ""; position: absolute; top: 5px; right: 5px; width: 11px; height: 11px; border-radius: 50%; background: #FF5A4E; box-shadow: 0 0 0 2px var(--surface); animation: hasPhoto 1.4s ease-in-out infinite; }
+  @keyframes hasPhoto { 50% { transform: scale(1.25); } }
+  @media (prefers-reduced-motion: reduce) { .narrator.has-photo::after { animation: none; } }
   .narrator svg { width: 38px; height: 38px; }
   /* Głowa 3D z modelu: po wczytaniu zastępuje rysowaną */
   .narrator canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 400ms ease; }
@@ -6429,6 +6433,7 @@
   }
   // Stuknięcie w głowę: w reżyserze wyszukiwarka, na starcie podpowiedź
   document.getElementById("narrator").addEventListener("click", () => {
+    if (genReady) { hush(); setGen(true); return; }
     sfx("krrr");
     if (phase !== "director") { nod(); say("Najpierw wybierz, co kręcimy. Na razie działa Postać.", 3500); return; }
     hush();
@@ -7586,39 +7591,69 @@
   const sheetGen = document.getElementById("sheetGen"), sheetGenNote = document.getElementById("sheetGenNote");
   const genImg = document.getElementById("genImg"), genWait = document.getElementById("genWait"), genWaitText = document.getElementById("genWaitText");
   const genNote = document.getElementById("genNote"), genOpen = document.getElementById("genOpen"), genAgain = document.getElementById("genAgain");
-  let genRun = 0;
+  let genRun = 0, genBusy = false, genReady = false;
+  const genOpenNow = () => document.body.classList.contains("gen-open");
   function syncGenBtn() {
     const a = account, u = a && a.user;
     sheetGen.hidden = !a || (!u && !a.login) || (u && !a.gen);
     if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
     else sheetGenNote.textContent = a.cost + " " + creditsWord(a.cost) + " za zdjęcie · masz " + a.credits;
   }
+  // Zamknięcie okna nie przerywa zdjęcia: robi się dalej w tle, a Manikun da znać, gdy będzie gotowe
   function setGen(open) {
-    if (!open) genRun++;
+    if (open) genSeen();
     document.body.classList.toggle("gen-open", open);
     document.getElementById("genSheet").setAttribute("aria-hidden", String(!open));
   }
   function genState(text, wait) {
     genWait.hidden = !wait;
     genWaitText.textContent = text;
-    genNote.textContent = wait ? "" : text;
+    genNote.textContent = wait ? "Możesz zamknąć to okno i dalej reżyserować. Dam znać, gdy zdjęcie będzie gotowe." : text;
   }
-  // Co mówi Manikun, gdy generator pracuje: kolejne kwestie co kilka sekund, część o tej scenie
+  // Znaczek na przycisku Manikuna: zdjęcie czeka do obejrzenia
+  const narratorBtn = document.getElementById("narrator");
+  function genSeen() { genReady = false; narratorBtn.classList.remove("has-photo"); }
+  function genNotify(ok, text) {
+    if (genOpenNow()) return;
+    genReady = true;
+    narratorBtn.classList.add("has-photo");
+    say(text, 6000);
+    if (ok) { sfx("klap"); nod("nod"); }
+  }
+  // Co mówi Manikun, gdy generator pracuje: komentarze do tej sceny przeplatane kwestiami z planu filmowego
   function genLines() {
-    const opt = (cat, id) => { try { const o = optionOf(cat, id); return o && o.name; } catch (e) { return null; } };
-    const place = opt("background", scene.background), style = opt("style", scene.style);
-    return [
+    const name = (cat, id) => { try { const o = optionOf(cat, id); return o && o.name; } catch (e) { return null; } };
+    const low = t => t ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+    const person = scene.subject === "person", own = [];
+    const pets = (scene.things || []).filter(isPet).map(it => THING[it.id].name);
+    const place = name("background", scene.background), style = name("style", scene.style), pose = person && name("pose", scene.pose);
+    if (pets.length) own.push(pets.join(" i ") + (pets.length > 1 ? " zajmują" : " zajmuje") + " miejsce na planie. Grzecznie!");
+    if (place && scene.background !== "studio") own.push("Scenografia: " + low(place) + ". Już ją rozstawiamy!");
+    else if (place) own.push("Studio gotowe, tło wyprasowane.");
+    if (/back/.test(scene.light)) own.push("Światło z tyłu obrysuje sylwetkę. Będzie klimat!");
+    if (scene.time === "golden") own.push("Złota godzina! Słońce świeci najładniej, jak umie.");
+    if (scene.time === "night") own.push("Nocne zdjęcia… zapalam lampy na planie.");
+    if (scene.camera === "D") own.push("Dron w górze, widać całą okolicę!");
+    else if (isSelfie(scene.camera)) own.push("Selfie! Telefon w dłoń i uśmiech.");
+    else if (scene.camera === "B") own.push("Kamera nisko: postać wyjdzie na bohatera.");
+    if (person && scene.traits && scene.traits.age === "child") own.push("Najmłodsza osoba na planie już w kostiumie!");
+    if (person && scene.wear && scene.wear.hat !== "none") own.push("Czapka na głowie, kostiumy gotowe.");
+    if (pose) own.push("Poza: " + low(pose) + ". Nie ruszać się!");
+    if (style && scene.style !== "real") own.push("Generator maluje w stylu: " + low(style) + ".");
+    const film = [
       "Wysyłam Maniscrypt na plan zdjęciowy…",
       "Ustawiam światło i kamerę…",
-      place ? "Przenoszę nas na miejsce: " + place.toLowerCase() + "." : "Szykuję scenografię…",
-      "Charakteryzacja! Ostatnie poprawki kostiumu…",
       "Cisza na planie! Kamera… akcja!",
       "Wiesz, że AI zaczyna od samego szumu i krok po kroku wyciąga z niego obraz?",
-      style ? "Generator maluje w stylu: " + style.toLowerCase() + "." : "Generator maluje każdy piksel…",
       "Pikseli są miliony, a każdy musi trafić na swoje miejsce.",
-      "Wywołuję zdjęcie… Jeszcze chwilka!",
-      "Dobre zdjęcie lubi poczekać. Prawie gotowe!"
+      "Wywołuję zdjęcie… Jeszcze chwilka!"
     ];
+    // Na zmianę: plan filmowy, ta scena, plan filmowy…; na koniec „wywołuję”
+    const out = [film[0]];
+    const mid = film.slice(1, -1);
+    for (let i = 0; i < Math.max(own.length, mid.length); i++) { if (own[i]) out.push(own[i]); if (mid[i]) out.push(mid[i]); }
+    out.push(film[film.length - 1], "Dobre zdjęcie lubi poczekać. Prawie gotowe!");
+    return out;
   }
   let genTalkTimer = 0;
   function genTalk(run, t0, eta) {
@@ -7656,6 +7691,7 @@
     genImg.classList.remove("on"); genImg.removeAttribute("src");
     genOpen.hidden = true; genAgain.hidden = true;
     genSketch(fmt);
+    genSeen(); genBusy = true;
     genState("Wysyłam Maniscrypt na plan zdjęciowy…", true);
     document.getElementById("genBar").style.width = "0";
     document.getElementById("genTime").textContent = "";
@@ -7669,7 +7705,7 @@
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
     if (run !== genRun) return;
     if (typeof d.credits === "number" && account && account.user) { account.credits = d.credits; showAccount(); syncGenBtn(); }
-    if (!d.id || d.error) { genState(d.error || "Nie udało się. Spróbuj jeszcze raz.", false); genAgain.hidden = d.error === "Brak kredytów."; return; }
+    if (!d.id || d.error) { genBusy = false; genState(d.error || "Nie udało się. Spróbuj jeszcze raz.", false); genAgain.hidden = d.error === "Brak kredytów."; genNotify(false, d.error || "Zdjęcie się nie udało. Spróbuj jeszcze raz."); return; }
     genTalk(run, t0, d.eta || 20);
     while (run === genRun) {
       await new Promise(res => setTimeout(res, 1500));
@@ -7679,24 +7715,32 @@
       if (d.status === "completed" && d.url) {
         genImg.onload = () => {
           if (run !== genRun) return;
-          clearInterval(genTalkTimer);
+          clearInterval(genTalkTimer); genBusy = false;
           frame.classList.add("done"); genImg.classList.add("on");
           genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s! Zdjęcie zostaje pod linkiem tylko przez jakiś czas, więc zapisz je u siebie.", false);
-          sfx("klap"); nod("nod");
+          if (genOpenNow()) { sfx("klap"); nod("nod"); }
+          else genNotify(true, "Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.");
         };
         genImg.src = d.url; genOpen.href = d.url; genOpen.hidden = false; genAgain.hidden = false;
         return;
       }
-      if (d.error || d.status === "failed" || d.status === "nsfw") { clearInterval(genTalkTimer); genState(d.error || "Nie udało się. Kredyt wrócił na konto.", false); genAgain.hidden = false; return; }
-      if (Date.now() - t0 > 240000) { genState("Generator nie zdążył. Jeśli zdjęcie się nie zrobi, kredyt wróci na konto.", false); return; }
+      if (d.error || d.status === "failed" || d.status === "nsfw") {
+        clearInterval(genTalkTimer); genBusy = false;
+        genState(d.error || "Nie udało się. Kredyt wrócił na konto.", false); genAgain.hidden = false;
+        genNotify(false, d.error || "Zdjęcie się nie udało. Kredyt wrócił na konto.");
+        return;
+      }
+      if (Date.now() - t0 > 240000) { genBusy = false; genState("Generator nie zdążył. Jeśli zdjęcie się nie zrobi, kredyt wróci na konto.", false); return; }
     }
   }
   sheetGen.addEventListener("click", () => {
     if (!account || !account.user) { location.href = "/api/auth/google"; return; }
+    if (genBusy || genReady) { setGen(true); return; }
     if (account.credits < account.cost) { say("Brakuje kredytów. Wkrótce dokupisz je w menu.", 4500); return; }
     genStart();
   });
   genAgain.addEventListener("click", () => {
+    if (genBusy) return;
     if (account && account.user && account.credits < account.cost) { genState("Brak kredytów.", false); genAgain.hidden = true; return; }
     genStart();
   });
