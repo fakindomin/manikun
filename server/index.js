@@ -152,10 +152,8 @@ const TEST_MODELS = [
   { id: "ideogram/v4.0", name: "Ideogram 4.0", price: 0.03 },
   { id: "recraft/v4.1/text-to-image", name: "Recraft 4.1", price: 0.035 },
   { id: "alibaba/qwen-image-3/text-to-image", name: "Qwen Image 3", price: 0.04 },
-  { id: "xai/grok-imagine-image-2.0", name: "Grok Imagine 2.0", price: 0.04 },
-  // Cloudflare Workers AI (binding AI): obraz wraca od razu w odpowiedzi, cena z cennika Workers AI dla ok. 1 MP
-  { id: "@cf/black-forest-labs/flux-2-klein-4b", name: "FLUX.2 klein 4B (Cloudflare)", price: 0.0012 },
-  { id: "@cf/black-forest-labs/flux-2-klein-9b", name: "FLUX.2 klein 9B (Cloudflare)", price: 0.015 }
+  { id: "xai/grok-imagine-image-2.0", name: "Grok Imagine 2.0", price: 0.04 }
+  // FLUX.2 klein z Cloudflare Workers AI (kod niżej) zdjęty z listy: na darmowym planie zlecenie wisiało i nie oddawało obrazu
 ];
 const isWorkersAI = model => model.startsWith("@cf/");
 
