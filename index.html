@@ -7778,6 +7778,8 @@
       return;
     }
     genJob.id = d.id;
+    // Generator, który oddaje zdjęcie od razu (Cloudflare): bez czekania na kolejne pytania
+    if (d.status === "completed" && d.url) { genTalk(run, genJob.t0, 2); genDone(d, genJob.t0, run); return; }
     // Na wypadek odświeżenia strony: które zlecenie dotyczy której sceny
     try { sessionStorage.setItem("manikun-gen", JSON.stringify({ id: d.id, prompt, aspect: fmt.short })); } catch (e) {}
     genFollow(d.id, genJob.t0, d.eta || 20, run);

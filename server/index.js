@@ -152,15 +152,56 @@ const TEST_MODELS = [
   { id: "ideogram/v4.0", name: "Ideogram 4.0", price: 0.03 },
   { id: "recraft/v4.1/text-to-image", name: "Recraft 4.1", price: 0.035 },
   { id: "alibaba/qwen-image-3/text-to-image", name: "Qwen Image 3", price: 0.04 },
-  { id: "xai/grok-imagine-image-2.0", name: "Grok Imagine 2.0", price: 0.04 }
+  { id: "xai/grok-imagine-image-2.0", name: "Grok Imagine 2.0", price: 0.04 },
+  // Cloudflare Workers AI (binding AI): obraz wraca od razu w odpowiedzi, cena z cennika Workers AI dla ok. 1 MP
+  { id: "@cf/black-forest-labs/flux-2-klein-4b", name: "FLUX.2 klein 4B (Cloudflare)", price: 0.0012 },
+  { id: "@cf/black-forest-labs/flux-2-klein-9b", name: "FLUX.2 klein 9B (Cloudflare)", price: 0.015 }
 ];
+const isWorkersAI = model => model.startsWith("@cf/");
+
+// Wymiary ok. 1 MP w proporcjach kadru, wielokrotność 16
+function dims(aspect) {
+  const [a, b] = String(aspect).split(":").map(Number);
+  const r = a > 0 && b > 0 ? a / b : 1, area = 1024 * 1024;
+  const w = Math.round(Math.sqrt(area * r) / 16) * 16, h = Math.round(Math.sqrt(area / r) / 16) * 16;
+  return [w, h];
+}
+
+// Zdjęcie z Workers AI: od razu w odpowiedzi; zapis do KV i koniec zlecenia
+async function generateWorkersAI(env, g, model, prompt, aspect) {
+  const t0 = Date.now();
+  let bytes = null, why = "";
+  try {
+    const [w, h] = dims(aspect);
+    const form = new FormData();
+    form.append("prompt", prompt);
+    form.append("width", String(w));
+    form.append("height", String(h));
+    const fr = new Response(form);
+    const out = await env.AI.run(model, { multipart: { body: fr.body, contentType: fr.headers.get("content-type") } });
+    if (out && typeof out.image === "string") bytes = Uint8Array.from(atob(out.image), c => c.charCodeAt(0));
+    else if (out instanceof ReadableStream) bytes = new Uint8Array(await new Response(out).arrayBuffer());
+    else why = "brak obrazu w odpowiedzi: " + JSON.stringify(out).slice(0, 200);
+  } catch (e) { why = String(e && e.message || e).slice(0, 400); }
+  const ms = Date.now() - t0;
+  if (!bytes || !env.PHOTOS) {
+    await env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind("workers-ai " + ms + " ms: " + (why || "brak magazynu zdjęć"), g.id).run();
+    await refund(env, g, "failed", "Generator nie zrobił zdjęcia. Kredyt wrócił na konto.");
+    return;
+  }
+  const type = bytes[0] === 0x89 ? "image/png" : bytes[0] === 0x52 ? "image/webp" : "image/jpeg";
+  await env.PHOTOS.put("gen/" + g.id, bytes, { metadata: { type } });
+  await env.DB.prepare("UPDATE generations SET status = 'completed', stored = 1, detail = ?, updated_at = ? WHERE id = ?")
+    .bind("workers-ai " + ms + " ms", now(), g.id).run();
+  Object.assign(g, { status: "completed", stored: 1 });
+}
 const isOwner = user => user && user.id === 1;
 const GEN_COST = 1;
 const MAX_PROMPT = 6000;
 // Formaty z aplikacji → proporcje, które przyjmuje model (Recraft ma 4:5, nie ma 21:9; Soul nie ma 4:5)
 const ASPECTS = { "4:5": "4:5", "2:3": "2:3", "1:1": "1:1", "3:2": "3:2", "9:16": "9:16", "16:9": "16:9", "21:9": "16:9", "3:4": "3:4", "4:3": "4:3" };
 const ASPECTS_SOUL = { "4:5": "3:4", "21:9": "21:9" };
-const aspectFor = (model, a) => (/soul/.test(model) && ASPECTS_SOUL[a]) || ASPECTS[a] || "1:1";
+const aspectFor = (model, a) => model.startsWith("@cf/") && /^\d{1,2}:\d{1,2}$/.test(a) ? a : (/soul/.test(model) && ASPECTS_SOUL[a]) || ASPECTS[a] || "1:1";
 
 const hfModel = env => env.HF_MODEL || HF_MODEL;
 const genCost = env => Number(env.GEN_COST) || GEN_COST;
@@ -231,6 +272,11 @@ async function generate(request, env, user) {
   ).bind(id, user.id, chosen, aspect, cost, prompt, t, t).run();
 
   // Model z HF_MODEL, a gdy API go nie zna, kolejne z listy; przy 422 (nieznany parametr) jeszcze raz z samym promptem
+  if (isWorkersAI(chosen)) {
+    if (!env.AI) { await refund(env, g, "failed", "Generator nie jest podłączony. Kredyt wrócił na konto."); return json(genView(g, await balance(env, user.id)), 502); }
+    await generateWorkersAI(env, g, chosen, prompt, aspect);
+    return json(genView(g, await balance(env, user.id)), g.status === "completed" ? 200 : 502);
+  }
   let res, data = null, raw = "", model = chosen;
   const log = [];
   const models = [model, ...HF_FALLBACK.filter(m => m !== model)];
