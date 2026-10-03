@@ -145,7 +145,11 @@ const ASPECTS = { "4:5": "3:4", "2:3": "2:3", "1:1": "1:1", "3:2": "3:2", "9:16"
 
 const hfModel = env => env.HF_MODEL || HF_MODEL;
 const genCost = env => Number(env.GEN_COST) || GEN_COST;
-const hfHeaders = env => ({ Authorization: "Key " + env.HF_KEY, "Content-Type": "application/json", Accept: "application/json" });
+// Klucz wklejony w panelu bywa z odstępami albo cudzysłowami; zostawiamy samo KEY_ID:KEY_SECRET
+const hfKey = env => String(env.HF_KEY || "").trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "");
+const hfHeaders = env => ({ Authorization: "Key " + hfKey(env), "Content-Type": "application/json", Accept: "application/json" });
+// Kształt klucza do diagnozy (bez treści): liczba części i ich długości
+const hfKeyShape = env => "klucz: " + hfKey(env).split(":").map(p => p.length).join("+") + " znaków";
 
 function genView(g, credits) {
   return { id: g.id, status: g.status, url: g.image_url || null, error: g.error || null, ...(credits === undefined ? {} : { credits }) };
@@ -201,7 +205,7 @@ async function generate(request, env, user) {
     raw = "fetch: " + e;
   }
   if (!res || !res.ok || !data || !data.request_id) {
-    const detail = (res ? res.status + " " : "") + raw.slice(0, 800);
+    const detail = (res ? res.status + " " : "") + raw.slice(0, 800) + (res && res.status === 401 ? " | " + hfKeyShape(env) : "");
     console.log("Higgsfield start: " + detail);
     await env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind(detail, g.id).run();
     await refund(env, g, "failed", "Generator nie przyjął zlecenia. Kredyt wrócił na konto.");
