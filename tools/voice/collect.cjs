@@ -80,6 +80,15 @@ function voiceId(t) {
     if (!seen.has(id)) seen.set(id, { id, text: s, from: new Set() });
     seen.get(id).from.add(from.replace(/, linia \d+$/, ""));
   }));
+  // Całe wypowiedzi (dymki) do nagrania jednym plikiem: lepsza intonacja i rozpoznanie polskiego
+  const utt = new Map();
+  texts.forEach(([t, from]) => {
+    const n = norm(t), ss = sentences(n);
+    if (ss.length < 2 || /undefined|null/.test(n) || ss.some(x => x === "Scena." || !/[.!?…]$/.test(x))) return;
+    const id = voiceId(ss.join(" "));
+    if (!utt.has(id)) utt.set(id, { id, text: ss.join(" "), from: from.replace(/, linia \d+$/, "") });
+  });
+  fs.writeFileSync(path.join(ROOT, "docs/voice/utterances.json"), JSON.stringify([...utt.values()], null, 1) + "\n");
   const list = [...seen.values()].sort((a, b) => a.text.localeCompare(b.text, "pl")).map(x => ({ id: x.id, text: x.text, from: [...x.from].slice(0, 3).join(", ") }));
   const csv = "id;zdanie;skąd\n" + list.map(x => [x.id, x.text, x.from].map(v => `"${v.replace(/"/g, '""')}"`).join(";")).join("\n") + "\n";
   fs.writeFileSync(path.join(ROOT, "docs/voice/lines.csv"), csv);

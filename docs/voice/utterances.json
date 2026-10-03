@@ -1,0 +1,457 @@
+[
+ {
+  "id": "v917fb861",
+  "text": "Robi się ciasno na boki. Stuknij mnie, a poszerzę kadr (dalej po bokach zmieszczą się kolejne rzeczy).",
+  "from": "kod"
+ },
+ {
+  "id": "vc2ebf3c1",
+  "text": "Szerszy kadr. Więcej miejsca po bokach.",
+  "from": "kod"
+ },
+ {
+  "id": "v2f5c8d04",
+  "text": "Rzeczy stoją nad sobą. Stuknij mnie, a dam wyższy kadr (zmieści się też pierwszy plan).",
+  "from": "kod"
+ },
+ {
+  "id": "v1f5ac4df",
+  "text": "Wyższy kadr. Jest miejsce na pierwszym planie.",
+  "from": "kod"
+ },
+ {
+  "id": "v448f2e2c",
+  "text": "Nie wszystko mieści się w kadrze. Stuknij mnie, a poszerzę kadr.",
+  "from": "kod"
+ },
+ {
+  "id": "v784d90fe",
+  "text": "Szerszy kadr. Teraz się mieści.",
+  "from": "kod"
+ },
+ {
+  "id": "v688d4518",
+  "text": "Coś jeszcze? Wybierz część albo stuknij Kolory gotowe.",
+  "from": "kod"
+ },
+ {
+  "id": "v8fe3cf87",
+  "text": "O co się opiera? Lada, samochód, regał…",
+  "from": "kod"
+ },
+ {
+  "id": "v2c7f4eb0",
+  "text": "Na czym siedzi? Albo co ma obok?",
+  "from": "kod"
+ },
+ {
+  "id": "vbe016087",
+  "text": "Coś obok? Krzesło, stół, rower…",
+  "from": "kod"
+ },
+ {
+  "id": "ve3e35e5b",
+  "text": "Oparty potrzebuje czegoś za plecami. Dodajemy?",
+  "from": "kod"
+ },
+ {
+  "id": "veb2bc2e8",
+  "text": "Dodajemy coś do sceny? Meble, siedziska, rower…",
+  "from": "kod"
+ },
+ {
+  "id": "v852d701d",
+  "text": "Coś jeszcze? Wybierz albo stuknij Rzeczy gotowe.",
+  "from": "kod"
+ },
+ {
+  "id": "vb28d4bc5",
+  "text": "Co dodajemy? Może coś do siedzenia?",
+  "from": "kod"
+ },
+ {
+  "id": "v55926e66",
+  "text": "A może zwierzak? Pies, kot, królik albo smok.",
+  "from": "kod"
+ },
+ {
+  "id": "vbb9b76cc",
+  "text": "Coś jeszcze w miejscu? Możesz wybrać kilka.",
+  "from": "kod"
+ },
+ {
+  "id": "v0367e688",
+  "text": "Dodać coś do miejsca? Rzeka, mgła, deszcz…",
+  "from": "kod"
+ },
+ {
+  "id": "vc0a8d8b7",
+  "text": "Format? 9:16 to rolka na telefon.",
+  "from": "kod"
+ },
+ {
+  "id": "v6375dd8a",
+  "text": "Format? 4:5 pasuje do posta.",
+  "from": "kod"
+ },
+ {
+  "id": "vf88e1e54",
+  "text": "Czerwień? Odważnie.",
+  "from": "kod"
+ },
+ {
+  "id": "v19df271b",
+  "text": "Róż? Lubię to.",
+  "from": "kod"
+ },
+ {
+  "id": "v1ff8c22c",
+  "text": "Musztarda. Klasa.",
+  "from": "kod"
+ },
+ {
+  "id": "v548bc280",
+  "text": "Cyberpunk w naturze? Odważnie.",
+  "from": "kod"
+ },
+ {
+  "id": "v52cd1280",
+  "text": "Elegancko na plaży? Ciekawie.",
+  "from": "kod"
+ },
+ {
+  "id": "v46f46701",
+  "text": "Słoneczne okulary w nocy? Jak gwiazda.",
+  "from": "kod"
+ },
+ {
+  "id": "vaa10c3a7",
+  "text": "Dron! Będzie widać całą okolicę.",
+  "from": "kod"
+ },
+ {
+  "id": "v1e85dda7",
+  "text": "Swoboda: wszystkie opcje pod ręką. Wybory z Kreatora zostają.",
+  "from": "kod"
+ },
+ {
+  "id": "vb04bd1f0",
+  "text": "Najpierw wybierz, co kręcimy. Na razie działa Postać.",
+  "from": "kod"
+ },
+ {
+  "id": "vfbaee39f",
+  "text": "Nie znam tego słowa po angielsku. Jeśli możesz, wpisz je po angielsku, generator zrozumie pewniej.",
+  "from": "kod"
+ },
+ {
+  "id": "ve7657f0e",
+  "text": "Obiekty? Zgubiłem gdzieś rekwizyty… Szukam za kanapą.",
+  "from": "kod"
+ },
+ {
+  "id": "vaa9d2773",
+  "text": "Kot miał tu być o dziewiątej. Szukamy go od rana.",
+  "from": "kod"
+ },
+ {
+  "id": "v6a492f1f",
+  "text": "Dowolne? Ambitnie. Najpierw muszę się nauczyć rysować.",
+  "from": "kod"
+ },
+ {
+  "id": "v1f88ab14",
+  "text": "Ta opcja będzie dostępna wkrótce. Na razie zróbmy świetną postać!",
+  "from": "kod"
+ },
+ {
+  "id": "veb73591e",
+  "text": "Ekspert: wszystkie możliwości. Wybory zostają.",
+  "from": "kod"
+ },
+ {
+  "id": "v9d056c79",
+  "text": "Podstawowy: najważniejsze opcje, resztę ustawiam sam. Wybory zostają.",
+  "from": "kod"
+ },
+ {
+  "id": "vc7b1cc54",
+  "text": "Na jakim poziomie? Podstawowy to najważniejsze opcje, Ekspert daje wszystkie możliwości. Zmienisz to w menu.",
+  "from": "kod"
+ },
+ {
+  "id": "vd73e6f13",
+  "text": "Ekspert, szacunek. Jak pracujemy? Kreator prowadzi krok po kroku, w Swobodzie wszystko jest pod ręką.",
+  "from": "kod"
+ },
+ {
+  "id": "vd6b4d569",
+  "text": "Jak pracujemy? Kreator prowadzi krok po kroku, w Swobodzie wszystko jest pod ręką.",
+  "from": "kod"
+ },
+ {
+  "id": "v5eb917a9",
+  "text": "Zaczynamy! Wybieraj na górze.",
+  "from": "kod"
+ },
+ {
+  "id": "v5a232791",
+  "text": "Cześć, jestem Manikun. Reżyseruję sceny filmowe.",
+  "from": "kod"
+ },
+ {
+  "id": "v57f2dcdd",
+  "text": "W tej scenie jeansy za bardzo nie pasują. Założysz mu dres? Stuknij Dół.",
+  "from": "kod"
+ },
+ {
+  "id": "v5acf124a",
+  "text": "Świetnie. Stwórzmy Maniscrypt dla tej sceny: stuknij zielony przycisk.",
+  "from": "kod"
+ },
+ {
+  "id": "v5ede5777",
+  "text": "Hmm… cyberpunk w lesie? Chyba nie mój klimat.",
+  "from": "kod"
+ },
+ {
+  "id": "vcc295025",
+  "text": "Przełączmy styl. Wróć strzałką do głównych grup.",
+  "from": "kod"
+ },
+ {
+  "id": "v2468518d",
+  "text": "I to rozumiem! Fantasy jak trzeba!",
+  "from": "kod"
+ },
+ {
+  "id": "v3bbbad97",
+  "text": "A Ty? Masz jakiś pomysł na scenę?",
+  "from": "kod"
+ },
+ {
+  "id": "v7a3c08b2",
+  "text": "Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?",
+  "from": "kod"
+ },
+ {
+  "id": "v8ca60d4b",
+  "text": "Jaki kolor? Góra.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v6654d988",
+  "text": "Jaki kolor? Okrycie.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v3484bd25",
+  "text": "Jaki kolor? Dół.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v12110282",
+  "text": "Jaki kolor? Nakrycie głowy.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v1bc4d24c",
+  "text": "Jaki kolor? Dodatki.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v1e8340f8",
+  "text": "Jaki kolor? Buty.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v69ed6437",
+  "text": "Co leży na stole? Szukaj znajdzie też banana.",
+  "from": "Kreator: items"
+ },
+ {
+  "id": "v163aebf6",
+  "text": "Co leży na stole? Możesz wybrać kilka.",
+  "from": "Kreator: stuffItems"
+ },
+ {
+  "id": "vc9c9fb53",
+  "text": "Co leży na stoliku? Szukaj znajdzie też banana.",
+  "from": "Kreator: items"
+ },
+ {
+  "id": "v6ce0e75a",
+  "text": "Co leży na stoliku? Możesz wybrać kilka.",
+  "from": "Kreator: stuffItems"
+ },
+ {
+  "id": "vc8f44283",
+  "text": "Co leży na ladzie? Szukaj znajdzie też banana.",
+  "from": "Kreator: items"
+ },
+ {
+  "id": "v2e0dff8a",
+  "text": "Co leży na ladzie? Możesz wybrać kilka.",
+  "from": "Kreator: stuffItems"
+ },
+ {
+  "id": "vc3ad175c",
+  "text": "Co leży na biurku? Szukaj znajdzie też banana.",
+  "from": "Kreator: items"
+ },
+ {
+  "id": "v385f4073",
+  "text": "Co leży na biurku? Możesz wybrać kilka.",
+  "from": "Kreator: stuffItems"
+ },
+ {
+  "id": "v281ff7d3",
+  "text": "Wskaż w kadrze, gdzie ma stać: krzesło. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "vb4ff3bed",
+  "text": "Wskaż w kadrze, gdzie ma stać: fotel. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v1cd01c95",
+  "text": "Wskaż w kadrze, gdzie ma stać: kanapa. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "vf8183b0a",
+  "text": "Wskaż w kadrze, gdzie ma stać: hoker barowy. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v2032c55b",
+  "text": "Wskaż w kadrze, gdzie ma stać: ławka. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "vfe9729ad",
+  "text": "Wskaż w kadrze, gdzie ma stać: pufa. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v6b550ad4",
+  "text": "Wskaż w kadrze, gdzie ma stać: kamień. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v31872e70",
+  "text": "Wskaż w kadrze, gdzie ma stać: pień drzewa. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v4613c00b",
+  "text": "Wskaż w kadrze, gdzie ma stać: schody. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v3b0a9984",
+  "text": "Wskaż w kadrze, gdzie ma stać: skrzynia. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "va94e2d15",
+  "text": "Wskaż w kadrze, gdzie ma stać: stół. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v3d9ac22f",
+  "text": "Wskaż w kadrze, gdzie ma stać: stolik kawowy. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "vac186aaf",
+  "text": "Wskaż w kadrze, gdzie ma stać: lada barowa. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v6a845f2b",
+  "text": "Wskaż w kadrze, gdzie ma stać: biurko. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v3ee7eec5",
+  "text": "Wskaż w kadrze, gdzie ma stać: lampa stojąca. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v8bb93124",
+  "text": "Wskaż w kadrze, gdzie ma stać: regał z książkami. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v8a1b8e6a",
+  "text": "Wskaż w kadrze, gdzie ma stać: roślina w donicy. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v27ce0773",
+  "text": "Wskaż w kadrze, gdzie ma stać: parasol plażowy. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v0f62c586",
+  "text": "Wskaż w kadrze, gdzie ma stać: rower. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v5ff125b3",
+  "text": "Wskaż w kadrze, gdzie ma stać: samochód. Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v02c73503",
+  "text": "Deszcz i śnieg naraz się nie da. Zostawiam: deszcz.",
+  "from": "kolizja efektów"
+ },
+ {
+  "id": "v46eddae5",
+  "text": "Śnieg i deszcz naraz się nie da. Zostawiam: śnieg.",
+  "from": "kolizja efektów"
+ },
+ {
+  "id": "vdc71846c",
+  "text": "Robi się tłoczno: 7 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v63384917",
+  "text": "Robi się tłoczno: 8 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v64bd5632",
+  "text": "Robi się tłoczno: 9 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v4f117e2e",
+  "text": "Robi się tłoczno: 10 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v9dd0ee53",
+  "text": "Robi się tłoczno: 11 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v7745061c",
+  "text": "Robi się tłoczno: 12 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "va5bc2ac9",
+  "text": "Robi się tłoczno: 13 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v6075d6ba",
+  "text": "Robi się tłoczno: 14 rzeczy. Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ }
+]
