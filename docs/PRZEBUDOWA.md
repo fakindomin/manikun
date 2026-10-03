@@ -498,3 +498,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
   - Przy odrzuconym zleceniu odpowiedź Higgsfield trafia do kolumny `detail` (diagnoza; przy 401 także kształt klucza, bez treści).
   - Błąd, odrzucenie treści albo brak wyniku po 10 minutach: kredyt wraca raz (wpis `refund`).
 - Tabela `generations` (`migrations/0002_generowanie.sql`): zlecenia z promptem, statusem i adresem zdjęcia. Zdjęcie jest na razie pod adresem Higgsfield (nie kopiujemy go do siebie).
+- Oczekiwanie (Soul 2 robi zdjęcie ok. 17–20 s): w kadrze szkic tej sceny „wywołuje się” (pulsuje), Manikun co ok. 3,5 s mówi kolejną kwestię w dymku (część o tej scenie: miejsce, styl), pasek postępu i licznik „12 s / ok. 20 s”. Serwer podaje `eta`: średni czas ostatnich 20 udanych zdjęć tym modelem. Po przyjściu zdjęcie przenika szkic, a napis mówi, ile trwało. Aplikacja pyta o stan co 1,5 s.

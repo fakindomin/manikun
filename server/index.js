@@ -154,8 +154,17 @@ const hfHeaders = env => ({ Authorization: "Key " + hfKey(env), "Content-Type": 
 // Kształt klucza do diagnozy (bez treści): liczba części i ich długości
 const hfKeyShape = env => "klucz: " + String(env.HF_KEY || "").trim().split(":").map(p => p.length).join("+") + " znaków";
 
-function genView(g, credits) {
-  return { id: g.id, status: g.status, url: g.image_url || null, error: g.error || null, ...(credits === undefined ? {} : { credits }) };
+function genView(g, credits, eta) {
+  return { id: g.id, status: g.status, url: g.image_url || null, error: g.error || null,
+    ...(credits === undefined ? {} : { credits }), ...(eta ? { eta } : {}) };
+}
+
+// Ile zwykle trwa zdjęcie tym modelem (średnia z ostatnich 20 udanych, w sekundach), do paska postępu w aplikacji
+async function genEta(env, model) {
+  const row = await env.DB.prepare(
+    "SELECT AVG(d) AS a FROM (SELECT updated_at - created_at AS d FROM generations WHERE model = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 20)"
+  ).bind(model).first();
+  return Math.round(row && row.a) || 20;
 }
 
 // Zwrot kredytów za nieudane zlecenie: raz (unikalne reason + ref)
@@ -226,7 +235,7 @@ async function generate(request, env, user) {
   g.status = data.status === "in_progress" ? "in_progress" : "queued";
   await env.DB.prepare("UPDATE generations SET request_id = ?, status = ?, updated_at = ? WHERE id = ?")
     .bind(data.request_id, g.status, now(), id).run();
-  return json(genView(g, await balance(env, user.id)));
+  return json(genView(g, await balance(env, user.id), await genEta(env, model)));
 }
 
 async function generationStatus(env, user, id) {
