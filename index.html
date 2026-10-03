@@ -272,7 +272,10 @@
   .gen-frame.done .gen-trial { opacity: 0 !important; transition: opacity 0.6s ease 1.6s; }
   .gen-wait { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; gap: 8px; }
   .gen-wait[hidden] { display: none; }
-  .gen-talk { margin: 0; justify-self: start; max-width: 92%; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 14px 14px 14px 4px; padding: 8px 12px; font-size: 13.5px; line-height: 1.35; box-shadow: 0 6px 18px rgba(0,0,0,0.25); animation: genIn 0.35s ease; }
+  .gen-say { display: flex; align-items: flex-end; gap: 10px; min-height: 44px; }
+  .gen-head-slot { flex: none; width: 44px; height: 44px; }
+  .gen-head-slot .narrator.has-photo::after { display: none; }
+  .gen-talk { margin: 0; flex: 1; background: var(--accent); color: var(--on-accent); border-radius: 16px 16px 16px 4px; padding: 9px 13px; font-size: 14px; font-weight: 600; line-height: 1.35; box-shadow: 0 6px 18px var(--accent-soft); animation: genIn 0.35s ease; }
   @keyframes genIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .gen-bar { height: 5px; border-radius: 99px; background: rgba(0,0,0,0.35); overflow: hidden; }
   .gen-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width 0.5s linear; }
@@ -799,11 +802,15 @@
       <div class="gen-trial" id="genTrial" aria-hidden="true"></div>
       <svg id="genDraft" class="ink gen-draft" aria-hidden="true"></svg>
       <img id="genImg" alt="Zdjęcie wygenerowane z Maniscryptu">
-      <div class="gen-wait" id="genWait" role="status">
-        <p class="gen-talk" id="genWaitText">Kręcimy…</p>
+      <div class="gen-wait" id="genWait">
         <div class="gen-bar" aria-hidden="true"><i id="genBar"></i></div>
         <span class="gen-time" id="genTime"></span>
       </div>
+    </div>
+    <!-- Manikun w oknie zdjęcia: ten sam przycisk z głową co na ekranie sceny (przenoszony tu na czas otwarcia okna) -->
+    <div class="gen-say">
+      <div class="gen-head-slot" id="genHeadSlot"></div>
+      <p class="gen-talk" id="genWaitText" role="status" aria-live="polite">Kręcimy…</p>
     </div>
     <p class="sheet-lead" id="genNote"></p>
     <div class="preview-actions">
@@ -6475,6 +6482,8 @@
   }
   // Stuknięcie w głowę: w reżyserze wyszukiwarka, na starcie podpowiedź
   document.getElementById("narrator").addEventListener("click", () => {
+    // W oknie zdjęcia stuknięcie w głowę: Manikun kiwa i mówi następną kwestię
+    if (document.body.classList.contains("gen-open")) { sfx("krrr"); if (genBusy && genTalkNext) genTalkNext(); else nod("nod"); return; }
     if (genReady) { hush(); setGen(true); return; }
     if (shotsUnseen > 0) { hush(); openShots(); return; }
     sfx("krrr");
@@ -7665,14 +7674,35 @@
   }
   function setGen(open) {
     if (open && genReady) genSeen();
+    headToSheet(open);
     document.body.classList.toggle("gen-open", open);
     document.getElementById("genSheet").setAttribute("aria-hidden", String(!open));
   }
+  // Dymek Manikuna mówi zawsze (też wynik i błędy); pod spodem w trakcie tylko podpowiedź o zamykaniu okna
   function genState(text, wait) {
     genWait.hidden = !wait;
     genWaitText.textContent = text;
-    genNote.textContent = wait ? "Możesz zamknąć to okno i dalej reżyserować. Dam znać, gdy zdjęcie będzie gotowe." : text;
+    genNote.textContent = wait ? "Możesz zamknąć to okno i dalej reżyserować. Dam znać, gdy zdjęcie będzie gotowe." : "";
     genCancel.hidden = !wait;
+  }
+  // Przycisk z głową Manikuna (3D, head3d.js) przenoszony do okna zdjęcia na czas jego otwarcia: ta sama głowa, ten sam przycisk.
+  // Na jego miejscu na ekranie zostaje pusty zastępnik, żeby pasek się nie przesunął.
+  const headHome = document.createElement("span");
+  headHome.className = "square"; headHome.style.visibility = "hidden"; headHome.setAttribute("aria-hidden", "true");
+  function headToSheet(on) {
+    const btn = document.getElementById("narrator"), slot = document.getElementById("genHeadSlot");
+    if (on && btn.parentNode !== slot) { btn.replaceWith(headHome); slot.appendChild(btn); }
+    else if (!on && headHome.parentNode) headHome.replaceWith(btn);
+    else return;
+    if (window.manikunHead && window.manikunHead.redraw) requestAnimationFrame(() => window.manikunHead.redraw());
+  }
+  // Nowa kwestia: głowa kiwa się i chwilę „mówi”
+  function headSays() {
+    const btn = document.getElementById("narrator");
+    btn.classList.add("talking");
+    clearTimeout(headSays.t);
+    headSays.t = setTimeout(() => btn.classList.remove("talking"), 1300);
+    if (window.manikunHead && Math.random() < 0.6) window.manikunHead[Math.random() < 0.5 ? "nod" : "tilt"]();
   }
   // Znaczek na przycisku Manikuna: zdjęcie czeka do obejrzenia (z tego zlecenia albo w Moich ujęciach)
   const narratorBtn = document.getElementById("narrator");
@@ -7802,7 +7832,7 @@
     try { localStorage.setItem("manikun-gen-said", JSON.stringify(hist)); } catch (e) {}
     return pick.map(i => GEN_SAY[i]);
   }
-  let genTalkTimer = 0;
+  let genTalkTimer = 0, genTalkNext = null;
   function genTalk(run, t0, eta) {
     const lines = genLines();
     let i = 0;
@@ -7823,9 +7853,11 @@
       if (!closed && sec > eta * 0.85) { closed = true; genWaitText.textContent = GEN_CLOSE[Math.floor(Math.random() * GEN_CLOSE.length)]; }
       else { if (i >= lines.length) lines.push(...genPick(6)); genWaitText.textContent = lines[i++]; }
       genWaitText.style.animation = "none"; void genWaitText.offsetWidth; genWaitText.style.animation = "";
+      if (genOpenNow()) headSays();
     };
     say1();
     let last = Date.now();
+    genTalkNext = () => { last = Date.now(); say1(); };
     genTalkTimer = setInterval(() => { tick(); if (Date.now() - last > 3600) { last = Date.now(); say1(); } }, 250);
   }
   // Szkic tej sceny w kadrze na czas oczekiwania (jak w Próbnym kadrze, bez AI)

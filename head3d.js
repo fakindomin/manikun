@@ -67,7 +67,8 @@ function start() {
     apply();
     renderer.render(scene, camera);
     btn.classList.add("is3d");
-    window.manikunHead = { nod, tilt, look };
+    // redraw: po przeniesieniu przycisku (okno zdjęcia) płótno rysuje się od nowa w nowym miejscu
+    window.manikunHead = { nod, tilt, look, redraw: () => { size(); renderer.render(scene, camera); } };
     if (!reduce.matches) idle();
   }, undefined, () => {});
 
