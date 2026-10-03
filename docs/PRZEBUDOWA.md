@@ -441,3 +441,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Zwierzak → jego poza i umaszczenie; rzecz → Rzeczy (u eksperta drugie stuknięcie w zaznaczoną rzecz: przestawianie); tło → Miejsce; krótkie stuknięcie w kamerę → Kamera, w światło → Światło (przytrzymanie dalej przeciąga).
 - Część postaci rozpoznawana po stawach z `computeFigure` (`fig.joints`: głowa, szyja, klatka, biodra, ręce, nogi ze stopami), z uwzględnieniem odbicia przy kamerze z lewej.
 - Zaznaczenie widać, dopóki menu jest w grupie, którą otworzyło stuknięcie. Działa w Swobodzie; w Kreatorze i tutorialu stukanie w szkic nic nie robi.
+
+## Punkty na szkicu ze zbliżeniem (zastępują stukanie w dowolne miejsce)
+
+- Delikatne punkty (mała biała kropka z cienkim, wolno pulsującym pierścieniem, zawsze tej samej wielkości na ekranie): głowa, tułów, ręka (bliższa), noga (kolano), każda rzecz i zwierzak oraz jeden punkt tła w wolnym miejscu kadru (najdalej od postaci, rzeczy, kamery i światła). Rysowane w `sketchOverlay` na wierzchu podglądu; widoczne w Swobodzie, ukryte w trakcie przeciągania, przejść i wskazywania miejsca rzeczy.
+- Stuknięcie w punkt postaci otwiera kategorię i płynnie przybliża podgląd (viewBox, 460 ms) na tę część: głowa → Głowa, tułów → Ubiór/Góra (Okrycie, Sukienka), ręka → Ręce (albo Góra), noga → Ubiór/Dół. Punkt aktywnej części świeci kolorem akcentu. Zbliżenie trwa, dopóki menu jest w tej kategorii; stuknięcie obok punktów, w punkt tła albo zmiana kategorii w menu oddala podgląd. Przy zbliżeniu narożniki i napis stylu są ukryte.
+- Rzecz → Rzeczy (u eksperta drugie stuknięcie w jej punkt: przestawianie), zwierzak → jego poza i umaszczenie, tło → Miejsce. Krótkie stuknięcie w kamerę lub światło: ich kategorie; przytrzymanie dalej przeciąga.
+- Usunięte: stukanie w całą sylwetkę, dwustopniowe zaznaczanie Manikuna i przerywana ramka.

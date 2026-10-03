@@ -575,8 +575,10 @@
   .ink .thin { stroke-width: 1; opacity: 0.35; }
   .ink .dash { stroke-dasharray: 4 4; }
   .ink .grabbed * { stroke: var(--accent); }
-  /* Zaznaczenie na szkicu: stuknięty Manikun albo rzecz */
-  .ink .sel-box { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 5 4; opacity: 0.9; }
+  /* Punkty do stuknięcia na szkicu: mała kropka z delikatnym pulsującym pierścieniem */
+  .ink .hot-dot { fill: #fff; stroke: rgba(0, 0, 0, 0.45); stroke-width: 0.7; }
+  .ink .hot-dot.on { fill: var(--accent); stroke: #fff; }
+  .ink .hot-ring { fill: none; stroke: #fff; stroke-width: 0.8; }
   .ink .zone { fill: none; stroke: var(--accent); stroke-width: 1.2; opacity: 0.45; stroke-dasharray: 2 3; }
   .ink .zone.near { fill: var(--accent-soft); opacity: 1; stroke-dasharray: none; }
   .ink .corner { stroke: var(--accent); stroke-width: 2; }
@@ -4292,12 +4294,6 @@
     }
     const thingBoxes = A.things.map(o => ({ i: o.i, box: o.flip ? [o.x - o.t.box[1] * o.s, o.G - o.t.box[2] * o.s, o.x - o.t.box[0] * o.s, o.G]
       : [o.x + o.t.box[0] * o.s, o.G - o.t.box[2] * o.s, o.x + o.t.box[1] * o.s, o.G] }));
-    // Zaznaczenie po stuknięciu w szkic: przerywana ramka wokół Manikuna albo rzeczy
-    if (opts.sel) {
-      const tb = opts.sel.kind === "thing" && thingBoxes.find(t => t.i === opts.sel.i);
-      const r = opts.sel.kind === "fig" ? (() => { const mx = A.pl.mir != null ? 2 * (A.pl.mir - (A.pl.x + A.pl.w / 2)) : 0; return [A.pl.x + mx, A.pl.y, A.pl.x + mx + A.pl.w, A.pl.y + A.pl.h]; })() : tb ? tb.box : null;
-      if (r) { const pd = u * 1.6; el("rect", { x: f(r[0] - pd), y: f(r[1] - pd), width: f(r[2] - r[0] + 2 * pd), height: f(r[3] - r[1] + 2 * pd), rx: f(u * 2), class: "sel-box" }, svg); }
-    }
     return { camPt, litPt, zonePts, u, W, H, hz, head: A.plBase.head, pickPts, thingBoxes, pl: A.pl };
   }
 
@@ -5877,7 +5873,8 @@
   const PROP_MS = 1200;
   let loopFrame = null, lastScene = null;
   // Przejście tła: te same czasy i krzywe co przy zmianie rzędu kafelków (wyjście 280 ms, wejście 420 ms po 140 ms)
-  let bgTrans = null, belt = null, sketchSel = null;
+  // sketchReady: punkty na szkicu dopiero po wczytaniu całego skryptu (wcześniejsze rysowania ich nie potrzebują)
+  let bgTrans = null, belt = null, zoom = null, hotPts = [], sketchReady = false;
   const easeOut = t => 1 - Math.pow(1 - t, 5);   // ≈ cubic-bezier(0.22, 1, 0.36, 1)
   const easeIn = t => t * t;                      // ≈ cubic-bezier(0.4, 0, 1, 1)
 
@@ -5929,6 +5926,7 @@
       if (e >= 720) bgTrans = null; else active = true;
     }
     if (gaze && followGaze(now, dt)) active = true;
+    if (zoom && now - zoom.t0 < ZOOM_MS) active = true;
     // Oddech trwa cały czas: poza animacjami wystarczy ok. 30 klatek na sekundę
     const breathing = !reduceMotion.matches;
     if (active || !breathing || now - lastIdleDraw > 32) { renderPreview(); lastIdleDraw = now; }
@@ -5991,7 +5989,9 @@
       st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
     const grabbed = drag && drag.grabbed ? drag.what : null;
-    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: true, lit: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null, pick: pickIndex(), sel: sketchSelNow() });
+    // Przy zbliżeniu bez narożników i napisu stylu (powiększone zasłaniałyby część postaci)
+    previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: !zoom, lit: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null, pick: pickIndex() });
+    sketchOverlay(previewGeom, W, H);
     // Podpis tylko przy przeciąganiu kamery lub lampy
     const ro = document.getElementById("readout");
     ro.hidden = !grabbed;
@@ -7149,13 +7149,11 @@
     pt.x = e.clientX; pt.y = e.clientY;
     return pt.matrixTransform(preview.getScreenCTM().inverse());
   }
-  // ---------- Stuknięcie w szkic ----------
-  // Manikun: pierwsze stuknięcie zaznacza go i otwiera Postać, następne w jego część (głowa, nakrycie głowy, tułów,
-  // ręce, nogi, stopy) otwiera jej kategorię. Rzecz otwiera Rzeczy (u eksperta drugie stuknięcie: przestawianie),
-  // zwierzak jego ustawienia, tło Miejsce, kamera i światło swoje kategorie. Działa w Swobodzie, nie w Kreatorze i tutorialu.
-  function sketchTapsOn() { return flow === "free" && !tut && phase === "director"; }
-  // Zaznaczenie widać, dopóki dolne menu jest w grupie, którą otworzyło stuknięcie
-  function sketchSelNow() { return sketchSel && sketchTapsOn() && nav[0] && nav[0].open === sketchSel.group ? sketchSel : null; }
+  // ---------- Punkty na szkicu ----------
+  // Delikatne punkty na Manikunie (głowa, tułów, ręka, noga), na rzeczach i zwierzakach oraz jeden na tle.
+  // Stuknięcie w punkt otwiera kategorię w dolnym menu; punkt na Manikunie dodatkowo przybliża podgląd na tę część
+  // (zbliżenie trwa, dopóki menu jest w tej kategorii). Tylko w Swobodzie, nie w Kreatorze i tutorialu.
+  function sketchTapsOn() { return sketchReady && flow === "free" && !tut && phase === "director"; }
   function sketchGo(group, cat, sub = null, hl = null, before = null, openTile = null) {
     const root = { kind: "groups", open: group }, opt = (c, sb, open) => ({ kind: "opts", cat: c, sub: sb, ...(open ? { open } : {}) });
     if (!cat) { jump([root, childOf(group)], null, before); return; }
@@ -7163,61 +7161,92 @@
     const openId = openTile || (cat === "outfit" ? "opt-outfit-grp-" + sub : "opt-" + cat + "-" + sub);
     jump(sub ? [...base, opt(cat, null, openId), opt(cat, sub)] : [...base, opt(cat, null)], hl, before);
   }
-  const segDist = (q, a, b) => {
-    const dx = b[0] - a[0], dy = b[1] - a[1], t = clamp(((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);
-    return Math.hypot(q[0] - a[0] - dx * t, q[1] - a[1] - dy * t);
-  };
-  // Część Manikuna pod punktem p (w układzie szkicu) albo null, gdy stuknięto obok
-  function figPart(G, p) {
-    const pl = G.pl, J = pl && pl.fig.joints;
-    if (!J) return null;
+  // Punkt postaci (układ Manikuna) → układ szkicu, z odbiciem przy kamerze z lewej
+  function figToSvg(pl, q) {
     const b = pl.fig.box, s = pl.scale, mir = pl.mir != null, hx = pl.x + (mir ? 2 * (pl.mir - (pl.x + pl.w / 2)) : 0);
-    const q = [mir ? b.minX + b.w - (p.x - hx) / s : (p.x - hx) / s + b.minX, (p.y - pl.y) / s + b.minY];
-    const cand = [{ part: "head", d: Math.hypot(q[0] - J.head[0], q[1] - J.head[1]) - J.headR * 1.25 }];
-    const seg = (part, a, c, r) => cand.push({ part, d: segDist(q, a, c) - r });
-    seg("torso", J.chest, J.hip, 15); seg("torso", J.neck, J.chest, 8);
-    Object.values(J.arms).forEach(a => { seg("arms", a.S, a.E, 6); seg("arms", a.E, a.W, 5); seg("arms", a.W, a.Hc, 6); });
-    Object.values(J.legs).forEach(l => { seg("legs", l.H, l.K, 9); seg("legs", l.K, l.A, 7); seg("feet", l.A, l.T, 6); });
-    const best = cand.sort((x, y) => x.d - y.d)[0];
-    if (best.d > 3 / Math.min(1, s)) return null;
-    // Górna część głowy z nakryciem: czapka, kapelusz
-    if (best.part === "head" && scene.wear.hat !== "none" && (q[0] - J.head[0]) * J.hd[0] + (q[1] - J.head[1]) * J.hd[1] > J.headR * 0.45) return "hat";
-    return best.part;
+    return [mir ? hx + (b.minX + b.w - q[0]) * s : hx + (q[0] - b.minX) * s, pl.y + (q[1] - b.minY) * s];
   }
-  function sketchTap(p, G) {
-    if (!sketchTapsOn()) return;
-    const inBox = ({ box }) => p.x >= box[0] && p.x <= box[2] && p.y >= box[1] && p.y <= box[3];
-    const hits = (G.thingBoxes || []).slice().reverse().filter(inBox);
-    const petHit = hits.find(h => isPet(scene.things[h.i]));
-    const part = scene.subject === "person" ? figPart(G, p) : null;
-    // Zwierzak (mały, zwykle przy nogach) ma pierwszeństwo, potem Manikun, potem rzeczy
-    if (petHit) { sketchSel = { kind: "thing", i: petHit.i, group: "stuff" }; sketchGo("stuff", "pets", "pet:" + petHit.i, null, null, "opt-pets-" + scene.things[petHit.i].id); return; }
-    if (part) {
-      if (sketchSelNow() && sketchSel.kind === "fig") {
-        if (part === "head") sketchGo("person", "look");
-        else if (part === "arms" && armsApply(scene)) sketchGo("person", "arms", null, "opt-arms-" + scene.arms);
-        else sketchGo("person", "outfit", part === "hat" ? "hat" : part === "feet" ? "shoes" : part === "legs" || isDress() ? "bottom" : scene.wear.outer !== "none" ? "outer" : "top");
-        return;
-      }
-      sketchSel = { kind: "fig", group: "person" };
-      sketchGo("person");
-      if (!sketchHinted) { sketchHinted = true; try { localStorage.setItem("manikun-sketch-hint", "1"); } catch (e) {} setTimeout(() => say("Teraz stuknij w moją głowę, ubranie, ręce albo buty."), 500); }
-      return;
-    }
-    const th = hits[0];
-    if (th) {
-      // Ekspert: drugie stuknięcie w zaznaczoną rzecz pozwala ją przestawić
-      if (level === "expert" && sketchSelNow() && sketchSel.kind === "thing" && sketchSel.i === th.i) { startAnchorPick(th.i); return; }
-      sketchSel = { kind: "thing", i: th.i, group: "stuff" };
-      sketchGo("stuff", "things", null, "opt-things-" + scene.things[th.i].id);
-      return;
-    }
-    sketchSel = null;
-    if (scene.subject === "object") { sketchGo("object", "item"); return; }
-    sketchGo("scene", "background", null, "opt-background-" + scene.background);
+  const lerp2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  // Zbliżenie: kadr podglądu (viewBox) obejmujący część postaci, w proporcjach kadru i w jego granicach
+  function zoomView(G, part, W, H) {
+    const J = G.pl.fig.joints, A = Object.values(J.arms), L = Object.values(J.legs), r = J.headR * 1.9;
+    const pts = (part === "head" ? [[J.head[0] - r, J.head[1] - r], [J.head[0] + r, J.head[1] + r]]
+      : part === "torso" ? [J.neck, J.hip, ...A.map(a => a.S), ...A.map(a => a.E)]
+      : part === "arms" ? A.flatMap(a => [a.S, a.E, a.W, a.Hc])
+      : L.flatMap(l => [l.H, l.K, l.A, l.T])).map(q => figToSvg(G.pl, q));
+    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), ar = W / H;
+    const w = Math.min(W, Math.max((Math.max(...xs) - Math.min(...xs)) * 1.5, (Math.max(...ys) - Math.min(...ys)) * 1.45 * ar, W * 0.34)), h = w / ar;
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    return [clamp(cx - w / 2, 0, W - w), clamp(cy - h / 2, 0, H - h), w, h];
   }
-  let sketchHinted = false;
-  try { sketchHinted = localStorage.getItem("manikun-sketch-hint") === "1"; } catch (e) {}
+  const ZOOM_MS = 460;
+  function zoomP(now = performance.now()) {
+    if (!zoom) return 0;
+    const e = reduceMotion.matches ? 1 : easeInOut(clamp((now - zoom.t0) / ZOOM_MS, 0, 1));
+    return zoom.dir > 0 ? zoom.p0 + (1 - zoom.p0) * e : zoom.p0 * (1 - e);
+  }
+  function zoomTo(part, cat) { zoom = { part, cat, dir: 1, t0: performance.now(), p0: zoomP() }; ensureLoop(); }
+  function zoomOut() { if (zoom && zoom.dir > 0) { zoom = { ...zoom, dir: -1, t0: performance.now(), p0: zoomP() }; ensureLoop(); } }
+  // Po rysowaniu podglądu: zbliżenie (viewBox) i punkty do stuknięcia na wierzchu
+  function sketchOverlay(G, W, H) {
+    // Menu wyszło z kategorii zbliżenia: podgląd się oddala
+    if (!sketchReady) return;
+    if (zoom && zoom.dir > 0 && !(sketchTapsOn() && nav[0] && nav[0].open === "person" && nav[1] && nav[1].open === zoom.cat)) zoomOut();
+    let vb = [0, 0, W, H];
+    if (zoom) {
+      const p = zoomP();
+      if (zoom.dir < 0 && p <= 0) zoom = null;
+      else if (G.pl && G.pl.fig.joints) { const v = zoomView(G, zoom.part, W, H); vb = vb.map((x, i) => x + (v[i] - x) * p); preview.setAttribute("viewBox", vb.map(f).join(" ")); }
+    }
+    hotPts = [];
+    if (!sketchTapsOn() || drag || belt || bgTrans || pickIndex() != null) return;
+    // Rozmiar punktów niezależny od zbliżenia
+    const k = W / vb[2], u = G.u / k, pts = [];
+    if (scene.subject === "person" && G.pl && G.pl.fig.joints) {
+      const J = G.pl.fig.joints, P = q => figToSvg(G.pl, q), Ar = J.arms.near || Object.values(J.arms)[0], Lg = J.legs.near || Object.values(J.legs)[0];
+      pts.push({ id: "head", at: P(J.head) }, { id: "torso", at: P(lerp2(J.chest, J.hip, 0.4)) });
+      if (Ar) pts.push({ id: "arms", at: P(lerp2(Ar.E, Ar.W, 0.5)) });
+      if (Lg) pts.push({ id: "legs", at: P(Lg.K) });
+    }
+    (G.thingBoxes || []).forEach(t => { if (scene.things[t.i]) pts.push({ id: "thing", i: t.i, at: [(t.box[0] + t.box[2]) / 2, t.box[1] + (t.box[3] - t.box[1]) * 0.35] }); });
+    // Tło: wolne miejsce w widocznym kadrze, najdalej od pozostałych punktów, kamery i światła
+    const avoid = [...pts.map(q => q.at), G.camPt, G.litPt];
+    const cand = [[0.14, 0.16], [0.86, 0.16], [0.5, 0.1], [0.14, 0.5], [0.86, 0.5], [0.3, 0.3], [0.7, 0.3]].map(([x, y]) => [vb[0] + vb[2] * x, vb[1] + vb[3] * y]);
+    const far = q => Math.min(...avoid.map(a => Math.hypot(a[0] - q[0], a[1] - q[1])));
+    pts.push({ id: "bg", at: cand.reduce((a, b) => far(b) > far(a) ? b : a) });
+    const g = el("g", { "aria-hidden": "true" }, preview), now = performance.now();
+    pts.forEach((q, n) => {
+      if (q.at[0] < vb[0] || q.at[0] > vb[0] + vb[2] || q.at[1] < vb[1] || q.at[1] > vb[1] + vb[3]) return;
+      el("circle", { cx: f(q.at[0]), cy: f(q.at[1]), r: f(u * 2.3), class: "hot-ring", style: `opacity:${f(0.22 + 0.2 * Math.sin(now / 520 + n * 1.3))}` }, g);
+      el("circle", { cx: f(q.at[0]), cy: f(q.at[1]), r: f(u * 0.95), class: "hot-dot" + (zoom && zoom.dir > 0 && zoom.part === q.id ? " on" : "") }, g);
+      hotPts.push({ ...q, r: u * 5 });
+    });
+  }
+  let lastThingTap = -1;
+  function sketchTap(p) {
+    if (!sketchTapsOn()) return false;
+    const hit = hotPts.filter(q => Math.hypot(q.at[0] - p.x, q.at[1] - p.y) < q.r).sort((a, b) => Math.hypot(a.at[0] - p.x, a.at[1] - p.y) - Math.hypot(b.at[0] - p.x, b.at[1] - p.y))[0];
+    if (!hit) { zoomOut(); return false; }
+    if (hit.id !== "thing") lastThingTap = -1;
+    if (hit.id === "head") { sketchGo("person", "look"); zoomTo("head", "look"); }
+    else if (hit.id === "torso") { sketchGo("person", "outfit", isDress() ? "bottom" : scene.wear.outer !== "none" ? "outer" : "top"); zoomTo("torso", "outfit"); }
+    else if (hit.id === "arms") {
+      if (armsApply(scene)) { sketchGo("person", "arms", null, "opt-arms-" + scene.arms); zoomTo("arms", "arms"); }
+      else { sketchGo("person", "outfit", "top"); zoomTo("arms", "outfit"); }
+    }
+    else if (hit.id === "legs") { sketchGo("person", "outfit", "bottom"); zoomTo("legs", "outfit"); }
+    else if (hit.id === "thing") {
+      const it = scene.things[hit.i];
+      if (isPet(it)) sketchGo("stuff", "pets", "pet:" + hit.i, null, null, "opt-pets-" + it.id);
+      // Ekspert: drugie stuknięcie w punkt tej samej rzeczy pozwala ją przestawić
+      else if (level === "expert" && lastThingTap === hit.i) { startAnchorPick(hit.i); lastThingTap = -1; return true; }
+      else sketchGo("stuff", "things", null, "opt-things-" + it.id);
+      lastThingTap = hit.i;
+    }
+    else if (scene.subject === "object") sketchGo("object", "item");
+    else sketchGo("scene", "background", null, "opt-background-" + scene.background);
+    return true;
+  }
 
   preview.addEventListener("pointerdown", e => {
     if (phase !== "director" || !previewGeom) return;
@@ -7231,9 +7260,11 @@
       else if (!wiz) endAnchorPick();
       return;
     }
+    // Punkty na szkicu mają pierwszeństwo (są małe i leżą na postaci); obok nich: kamera, światło albo oddalenie zbliżenia
+    if (hotPts.some(q => Math.hypot(q.at[0] - p.x, q.at[1] - p.y) < q.r)) { sketchTap(p); return; }
     const near = pt => Math.hypot(pt[0] - p.x, pt[1] - p.y) < r;
     const what = near(G.camPt) ? "camera" : near(G.litPt) ? "light" : null;
-    if (!what) { sketchTap(p, G); return; }
+    if (!what) { sketchTap(p); return; }
     preview.setPointerCapture(e.pointerId);
     drag = { what, sx: e.clientX, sy: e.clientY, grabbed: false, near: what === "camera" ? scene.camera : scene.lightZone };
     drag.timer = setTimeout(() => {
@@ -7266,7 +7297,7 @@
     const d = drag;
     drag = null;
     // Krótkie stuknięcie (bez chwytania): kategoria kamery albo światła
-    if (!d.grabbed) { if (sketchTapsOn()) { sketchSel = null; d.what === "camera" ? sketchGo("camera", "camera", null, "opt-camera-" + scene.camera) : sketchGo("scene", "light"); } return; }
+    if (!d.grabbed) { if (sketchTapsOn()) { d.what === "camera" ? sketchGo("camera", "camera", null, "opt-camera-" + scene.camera) : sketchGo("scene", "light"); } return; }
     if (gaze) gaze.hold = false;
     const key = d.what === "camera" ? "camera" : "lightZone";
     if (scene[key] !== d.near) {
@@ -7446,6 +7477,7 @@
   // Tylko przy pierwszej wizycie (powtórka z menu). Pulsuje jeden element, reszta jest zablokowana.
   // Kroki "tap" czekają na stuknięcie w dymek, pozostałe na wykonanie czynności.
   let tut = null;
+  sketchReady = true;
   const tutorialSeen = () => { try { return localStorage.getItem("manikun-tutorial") === "done"; } catch (e) { return false; } };
   const topOpts = () => nav[nav.length - 1];
   const TUT_STEPS = [
