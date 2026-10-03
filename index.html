@@ -252,9 +252,10 @@
   body.shots-open #shotsSheet { transform: none; }
   body.shots-open #shotsScrim { opacity: 1; pointer-events: auto; }
   /* Moje ujęcia: siatka zdjęć od AI, nowe (nieobejrzane) z plakietką */
-  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 60dvh; overflow-y: auto; }
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 70dvh; overflow-y: auto; }
   .shots button { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; aspect-ratio: 3 / 4; background: var(--stage); cursor: pointer; }
   .shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .shots .gone { position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; font-size: 11px; color: var(--muted); text-align: center; }
   .shots .new { position: absolute; top: 5px; left: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: #FF5A4E; color: #fff; border-radius: 99px; padding: 2px 6px; }
   body.gen-open #genScrim { opacity: 1; pointer-events: auto; }
   /* Zdjęcie od AI (Higgsfield): obraz w formacie sceny, a do czasu jego przyjścia klaps i odliczanie */
@@ -7858,12 +7859,15 @@
     let d = {};
     try { d = await (await fetch("/api/library", { credentials: "same-origin" })).json(); } catch (e) {}
     const list = d.photos || [];
-    shotsNote.textContent = list.length ? "Stuknij zdjęcie, żeby je otworzyć. Nowe są oznaczone." : "Tu trafią zdjęcia zrobione w Manikunie. Zrób pierwsze w panelu Maniscryptu!";
+    const word = n => n === 1 ? "zdjęcie" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? "zdjęcia" : "zdjęć";
+    shotsNote.textContent = list.length ? list.length + " " + word(list.length) + ". Stuknij, żeby otworzyć. Nowe są oznaczone." : "Tu trafią zdjęcia zrobione w Manikunie. Zrób pierwsze w panelu Maniscryptu!";
     for (const ph of list) {
       const b = document.createElement("button");
       b.type = "button";
       b.innerHTML = `<img alt="Zdjęcie od AI" loading="lazy">${ph.seen ? "" : '<span class="new">Nowe</span>'}`;
-      b.querySelector("img").src = ph.url;
+      const im = b.querySelector("img");
+      im.onerror = () => { im.remove(); b.insertAdjacentHTML("beforeend", '<span class="gone">Zdjęcie niedostępne</span>'); };
+      im.src = ph.url;
       b.addEventListener("click", () => {
         if (!ph.seen) { ph.seen = true; b.querySelector(".new")?.remove(); markSeen(ph.id); shotsUnseen = Math.max(0, shotsUnseen - 1); syncShotsMenu(); }
         window.open(ph.url, "_blank", "noopener");
