@@ -120,3 +120,35 @@ export async function models(url, env, user, ctx) {
 <style>body{font:14px system-ui,sans-serif;margin:16px;background:#141416;color:#eee}td{padding:4px 8px;border-bottom:1px solid #333}code{color:#8fd3a8}</style></head>
 <body><h1>Modele obrazów w API (${img.length} z ${slim.length})</h1><table>${rows}</table></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
+
+// Opis parametrów modeli (schema) do rozpoznania wejścia ze zdjęciem: kilka możliwych adresów API na model,
+// odpowiedzi zapisywane w bazie (family='schema'), strona pokazuje skrót. Tylko właściciel, nic nie kosztuje (GET).
+const SCHEMA_MODELS = ["higgsfield-ai/soul/v2/image-to-image", "higgsfield-ai/soul/v2/standard", "alibaba/qwen-image-3/edit", "ideogram/v4.0",
+  "xai/grok-imagine-image-2.0", "marketing-studio/image", "marketing-studio/image/sunburst"];
+export async function schemas(url, env, user, ctx) {
+  const { hfHeaders, apiBase, json } = ctx;
+  if (!user || user.id !== 1) return json({ error: "Tylko dla właściciela." }, 403);
+  const base = apiBase(env), run = String(Date.now()), out = [];
+  const tries = slug => [`/models/${slug}`, `/models/${slug}/schema`, `/models?slug=${encodeURIComponent(slug)}`, `/${slug}/schema`, `/${slug}`];
+  for (const slug of SCHEMA_MODELS) {
+    for (const path of tries(slug)) {
+      let r, raw = "";
+      try { r = await fetch(base + path, { headers: hfHeaders(env), signal: AbortSignal.timeout(10000) }); raw = await r.text(); } catch (e) { raw = String(e); }
+      await env.DB.prepare("INSERT INTO bench (run, family, model, http, status, detail, started_ms) VALUES (?, 'schema', ?, ?, 'info', ?, ?)")
+        .bind(run, path, r ? r.status : null, raw.slice(0, 20000), Date.now()).run();
+      out.push(`<li><code>${esc(path)}</code> → ${esc(r ? r.status : "-")} <small>${esc(raw.slice(0, 160))}</small></li>`);
+    }
+  }
+  // Wysyłanie plików (bez wysyłania niczego: sam adres do wgrania, żeby poznać odpowiedź)
+  let r, raw = "";
+  try {
+    r = await fetch(base + "/files/generate-upload-url", { method: "POST", headers: hfHeaders(env), body: JSON.stringify({ content_type: "image/jpeg" }), signal: AbortSignal.timeout(10000) });
+    raw = await r.text();
+  } catch (e) { raw = String(e); }
+  await env.DB.prepare("INSERT INTO bench (run, family, model, http, status, detail, started_ms) VALUES (?, 'schema', '/files/generate-upload-url', ?, 'info', ?, ?)")
+    .bind(run, r ? r.status : null, raw.replace(/("upload_url"\s*:\s*")[^"]+/, "$1…").slice(0, 2000), Date.now()).run();
+  out.push(`<li><code>/files/generate-upload-url</code> → ${esc(r ? r.status : "-")}</li>`);
+  return new Response(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parametry modeli</title>
+<style>body{font:14px system-ui,sans-serif;margin:16px;background:#141416;color:#eee}code{color:#8fd3a8}small{color:#999}li{margin:5px 0}</style></head>
+<body><h1>Parametry modeli: zapisane</h1><p>Napisz w czacie „sprawdź”.</p><ul>${out.join("")}</ul></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}

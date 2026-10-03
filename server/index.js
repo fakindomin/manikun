@@ -1,4 +1,4 @@
-import { bench, models } from "./bench.js";
+import { bench, models, schemas } from "./bench.js";
 // Manikun: serwer (Worker Cloudflare "manikun").
 // Strona to statyczne pliki; tutaj trafiają tylko adresy /api/*.
 // Logowanie przez Google (OAuth z PKCE), sesja w ciasteczku HttpOnly, kredyty w bazie D1 (binding DB).
@@ -451,6 +451,8 @@ export default {
         case "POST /api/auth/logout":
           return sameOrigin(request, url) ? await logout(request, env) : json({ error: "Niedozwolone źródło." }, 403);
       }
+      if (route === "GET /api/admin/schemas")
+        return await schemas(url, env, await currentUser(request, env), { hfHeaders, apiBase: e => e.HF_API_URL || HF_API, json });
       if (route === "GET /api/admin/models")
         return await models(url, env, await currentUser(request, env), { hfHeaders, apiBase: e => e.HF_API_URL || HF_API, json });
       if (route === "GET /api/admin/bench")
