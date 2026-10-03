@@ -797,6 +797,7 @@
     </div>
     <p class="sheet-lead" id="genNote"></p>
     <div class="preview-actions">
+      <button class="chip" type="button" id="genCopy">Kopiuj Maniscrypt</button>
       <button class="chip" type="button" id="genCancel" hidden>Anuluj zdjęcie</button>
       <a class="chip" id="genOpen" target="_blank" rel="noopener" hidden>Otwórz w pełnym rozmiarze</a>
       <button class="chip" type="button" id="genAgain" hidden>Jeszcze jedno</button>
@@ -7787,7 +7788,7 @@
     document.getElementById("genTime").textContent = "";
     setGen(true);
     const run = ++genRun;
-    genJob = { id: null, prompt: buildPrompt(false), aspect: fmt.short, t0: Date.now(), run, face: face || null };
+    genJob = { id: null, prompt: buildPrompt(false), sent: prompt, aspect: fmt.short, t0: Date.now(), run, face: face || null };
     genBusy = true; syncGenBtn();
     let d;
     try {
@@ -7922,6 +7923,17 @@
       return;
     }
     genStart();
+  });
+  // Kopiuj Maniscrypt z okna zdjęcia (także w trakcie): ten sam tekst, który dostał generator
+  const genCopy = document.getElementById("genCopy");
+  genCopy.addEventListener("click", () => {
+    const text = (genJob && genJob.sent) || buildPrompt(withFace());
+    const done = ok => {
+      if (ok) { sfx("klap"); showToast("Skopiowano. Wklej w generatorze" + (genJob && genJob.face ? " i dołącz zdjęcie twarzy" : "")); }
+      genCopy.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
+      setTimeout(() => { genCopy.textContent = "Kopiuj Maniscrypt"; }, 2200);
+    };
+    try { navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(hiddenCopyOk(text))); } catch (e) { done(hiddenCopyOk(text)); }
   });
   genAgain.addEventListener("click", () => {
     if (genBusy) return;
