@@ -1,0 +1,7 @@
+// Cloudflare: strona Manikuna jako statyczne pliki Workera "manikun".
+// Wdraża się sama z gita (Workers Builds) po każdym pushu na gałąź produkcyjną.
+{
+  "name": "manikun",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./" }
+}
