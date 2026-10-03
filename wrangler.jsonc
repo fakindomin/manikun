@@ -10,6 +10,6 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "manikun", "database_id": "cbafedec-9882-4949-b1f8-5ce6af761402", "migrations_dir": "migrations" }
   ],
-  "vars": { "GOOGLE_CLIENT_ID": "" },
+  "vars": { "GOOGLE_CLIENT_ID": "331864294353-thj64786rfai33kid9v7sbahg52vicb3.apps.googleusercontent.com" },
   "observability": { "enabled": true }
 }
