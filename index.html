@@ -244,6 +244,20 @@
   .tree-legend { margin: 6px 0 12px; font-size: 11.5px; color: var(--muted); }
   .tree-legend .tree-mine { color: var(--accent); font-weight: 600; }
   body.preview-open #previewSheet { transform: none; }
+  body.gen-open #genSheet { transform: none; }
+  body.gen-open #genScrim { opacity: 1; pointer-events: auto; }
+  /* Zdjęcie od AI (Higgsfield): obraz w formacie sceny, a do czasu jego przyjścia klaps i odliczanie */
+  .gen-frame { display: grid; place-items: center; }
+  .gen-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.6s ease; }
+  .gen-frame img.on { opacity: 1; }
+  .gen-wait { display: grid; justify-items: center; gap: 10px; padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
+  .gen-wait[hidden] { display: none; }
+  .gen-dots { display: flex; gap: 6px; }
+  .gen-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: genDot 1.2s ease-in-out infinite; }
+  .gen-dots i:nth-child(2) { animation-delay: 0.15s; } .gen-dots i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes genDot { 0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); } 40% { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .gen-dots i { animation: none; opacity: 0.7; } }
+  body.tutorial #copySheet .sheet-gen { display: none; }
   body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
   /* Próbny kadr: makieta ujęcia w wybranym formacie, rysowana silnikiem Manikuna */
   .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
@@ -697,6 +711,11 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
       <span class="sp-text"><b>Próbny kadr</b><small>makieta ujęcia od razu; prawdziwe zdjęcie zrobi generator</small></span>
     </button>
+    <!-- Zdjęcie od AI tutaj, za kredyty (tylko z serwerem i kontem) -->
+    <button class="sheet-preview sheet-gen" type="button" id="sheetGen" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7l1.3-2h5l1.3 2h1.7A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+      <span class="sp-text"><b>Zrób zdjęcie tutaj</b><small id="sheetGenNote">generator AI w Manikunie, za kredyty</small></span>
+    </button>
     <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
     <button class="sheet-copy" type="button" id="sheetCopy">
       <span id="sheetCopyLabel">Kopiuj Maniscrypt</span>
@@ -730,6 +749,24 @@
     <div class="preview-actions">
       <button class="chip" type="button" id="previewSave">Zapisz kadr</button>
       <button class="chip" type="button" id="previewCopy">Kopiuj Maniscrypt</button>
+    </div>
+  </section>
+
+  <div class="sheet-scrim" id="genScrim"></div>
+  <section class="sheet preview" id="genSheet" aria-label="Zdjęcie od AI" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2>Zdjęcie od AI</h2>
+      <button class="icon-btn" type="button" id="genClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="preview-frame gen-frame" id="genFrame">
+      <img id="genImg" alt="Zdjęcie wygenerowane z Maniscryptu">
+      <div class="gen-wait" id="genWait" role="status"><span class="gen-dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="genWaitText">Kręcimy…</span></div>
+    </div>
+    <p class="sheet-lead" id="genNote"></p>
+    <div class="preview-actions">
+      <a class="chip" id="genOpen" target="_blank" rel="noopener" hidden>Otwórz w pełnym rozmiarze</a>
+      <button class="chip" type="button" id="genAgain" hidden>Jeszcze jedno</button>
     </div>
   </section>
 
@@ -7509,6 +7546,7 @@
     menuAccountLabel.textContent = u ? (u.name || u.email) : "Zaloguj przez Google";
     menuAccountVal.hidden = !u;
     if (u) menuAccountVal.textContent = account.credits + " " + creditsWord(account.credits);
+    if (typeof syncGenBtn === "function") syncGenBtn();
   }
   async function loadAccount() {
     try {
@@ -7535,6 +7573,70 @@
     if (accountBack === "ok" && a && a.user) say("Jesteś zalogowany. Masz " + a.credits + " " + creditsWord(a.credits) + ".", 5000);
     else if (accountBack) say("Nie udało się zalogować. Spróbuj jeszcze raz.", 5000);
   });
+  // Zdjęcie od AI: Maniscrypt idzie do serwera (Higgsfield), kredyt schodzi przy zleceniu, a wraca, gdy się nie uda
+  const sheetGen = document.getElementById("sheetGen"), sheetGenNote = document.getElementById("sheetGenNote");
+  const genImg = document.getElementById("genImg"), genWait = document.getElementById("genWait"), genWaitText = document.getElementById("genWaitText");
+  const genNote = document.getElementById("genNote"), genOpen = document.getElementById("genOpen"), genAgain = document.getElementById("genAgain");
+  let genRun = 0;
+  function syncGenBtn() {
+    const a = account, u = a && a.user;
+    sheetGen.hidden = !a || (!u && !a.login) || (u && !a.gen);
+    if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
+    else sheetGenNote.textContent = a.cost + " " + creditsWord(a.cost) + " za zdjęcie · masz " + a.credits;
+  }
+  function setGen(open) {
+    if (!open) genRun++;
+    document.body.classList.toggle("gen-open", open);
+    document.getElementById("genSheet").setAttribute("aria-hidden", String(!open));
+  }
+  function genState(text, wait) {
+    genWait.hidden = !wait;
+    genWaitText.textContent = text;
+    genNote.textContent = wait ? "" : text;
+  }
+  async function genStart() {
+    const run = ++genRun, fmt = currentFormat();
+    document.getElementById("genFrame").style.setProperty("--ar", fmt.w / fmt.h);
+    genImg.classList.remove("on"); genImg.removeAttribute("src");
+    genOpen.hidden = true; genAgain.hidden = true;
+    genState("Manikun przekazuje Maniscrypt generatorowi…", true);
+    setGen(true);
+    let r, d;
+    try {
+      r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: buildPrompt(false), aspect: fmt.short }) });
+      d = await r.json();
+    } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
+    if (run !== genRun) return;
+    if (typeof d.credits === "number" && account && account.user) { account.credits = d.credits; showAccount(); syncGenBtn(); }
+    if (!d.id || d.error) { genState(d.error || "Nie udało się. Spróbuj jeszcze raz.", false); genAgain.hidden = d.error === "Brak kredytów."; return; }
+    const t0 = Date.now();
+    while (run === genRun) {
+      genState(Date.now() - t0 > 20000 ? "Jeszcze chwilka, generator dopracowuje szczegóły…" : "Generator robi zdjęcie…", true);
+      await new Promise(res => setTimeout(res, 2500));
+      if (run !== genRun) return;
+      try { d = await (await fetch("/api/generate/" + d.id, { credentials: "same-origin" })).json(); } catch (e) { continue; }
+      if (typeof d.credits === "number" && account && account.user) { account.credits = d.credits; showAccount(); syncGenBtn(); }
+      if (d.status === "completed" && d.url) {
+        genImg.onload = () => { if (run !== genRun) return; genImg.classList.add("on"); genState("Gotowe! Zdjęcie zostaje pod linkiem tylko przez jakiś czas, więc zapisz je u siebie.", false); sfx("klap"); nod("nod"); };
+        genImg.src = d.url; genOpen.href = d.url; genOpen.hidden = false; genAgain.hidden = false;
+        return;
+      }
+      if (d.error || d.status === "failed" || d.status === "nsfw") { genState(d.error || "Nie udało się. Kredyt wrócił na konto.", false); genAgain.hidden = false; return; }
+      if (Date.now() - t0 > 240000) { genState("Generator nie zdążył. Jeśli zdjęcie się nie zrobi, kredyt wróci na konto.", false); return; }
+    }
+  }
+  sheetGen.addEventListener("click", () => {
+    if (!account || !account.user) { location.href = "/api/auth/google"; return; }
+    if (account.credits < account.cost) { say("Brakuje kredytów. Wkrótce dokupisz je w menu.", 4500); return; }
+    genStart();
+  });
+  genAgain.addEventListener("click", () => {
+    if (account && account.user && account.credits < account.cost) { genState("Brak kredytów.", false); genAgain.hidden = true; return; }
+    genStart();
+  });
+  document.getElementById("genClose").addEventListener("click", () => setGen(false));
+  document.getElementById("genScrim").addEventListener("click", () => setGen(false));
   document.getElementById("menuLevel").addEventListener("click", () => {
     setLevel(level === "expert" ? "basic" : "expert");
     sfx("tok");

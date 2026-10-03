@@ -486,3 +486,14 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Baza D1 `manikun` (`migrations/0001_konta.sql`): `users`, `sessions`, `credits`. Saldo to suma wpisów w `credits`; każdy wpis ma unikalne (`reason`, `ref`), więc kredyty na start (5) dostaje się raz na konto, a zakup z jednej płatności nie doda się dwa razy.
 - W menu: „Zaloguj przez Google”, po zalogowaniu imię i saldo („5 kredytów”) oraz „Wyloguj”. Bez serwera (Vercel) albo bez skonfigurowanego Google te pozycje są ukryte. Po powrocie z logowania Manikun zamiast powitania mówi, czy się udało.
 - Konfiguracja: `GOOGLE_CLIENT_ID` w `wrangler.jsonc` (jest publiczny), `GOOGLE_CLIENT_SECRET` jako sekret w panelu Cloudflare. Test lokalny: `wrangler dev` z plikiem `.dev.vars` (poza gitem).
+
+## Zdjęcie od AI (Higgsfield) za kredyty
+
+- W panelu Maniscryptu przycisk „Zrób zdjęcie tutaj” (pod Próbnym kadrem): bez logowania prowadzi do logowania Google, po zalogowaniu pokazuje koszt i saldo („1 kredyt za zdjęcie · masz 5”). Na Vercelu i w tutorialu ukryty.
+- Okno „Zdjęcie od AI”: trzy kropki i komunikaty w trakcie, potem zdjęcie w formacie sceny, „Otwórz w pełnym rozmiarze” i „Jeszcze jedno”. Saldo w menu odświeża się na bieżąco.
+- Serwer: `POST /api/generate` { prompt, aspect } i `GET /api/generate/<id>` (aplikacja odpytuje co 2,5 s).
+  - Kredyt schodzi jednym zapytaniem tylko, gdy saldo wystarcza; jedno zlecenie naraz na konto.
+  - Higgsfield: `POST https://api.higgsfield.ai/<model>` z nagłówkiem `Authorization: Key KEY_ID:KEY_SECRET`, potem `GET /requests/<request_id>/status` (queued → in_progress → completed / failed / nsfw).
+  - Model domyślnie Seedream 4 (`bytedance/seedream/v4/text-to-image`, 2K); 4:5 idzie jako 3:4. Zmienna `HF_MODEL` zmienia model, `GEN_COST` cenę w kredytach.
+  - Błąd, odrzucenie treści albo brak wyniku po 10 minutach: kredyt wraca raz (wpis `refund`).
+- Tabela `generations` (`migrations/0002_generowanie.sql`): zlecenia z promptem, statusem i adresem zdjęcia. Zdjęcie jest na razie pod adresem Higgsfield (nie kopiujemy go do siebie).
