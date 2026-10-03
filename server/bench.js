@@ -25,7 +25,7 @@ export async function bench(request, url, env, user, ctx) {
   const db = env.DB, base = apiBase(env);
 
   if (url.searchParams.get("start") === "1") {
-    const last = await db.prepare("SELECT MAX(started_ms) AS t FROM bench").first();
+    const last = await db.prepare("SELECT MAX(started_ms) AS t FROM bench WHERE family <> 'katalog-pelny'").first();
     if (last && last.t && Date.now() - last.t < 5 * 60000) return Response.redirect(url.origin + "/api/admin/bench", 302);
     const g = await db.prepare("SELECT prompt FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 1").bind(user.id).first();
     const prompt = (g && g.prompt) || FALLBACK_PROMPT, run = String(Date.now());
@@ -56,7 +56,7 @@ export async function bench(request, url, env, user, ctx) {
   }
 
   // Dopytanie o zlecenia w toku
-  const run = (await db.prepare("SELECT MAX(run) AS r FROM bench").first() || {}).r;
+  const run = (await db.prepare("SELECT MAX(run) AS r FROM bench WHERE family <> 'katalog-pelny'").first() || {}).r;
   const pending = await db.prepare("SELECT * FROM bench WHERE run = ? AND status IN ('queued', 'in_progress')").bind(run || "").all();
   await Promise.all(pending.results.map(async b => {
     try {
@@ -72,7 +72,7 @@ export async function bench(request, url, env, user, ctx) {
   const rows = (await db.prepare("SELECT * FROM bench WHERE run = ? ORDER BY id").bind(run || "").all()).results;
   if (url.searchParams.get("format") === "json") return json(rows);
   const busy = rows.some(b => b.status === "queued" || b.status === "in_progress");
-  const cards = rows.filter(b => b.family !== "katalog" && b.status !== "rejected").map(b => {
+  const cards = rows.filter(b => !b.family.startsWith("katalog") && b.status !== "rejected").map(b => {
     const sec = b.done_ms ? ((b.done_ms - b.started_ms) / 1000).toFixed(1) + " s" : Math.round((Date.now() - b.started_ms) / 1000) + " s…";
     return `<figure><div class="img">${b.image_url ? `<a href="${esc(b.image_url)}" target="_blank"><img src="${esc(b.image_url)}"></a>` : `<span>${esc(b.status)}</span>`}</div>
       <figcaption><b>${esc(b.family)}</b> <span class="t">${sec}</span><br><code>${esc(b.model)}</code></figcaption></figure>`;
