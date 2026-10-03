@@ -7762,7 +7762,7 @@
     genBusy = true; syncGenBtn();
     let d;
     try {
-      const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+      const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(60000),
         body: JSON.stringify({ prompt, aspect: fmt.short, ...(genModelRow.hidden ? {} : { model: genModel.value }) }) });
       d = await r.json();
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }

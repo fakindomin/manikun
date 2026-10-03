@@ -167,10 +167,18 @@ function dims(aspect) {
   return [w, h];
 }
 
-// Zdjęcie z Workers AI: od razu w odpowiedzi; zapis do KV i koniec zlecenia
+// Base64 → bajty natywnie (tanio dla procesora; pętla w JS przy dużym obrazie przekracza limit czasu procesora Workera)
+async function fromBase64(b64) {
+  if (typeof Uint8Array.fromBase64 === "function") return Uint8Array.fromBase64(b64);
+  return new Uint8Array(await (await fetch("data:application/octet-stream;base64," + b64)).arrayBuffer());
+}
+const note = (env, id, text) => env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind(text, id).run();
+
+// Zdjęcie z Workers AI, w tle (ctx.waitUntil): kolejne etapy w kolumnie detail, na końcu zapis do KV
 async function generateWorkersAI(env, g, model, prompt, aspect) {
   const t0 = Date.now();
   let bytes = null, why = "";
+  await note(env, g.id, "workers-ai: start");
   try {
     const [w, h] = dims(aspect);
     const form = new FormData();
@@ -179,7 +187,8 @@ async function generateWorkersAI(env, g, model, prompt, aspect) {
     form.append("height", String(h));
     const fr = new Response(form);
     const out = await env.AI.run(model, { multipart: { body: fr.body, contentType: fr.headers.get("content-type") } });
-    if (out && typeof out.image === "string") bytes = Uint8Array.from(atob(out.image), c => c.charCodeAt(0));
+    await note(env, g.id, "workers-ai: obraz po " + (Date.now() - t0) + " ms, dekodowanie");
+    if (out && typeof out.image === "string") bytes = await fromBase64(out.image);
     else if (out instanceof ReadableStream) bytes = new Uint8Array(await new Response(out).arrayBuffer());
     else why = "brak obrazu w odpowiedzi: " + JSON.stringify(out).slice(0, 200);
   } catch (e) { why = String(e && e.message || e).slice(0, 400); }
@@ -237,7 +246,7 @@ async function refund(env, g, status, error) {
   Object.assign(g, { status, error });
 }
 
-async function generate(request, env, user) {
+async function generate(request, env, user, ctx) {
   if (!env.HF_KEY) return json({ error: "Generator nie jest jeszcze podłączony." }, 503);
   let body;
   try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
@@ -274,8 +283,12 @@ async function generate(request, env, user) {
   // Model z HF_MODEL, a gdy API go nie zna, kolejne z listy; przy 422 (nieznany parametr) jeszcze raz z samym promptem
   if (isWorkersAI(chosen)) {
     if (!env.AI) { await refund(env, g, "failed", "Generator nie jest podłączony. Kredyt wrócił na konto."); return json(genView(g, await balance(env, user.id)), 502); }
-    await generateWorkersAI(env, g, chosen, prompt, aspect);
-    return json(genView(g, await balance(env, user.id)), g.status === "completed" ? 200 : 502);
+    // Zlecenie robi się w tle, aplikacja dopytuje jak przy Higgsfield (odpowiedź nie czeka na obraz)
+    ctx.waitUntil(generateWorkersAI(env, g, chosen, prompt, aspect).catch(async e => {
+      await note(env, g.id, "workers-ai błąd: " + String(e && e.message || e).slice(0, 300));
+      await refund(env, g, "failed", "Generator nie zrobił zdjęcia. Kredyt wrócił na konto.");
+    }));
+    return json(genView(g, await balance(env, user.id), 3));
   }
   let res, data = null, raw = "", model = chosen;
   const log = [];
@@ -331,6 +344,11 @@ async function storePhoto(env, g) {
 
 // Dopytanie Higgsfield o zlecenie w toku i zapis wyniku (wspólne dla okna zdjęcia i Moich ujęć)
 async function refresh(env, g) {
+  // Zlecenie Workers AI bez wyniku po 2 minutach: zadanie w tle przerwane, kredyt wraca
+  if ((g.status === "queued" || g.status === "in_progress") && !g.request_id && now() - g.created_at > 120) {
+    await refund(env, g, "failed", "Generator nie zrobił zdjęcia. Kredyt wrócił na konto.");
+    return g;
+  }
   if ((g.status === "queued" || g.status === "in_progress") && g.request_id) {
     let data = null;
     try {
@@ -423,7 +441,7 @@ async function me(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
@@ -443,7 +461,7 @@ export default {
         if (request.method === "POST" && !sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Zaloguj się." }, 401);
-        if (route === "POST /api/generate") return await generate(request, env, user);
+        if (route === "POST /api/generate") return await generate(request, env, user, ctx);
         const m = url.pathname.match(/^\/api\/generate\/([\w-]{8,40})(\/cancel|\/seen)?$/);
         if (request.method === "GET" && m && !m[2]) return await generationStatus(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/cancel") return await generationCancel(env, user, m[1]);
