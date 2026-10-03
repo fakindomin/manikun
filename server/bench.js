@@ -56,7 +56,7 @@ export async function bench(request, url, env, user, ctx) {
         }
         const ok = r && r.ok && data && data.request_id;
         await db.prepare("INSERT INTO bench (run, family, model, http, status, request_id, detail, started_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-          .bind(run, family, model, r ? r.status : null, ok ? "queued" : "rejected", ok ? data.request_id : null, raw.slice(0, 600), t0).run();
+          .bind(run, family, model, r ? r.status : null, ok ? "queued" : "rejected", ok ? data.request_id : null, raw.length > 900 ? raw.slice(0, 200) + " … " + raw.slice(-700) : raw, t0).run();
         if (ok || !(r && r.status === 404)) break;
       }
     }
