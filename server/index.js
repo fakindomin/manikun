@@ -203,6 +203,33 @@ async function generateWorkersAI(env, g, model, prompt, aspect) {
   Object.assign(g, { status: "completed", stored: 1 });
 }
 const isOwner = user => user && user.id === 1;
+
+// Zdjęcie twarzy: którym modelem i pod jakim polem (z komunikatów walidacji API, 3.10.2026).
+// Soul 2 i Qwen mają osobne warianty przyjmujące obraz; image_urls to lista, image_url pojedynczy adres.
+function faceRoute(model) {
+  if (model === "higgsfield-ai/soul/v2/standard") return { model: "higgsfield-ai/soul/v2/image-to-image", field: "image_url" };
+  if (model === "alibaba/qwen-image-3/text-to-image") return { model: "alibaba/qwen-image-3/edit", field: "image_urls" };
+  if (model === "ideogram/v4.0") return { model, field: "image_url" };
+  if (model === "xai/grok-imagine-image-2.0" || model.startsWith("marketing-studio/image")) return { model, field: "image_urls" };
+  return null;
+}
+// Adres zdjęcia twarzy: tylko taki, jaki oddaje wysyłanie plików Higgsfield
+const faceUrlOk = u => typeof u === "string" && /^https:\/\/[\w-]+\.cloudfront\.net\/[\w\/.-]+\.(jpe?g|png|webp)$/i.test(u);
+
+// Wysłanie zdjęcia twarzy do Higgsfield (plik tymczasowy, znacznik retention=temporary); u nas nie zostaje
+async function uploadFace(request, env, user) {
+  if (!isOwner(user)) return json({ error: "Zdjęcie twarzy w Manikunie jest jeszcze w testach." }, 403);
+  const type = (request.headers.get("Content-Type") || "").split(";")[0];
+  if (!/^image\/(jpeg|png|webp)$/.test(type)) return json({ error: "To nie jest zdjęcie (JPG, PNG albo WebP)." }, 415);
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength || buf.byteLength > 8 * 1024 * 1024) return json({ error: "Zdjęcie jest za duże (do 8 MB)." }, 413);
+  const r = await fetch((env.HF_API_URL || HF_API) + "/files/generate-upload-url", { method: "POST", headers: hfHeaders(env), body: JSON.stringify({ content_type: type }), signal: AbortSignal.timeout(15000) });
+  const d = r.ok ? await r.json() : null;
+  if (!d || !d.upload_url || !d.public_url) { console.log("Upload URL: " + r.status); return json({ error: "Nie udało się wysłać zdjęcia." }, 502); }
+  const up = await fetch(d.upload_url, { method: "PUT", headers: d.upload_headers || { "Content-Type": type }, body: buf, signal: AbortSignal.timeout(30000) });
+  if (!up.ok) { console.log("Upload PUT: " + up.status + " " + (await up.text()).slice(0, 200)); return json({ error: "Nie udało się wysłać zdjęcia." }, 502); }
+  return json({ url: d.public_url });
+}
 const GEN_COST = 1;
 const MAX_PROMPT = 6000;
 // Formaty z aplikacji → proporcje, które przyjmuje model (Recraft ma 4:5, nie ma 21:9; Soul nie ma 4:5)
@@ -255,6 +282,12 @@ async function generate(request, env, user, ctx) {
   const pick = isOwner(user) && TEST_MODELS.find(m => m.id === body.model);
   const chosen = pick ? pick.id : hfModel(env);
   const asked = String(body.aspect || ""), aspect = aspectFor(chosen, asked);
+  // Zdjęcie twarzy (na razie tylko właściciel): model z wariantem przyjmującym obraz
+  const face = body.face ? (faceUrlOk(body.face) ? body.face : "zły") : null;
+  if (face === "zły") return json({ error: "Zły adres zdjęcia twarzy." }, 400);
+  if (face && !isOwner(user)) return json({ error: "Zdjęcie twarzy w Manikunie jest jeszcze w testach." }, 403);
+  const fr = face && faceRoute(chosen);
+  if (face && !fr) return json({ error: "Ten model nie przyjmuje zdjęcia twarzy. Wybierz Soul 2." }, 400);
 
   // Jedno zlecenie naraz na konto
   const busy = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND created_at > ?")
@@ -288,11 +321,12 @@ async function generate(request, env, user, ctx) {
     }));
     return json(genView(g, await balance(env, user.id), 3));
   }
-  let res, data = null, raw = "", model = chosen;
+  let res, data = null, raw = "", model = fr ? fr.model : chosen;
   const log = [];
-  const models = [model, ...HF_FALLBACK.filter(m => m !== model)];
+  const models = fr ? [model] : [model, ...HF_FALLBACK.filter(m => m !== model)];
+  const withFace = b => fr ? { ...b, [fr.field]: fr.field === "image_urls" ? [face] : face } : b;
   attempts: for (const m of models) {
-    for (const body of [{ prompt, aspect_ratio: aspectFor(m, asked) }, { prompt }]) {
+    for (const body of [withFace({ prompt, aspect_ratio: aspectFor(m, asked) }), withFace({ prompt })]) {
       model = m; data = null;
       try {
         res = await fetch((env.HF_API_URL || HF_API) + "/" + m, {
@@ -302,12 +336,13 @@ async function generate(request, env, user, ctx) {
         try { data = JSON.parse(raw); } catch { data = null; }
       } catch (e) { res = null; raw = "fetch: " + e; }
       log.push(m + " " + (res ? res.status : "-") + " " + raw.slice(0, 300));
-      if (res && res.status === 422) continue;
+      // Walidacja odrzuciła parametr (np. proporcje): jeszcze raz bez niego
+      if (res && (res.status === 422 || (res.status === 400 && /aspect_ratio/.test(raw)))) continue;
       if (res && res.status === 404 && /model_not_found/.test(raw)) continue attempts;
       break attempts;
     }
   }
-  if (model !== chosen) await env.DB.prepare("UPDATE generations SET model = ? WHERE id = ?").bind(model, g.id).run();
+  if (model !== chosen || face) await env.DB.prepare("UPDATE generations SET model = ?, detail = ? WHERE id = ?").bind(model, face ? "ze zdjęciem twarzy" : null, g.id).run();
   if (!res || !res.ok || !data || !data.request_id) {
     const detail = log.join(" || ").slice(0, 1500) + (res && res.status === 401 ? " | " + hfKeyShape(env) : "");
     console.log("Higgsfield start: " + detail);
@@ -466,6 +501,12 @@ export default {
         if (request.method === "GET" && m && !m[2]) return await generationStatus(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/cancel") return await generationCancel(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/seen") return await generationSeen(env, user, m[1]);
+      }
+      if (route === "POST /api/upload-face") {
+        if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Zaloguj się." }, 401);
+        return await uploadFace(request, env, user);
       }
       if (route === "GET /api/library" || url.pathname.startsWith("/api/photo/")) {
         const user = await currentUser(request, env);
