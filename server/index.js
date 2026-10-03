@@ -251,14 +251,20 @@ async function generate(request, env, user) {
 // Kopia zdjęcia u nas (KV PHOTOS): adresy Higgsfield wygasają, a Moje ujęcia mają zostać
 async function storePhoto(env, g) {
   if (!env.PHOTOS || g.stored || !g.image_url) return;
+  let why = "";
   try {
     const r = await fetch(g.image_url, { signal: AbortSignal.timeout(20000) });
-    if (!r.ok) return;
-    const buf = await r.arrayBuffer();
-    await env.PHOTOS.put("gen/" + g.id, buf, { metadata: { type: r.headers.get("Content-Type") || "image/jpeg" } });
-    await env.DB.prepare("UPDATE generations SET stored = 1 WHERE id = ?").bind(g.id).run();
-    g.stored = 1;
-  } catch (e) { console.log("Zapis zdjęcia: " + e); }
+    if (r.ok) {
+      const buf = await r.arrayBuffer();
+      await env.PHOTOS.put("gen/" + g.id, buf, { metadata: { type: r.headers.get("Content-Type") || "image/jpeg" } });
+      await env.DB.prepare("UPDATE generations SET stored = 1 WHERE id = ?").bind(g.id).run();
+      g.stored = 1;
+      return;
+    }
+    why = "pobranie " + r.status + " " + (await r.text()).slice(0, 200);
+  } catch (e) { why = String(e).slice(0, 300); }
+  console.log("Zapis zdjęcia: " + why);
+  await env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind("zapis: " + why, g.id).run();
 }
 
 // Dopytanie Higgsfield o zlecenie w toku i zapis wyniku (wspólne dla okna zdjęcia i Moich ujęć)
