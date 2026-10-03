@@ -470,3 +470,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - W trakcie mówienia: zdanie, które słychać, jest wyraźne, pozostałe przygaszone; przycisk z głową Manikuna lekko się buja. Dymek z czasem znika dopiero po końcu wypowiedzi; nowy dymek, stuknięcie w dymek albo wyciszenie przerywa głos.
 - Sterowanie: głośnik wycisza wszystko (domyślnie włączony, chyba że ktoś go wyłączył), menu → „Głos Manikuna” wyłącza sam głos.
 - Lista do nagrania: `docs/voice/lines.csv` (237 zdań, warianty ze wstawkami rozpisane), zbierana przez `tools/voice/collect.cjs`; po dodaniu plików `tools/voice/manifest.cjs` odświeża manifest. Instrukcja dla lektora i format plików: `docs/voice/README.md`.
+- Powitanie przed pierwszym dotknięciem (przeglądarka blokuje wtedy dźwięk) gra przy pierwszym dotknięciu ekranu, jeśli wciąż jest w dymku (`voiceBlocked`).

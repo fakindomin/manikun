@@ -7354,8 +7354,15 @@
     if (s < t.length) out.push(t.slice(s));
     return out.map(x => x.trim()).filter(Boolean);
   }
-  let voiceOn = true, voiceSet = null, voiceAudio = null, voiceSeq = 0, voiceBusy = false, voiceHush = false;
+  // voiceBlocked: przeglądarka nie pozwoliła grać przed pierwszym dotknięciem (np. powitanie przy wejściu);
+  // wtedy wypowiedź gra przy pierwszym dotknięciu, jeśli wciąż jest w dymku
+  let voiceOn = true, voiceSet = null, voiceAudio = null, voiceSeq = 0, voiceBusy = false, voiceHush = false, voiceBlocked = null;
   try { voiceOn = localStorage.getItem("manikun-voice") !== "0"; } catch (e) {}
+  ["pointerdown", "keydown"].forEach(ev => addEventListener(ev, () => {
+    const t = voiceBlocked;
+    voiceBlocked = null;
+    if (t && !bubbleEl.hidden && voiceNorm(bubbleText.textContent) === voiceNorm(t)) speak(t);
+  }, { capture: true }));
   const voiceList = () => voiceSet || (voiceSet = fetch("assets/voice/manifest.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : []).then(a => new Set(a)).catch(() => new Set()));
   function voiceStop() {
     voiceSeq++;
@@ -7383,7 +7390,7 @@
         voiceAudio = a;
         document.getElementById("narrator").classList.add("talking");
         a.onended = a.onerror = () => res();
-        a.play().catch(() => res());
+        a.play().catch(err => { if (err && err.name === "NotAllowedError") { voiceStop(); voiceBlocked = text; } res(); });
       });
       document.getElementById("narrator").classList.remove("talking");
     }
