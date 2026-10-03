@@ -146,10 +146,11 @@ const ASPECTS = { "4:5": "3:4", "2:3": "2:3", "1:1": "1:1", "3:2": "3:2", "9:16"
 const hfModel = env => env.HF_MODEL || HF_MODEL;
 const genCost = env => Number(env.GEN_COST) || GEN_COST;
 // Klucz wklejony w panelu bywa z odstępami albo cudzysłowami; zostawiamy samo KEY_ID:KEY_SECRET
-const hfKey = env => String(env.HF_KEY || "").trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "");
+// Gdy przed kluczem jest dopisek (np. „HF_KEY:”), bierzemy dwie ostatnie części: KEY_ID (UUID) i KEY_SECRET
+const hfKey = env => String(env.HF_KEY || "").trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "").split(":").slice(-2).join(":");
 const hfHeaders = env => ({ Authorization: "Key " + hfKey(env), "Content-Type": "application/json", Accept: "application/json" });
 // Kształt klucza do diagnozy (bez treści): liczba części i ich długości
-const hfKeyShape = env => "klucz: " + hfKey(env).split(":").map(p => p.length).join("+") + " znaków";
+const hfKeyShape = env => "klucz: " + String(env.HF_KEY || "").trim().split(":").map(p => p.length).join("+") + " znaków";
 
 function genView(g, credits) {
   return { id: g.id, status: g.status, url: g.image_url || null, error: g.error || null, ...(credits === undefined ? {} : { credits }) };
