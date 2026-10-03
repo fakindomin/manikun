@@ -7384,19 +7384,31 @@
     if (!soundOn || !voiceOn) return;
     const seq = voiceSeq, have = await voiceList();
     if (seq !== voiceSeq) return;
-    const parts = voiceSentences(text), spans = [...bubbleText.querySelectorAll(".s")];
-    if (!parts.some(t => have.has(voiceId(t)))) return;
+    // Kolejne kawałki wypowiedzi: najdłuższy ciąg zdań, który ma nagranie (cała wypowiedź brzmi naturalniej
+    // i generator lepiej rozpoznaje w niej polski), inaczej pojedyncze zdanie
+    const parts = voiceSentences(text), spans = [...bubbleText.querySelectorAll(".s")], chunks = [];
+    for (let i = 0; i < parts.length;) {
+      let j = parts.length;
+      while (j > i + 1 && !have.has(voiceId(parts.slice(i, j).join(" ")))) j--;
+      chunks.push({ from: i, to: j, id: voiceId(parts.slice(i, j).join(" ")) });
+      i = j;
+    }
+    if (!chunks.some(c => have.has(c.id))) return;
     voiceBusy = true;
     bubbleEl.classList.add("speaking");
-    for (let i = 0; i < parts.length && seq === voiceSeq; i++) {
-      const id = voiceId(parts[i]);
+    for (const c of chunks) {
+      if (seq !== voiceSeq) break;
+      const id = c.id;
       if (!have.has(id)) continue;
-      spans.forEach((sp, j) => sp.classList.toggle("now", j === i));
+      spans.forEach((sp, j) => sp.classList.toggle("now", j >= c.from && j < c.to));
       await new Promise(res => {
         const a = new Audio("assets/voice/" + id + ".mp3");
         voiceAudio = a;
         document.getElementById("narrator").classList.add("talking");
         a.onended = a.onerror = () => res();
+        // Zabezpieczenie: gdyby nagranie nie zgłosiło końca, wypowiedź kończy się po jego długości (najwyżej 15 s)
+        const guard = setTimeout(res, 15000);
+        a.onloadedmetadata = () => { clearTimeout(guard); setTimeout(res, (a.duration || 14) * 1000 + 1000); };
         a.play().catch(err => { if (err && err.name === "NotAllowedError") { voiceStop(); voiceBlocked = text; } res(); });
       });
       document.getElementById("narrator").classList.remove("talking");
@@ -7650,7 +7662,8 @@
       const t = row && row.tiles.find(x => x.btn === el);
       if (t) scrollToTile(row, t);
     }
-    if (st.done && st.done() && !navBusy) tutNext();
+    // Krok zrobiony: dalej dopiero, gdy Manikun skończy mówić (inaczej nowy dymek ucina zdanie)
+    if (st.done && st.done() && !navBusy && !voiceBusy) tutNext();
   }
   function tutNext() {
     const st = TUT_STEPS[tut.step];

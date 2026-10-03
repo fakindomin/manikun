@@ -25,6 +25,8 @@ Zdania ze wstawkami są nagrywane w każdym wariancie, np. „Jaki kolor: krzes�
 - Głos: **Fraser** (preset `6705e465-7b52-5915-a1d8-b1222885e01d`), silnik ElevenLabs (`text2speech_v2`, wariant `elevenlabs`).
 - Słowa, których generator nie zna, zapisujemy fonetycznie tylko w tekście dla generatora (nagranie i tak należy do zdania z dymka):
   - „Maniscrypt” → „maniskrypt” (małą literą). Pisane „Maniscrypt” albo „Maniskrypt” dawało długą pauzę przed słowem.
+  - „styl”, „stylu” → „stil”, „stilu”; „cyberpunk” → „sajberpank”; „Ty” → „ty” (małą literą). Inaczej generator czytał je po angielsku („stajl”, „a taj”).
+- Krótkie zdania z angielsko wyglądającymi słowami generator bierze za angielskie. Lepiej nagrać całą wypowiedź z dymka jednym plikiem (id liczone z całego tekstu wypowiedzi): aplikacja gra najdłuższy kawałek wypowiedzi, który ma nagranie, a dopiero potem pojedyncze zdania.
 - Każde zdanie generujemy osobno. Generator przyjmuje 2 zlecenia naraz.
 
 ## Format plików
