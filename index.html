@@ -273,7 +273,9 @@
   .gen-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width 0.5s linear; }
   .gen-time { justify-self: end; font: 600 11px var(--mono), monospace; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
   @media (prefers-reduced-motion: reduce) { .gen-draft, .gen-talk { animation: none; } }
-  body.tutorial #copySheet .sheet-gen { display: none; }
+  body.tutorial #copySheet .sheet-gen, body.tutorial #copySheet .gen-model { display: none; }
+  .gen-model { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
+  .gen-model select { font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px 8px; max-width: 70%; }
   body.preview-open #previewScrim { opacity: 1; pointer-events: auto; }
   /* Próbny kadr: makieta ujęcia w wybranym formacie, rysowana silnikiem Manikuna */
   .preview-frame { position: relative; width: min(100%, calc(50dvh * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
@@ -732,6 +734,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7l1.3-2h5l1.3 2h1.7A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
       <span class="sp-text"><b>Zrób zdjęcie tutaj</b><small id="sheetGenNote">generator AI w Manikunie, za kredyty</small></span>
     </button>
+    <!-- Tylko właściciel: wybór modelu do testów -->
+    <label class="gen-model" id="genModelRow" hidden><span>Model (test)</span><select id="genModel"></select></label>
     <!-- Główny przycisk kopiowania (po skopiowaniu: ptaszek) -->
     <button class="sheet-copy" type="button" id="sheetCopy">
       <span id="sheetCopyLabel">Kopiuj Maniscrypt</span>
@@ -7617,7 +7621,23 @@
   let genRun = 0, genBusy = false, genReady = false, genJob = null;
   const genOpenNow = () => document.body.classList.contains("gen-open");
   const genCancel = document.getElementById("genCancel"), genFrame = document.getElementById("genFrame");
+  const genModel = document.getElementById("genModel"), genModelRow = document.getElementById("genModelRow");
+  function syncGenModels() {
+    const list = account && account.user && account.models;
+    genModelRow.hidden = !list;
+    if (!list || genModel.options.length) return;
+    let saved = null;
+    try { saved = localStorage.getItem("manikun-gen-model"); } catch (e) {}
+    for (const m of list) {
+      const o = document.createElement("option");
+      o.value = m.id; o.textContent = m.name + " · " + m.price.toFixed(4).replace(/0+$/, "").replace(".", ",") + " $";
+      genModel.appendChild(o);
+    }
+    genModel.value = list.some(m => m.id === saved) ? saved : account.model;
+  }
+  genModel.addEventListener("change", () => { try { localStorage.setItem("manikun-gen-model", genModel.value); } catch (e) {} });
   function syncGenBtn() {
+    syncGenModels();
     const a = account, u = a && a.user;
     sheetGen.hidden = !a || (!u && !a.login) || (u && !a.gen);
     if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
@@ -7743,7 +7763,7 @@
     let d;
     try {
       const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, aspect: fmt.short }) });
+        body: JSON.stringify({ prompt, aspect: fmt.short, ...(genModelRow.hidden ? {} : { model: genModel.value }) }) });
       d = await r.json();
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
     if (run !== genRun) return;
@@ -7794,7 +7814,8 @@
       if (genJob) genJob.done = true;
       syncGenBtn();
       genFrame.classList.add("done"); genImg.classList.add("on");
-      genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s! Zdjęcie jest też w Moich ujęciach (menu).", false);
+      const mname = !genModelRow.hidden && genModel.selectedOptions[0] ? " (" + genModel.selectedOptions[0].textContent + ")" : "";
+      genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s" + mname + "! Zdjęcie jest też w Moich ujęciach (menu).", false);
       genAgain.hidden = false;
       if (genOpenNow()) { sfx("klap"); nod("nod"); markSeen(d.id); }
       else genNotify(true, "Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.");
