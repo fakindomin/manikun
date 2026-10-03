@@ -483,6 +483,11 @@
   .tile.tut-target, .square.tut-target, .sheet-copy.tut-target { animation: tutGlow 1.3s ease-in-out infinite; }
   @keyframes tutGlow { 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px var(--accent); } }
   body.tutorial .bubble { cursor: pointer; }
+  /* Manikun mówi: zdanie, które właśnie słychać, jest wyraźne, pozostałe przygaszone; przycisk z głową lekko się buja */
+  .bubble.speaking .s { opacity: 0.55; transition: opacity 0.2s; }
+  .bubble.speaking .s.now { opacity: 1; }
+  #narrator.talking { animation: talking 0.42s ease-in-out infinite alternate; }
+  @keyframes talking { from { transform: translateY(0) rotate(-1.5deg); } to { transform: translateY(-2px) rotate(1.5deg); } }
   .bubble .tap { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; opacity: 0.7; }
   /* Uproszczony panel Maniscryptu w tutorialu */
   .tut-note { display: none; margin: -6px 0 0; font-size: 14px; color: var(--ink); }
@@ -634,6 +639,7 @@
     <h2><em>Manikun</em> · menu</h2>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="soon level" id="menuLevelVal">Podstawowy</span></button>
+    <button class="menu-item" type="button" id="menuVoice"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>Głos Manikuna<span class="soon level" id="menuVoiceVal">Włączony</span></button>
     <button class="menu-item" type="button" id="menuTutorial"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Obejrzyj tutorial</button>
     <button class="menu-item" type="button" id="menuHelp"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Jak używać Maniscryptu</button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="soon">Wkrótce</span></button>
@@ -6260,7 +6266,8 @@
   // krrr-ik: skrzypnięcie przegubu szyi (głowa Manikuna)
   const soundBtn = document.getElementById("sound");
   let audioCtx = null, soundOn = false, noise = null;
-  try { soundOn = localStorage.getItem("manikun-sound") === "1"; } catch (e) {}
+  // Dźwięk domyślnie włączony (Manikun mówi do dzieci); wyłączony zostaje, jeśli ktoś go wyłączył
+  try { soundOn = localStorage.getItem("manikun-sound") !== "0"; } catch (e) { soundOn = true; }
   soundBtn.setAttribute("aria-pressed", String(soundOn));
   function actx() {
     if (!audioCtx) {
@@ -6345,6 +6352,7 @@
   }
   soundBtn.addEventListener("click", () => {
     soundOn = !soundOn;
+    if (!soundOn) voiceStop();
     try { localStorage.setItem("manikun-sound", soundOn ? "1" : "0"); } catch (e) {}
     soundBtn.setAttribute("aria-pressed", String(soundOn));
     if (soundOn) { actx(); sfx("tik"); }
@@ -7328,20 +7336,81 @@
     bubbleEl.classList.add("offer");
     if (wiz) { const at = wiz.q; setTimeout(() => { if (wiz && wiz.q === at && bubbleAction === fn) { bubbleAction = null; bubbleEl.classList.remove("offer"); wizSay(); } }, ms - 300); }
   }
+  // ---------- Głos Manikuna: nagrane zdania ----------
+  // Każde zdanie dymka to osobne nagranie assets/voice/<id>.mp3, id liczone z treści zdania (lista: docs/voice/lines.csv).
+  // Gra tylko to, co jest w assets/voice/manifest.json; zdanie bez nagrania (np. podsumowanie sceny) zostaje tylko w dymku.
+  // Działa przy włączonym dźwięku (głośnik) i włączonym Głosie Manikuna (menu).
+  const voiceNorm = t => t.replace(/\s+/g, " ").trim();
+  function voiceId(t) {
+    let h = 0x811c9dc5;
+    for (const ch of voiceNorm(t)) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+    return "v" + h.toString(16).padStart(8, "0");
+  }
+  // Podział na zdania: po kropce, wykrzykniku, pytajniku lub wielokropku, gdy dalej jest wielka litera albo cyfra
+  function voiceSentences(text) {
+    const t = voiceNorm(text), out = [];
+    let s = 0;
+    for (let i = 0; i < t.length; i++) if (".!?…".includes(t[i]) && t[i + 1] === " " && /[A-ZĄĆĘŁŃÓŚŹŻ0-9]/.test(t[i + 2] || "")) { out.push(t.slice(s, i + 1)); s = i + 2; }
+    if (s < t.length) out.push(t.slice(s));
+    return out.map(x => x.trim()).filter(Boolean);
+  }
+  let voiceOn = true, voiceSet = null, voiceAudio = null, voiceSeq = 0, voiceBusy = false, voiceHush = false;
+  try { voiceOn = localStorage.getItem("manikun-voice") !== "0"; } catch (e) {}
+  const voiceList = () => voiceSet || (voiceSet = fetch("assets/voice/manifest.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : []).then(a => new Set(a)).catch(() => new Set()));
+  function voiceStop() {
+    voiceSeq++;
+    if (voiceAudio) { voiceAudio.pause(); voiceAudio = null; }
+    voiceBusy = false;
+    document.getElementById("narrator").classList.remove("talking");
+    bubbleEl.classList.remove("speaking");
+  }
+  async function speak(text) {
+    voiceStop();
+    voiceHush = false;
+    if (!soundOn || !voiceOn) return;
+    const seq = voiceSeq, have = await voiceList();
+    if (seq !== voiceSeq) return;
+    const parts = voiceSentences(text), spans = [...bubbleText.querySelectorAll(".s")];
+    if (!parts.some(t => have.has(voiceId(t)))) return;
+    voiceBusy = true;
+    bubbleEl.classList.add("speaking");
+    for (let i = 0; i < parts.length && seq === voiceSeq; i++) {
+      const id = voiceId(parts[i]);
+      if (!have.has(id)) continue;
+      spans.forEach((sp, j) => sp.classList.toggle("now", j === i));
+      await new Promise(res => {
+        const a = new Audio("assets/voice/" + id + ".mp3");
+        voiceAudio = a;
+        document.getElementById("narrator").classList.add("talking");
+        a.onended = a.onerror = () => res();
+        a.play().catch(() => res());
+      });
+      document.getElementById("narrator").classList.remove("talking");
+    }
+    if (seq !== voiceSeq) return;
+    voiceBusy = false;
+    bubbleEl.classList.remove("speaking");
+    if (voiceHush) { voiceHush = false; hush(); }
+  }
+
   function say(text, ms = 4500) {
     bubbleAction = null;
     bubbleEl.classList.remove("offer");
     const r = document.getElementById("narrator").getBoundingClientRect();
-    bubbleText.textContent = text;
+    // Zdania osobno: głos podświetla to, które właśnie mówi
+    bubbleText.replaceChildren(...voiceSentences(text).flatMap((t, i) => { const sp = document.createElement("span"); sp.className = "s"; sp.textContent = t; return i ? [" ", sp] : [sp]; }));
     bubbleEl.hidden = false;
     bubbleEl.style.left = Math.max(12, r.left) + "px";
     bubbleEl.style.bottom = (innerHeight - r.top + 12) + "px";
     requestAnimationFrame(() => bubbleEl.classList.add("show"));
     nod();
     clearTimeout(bubbleTimer);
+    speak(text);
     if (ms) bubbleTimer = setTimeout(hush, ms);
   }
   function hush() {
+    // Dymek znika dopiero, gdy Manikun skończy mówić
+    if (voiceBusy) { voiceHush = true; return; }
     bubbleEl.classList.remove("show");
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(() => { bubbleEl.hidden = true; }, 320);
@@ -7349,7 +7418,7 @@
   // W Kreatorze dymek to bieżące pytanie, więc zostaje na miejscu
   bubbleEl.addEventListener("click", () => {
     if (bubbleAction && !tut) { const a = bubbleAction; bubbleAction = null; bubbleEl.classList.remove("offer"); sfx("tuk"); a(); return; }
-    if (tut) tutTap(); else if (!wiz) hush();
+    if (tut) tutTap(); else if (!wiz) { voiceStop(); hush(); }
   });
 
   // ---------- Start: temat (2×2), potem Kreator albo Swoboda ----------
@@ -7390,6 +7459,15 @@
     menuLevelVal.textContent = LEVEL_NAME[id];
   }
   setLevel(level);
+  // Głos Manikuna: osobno od efektów dźwiękowych (głośnik wyłącza wszystko)
+  const menuVoiceVal = document.getElementById("menuVoiceVal");
+  menuVoiceVal.textContent = voiceOn ? "Włączony" : "Wyłączony";
+  document.getElementById("menuVoice").addEventListener("click", () => {
+    voiceOn = !voiceOn;
+    try { localStorage.setItem("manikun-voice", voiceOn ? "1" : "0"); } catch (e) {}
+    menuVoiceVal.textContent = voiceOn ? "Włączony" : "Wyłączony";
+    if (!voiceOn) voiceStop();
+  });
   document.getElementById("menuLevel").addEventListener("click", () => {
     setLevel(level === "expert" ? "basic" : "expert");
     sfx("tok");

@@ -463,3 +463,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 ## Poprawka: dźwięk w tutorialu
 
 - W tutorialu wszystkie elementy aplikacji poza wskazanym są nieklikalne (`pointer-events: none`), także przycisk dźwięku. Przycisk dźwięku jest teraz wyjątkiem, jak dymek i „Pomiń”.
+
+## Głos Manikuna (infrastruktura pod nagrania)
+
+- Manikun mówi nagranymi zdaniami: `say()` dzieli tekst dymka na zdania (`voiceSentences`), dla każdego liczy `voiceId` (FNV-1a z treści) i gra `assets/voice/<id>.mp3` po kolei, tylko jeśli id jest w `assets/voice/manifest.json`. Zdanie bez nagrania zostaje tylko w dymku.
+- W trakcie mówienia: zdanie, które słychać, jest wyraźne, pozostałe przygaszone; przycisk z głową Manikuna lekko się buja. Dymek z czasem znika dopiero po końcu wypowiedzi; nowy dymek, stuknięcie w dymek albo wyciszenie przerywa głos.
+- Sterowanie: głośnik wycisza wszystko (domyślnie włączony, chyba że ktoś go wyłączył), menu → „Głos Manikuna” wyłącza sam głos.
+- Lista do nagrania: `docs/voice/lines.csv` (237 zdań, warianty ze wstawkami rozpisane), zbierana przez `tools/voice/collect.cjs`; po dodaniu plików `tools/voice/manifest.cjs` odświeża manifest. Instrukcja dla lektora i format plików: `docs/voice/README.md`.

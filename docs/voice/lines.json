@@ -1,0 +1,1187 @@
+[
+ {
+  "id": "vad0dfbfa",
+  "text": "4:5 pasuje do posta.",
+  "from": "kod, Kreator: format"
+ },
+ {
+  "id": "v449f40c7",
+  "text": "9:16 to rolka na telefon.",
+  "from": "kod, Kreator: format"
+ },
+ {
+  "id": "v21666218",
+  "text": "A dokładniej?",
+  "from": "kod, Kreator: bgv"
+ },
+ {
+  "id": "v909ca051",
+  "text": "A może zwierzak?",
+  "from": "kod, Kreator: pets"
+ },
+ {
+  "id": "vb2583721",
+  "text": "A na dół?",
+  "from": "kod, Kreator: bottom"
+ },
+ {
+  "id": "v3c42e492",
+  "text": "A ręce?",
+  "from": "kod, Kreator: arms"
+ },
+ {
+  "id": "v719d4f7c",
+  "text": "A Ty?",
+  "from": "kod, tutorial 16"
+ },
+ {
+  "id": "v4ab2f0eb",
+  "text": "Albo co ma obok?",
+  "from": "kod, Kreator: things"
+ },
+ {
+  "id": "v626d88fc",
+  "text": "Ambitnie.",
+  "from": "kod"
+ },
+ {
+  "id": "v2ab29c01",
+  "text": "Będzie widać całą okolicę.",
+  "from": "kod"
+ },
+ {
+  "id": "vfbe25660",
+  "text": "Bordo, elegancko.",
+  "from": "kod"
+ },
+ {
+  "id": "vd0cab133",
+  "text": "Buty.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v52ea9d4c",
+  "text": "Chyba nie mój klimat.",
+  "from": "kod, tutorial 8"
+ },
+ {
+  "id": "vec62eee9",
+  "text": "Ciekawe, co AI nam zaproponuje…",
+  "from": "kod, tutorial 7"
+ },
+ {
+  "id": "v144023eb",
+  "text": "Ciekawie.",
+  "from": "kod"
+ },
+ {
+  "id": "v1a424b31",
+  "text": "Co dodajemy?",
+  "from": "kod, Kreator: stuffPick"
+ },
+ {
+  "id": "vc74d336a",
+  "text": "Co kręcimy?",
+  "from": "kod"
+ },
+ {
+  "id": "v19954795",
+  "text": "Co leży na biurku?",
+  "from": "Kreator: items, Kreator: stuffItems"
+ },
+ {
+  "id": "v2e8d21ea",
+  "text": "Co leży na ladzie?",
+  "from": "Kreator: items, Kreator: stuffItems"
+ },
+ {
+  "id": "v07e1aa2e",
+  "text": "Co leży na stole?",
+  "from": "Kreator: items, Kreator: stuffItems"
+ },
+ {
+  "id": "ve20204da",
+  "text": "Co leży na stoliku?",
+  "from": "Kreator: items, Kreator: stuffItems"
+ },
+ {
+  "id": "v03cac338",
+  "text": "Co robi?",
+  "from": "kod, Kreator: pose"
+ },
+ {
+  "id": "v11fdc570",
+  "text": "Coś jeszcze w miejscu?",
+  "from": "kod, Kreator: fx"
+ },
+ {
+  "id": "va44628b9",
+  "text": "Coś jeszcze?",
+  "from": "kod, Kreator: cpart"
+ },
+ {
+  "id": "v649705f0",
+  "text": "Coś na głowę?",
+  "from": "kod, Kreator: hat"
+ },
+ {
+  "id": "v20d52506",
+  "text": "Coś na wierzch?",
+  "from": "kod, Kreator: outer"
+ },
+ {
+  "id": "v8f7bf454",
+  "text": "Coś obok?",
+  "from": "kod, Kreator: things"
+ },
+ {
+  "id": "vd0a9029b",
+  "text": "Cyberpunk w naturze?",
+  "from": "kod"
+ },
+ {
+  "id": "vf3170657",
+  "text": "Czerwień?",
+  "from": "kod"
+ },
+ {
+  "id": "v90682001",
+  "text": "Cześć, jestem Manikun!",
+  "from": "kod"
+ },
+ {
+  "id": "v896814fc",
+  "text": "Cześć, jestem Manikun.",
+  "from": "kod, tutorial 1"
+ },
+ {
+  "id": "ve69a74db",
+  "text": "Deszcz i śnieg naraz się nie da.",
+  "from": "kolizja efektów"
+ },
+ {
+  "id": "vfb6c07e7",
+  "text": "Dodać coś do miejsca?",
+  "from": "kod, Kreator: fx"
+ },
+ {
+  "id": "vd0fcf3cd",
+  "text": "Dodajemy coś do sceny?",
+  "from": "kod, Kreator: stuffGate"
+ },
+ {
+  "id": "vc91c4711",
+  "text": "Dodajemy?",
+  "from": "kod, Kreator: stuffGate"
+ },
+ {
+  "id": "v0486eba5",
+  "text": "Dodatki.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v08a3561b",
+  "text": "Dopracujemy twarz?",
+  "from": "kod, Kreator: face"
+ },
+ {
+  "id": "v79d9e1ab",
+  "text": "Dorosły czy dziecko?",
+  "from": "kod, Kreator: age"
+ },
+ {
+  "id": "v64040a3c",
+  "text": "Dowolne?",
+  "from": "kod"
+ },
+ {
+  "id": "v4fb0f538",
+  "text": "Dół.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v12cf73bd",
+  "text": "Dron!",
+  "from": "kod"
+ },
+ {
+  "id": "v64642415",
+  "text": "Ekspert, szacunek.",
+  "from": "kod"
+ },
+ {
+  "id": "vdb22d1ec",
+  "text": "Ekspert: wszystkie możliwości.",
+  "from": "kod"
+ },
+ {
+  "id": "v3c388754",
+  "text": "Elegancko na plaży?",
+  "from": "kod"
+ },
+ {
+  "id": "v2073515a",
+  "text": "Fantasy jak trzeba!",
+  "from": "kod, tutorial 15"
+ },
+ {
+  "id": "vd0a1e637",
+  "text": "Format?",
+  "from": "kod, Kreator: format"
+ },
+ {
+  "id": "v0823056b",
+  "text": "Gdzie jesteśmy?",
+  "from": "kod, Kreator: background"
+ },
+ {
+  "id": "v024e043b",
+  "text": "Gdzie patrzy?",
+  "from": "kod, Kreator: gaze"
+ },
+ {
+  "id": "vb1d375ce",
+  "text": "Generator może coś zgubić, najważniejsze daję na początek Maniscryptu.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "vff026f29",
+  "text": "Gotowe!",
+  "from": "koniec Kreatora"
+ },
+ {
+  "id": "v0efc2774",
+  "text": "Góra.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "vbc6d69c8",
+  "text": "Hmm… cyberpunk w lesie?",
+  "from": "kod, tutorial 8"
+ },
+ {
+  "id": "v22d44bf8",
+  "text": "I to rozumiem!",
+  "from": "kod, tutorial 15"
+ },
+ {
+  "id": "v8797038c",
+  "text": "Jak blisko?",
+  "from": "kod, Kreator: shot"
+ },
+ {
+  "id": "vf659d85c",
+  "text": "Jak go ubierzemy?",
+  "from": "Kreator: dress"
+ },
+ {
+  "id": "v64e82e8a",
+  "text": "Jak gwiazda.",
+  "from": "kod"
+ },
+ {
+  "id": "vf11ac531",
+  "text": "Jak ją ubierzemy?",
+  "from": "Kreator: dress"
+ },
+ {
+  "id": "v94e8af90",
+  "text": "Jak mocno?",
+  "from": "kod, Kreator: exprLvl"
+ },
+ {
+  "id": "v00358aa0",
+  "text": "Jak pracujemy?",
+  "from": "kod"
+ },
+ {
+  "id": "v1013ac59",
+  "text": "Jak rusza się kamera?",
+  "from": "kod, Kreator: motion"
+ },
+ {
+  "id": "vd7a73261",
+  "text": "Jak stoi względem kamery?",
+  "from": "kod, Kreator: turn"
+ },
+ {
+  "id": "vde6cee18",
+  "text": "Jaka fryzura?",
+  "from": "kod, Kreator: hair"
+ },
+ {
+  "id": "vc04c9528",
+  "text": "Jaka góra?",
+  "from": "kod, Kreator: top"
+ },
+ {
+  "id": "v3b77c5c4",
+  "text": "Jaka mina?",
+  "from": "kod, Kreator: expr"
+ },
+ {
+  "id": "v56b71d7a",
+  "text": "Jaki kolor skóry?",
+  "from": "kod, Kreator: skin"
+ },
+ {
+  "id": "vc6cb994a",
+  "text": "Jaki kolor: biurko?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vb1718408",
+  "text": "Jaki kolor: fotel?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v72ead31d",
+  "text": "Jaki kolor: hoker barowy?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vdf54d09f",
+  "text": "Jaki kolor: kamień?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v048272ec",
+  "text": "Jaki kolor: kanapa?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v679f709e",
+  "text": "Jaki kolor: krzesło?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v428b4c52",
+  "text": "Jaki kolor: lada barowa?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vc3a70c80",
+  "text": "Jaki kolor: lampa stojąca?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vd244a6b2",
+  "text": "Jaki kolor: ławka?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vbdcc1ffa",
+  "text": "Jaki kolor: parasol plażowy?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "va515b37f",
+  "text": "Jaki kolor: pień drzewa?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v2b923408",
+  "text": "Jaki kolor: pufa?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v17f60883",
+  "text": "Jaki kolor: regał z książkami?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v1cf4c9d1",
+  "text": "Jaki kolor: roślina w donicy?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vd92d1141",
+  "text": "Jaki kolor: rower?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "vc0fe0dc2",
+  "text": "Jaki kolor: samochód?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v2737e50e",
+  "text": "Jaki kolor: schody?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v11e27db7",
+  "text": "Jaki kolor: skrzynia?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "ve29cda46",
+  "text": "Jaki kolor: stolik kawowy?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v68d06108",
+  "text": "Jaki kolor: stół?",
+  "from": "Kreator: stuffColor"
+ },
+ {
+  "id": "v7ff85024",
+  "text": "Jaki kolor?",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "v4677058c",
+  "text": "Jakie buty?",
+  "from": "kod, Kreator: shoes"
+ },
+ {
+  "id": "vbee2f20d",
+  "text": "Jakie oprawki?",
+  "from": "kod, Kreator: glassesColor"
+ },
+ {
+  "id": "v5a605a71",
+  "text": "Jakie światło?",
+  "from": "kod, Kreator: light"
+ },
+ {
+  "id": "v7fc4acfb",
+  "text": "Jakieś dodatki?",
+  "from": "kod, Kreator: acc"
+ },
+ {
+  "id": "veeeb0521",
+  "text": "Jest miejsce na pierwszym planie.",
+  "from": "kod"
+ },
+ {
+  "id": "v5b7bd390",
+  "text": "Jeśli możesz, wpisz je po angielsku, generator zrozumie pewniej.",
+  "from": "kod"
+ },
+ {
+  "id": "v319db143",
+  "text": "Kamera ustawiona.",
+  "from": "kod, Kreator, koniec rozdziału"
+ },
+ {
+  "id": "v0ea63469",
+  "text": "Klasa.",
+  "from": "kod"
+ },
+ {
+  "id": "v3023b6fe",
+  "text": "Kogo ustawiamy?",
+  "from": "kod, Kreator: body"
+ },
+ {
+  "id": "v2008b94a",
+  "text": "Kolor włosów?",
+  "from": "kod, Kreator: hairColor"
+ },
+ {
+  "id": "vb05f36e9",
+  "text": "Kolor zarostu?",
+  "from": "kod, Kreator: beardColor"
+ },
+ {
+  "id": "v59a2ed02",
+  "text": "Kot miał tu być o dziewiątej.",
+  "from": "kod"
+ },
+ {
+  "id": "v388c608e",
+  "text": "Kreator prowadzi krok po kroku, w Swobodzie wszystko jest pod ręką.",
+  "from": "kod"
+ },
+ {
+  "id": "vfeff2f70",
+  "text": "Krzesło, stół, rower…",
+  "from": "kod, Kreator: things"
+ },
+ {
+  "id": "v4af16909",
+  "text": "Którą część?",
+  "from": "kod, Kreator: cpart"
+ },
+ {
+  "id": "v42ccae21",
+  "text": "Który zestaw?",
+  "from": "kod, Kreator: set"
+ },
+ {
+  "id": "v62fbdb64",
+  "text": "Lada, samochód, regał…",
+  "from": "kod, Kreator: things"
+ },
+ {
+  "id": "v423576e3",
+  "text": "Lubię to.",
+  "from": "kod"
+ },
+ {
+  "id": "vbe8bfb28",
+  "text": "Masz jakiś pomysł na scenę?",
+  "from": "kod, tutorial 16"
+ },
+ {
+  "id": "v46418676",
+  "text": "Meble, siedziska, rower…",
+  "from": "kod, Kreator: stuffGate"
+ },
+ {
+  "id": "vcfe1d583",
+  "text": "Miejsce mamy.",
+  "from": "kod, Kreator, koniec rozdziału"
+ },
+ {
+  "id": "vf6176dc2",
+  "text": "Mięta, świeżo.",
+  "from": "kod"
+ },
+ {
+  "id": "v7a88dea3",
+  "text": "Może coś do siedzenia?",
+  "from": "kod, Kreator: stuffPick"
+ },
+ {
+  "id": "vb609f309",
+  "text": "Możesz wybrać kilka.",
+  "from": "kod, Kreator: stuffItems, Kreator: fx"
+ },
+ {
+  "id": "va9a1e06c",
+  "text": "Musztarda.",
+  "from": "kod"
+ },
+ {
+  "id": "v47b02856",
+  "text": "Na czym siedzi?",
+  "from": "kod, Kreator: things"
+ },
+ {
+  "id": "v00c8a037",
+  "text": "Na jakim poziomie?",
+  "from": "kod"
+ },
+ {
+  "id": "v4ea88074",
+  "text": "Na razie działa Postać.",
+  "from": "kod"
+ },
+ {
+  "id": "vc9127b3a",
+  "text": "Na razie zróbmy świetną postać!",
+  "from": "kod"
+ },
+ {
+  "id": "v7f0b1827",
+  "text": "Najpierw muszę się nauczyć rysować.",
+  "from": "kod"
+ },
+ {
+  "id": "vd07c3aed",
+  "text": "Najpierw wybierz stół, ladę albo biurko, żeby było na czym położyć.",
+  "from": "kod"
+ },
+ {
+  "id": "v4a17a99b",
+  "text": "Najpierw wybierz, co kręcimy.",
+  "from": "kod"
+ },
+ {
+  "id": "v7db5eb7d",
+  "text": "Nakrycie głowy.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "vb25cdd12",
+  "text": "Nie wszystko mieści się w kadrze.",
+  "from": "kod"
+ },
+ {
+  "id": "vdc591612",
+  "text": "Nie znam tego słowa po angielsku.",
+  "from": "kod"
+ },
+ {
+  "id": "v2660e5c2",
+  "text": "O co się opiera?",
+  "from": "kod, Kreator: things, Kreator: stuffPick"
+ },
+ {
+  "id": "v98b002cd",
+  "text": "Obiekty?",
+  "from": "kod"
+ },
+ {
+  "id": "vc9ca46e4",
+  "text": "Odważnie.",
+  "from": "kod"
+ },
+ {
+  "id": "v21bf6d65",
+  "text": "Okrycie.",
+  "from": "Kreator: cpick"
+ },
+ {
+  "id": "vfc1cd941",
+  "text": "Okulary?",
+  "from": "Kreator: glasses"
+ },
+ {
+  "id": "v916d891d",
+  "text": "Oparty potrzebuje czegoś za plecami.",
+  "from": "kod, Kreator: stuffGate"
+ },
+ {
+  "id": "v37aece00",
+  "text": "Pasuje?",
+  "from": "Kreator: zdaj się na mnie"
+ },
+ {
+  "id": "v0c72e3fc",
+  "text": "Pies, kot, królik albo smok.",
+  "from": "kod, Kreator: pets"
+ },
+ {
+  "id": "v1942f7ce",
+  "text": "Podstawowy to najważniejsze opcje, Ekspert daje wszystkie możliwości.",
+  "from": "kod"
+ },
+ {
+  "id": "ve9e0678b",
+  "text": "Podstawowy: najważniejsze opcje, resztę ustawiam sam.",
+  "from": "kod"
+ },
+ {
+  "id": "v76ea3084",
+  "text": "Pomarańcz, widać z daleka.",
+  "from": "kod"
+ },
+ {
+  "id": "v9c9d4397",
+  "text": "Poprawki zrobisz tu, w Swobodzie.",
+  "from": "koniec Kreatora"
+ },
+ {
+  "id": "va25b7738",
+  "text": "Pora dnia?",
+  "from": "kod, Kreator: time"
+ },
+ {
+  "id": "vff965f10",
+  "text": "Postać gotowa.",
+  "from": "kod, Kreator, koniec rozdziału"
+ },
+ {
+  "id": "v00fa0310",
+  "text": "Postawiłem stół, żeby było na czym położyć.",
+  "from": "kod"
+ },
+ {
+  "id": "vc38ad58d",
+  "text": "Poza jest.",
+  "from": "kod, Kreator, koniec rozdziału"
+ },
+ {
+  "id": "ve7909e2c",
+  "text": "Przełączmy styl.",
+  "from": "kod, tutorial 9"
+ },
+ {
+  "id": "v2df6139a",
+  "text": "Reżyseruję sceny filmowe.",
+  "from": "kod, tutorial 1"
+ },
+ {
+  "id": "vc463c29f",
+  "text": "Robi się ciasno na boki.",
+  "from": "kod"
+ },
+ {
+  "id": "v07e720c7",
+  "text": "Robi się tłoczno: 10 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "vc7c9ea04",
+  "text": "Robi się tłoczno: 11 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v446767ed",
+  "text": "Robi się tłoczno: 12 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v305d145a",
+  "text": "Robi się tłoczno: 13 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "v4a9a4ccb",
+  "text": "Robi się tłoczno: 14 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "vca3e55fd",
+  "text": "Robi się tłoczno: 7 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "vc433cd00",
+  "text": "Robi się tłoczno: 8 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "vfcde7d53",
+  "text": "Robi się tłoczno: 9 rzeczy.",
+  "from": "tłok w kadrze"
+ },
+ {
+  "id": "vf35af2af",
+  "text": "Róż?",
+  "from": "kod"
+ },
+ {
+  "id": "v8caec4f7",
+  "text": "Rzeczy gotowe.",
+  "from": "kod, Kreator, koniec rozdziału"
+ },
+ {
+  "id": "v0889de95",
+  "text": "Rzeczy stoją nad sobą.",
+  "from": "kod"
+ },
+ {
+  "id": "v58fade08",
+  "text": "Rzeka, mgła, deszcz…",
+  "from": "kod, Kreator: fx"
+ },
+ {
+  "id": "v7a1aa2cc",
+  "text": "Skopiuj go.",
+  "from": "kod, tutorial 6"
+ },
+ {
+  "id": "v88a88bd2",
+  "text": "Słoneczne okulary w nocy?",
+  "from": "kod"
+ },
+ {
+  "id": "v6cf2efb0",
+  "text": "Stuknij Dół.",
+  "from": "kod, tutorial 3"
+ },
+ {
+  "id": "v69657e3a",
+  "text": "Stuknij mnie, a dam wyższy kadr (zmieści się też pierwszy plan).",
+  "from": "kod"
+ },
+ {
+  "id": "vd22ac179",
+  "text": "Stuknij mnie, a poszerzę kadr (dalej po bokach zmieszczą się kolejne rzeczy).",
+  "from": "kod"
+ },
+ {
+  "id": "v9b36f6e3",
+  "text": "Stuknij mnie, a poszerzę kadr.",
+  "from": "kod"
+ },
+ {
+  "id": "vff73e37b",
+  "text": "Stuknij punkt.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v523e7903",
+  "text": "Stuknij Styl.",
+  "from": "kod, tutorial 10"
+ },
+ {
+  "id": "v4d564292",
+  "text": "Stuknij zielony przycisk i skopiuj Maniscrypt.",
+  "from": "koniec Kreatora"
+ },
+ {
+  "id": "v1c635d70",
+  "text": "Stwórzmy Maniscrypt dla stylu Fantasy.",
+  "from": "kod, tutorial 12"
+ },
+ {
+  "id": "vab95c4cd",
+  "text": "Stwórzmy Maniscrypt dla tej sceny: stuknij zielony przycisk.",
+  "from": "kod, tutorial 5"
+ },
+ {
+  "id": "v7cce36c6",
+  "text": "Swoboda: wszystkie opcje pod ręką.",
+  "from": "kod"
+ },
+ {
+  "id": "vd48220e1",
+  "text": "Szerszy kadr.",
+  "from": "kod"
+ },
+ {
+  "id": "vacc77ffe",
+  "text": "Szukaj znajdzie też banana.",
+  "from": "Kreator: items"
+ },
+ {
+  "id": "vc9c5ce0b",
+  "text": "Szukam za kanapą.",
+  "from": "kod"
+ },
+ {
+  "id": "v83df36de",
+  "text": "Szukamy go od rana.",
+  "from": "kod"
+ },
+ {
+  "id": "v47d2c900",
+  "text": "Śnieg i deszcz naraz się nie da.",
+  "from": "kolizja efektów"
+ },
+ {
+  "id": "v0c18bae2",
+  "text": "Świetnie.",
+  "from": "kod, tutorial 5"
+ },
+ {
+  "id": "ve8978185",
+  "text": "Ta opcja będzie dostępna wkrótce.",
+  "from": "kod"
+ },
+ {
+  "id": "v45e8c5c4",
+  "text": "Teraz się mieści.",
+  "from": "kod"
+ },
+ {
+  "id": "v9c9c17c7",
+  "text": "Teraz wybierz Dres.",
+  "from": "kod, tutorial 4"
+ },
+ {
+  "id": "v1136c308",
+  "text": "Ty pokazujesz, co potrzebujesz, a ja przygotowuję Ci opis dla AI.",
+  "from": "kod, tutorial 2"
+ },
+ {
+  "id": "v6f7395a7",
+  "text": "Usta?",
+  "from": "Kreator: lips"
+ },
+ {
+  "id": "v0843fa31",
+  "text": "Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI.",
+  "from": "kod"
+ },
+ {
+  "id": "v15f671b2",
+  "text": "W jakim klimacie?",
+  "from": "kod, Kreator: style"
+ },
+ {
+  "id": "v7a5dfdf9",
+  "text": "W tej scenie jeansy za bardzo nie pasują.",
+  "from": "kod, tutorial 3"
+ },
+ {
+  "id": "v808b79bf",
+  "text": "Więcej miejsca po bokach.",
+  "from": "kod"
+ },
+ {
+  "id": "vb85913f6",
+  "text": "Wróć strzałką do głównych grup.",
+  "from": "kod, tutorial 9"
+ },
+ {
+  "id": "ve4bbc2bd",
+  "text": "Wskaż na ekranie, gdzie ma stać: biurko.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v5ac65f9b",
+  "text": "Wskaż na ekranie, gdzie ma stać: fotel.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v33812b2a",
+  "text": "Wskaż na ekranie, gdzie ma stać: hoker barowy.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v49ddbeac",
+  "text": "Wskaż na ekranie, gdzie ma stać: kamień.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v2c68283f",
+  "text": "Wskaż na ekranie, gdzie ma stać: kanapa.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v8b460791",
+  "text": "Wskaż na ekranie, gdzie ma stać: krzesło.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v937eae25",
+  "text": "Wskaż na ekranie, gdzie ma stać: lada barowa.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v4db1bb33",
+  "text": "Wskaż na ekranie, gdzie ma stać: lampa stojąca.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "vf6286de5",
+  "text": "Wskaż na ekranie, gdzie ma stać: ławka.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "vec3f5c4d",
+  "text": "Wskaż na ekranie, gdzie ma stać: parasol plażowy.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v143eb22c",
+  "text": "Wskaż na ekranie, gdzie ma stać: pień drzewa.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v7f2b73db",
+  "text": "Wskaż na ekranie, gdzie ma stać: pufa.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "ve69b74d0",
+  "text": "Wskaż na ekranie, gdzie ma stać: regał z książkami.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v79ff219e",
+  "text": "Wskaż na ekranie, gdzie ma stać: roślina w donicy.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v90f8afee",
+  "text": "Wskaż na ekranie, gdzie ma stać: rower.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v8b41cd55",
+  "text": "Wskaż na ekranie, gdzie ma stać: samochód.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v993d1e21",
+  "text": "Wskaż na ekranie, gdzie ma stać: schody.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "ve28354c4",
+  "text": "Wskaż na ekranie, gdzie ma stać: skrzynia.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v7a6f52b9",
+  "text": "Wskaż na ekranie, gdzie ma stać: stolik kawowy.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "vc3ab577b",
+  "text": "Wskaż na ekranie, gdzie ma stać: stół.",
+  "from": "Kreator: stuffWhere"
+ },
+ {
+  "id": "v3ff4f537",
+  "text": "Wskaż w kadrze, gdzie ma stać: biurko.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "vac184ae9",
+  "text": "Wskaż w kadrze, gdzie ma stać: fotel.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v9325e050",
+  "text": "Wskaż w kadrze, gdzie ma stać: hoker barowy.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v7c1b018a",
+  "text": "Wskaż w kadrze, gdzie ma stać: kamień.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "va2588931",
+  "text": "Wskaż w kadrze, gdzie ma stać: kanapa.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v52746c7f",
+  "text": "Wskaż w kadrze, gdzie ma stać: krzesło.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v66ea405b",
+  "text": "Wskaż w kadrze, gdzie ma stać: lada barowa.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v2b687481",
+  "text": "Wskaż w kadrze, gdzie ma stać: lampa stojąca.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v6077dd07",
+  "text": "Wskaż w kadrze, gdzie ma stać: ławka.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v23704a5f",
+  "text": "Wskaż w kadrze, gdzie ma stać: parasol plażowy.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "ve5c64d26",
+  "text": "Wskaż w kadrze, gdzie ma stać: pień drzewa.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "va5072c29",
+  "text": "Wskaż w kadrze, gdzie ma stać: pufa.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v7d81d0fa",
+  "text": "Wskaż w kadrze, gdzie ma stać: regał z książkami.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v29d70bf0",
+  "text": "Wskaż w kadrze, gdzie ma stać: roślina w donicy.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v4a453bac",
+  "text": "Wskaż w kadrze, gdzie ma stać: rower.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v282ddc1f",
+  "text": "Wskaż w kadrze, gdzie ma stać: samochód.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "va30e01d7",
+  "text": "Wskaż w kadrze, gdzie ma stać: schody.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v4dfe629a",
+  "text": "Wskaż w kadrze, gdzie ma stać: skrzynia.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v9f555edb",
+  "text": "Wskaż w kadrze, gdzie ma stać: stolik kawowy.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v63b322b1",
+  "text": "Wskaż w kadrze, gdzie ma stać: stół.",
+  "from": "wskazywanie miejsca rzeczy"
+ },
+ {
+  "id": "v80408e36",
+  "text": "Wybieraj na górze.",
+  "from": "kod"
+ },
+ {
+  "id": "vb64e6cd7",
+  "text": "Wybierz albo stuknij Rzeczy gotowe.",
+  "from": "kod"
+ },
+ {
+  "id": "v47d1cbc2",
+  "text": "Wybierz część albo stuknij Kolory gotowe.",
+  "from": "kod, Kreator: cpart"
+ },
+ {
+  "id": "v49c0db65",
+  "text": "Wybierz Fantasy.",
+  "from": "kod, tutorial 11"
+ },
+ {
+  "id": "va8f41164",
+  "text": "Wybory z Kreatora zostają.",
+  "from": "kod"
+ },
+ {
+  "id": "v8268c745",
+  "text": "Wybory zostają.",
+  "from": "kod"
+ },
+ {
+  "id": "v23ffc0bd",
+  "text": "Wyższy kadr.",
+  "from": "kod"
+ },
+ {
+  "id": "v3f7962ac",
+  "text": "Z której strony patrzymy?",
+  "from": "kod, Kreator: camera"
+ },
+ {
+  "id": "va33a17a6",
+  "text": "Zaczynamy!",
+  "from": "kod"
+ },
+ {
+  "id": "v1944d466",
+  "text": "Założysz mu dres?",
+  "from": "kod, tutorial 3"
+ },
+ {
+  "id": "v41563455",
+  "text": "Zarost?",
+  "from": "Kreator: beard"
+ },
+ {
+  "id": "v2ac32fe4",
+  "text": "Zgubiłem gdzieś rekwizyty…",
+  "from": "kod"
+ },
+ {
+  "id": "v7dfe296b",
+  "text": "Zmieniamy kolory?",
+  "from": "kod, Kreator: colors"
+ },
+ {
+  "id": "v6c3372dd",
+  "text": "Zmienisz to w menu.",
+  "from": "kod"
+ },
+ {
+  "id": "vb726ed82",
+  "text": "Zobaczmy, co AI zrobi z Fantasy…",
+  "from": "kod, tutorial 14"
+ },
+ {
+  "id": "v8640275f",
+  "text": "Zostawiam: deszcz.",
+  "from": "kolizja efektów"
+ },
+ {
+  "id": "v0aa3979a",
+  "text": "Zostawiam: śnieg.",
+  "from": "kolizja efektów"
+ }
+]
