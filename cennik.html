@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cennik – Manikun</title>
+<meta name="description" content="Cennik kredytów Manikun: pakiety 20, 50 i 120 zdjęć AI / Manikun pricing">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="/prawne.css">
+<style>
+  .packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+  .pack { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 16px; display: grid; gap: 4px; }
+  .pack.best { border-color: var(--accent); }
+  .pack .tag { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; min-height: 18px; }
+  .pack .credits { font-size: 22px; font-weight: 700; }
+  .pack .price { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+  .pack .per { color: var(--muted); font-size: 14px; }
+  @media (max-width: 600px) { .pack .tag:empty { display: none; } }
+  .free { display: flex; gap: 12px; align-items: center; }
+  .free b { color: var(--accent); }
+  .cta { display: inline-block; margin-top: 8px; background: var(--accent); color: var(--bg); font-weight: 700; text-decoration: none; padding: 12px 18px; border-radius: 12px; }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="/">← <b>Manikun</b></a>
+  <nav><a href="/cennik" aria-current="page">Cennik</a><a href="/regulamin">Regulamin</a><a href="/prywatnosc">Prywatność</a><a href="/zwroty">Zwroty</a></nav>
+  <div class="lang"><a href="#pl">PL</a><a href="#en">EN</a></div>
+</div></header>
+<main>
+<section id="pl" lang="pl">
+<h1>Cennik</h1>
+<p class="meta">Ceny brutto (z VAT). Jednorazowe pakiety, bez subskrypcji.</p>
+
+<p>Układanie scen i kopiowanie Maniscryptu do dowolnego generatora AI jest <b>bezpłatne</b> i nie wymaga konta. Kredyty są potrzebne tylko do robienia zdjęć AI bezpośrednio w Manikunie: <b>1 kredyt = 1 zdjęcie</b> (do 1344×2016 px, gotowe w około 20 sekund).</p>
+
+<div class="box free"><span>🎁</span><span>Na start <b>5 darmowych kredytów</b> po zalogowaniu przez Google.</span></div>
+
+<div class="packs">
+  <div class="pack"><span class="tag"></span><span class="credits">20 kredytów</span><span class="price">5 zł</span><span class="per">0,25 zł za zdjęcie</span></div>
+  <div class="pack best"><span class="tag">Najczęściej wybierany</span><span class="credits">50 kredytów</span><span class="price">10 zł</span><span class="per">0,20 zł za zdjęcie</span></div>
+  <div class="pack"><span class="tag">Najtaniej</span><span class="credits">120 kredytów</span><span class="price">20 zł</span><span class="per">0,17 zł za zdjęcie</span></div>
+</div>
+
+<ul>
+  <li><b>Kredyty nie wygasają.</b></li>
+  <li>Gdy zdjęcie się nie uda, kredyt wraca na konto automatycznie.</li>
+  <li>Pełny zwrot w ciągu 14 dni, jeśli z pakietu nie powstało żadne zdjęcie – szczegóły w <a href="/zwroty">Polityce zwrotów</a>.</li>
+  <li>Płatności obsługuje Paddle (Paddle.com), autoryzowany sprzedawca (Merchant of Record) pakietów Manikuna.</li>
+  <li>Zakup pakietów będzie dostępny w aplikacji wkrótce. Do tego czasu możesz korzystać z darmowych kredytów.</li>
+</ul>
+<a class="cta" href="/">Otwórz Manikuna</a>
+</section>
+
+<section id="en" class="lang-en" lang="en">
+<h1>Pricing</h1>
+<p class="meta">Prices include VAT. One-time packs, no subscriptions.</p>
+
+<p>Building scenes and copying the Maniscrypt prompt to any AI image generator is <b>free</b> and needs no account. Credits are only used to generate AI photos directly in Manikun: <b>1 credit = 1 photo</b> (up to 1344×2016 px, ready in about 20 seconds).</p>
+
+<div class="box free"><span>🎁</span><span><b>5 free credits</b> when you sign in with Google.</span></div>
+
+<div class="packs">
+  <div class="pack"><span class="tag"></span><span class="credits">20 credits</span><span class="price">5 PLN</span><span class="per">0.25 PLN per photo</span></div>
+  <div class="pack best"><span class="tag">Most popular</span><span class="credits">50 credits</span><span class="price">10 PLN</span><span class="per">0.20 PLN per photo</span></div>
+  <div class="pack"><span class="tag">Best value</span><span class="credits">120 credits</span><span class="price">20 PLN</span><span class="per">0.17 PLN per photo</span></div>
+</div>
+
+<ul>
+  <li><b>Credits never expire.</b></li>
+  <li>If a photo fails, the credit is returned automatically.</li>
+  <li>Full refund within 14 days if no photo has been generated from the pack – see the <a href="/zwroty#en">Refund Policy</a>.</li>
+  <li>Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders.</li>
+  <li>Purchasing packs in the app is coming soon. Until then you can use your free credits.</li>
+</ul>
+<a class="cta" href="/">Open Manikun</a>
+</section>
+</main>
+</body>
+</html>
