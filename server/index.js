@@ -1,4 +1,5 @@
 import { bench, models, schemas } from "./bench.js";
+import { shopInfo, checkoutStart, paddleWebhook } from "./paddle.js";
 // Manikun: serwer (Worker Cloudflare "manikun").
 // Strona to statyczne pliki; tutaj trafiają tylko adresy /api/*.
 // Logowanie przez Google (OAuth z PKCE), sesja w ciasteczku HttpOnly, kredyty w bazie D1 (binding DB).
@@ -504,7 +505,7 @@ async function me(request, env) {
   const active = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND cancelled = 0 AND created_at > ? ORDER BY created_at DESC LIMIT 1")
     .bind(user.id, now() - 600).first();
   const unseen = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'completed' AND seen = 0").bind(user.id).first();
-  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env), premiumCost: premiumCost(env),
+  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env), premiumCost: premiumCost(env), shop: shopInfo(env),
     active: active ? active.id : null, unseen: unseen.n });
 }
 
@@ -545,6 +546,14 @@ export default {
         if (request.method === "POST" && m && m[2] === "/cancel") return await generationCancel(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/seen") return await generationSeen(env, user, m[1]);
         if (request.method === "DELETE" && m && !m[2]) return await generationDelete(env, user, m[1]);
+      }
+      // Zakup kredytów (Paddle): zgoda przed kasą i powiadomienia o płatnościach (podpisane, bez sprawdzania źródła)
+      if (route === "POST /api/paddle/webhook") return await paddleWebhook(request, env, { json });
+      if (route === "POST /api/checkout") {
+        if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Zaloguj się." }, 401);
+        return await checkoutStart(request, env, user, { json, randomToken });
       }
       if (route === "POST /api/upload-face") {
         if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);

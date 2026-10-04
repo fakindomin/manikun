@@ -21,6 +21,15 @@
   "kv_namespaces": [
     { "binding": "PHOTOS", "id": "3e64de3dd30e4f26a76469c51564d3bd" }
   ],
-  "vars": { "CANONICAL_HOST": "manikun.pl", "GOOGLE_CLIENT_ID": "331864294353-thj64786rfai33kid9v7sbahg52vicb3.apps.googleusercontent.com" },
+  "vars": {
+    // Paddle (zakup kredytów): środowisko, pakiety, token przeglądarki (jawny). Sekret powiadomień PADDLE_WEBHOOK_SECRET – w panelu.
+    "PADDLE_ENV": "sandbox",
+    "PADDLE_CLIENT_TOKEN": "",
+    "PADDLE_PACKS": [
+      { "price": "pri_01m43shstn6w3751x3ky4rjtxc", "product": "pro_01m43seawck34ezkjsckhnc8zg", "credits": 20, "pln": 5 },
+      { "price": "pri_01m43snnd261c42h62q5ge32gz", "product": "pro_01m43skd7apx9kqz7f0dbdpph5", "credits": 50, "pln": 10 },
+      { "price": "pri_01m43sr0adg83n3d3ymyc78yk8", "product": "pro_01m43spvz5hbx6n1c6x6qxjkf8", "credits": 120, "pln": 20 }
+    ],
+    "CANONICAL_HOST": "manikun.pl", "GOOGLE_CLIENT_ID": "331864294353-thj64786rfai33kid9v7sbahg52vicb3.apps.googleusercontent.com" },
   "observability": { "enabled": true }
 }

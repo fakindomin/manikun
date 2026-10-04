@@ -254,6 +254,19 @@
   body.view-open #viewSheet { transform: none; }
   body.view-open #viewScrim { opacity: 1; pointer-events: auto; }
   #viewSheet, #viewScrim { z-index: 60; }
+  body.shop-open #shopSheet { transform: none; }
+  body.shop-open #shopScrim { opacity: 1; pointer-events: auto; }
+  #shopSheet, #shopScrim { z-index: 62; }
+  .shop-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .shop-pack { font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 6px; display: grid; gap: 2px; justify-items: center; cursor: pointer; }
+  .shop-pack b { font-size: 17px; }
+  .shop-pack .pln { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .shop-pack small { font-size: 11px; color: var(--muted); }
+  .shop-pack[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .shop-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; line-height: 1.45; color: var(--muted); cursor: pointer; }
+  .shop-consent input { width: 18px; height: 18px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
+  .shop-consent a { color: var(--ink); }
+  #shopBuy:disabled { opacity: 0.5; cursor: default; }
   .view-frame { position: relative; display: grid; place-items: center; height: min(62dvh, 560px); border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); touch-action: pan-y; }
   .view-frame img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; transition: opacity 0.2s ease; }
   .view-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 52px; border: 0; border-radius: 12px; background: rgba(0,0,0,0.35); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; }
@@ -712,6 +725,7 @@
   <nav class="menu" id="menu" aria-label="Menu" aria-hidden="true">
     <h2><em>Manikun</em> · menu</h2>
     <button class="menu-item" type="button" id="menuAccount" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span class="acct-name" id="menuAccountLabel">Zaloguj przez Google</span><span class="soon level" id="menuAccountVal" hidden></span></button>
+    <button class="menu-item" type="button" id="menuBuy" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>Dokup kredyty</button>
     <button class="menu-item" type="button" id="menuLogout" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>Wyloguj</button>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="soon level" id="menuLevelVal">Podstawowy</span></button>
@@ -883,6 +897,21 @@
       <button class="chip" type="button" id="viewLike">Zrób podobne</button>
       <button class="chip view-del" type="button" id="viewDel">Usuń</button>
     </div>
+  </section>
+
+  <!-- Dokup kredyty: pakiety, zgoda (niezaznaczona) i kasa Paddle -->
+  <div class="sheet-scrim" id="shopScrim"></div>
+  <section class="sheet preview" id="shopSheet" aria-label="Dokup kredyty" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2>Dokup kredyty</h2>
+      <button class="icon-btn" type="button" id="shopClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="sheet-lead" id="shopNote">1 kredyt = 1 zdjęcie. Kredyty nie wygasają.</p>
+    <div class="shop-packs" id="shopPacks" role="radiogroup" aria-label="Pakiety"></div>
+    <label class="shop-consent"><input type="checkbox" id="shopConsent"><span>Wyrażam zgodę na rozpoczęcie świadczenia usługi przed upływem terminu do odstąpienia od umowy i przyjmuję do wiadomości, że z chwilą wygenerowania pierwszego zdjęcia z pakietu tracę prawo do odstąpienia. Akceptuję <a href="/regulamin" target="_blank">Regulamin</a> i <a href="/zwroty" target="_blank">Politykę zwrotów</a>.</span></label>
+    <button class="sheet-copy" type="button" id="shopBuy" disabled>Przejdź do płatności</button>
+    <p class="legal-note">Płatność obsługuje Paddle (Merchant of Record). Ceny brutto. <a href="/cennik" target="_blank">Cennik</a></p>
   </section>
 
   <div class="stage">
@@ -7673,6 +7702,7 @@
     menuAccountLabel.textContent = u ? (u.name || u.email) : "Zaloguj przez Google";
     menuAccountVal.hidden = !u;
     if (u) menuAccountVal.textContent = account.credits + " " + creditsWord(account.credits);
+    document.getElementById("menuBuy").hidden = !u || !account.shop;
     if (typeof syncGenBtn === "function") syncGenBtn();
   }
   async function loadAccount() {
@@ -7684,9 +7714,113 @@
     return account;
   }
   menuAccount.addEventListener("click", () => {
-    if (!account || account.user) return;
+    if (!account) return;
+    if (account.user) { if (account.shop) openShop(); return; }
     location.href = "/api/auth/google";
   });
+  document.getElementById("menuBuy").addEventListener("click", () => openShop());
+
+  // ---------- Dokup kredyty (Paddle) ----------
+  // Pakiety i token z /api/me (shop). Najpierw zgoda zapisana na serwerze (/api/checkout), potem kasa Paddle (nakładka)
+  // z custom_data { c: id zgody }. Kredyty dopisuje serwer po powiadomieniu od Paddle; aplikacja czeka, aż saldo wzrośnie.
+  const shopPacks = document.getElementById("shopPacks"), shopConsent = document.getElementById("shopConsent");
+  const shopBuy = document.getElementById("shopBuy"), shopNote = document.getElementById("shopNote");
+  let shopPick = null, paddleReady = null, shopWait = null;
+  function setShop(open) {
+    document.body.classList.toggle("shop-open", open);
+    document.getElementById("shopSheet").setAttribute("aria-hidden", String(!open));
+  }
+  const plnText = n => (Number.isInteger(n) ? n : n.toFixed(2).replace(".", ",")) + " zł";
+  function syncShopBuy() {
+    shopBuy.disabled = !shopPick || !shopConsent.checked || !!shopWait;
+    shopBuy.textContent = shopPick ? "Zapłać " + plnText(shopPick.pln) + " · " + shopPick.credits + " " + creditsWord(shopPick.credits) : "Przejdź do płatności";
+  }
+  function openShop(why) {
+    if (!account || !account.user) { location.href = "/api/auth/google"; return; }
+    if (!account.shop) { say("Zakup kredytów będzie dostępny wkrótce.", 4000); return; }
+    const list = account.shop.packs;
+    if (!shopPick || !list.some(p => p.price === shopPick.price)) shopPick = list[Math.min(1, list.length - 1)];
+    shopPacks.replaceChildren(...list.map(p => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "shop-pack"; b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(p.price === shopPick.price));
+      b.innerHTML = "<b>" + p.credits + "</b><small>" + creditsWord(p.credits) + "</small><span class=\"pln\">" + plnText(p.pln) + "</span><small>" + plnText(p.pln / p.credits) + " / zdjęcie</small>";
+      b.addEventListener("click", () => {
+        shopPick = p;
+        for (const x of shopPacks.children) x.setAttribute("aria-checked", String(x === b));
+        syncShopBuy();
+      });
+      return b;
+    }));
+    shopNote.textContent = (why ? why + " " : "") + "Masz " + account.credits + " " + creditsWord(account.credits) + ". 1 kredyt = 1 zdjęcie. Kredyty nie wygasają.";
+    shopConsent.checked = false;
+    syncShopBuy();
+    setMenu(false);
+    setShop(true);
+    loadPaddle().catch(() => {});
+  }
+  function loadPaddle() {
+    if (paddleReady) return paddleReady;
+    paddleReady = new Promise((resolve, reject) => {
+      const sc = document.createElement("script");
+      sc.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+      sc.onload = () => {
+        try {
+          if (account.shop.env === "sandbox") window.Paddle.Environment.set("sandbox");
+          window.Paddle.Initialize({ token: account.shop.token, eventCallback: paddleEvent });
+          resolve(window.Paddle);
+        } catch (e) { reject(e); }
+      };
+      sc.onerror = () => { paddleReady = null; reject(new Error("paddle")); };
+      document.head.appendChild(sc);
+    });
+    return paddleReady;
+  }
+  shopConsent.addEventListener("change", syncShopBuy);
+  shopBuy.addEventListener("click", async () => {
+    if (!shopPick || !shopConsent.checked || shopWait) return;
+    shopBuy.disabled = true; shopBuy.textContent = "Otwieram płatność…";
+    let d = {};
+    try {
+      const r = await fetch("/api/checkout", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ price: shopPick.price, consent: true }) });
+      d = await r.json();
+    } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
+    let P = null;
+    if (d.id) { try { P = await loadPaddle(); } catch (e) { d = { error: "Nie udało się otworzyć płatności. Spróbuj jeszcze raz." }; } }
+    if (!d.id || !P) { syncShopBuy(); say(d.error || "Nie udało się otworzyć płatności.", 4500); return; }
+    shopWait = { before: account.credits, pack: shopPick };
+    syncShopBuy();
+    P.Checkout.open({
+      items: [{ priceId: shopPick.price, quantity: 1 }],
+      customer: { email: d.email },
+      customData: { c: d.id },
+      settings: { displayMode: "overlay", locale: "pl", theme: "dark", allowLogout: false }
+    });
+  });
+  function paddleEvent(e) {
+    if (!e || !shopWait) return;
+    if (e.name === "checkout.completed") {
+      shopWait.paid = true;
+      setShop(false);
+      setTimeout(() => { try { window.Paddle.Checkout.close(); } catch (x) {} }, 2500);
+      say("Dziękuję! Dopisuję kredyty…", 4000);
+      waitCredits(shopWait, 0);
+    } else if (e.name === "checkout.closed" && !shopWait.paid) { shopWait = null; syncShopBuy(); }
+  }
+  // Kredyty dopisuje serwer po powiadomieniu od Paddle (zwykle kilka sekund): dopytujemy o saldo do 2 minut
+  async function waitCredits(w, n) {
+    const a = await loadAccount();
+    if (a && a.user && a.credits > w.before) {
+      shopWait = null; syncShopBuy();
+      try { sfx("klap"); } catch (e) {}
+      say("Gotowe! Masz teraz " + a.credits + " " + creditsWord(a.credits) + ". Co kręcimy?", 6000);
+      return;
+    }
+    if (n >= 40) { shopWait = null; syncShopBuy(); say("Płatność przyjęta. Kredyty pojawią się za chwilę – jeśli ich nie widać, odśwież stronę.", 7000); return; }
+    setTimeout(() => waitCredits(w, n + 1), 3000);
+  }
+  document.getElementById("shopClose").addEventListener("click", () => setShop(false));
+  document.getElementById("shopScrim").addEventListener("click", () => setShop(false));
   menuLogout.addEventListener("click", async () => {
     try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}
     await loadAccount();
@@ -8099,7 +8233,11 @@
   sheetGen.addEventListener("click", () => {
     if (!account || !account.user) { location.href = "/api/auth/google"; return; }
     if (genBusy || genReady) { setGen(true); return; }
-    if (account.credits < costNow()) { say(premiumOn() ? "Na Premium brakuje kredytów. Wyłącz Premium albo dokup kredyty." : "Brakuje kredytów. Wkrótce dokupisz je w menu.", 4500); return; }
+    if (account.credits < costNow()) {
+      if (account.shop) openShop("Brakuje kredytów na to zdjęcie.");
+      else say("Brakuje kredytów. Wkrótce dokupisz je w menu.", 4500);
+      return;
+    }
     if (withFace()) {
       if (!faceAllowed()) { say("Zdjęcie z Twoją twarzą zrobisz na razie w generatorze z listy. Tutaj już wkrótce!", 5000); return; }
       faceFile.click();
@@ -8120,7 +8258,11 @@
   });
   genAgain.addEventListener("click", () => {
     if (genBusy) return;
-    if (account && account.user && account.credits < costNow()) { genState("Brak kredytów.", false); genAgain.hidden = true; return; }
+    if (account && account.user && account.credits < costNow()) {
+      genState("Brak kredytów.", false); genAgain.hidden = true;
+      if (account.shop) openShop("Brakuje kredytów na kolejne zdjęcie.");
+      return;
+    }
     // „Jeszcze jedno” z tym samym zdjęciem twarzy, jeśli było
     genStart(genJob && genJob.face && withFace() ? genJob.face : undefined);
   });
