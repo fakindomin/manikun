@@ -508,9 +508,17 @@ async function me(request, env) {
     active: active ? active.id : null, unseen: unseen.n });
 }
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // Adres główny (zmienna CANONICAL_HOST, np. manikun.pl): strony otwarte pod innym adresem (workers.dev, www) przenosimy tam na stałe.
+    // API działa pod każdym adresem (zdjęcia w toku), poza startem logowania – ciasteczko sesji ma powstać pod adresem głównym.
+    const main = env.CANONICAL_HOST;
+    if (main && url.hostname !== main && !LOCAL_HOSTS.has(url.hostname) && request.method === "GET"
+      && (!url.pathname.startsWith("/api/") || url.pathname === "/api/auth/google"))
+      return Response.redirect("https://" + main + url.pathname + url.search, 301);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
       const route = request.method + " " + url.pathname;

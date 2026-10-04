@@ -1,13 +1,14 @@
 // Cloudflare: Worker "manikun". Statyczne pliki strony + serwer dla adresów /api/* (server/index.js).
 // Wdraża się sam z gita (Workers Builds) po każdym pushu na gałąź produkcyjną.
 // Sekrety (panel: Settings › Variables and Secrets): GOOGLE_CLIENT_SECRET, HF_KEY (Higgsfield, KEY_ID:KEY_SECRET).
+// Strony (/, regulamin, prywatnosc, zwroty) też przechodzą przez serwer: przekierowanie na adres główny (CANONICAL_HOST).
 // Opcjonalnie zmienne: HF_MODEL (domyślnie higgsfield-ai/soul/v2/standard), GEN_COST (kredyty za zdjęcie, domyślnie 1).
 {
   "name": "manikun",
   "main": "server/index.js",
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
-  "assets": { "directory": "./", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "assets": { "directory": "./", "binding": "ASSETS", "run_worker_first": ["/api/*", "/", "/index.html", "/regulamin", "/prywatnosc", "/zwroty"] },
   "d1_databases": [
     { "binding": "DB", "database_name": "manikun", "database_id": "cbafedec-9882-4949-b1f8-5ce6af761402", "migrations_dir": "migrations" }
   ],
