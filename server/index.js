@@ -192,6 +192,9 @@ async function generateWorkersAI(env, g, model, prompt, aspect) {
 const isOwner = user => user && user.id === 1;
 
 // Zdjęcie twarzy (dla wszystkich; wybrany po testach Soul 2 image-to-image): którym modelem i pod jakim polem (z komunikatów walidacji API, 3.10.2026).
+// Soul 2 przyjmuje resolution '720p' albo '1080p' (sonda schematu 4.10.2026) — bierzemy wyższą
+const SOUL_RES = "1080p";
+
 // Soul 2 i Qwen mają osobne warianty przyjmujące obraz; image_urls to lista, image_url pojedynczy adres.
 function faceRoute(model) {
   if (model === "higgsfield-ai/soul/v2/standard") return { model: "higgsfield-ai/soul/v2/image-to-image", field: "image_url" };
@@ -315,7 +318,8 @@ async function generate(request, env, user, ctx) {
   const models = fr ? [model] : [model, ...HF_FALLBACK.filter(m => m !== model)];
   const withFace = b => fr ? { ...b, [fr.field]: fr.field === "image_urls" ? [face] : face } : b;
   attempts: for (const m of models) {
-    for (const body of [withFace({ prompt, aspect_ratio: aspectFor(m, asked) }), withFace({ prompt })]) {
+    const sized = m.startsWith("higgsfield-ai/soul/v2/") ? [withFace({ prompt, aspect_ratio: aspectFor(m, asked), resolution: SOUL_RES })] : [];
+    for (const body of [...sized, withFace({ prompt, aspect_ratio: aspectFor(m, asked) }), withFace({ prompt })]) {
       model = m; data = null;
       try {
         res = await fetch((env.HF_API_URL || HF_API) + "/" + m, {
@@ -326,7 +330,7 @@ async function generate(request, env, user, ctx) {
       } catch (e) { res = null; raw = "fetch: " + e; }
       log.push(m + " " + (res ? res.status : "-") + " " + raw.slice(0, 300));
       // Walidacja odrzuciła parametr (np. proporcje): jeszcze raz bez niego
-      if (res && (res.status === 422 || (res.status === 400 && /aspect_ratio/.test(raw)))) continue;
+      if (res && (res.status === 422 || (res.status === 400 && /aspect_ratio|resolution/.test(raw)))) continue;
       if (res && res.status === 404 && /model_not_found/.test(raw)) continue attempts;
       break attempts;
     }
