@@ -142,9 +142,10 @@ const HF_API = "https://api.higgsfield.ai";
 // Bez modelu zapasowego: Soul Standard kosztuje ok. 0,094 $ (30 razy więcej), więc awaria ma się zakończyć zwrotem kredytu.
 const HF_MODEL = "higgsfield-ai/soul/v2/standard";
 const HF_FALLBACK = [];
-// Premium: Recraft 4.1 Pro w 2K (ok. 15 s, 1664×2560 przy 2:3), droższy, więc za więcej kredytów; bez zdjęcia twarzy
+// Premium: Recraft 4.1 Pro w 2K (ok. 15 s, 1664×2560 przy 2:3); bez zdjęcia twarzy.
+// Wyłączone 4.10.2026: kosztuje ok. 0,41 $ za zdjęcie (130 razy więcej niż Soul 2), a Soul 2 w 1080p daje 1344×2016.
+// Włącza je zmienna PREMIUM_COST (liczba kredytów) w Cloudflare.
 const PREMIUM_MODEL = "recraft/v4.1/pro/text-to-image";
-const PREMIUM_COST = 4;
 const isWorkersAI = model => model.startsWith("@cf/");
 
 // Wymiary ok. 1 MP w proporcjach kadru, wielokrotność 16
@@ -233,7 +234,7 @@ const aspectFor = (model, a) => model.startsWith("@cf/") && /^\d{1,2}:\d{1,2}$/.
 
 const hfModel = env => env.HF_MODEL || HF_MODEL;
 const genCost = env => Number(env.GEN_COST) || GEN_COST;
-const premiumCost = env => Number(env.PREMIUM_COST) || PREMIUM_COST;
+const premiumCost = env => Number(env.PREMIUM_COST) || 0;
 // Najwyższa jakość, jaką model przyjmuje (sondy schematu: Soul 2 720p/1080p, Recraft Pro 1k/2k)
 const qualityFor = m => m.startsWith("higgsfield-ai/soul/v2/") ? { resolution: SOUL_RES } : m === PREMIUM_MODEL ? { resolution: "2k" } : null;
 // Klucz wklejony w panelu bywa z odstępami albo cudzysłowami; zostawiamy samo KEY_ID:KEY_SECRET
@@ -277,6 +278,7 @@ async function generate(request, env, user, ctx) {
   if (prompt.length > MAX_PROMPT) return json({ error: "Maniscrypt jest za długi." }, 413);
   // Soul 2, a na życzenie Premium (Recraft 4.1 Pro); porównania modeli zakończone 4.10.2026
   const premium = body.premium === true;
+  if (premium && !premiumCost(env)) return json({ error: "Premium jest wyłączone." }, 400);
   if (premium && body.face) return json({ error: "Premium nie łączy się ze zdjęciem twarzy." }, 400);
   const chosen = premium ? PREMIUM_MODEL : hfModel(env);
   const asked = String(body.aspect || ""), aspect = aspectFor(chosen, asked);

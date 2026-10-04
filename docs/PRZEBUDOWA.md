@@ -563,4 +563,5 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - W panelu Maniscryptu przełącznik **Premium 2K ★** (nad „Zrób zdjęcie tutaj”, zapamiętany w przeglądarce). Premium kosztuje `PREMIUM_COST` = 4 kredyty (można zmienić zmienną w Cloudflare), zwykłe zdjęcie (Soul 2, 1080p) 1 kredyt.
 - Premium nie łączy się ze zdjęciem twarzy (Recraft nie przyjmuje obrazu): przy włączonym „Z moją twarzą” przełącznik Premium znika, a serwer odrzuca taką prośbę.
 - Bez modelu zapasowego: gdy Recraft odrzuci zlecenie, kredyty wracają.
-- Do ustalenia: cena Recraft Pro w panelu Higgsfield → ewentualna korekta liczby kredytów.
+- **Wyłączone 4.10.2026:** Recraft Pro kosztuje ok. 0,41 $ (ok. 1,50 zł) za zdjęcie — opłacałoby się dopiero przy ok. 10 kredytach. Soul 2 w 1080p daje już 1344×2016 px (2:3) za ok. 0,003 $. Kod zostaje; przełącznik pojawi się po ustawieniu zmiennej `PREMIUM_COST` w Cloudflare.
+- Wyniki porównania (2:3, najwyższe ustawienia): Soul 2 1080p 1344×2016, 21 s · Recraft 4.1 Pro 2k 1664×2560, 15 s, 0,41 $ · Recraft 4.1 1k 832×1280, 11 s · Ideogram 4 QUALITY 1664×2496, 27 s · Marketing Studio 4k/high 2336×3504, 106 s.
