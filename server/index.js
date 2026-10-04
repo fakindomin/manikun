@@ -293,9 +293,12 @@ async function generate(request, env, user, ctx) {
   if (!charged.meta.changes) return json({ error: "Brak kredytów.", credits: await balance(env, user.id) }, 402);
 
   const g = { id, user_id: user.id, cost, status: "queued" };
+  // Scena z aplikacji (do „Zrób podobne”); tylko poprawny JSON, do 30 tys. znaków
+  let sceneJson = null;
+  if (typeof body.scene === "string" && body.scene.length <= 30000) { try { JSON.parse(body.scene); sceneJson = body.scene; } catch (e) {} }
   await env.DB.prepare(
-    "INSERT INTO generations (id, user_id, model, aspect, cost, prompt, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)"
-  ).bind(id, user.id, chosen, aspect, cost, prompt, t, t).run();
+    "INSERT INTO generations (id, user_id, model, aspect, cost, prompt, status, created_at, updated_at, scene) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)"
+  ).bind(id, user.id, chosen, aspect, cost, prompt, t, t, sceneJson).run();
 
   // Model z HF_MODEL, a gdy API go nie zna, kolejne z listy; przy 422 (nieznany parametr) jeszcze raz z samym promptem
   if (isWorkersAI(chosen)) {
@@ -449,6 +452,16 @@ async function generationCancel(env, user, id) {
   return json(view);
 }
 
+// Usunięcie zdjęcia z Moich ujęć: kopia w KV znika, wpis zostaje jako „usunięte” (kredytów nie zwracamy)
+async function generationDelete(env, user, id) {
+  const g = await env.DB.prepare("SELECT id, status FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
+  if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+  if (g.status === "queued" || g.status === "in_progress") return json({ error: "To zdjęcie jeszcze się robi." }, 409);
+  if (env.PHOTOS) await env.PHOTOS.delete("gen/" + id);
+  await env.DB.prepare("UPDATE generations SET status = 'deleted', stored = 0, image_url = NULL, updated_at = ? WHERE id = ?").bind(now(), id).run();
+  return json({ ok: true });
+}
+
 async function generationSeen(env, user, id) {
   await env.DB.prepare("UPDATE generations SET seen = 1 WHERE id = ? AND user_id = ?").bind(id, user.id).run();
   return json({ ok: true });
@@ -460,7 +473,7 @@ async function library(env, user) {
     .bind(user.id, now() - 7 * 86400).all();
   for (const g of open.results) await refresh(env, g);
   const rows = await env.DB.prepare("SELECT * FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 60").bind(user.id).all();
-  return json({ photos: rows.results.map(g => ({ id: g.id, url: photoUrl(g), seen: !!g.seen, aspect: g.aspect, at: g.created_at })) });
+  return json({ photos: rows.results.map(g => ({ id: g.id, url: photoUrl(g), seen: !!g.seen, aspect: g.aspect, at: g.created_at, scene: g.scene || null })) });
 }
 
 async function photo(env, user, id) {
@@ -501,7 +514,7 @@ export default {
       if (route === "GET /api/admin/bench")
         return await bench(request, url, env, await currentUser(request, env), { hfHeaders, apiBase: e => e.HF_API_URL || HF_API, json });
       if (url.pathname === "/api/generate" || url.pathname.startsWith("/api/generate/")) {
-        if (request.method === "POST" && !sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        if ((request.method === "POST" || request.method === "DELETE") && !sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Zaloguj się." }, 401);
         if (route === "POST /api/generate") return await generate(request, env, user, ctx);
@@ -509,6 +522,7 @@ export default {
         if (request.method === "GET" && m && !m[2]) return await generationStatus(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/cancel") return await generationCancel(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/seen") return await generationSeen(env, user, m[1]);
+        if (request.method === "DELETE" && m && !m[2]) return await generationDelete(env, user, m[1]);
       }
       if (route === "POST /api/upload-face") {
         if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);

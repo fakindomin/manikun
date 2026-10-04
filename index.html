@@ -250,6 +250,23 @@
   body.preview-open #previewSheet { transform: none; }
   body.gen-open #genSheet { transform: none; }
   body.shots-open #shotsSheet { transform: none; }
+  body.view-open #viewSheet { transform: none; }
+  body.view-open #viewScrim { opacity: 1; pointer-events: auto; }
+  #viewSheet, #viewScrim { z-index: 60; }
+  .view-frame { position: relative; display: grid; place-items: center; height: min(62dvh, 560px); border-radius: 16px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); touch-action: pan-y; }
+  .view-frame img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; transition: opacity 0.2s ease; }
+  .view-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 52px; border: 0; border-radius: 12px; background: rgba(0,0,0,0.35); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; }
+  .view-nav.prev { left: 8px; } .view-nav.next { right: 8px; }
+  .view-nav[hidden] { display: none; }
+  .chip.view-del { color: #FF8A80; }
+  /* Szkic ↔ zdjęcie: zdjęcie przycięte do uchwytu, pod spodem szkic tej sceny */
+  .gen-handle { display: none; position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 0; border-left: 2px solid #fff; box-shadow: 0 0 8px rgba(0,0,0,0.5); pointer-events: none; }
+  .gen-handle span { position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%); background: #fff; color: #111; font-weight: 800; font-size: 13px; border-radius: 99px; padding: 5px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+  .gen-frame.compare { cursor: ew-resize; touch-action: none; }
+  .gen-frame.compare .gen-handle { display: block; }
+  .gen-frame.compare img { clip-path: inset(0 0 0 var(--cut, 50%)); transition: none; }
+  .gen-frame.compare .gen-draft { opacity: 1 !important; }
+  .gen-frame.compare .gen-trial { opacity: 0 !important; }
   body.shots-open #shotsScrim { opacity: 1; pointer-events: auto; }
   /* Moje ujęcia: siatka zdjęć od AI, nowe (nieobejrzane) z plakietką */
   .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 70dvh; overflow-y: auto; }
@@ -802,6 +819,7 @@
       <div class="gen-trial" id="genTrial" aria-hidden="true"></div>
       <svg id="genDraft" class="ink gen-draft" aria-hidden="true"></svg>
       <img id="genImg" alt="Zdjęcie wygenerowane z Maniscryptu">
+      <div class="gen-handle" id="genHandle" aria-hidden="true"><span>‹ ›</span></div>
       <div class="gen-wait" id="genWait">
         <div class="gen-bar" aria-hidden="true"><i id="genBar"></i></div>
         <span class="gen-time" id="genTime"></span>
@@ -816,7 +834,9 @@
     <div class="preview-actions">
       <button class="chip" type="button" id="genCopy">Kopiuj Maniscrypt</button>
       <button class="chip" type="button" id="genCancel" hidden>Anuluj zdjęcie</button>
-      <a class="chip" id="genOpen" target="_blank" rel="noopener" hidden>Otwórz w pełnym rozmiarze</a>
+      <button class="chip" type="button" id="genSave" hidden>Zapisz</button>
+      <button class="chip" type="button" id="genShare" hidden>Udostępnij</button>
+      <button class="chip" type="button" id="genCompare" hidden>Szkic ↔ zdjęcie</button>
       <button class="chip" type="button" id="genAgain" hidden>Jeszcze jedno</button>
     </div>
   </section>
@@ -830,6 +850,27 @@
     </div>
     <p class="sheet-lead" id="shotsNote">Wczytuję…</p>
     <div class="shots" id="shotsGrid"></div>
+  </section>
+
+  <!-- Przeglądarka zdjęcia z Moich ujęć: przesuwanie palcem, zapis, udostępnianie, „Zrób podobne”, usuwanie -->
+  <div class="sheet-scrim" id="viewScrim"></div>
+  <section class="sheet preview" id="viewSheet" aria-label="Zdjęcie" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="viewTitle">Zdjęcie</h2>
+      <button class="icon-btn" type="button" id="viewClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="view-frame" id="viewFrame">
+      <img id="viewImg" alt="Zdjęcie z Moich ujęć">
+      <button class="view-nav prev" type="button" id="viewPrev" aria-label="Poprzednie">‹</button>
+      <button class="view-nav next" type="button" id="viewNext" aria-label="Następne">›</button>
+    </div>
+    <div class="preview-actions">
+      <button class="chip" type="button" id="viewSave">Zapisz</button>
+      <button class="chip" type="button" id="viewShare">Udostępnij</button>
+      <button class="chip" type="button" id="viewLike">Zrób podobne</button>
+      <button class="chip view-del" type="button" id="viewDel">Usuń</button>
+    </div>
   </section>
 
   <div class="stage">
@@ -7650,7 +7691,8 @@
   // Zdjęcie od AI: Maniscrypt idzie do serwera (Higgsfield), kredyt schodzi przy zleceniu, a wraca, gdy się nie uda
   const sheetGen = document.getElementById("sheetGen"), sheetGenNote = document.getElementById("sheetGenNote");
   const genImg = document.getElementById("genImg"), genWait = document.getElementById("genWait"), genWaitText = document.getElementById("genWaitText");
-  const genNote = document.getElementById("genNote"), genOpen = document.getElementById("genOpen"), genAgain = document.getElementById("genAgain");
+  const genNote = document.getElementById("genNote"), genAgain = document.getElementById("genAgain");
+  const genSave = document.getElementById("genSave"), genShare = document.getElementById("genShare"), genCompare = document.getElementById("genCompare");
   // Jedno zlecenie naraz (genJob). Zamknięcie okna go nie przerywa: robi się w tle, a gotowe zdjęcie trafia do Moich ujęć.
   // genJob: { id, prompt, aspect, t0, run }; genBusy: w toku; genReady: gotowe, a okno było zamknięte
   let genRun = 0, genBusy = false, genReady = false, genJob = null;
@@ -7893,7 +7935,7 @@
     genFrame.style.setProperty("--ar", `${fmt.w} / ${fmt.h}`);
     genFrame.classList.remove("done");
     genImg.classList.remove("on"); genImg.removeAttribute("src");
-    genOpen.hidden = true; genAgain.hidden = true;
+    genAgain.hidden = true; genSave.hidden = genShare.hidden = genCompare.hidden = true; genCompareOff();
     genSketch(fmt);
     genReady = false; syncBadge();
     genState("Wysyłam Maniscrypt na plan zdjęciowy…", true);
@@ -7906,7 +7948,7 @@
     let d;
     try {
       const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({ prompt, aspect: fmt.short, ...(face ? { face } : {}) }) });
+        body: JSON.stringify({ prompt, aspect: fmt.short, scene: sceneSnapshot(), ...(face ? { face } : {}) }) });
       d = await r.json();
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
     if (run !== genRun) return;
@@ -7964,7 +8006,8 @@
       if (genOpenNow()) { sfx("klap"); nod("nod"); markSeen(d.id); }
       else genNotify(true, "Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.");
     };
-    genImg.src = d.url; genOpen.href = d.url; genOpen.hidden = false;
+    genImg.src = d.url; genJob && (genJob.url = d.url, genJob.id = genJob.id || d.id);
+    genSave.hidden = false; genShare.hidden = !canShareFiles(); genCompare.hidden = !document.getElementById("genDraft").firstChild;
   }
   // Anulowanie: w kolejce Higgsfield zatrzymuje zlecenie i kredyt wraca; gdy już się robi, dokończy się i trafi do Moich ujęć
   genCancel.addEventListener("click", async () => {
@@ -8056,6 +8099,79 @@
   document.getElementById("genClose").addEventListener("click", () => setGen(false));
   document.getElementById("genScrim").addEventListener("click", () => setGen(false));
 
+  // ---------- Zapis i udostępnianie zdjęcia (ze znakiem Manikun w rogu) ----------
+  const canShareFiles = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File([""], "a.jpg", { type: "image/jpeg" })] })); } catch (e) { return false; } };
+  const photoName = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `manikun-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.jpg`; };
+  // Zdjęcie z naszego serwera (ta sama domena, więc płótno nie jest „skażone”) + mały znak „Manikun” w prawym dolnym rogu
+  async function photoFile(url) {
+    const blob = await (await fetch(url, { credentials: "same-origin" })).blob();
+    const bmp = await createImageBitmap(blob);
+    const c = document.createElement("canvas"), x = c.getContext("2d");
+    c.width = bmp.width; c.height = bmp.height;
+    x.drawImage(bmp, 0, 0);
+    const u = Math.max(c.width, c.height) / 100, text = "Manikun";
+    x.font = `700 ${Math.round(u * 2.2)}px system-ui, sans-serif`;
+    const w = x.measureText(text).width, pad = u * 1.1, bx = c.width - w - pad * 3, by = c.height - u * 2.2 - pad * 3;
+    x.fillStyle = "rgba(0,0,0,0.35)";
+    x.beginPath(); x.roundRect ? x.roundRect(bx, by, w + pad * 2, u * 2.2 + pad * 1.4, u) : x.rect(bx, by, w + pad * 2, u * 2.2 + pad * 1.4); x.fill();
+    x.fillStyle = "rgba(255,255,255,0.9)"; x.textBaseline = "top";
+    x.fillText(text, bx + pad, by + pad * 0.75);
+    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+    return new File([out], photoName(), { type: "image/jpeg" });
+  }
+  async function savePhoto(url, btn) {
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Zapisuję…";
+    try {
+      const f = await photoFile(url), a = document.createElement("a");
+      a.href = URL.createObjectURL(f); a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      showToast("Zapisano zdjęcie"); sfx("klap");
+    } catch (e) { showToast("Nie udało się zapisać zdjęcia"); }
+    btn.disabled = false; btn.textContent = label;
+  }
+  async function sharePhoto(url, btn) {
+    btn.disabled = true;
+    try {
+      const f = await photoFile(url);
+      await navigator.share({ files: [f], title: "Moje ujęcie z Manikuna", text: "Zrobione w Manikunie 🎬 " + location.origin });
+    } catch (e) { if (e && e.name !== "AbortError") showToast("Nie udało się udostępnić"); }
+    btn.disabled = false;
+  }
+  genSave.addEventListener("click", () => genJob && genJob.url && savePhoto(genJob.url, genSave));
+  genShare.addEventListener("click", () => genJob && genJob.url && sharePhoto(genJob.url, genShare));
+
+  // ---------- Szkic ↔ zdjęcie: przeciągany uchwyt, z lewej szkic, z prawej zdjęcie ----------
+  function genCompareOff() { genFrame.classList.remove("compare"); genCompare.textContent = "Szkic ↔ zdjęcie"; }
+  genCompare.addEventListener("click", () => {
+    const on = !genFrame.classList.contains("compare");
+    genFrame.classList.toggle("compare", on);
+    genFrame.style.setProperty("--cut", "50%");
+    genCompare.textContent = on ? "Pokaż całe zdjęcie" : "Szkic ↔ zdjęcie";
+    if (on) { say("Przesuń palcem: z lewej mój szkic, z prawej zdjęcie.", 4000); }
+  });
+  {
+    let drag = false;
+    const cut = e => { const r = genFrame.getBoundingClientRect(); genFrame.style.setProperty("--cut", Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)) + "%"); };
+    genFrame.addEventListener("pointerdown", e => { if (!genFrame.classList.contains("compare")) return; drag = true; genFrame.setPointerCapture(e.pointerId); cut(e); });
+    genFrame.addEventListener("pointermove", e => { if (drag) cut(e); });
+    genFrame.addEventListener("pointerup", () => { drag = false; });
+    genFrame.addEventListener("pointercancel", () => { drag = false; });
+  }
+
+  // ---------- Scena zdjęcia: zapis przy zleceniu, „Zrób podobne” przywraca ją do poprawek ----------
+  const sceneSnapshot = () => { try { const { open, sub, ...rest } = scene; return JSON.stringify(rest); } catch (e) { return null; } };
+  function restoreScene(json) {
+    let saved;
+    try { saved = JSON.parse(json); } catch (e) { return false; }
+    Object.assign(scene, saved, { open: null, sub: null });
+    setView(false); setShots(false); setGen(false); setSheet(false); setMenu(false);
+    if (phase !== "director") enterDirector("free"); else { fixScene(); render(); }
+    setTimeout(() => say("Scena wróciła! Popraw, co chcesz, i zrób kolejne zdjęcie.", 4500), 600);
+    return true;
+  }
+
   // ---------- Moje ujęcia: zdjęcia od AI zapisane na koncie ----------
   const menuShots = document.getElementById("menuShots"), menuShotsVal = document.getElementById("menuShotsVal");
   const shotsGrid = document.getElementById("shotsGrid"), shotsNote = document.getElementById("shotsNote");
@@ -8080,22 +8196,71 @@
     let d = {};
     try { d = await (await fetch("/api/library", { credentials: "same-origin" })).json(); } catch (e) {}
     const list = d.photos || [];
+    shotsList = list;
     const word = n => n === 1 ? "zdjęcie" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? "zdjęcia" : "zdjęć";
     shotsNote.textContent = list.length ? list.length + " " + word(list.length) + ". Stuknij, żeby otworzyć. Nowe są oznaczone." : "Tu trafią zdjęcia zrobione w Manikunie. Zrób pierwsze w panelu Maniscryptu!";
-    for (const ph of list) {
+    list.forEach((ph, idx) => {
       const b = document.createElement("button");
       b.type = "button";
       b.innerHTML = `<img alt="Zdjęcie od AI" loading="lazy">${ph.seen ? "" : '<span class="new">Nowe</span>'}`;
       const im = b.querySelector("img");
       im.onerror = () => { im.remove(); b.insertAdjacentHTML("beforeend", '<span class="gone">Zdjęcie niedostępne</span>'); };
       im.src = ph.url;
-      b.addEventListener("click", () => {
-        if (!ph.seen) { ph.seen = true; b.querySelector(".new")?.remove(); markSeen(ph.id); shotsUnseen = Math.max(0, shotsUnseen - 1); syncShotsMenu(); }
-        window.open(ph.url, "_blank", "noopener");
-      });
+      ph.tile = b;
+      b.addEventListener("click", () => openView(idx));
       shotsGrid.appendChild(b);
-    }
+    });
   }
+
+  // ---------- Przeglądarka zdjęcia: strzałki i przesuwanie palcem, zapis, udostępnianie, „Zrób podobne”, usuwanie ----------
+  let shotsList = [], viewIdx = 0;
+  const viewImg = document.getElementById("viewImg");
+  function setView(open) {
+    document.body.classList.toggle("view-open", open);
+    document.getElementById("viewSheet").setAttribute("aria-hidden", String(!open));
+  }
+  function viewShow() {
+    const ph = shotsList[viewIdx];
+    if (!ph) { setView(false); return; }
+    viewImg.style.opacity = "0";
+    viewImg.onload = () => { viewImg.style.opacity = "1"; };
+    viewImg.src = ph.url;
+    const d = new Date(ph.at * 1000);
+    document.getElementById("viewTitle").textContent = d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" }) + ", " + d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    document.getElementById("viewPrev").hidden = viewIdx <= 0;
+    document.getElementById("viewNext").hidden = viewIdx >= shotsList.length - 1;
+    document.getElementById("viewShare").hidden = !canShareFiles();
+    document.getElementById("viewLike").hidden = !ph.scene;
+    if (!ph.seen) { ph.seen = true; ph.tile && ph.tile.querySelector(".new")?.remove(); markSeen(ph.id); shotsUnseen = Math.max(0, shotsUnseen - 1); syncShotsMenu(); }
+  }
+  function openView(idx) { viewIdx = idx; setView(true); viewShow(); }
+  const viewStep = k => { const n = viewIdx + k; if (n < 0 || n >= shotsList.length) return; viewIdx = n; viewShow(); sfx("tik"); };
+  document.getElementById("viewPrev").addEventListener("click", () => viewStep(-1));
+  document.getElementById("viewNext").addEventListener("click", () => viewStep(1));
+  document.getElementById("viewClose").addEventListener("click", () => setView(false));
+  document.getElementById("viewScrim").addEventListener("click", () => setView(false));
+  {
+    let x0 = null;
+    const vf = document.getElementById("viewFrame");
+    vf.addEventListener("pointerdown", e => { x0 = e.clientX; });
+    vf.addEventListener("pointerup", e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) viewStep(dx < 0 ? 1 : -1); });
+  }
+  document.getElementById("viewSave").addEventListener("click", e => shotsList[viewIdx] && savePhoto(shotsList[viewIdx].url, e.currentTarget));
+  document.getElementById("viewShare").addEventListener("click", e => shotsList[viewIdx] && sharePhoto(shotsList[viewIdx].url, e.currentTarget));
+  document.getElementById("viewLike").addEventListener("click", () => { const ph = shotsList[viewIdx]; if (ph && ph.scene) restoreScene(ph.scene); });
+  document.getElementById("viewDel").addEventListener("click", async () => {
+    const ph = shotsList[viewIdx];
+    if (!ph || !confirm("Usunąć to zdjęcie z Moich ujęć? Tego nie da się cofnąć.")) return;
+    let ok = false;
+    try { ok = (await fetch("/api/generate/" + ph.id, { method: "DELETE", credentials: "same-origin" })).ok; } catch (e) {}
+    if (!ok) { showToast("Nie udało się usunąć"); return; }
+    ph.tile && ph.tile.remove();
+    shotsList.splice(viewIdx, 1);
+    showToast("Usunięto");
+    if (!shotsList.length) { setView(false); openShots(); return; }
+    viewIdx = Math.min(viewIdx, shotsList.length - 1);
+    viewShow();
+  });
   menuShots.addEventListener("click", openShots);
   document.getElementById("shotsClose").addEventListener("click", () => setShots(false));
   document.getElementById("shotsScrim").addEventListener("click", () => setShots(false));
