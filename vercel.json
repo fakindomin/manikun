@@ -1,0 +1,5 @@
+{
+  "redirects": [
+    { "source": "/:path*", "destination": "https://manikun.pl/:path*", "permanent": true }
+  ]
+}

@@ -3,7 +3,7 @@
 // a gdy ta odmówi (limit albo błąd), zapasowo Pollinations (FLUX) z kluczem z sekretu POLLINATIONS_KEY.
 // Wymaga: powiązania Workers AI o nazwie AI (Settings › Bindings) i sekretu POLLINATIONS_KEY (Settings › Variables and Secrets).
 // Wdrożenie: wklejenie kodu w panelu Cloudflare.
-const ALLOWED = ["https://manikun.vercel.app", "https://manikun.fakindomin.workers.dev"];
+const ALLOWED = ["https://manikun.pl", "https://manikun.vercel.app", "https://manikun.fakindomin.workers.dev"];
 const MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const MAX_PROMPT = 2048;
 const POLLINATIONS = "https://gen.pollinations.ai/image/";

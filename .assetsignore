@@ -11,3 +11,4 @@ migrations
 .dev.vars
 .wrangler
 node_modules
+vercel.json
