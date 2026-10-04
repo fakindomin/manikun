@@ -516,7 +516,7 @@ export default {
       if (route === "GET /api/admin/models")
         return await models(url, env, await currentUser(request, env), { hfHeaders, apiBase: e => e.HF_API_URL || HF_API, json });
       if (route === "GET /api/admin/bench")
-        return await bench(request, url, env, await currentUser(request, env), { hfHeaders, apiBase: e => e.HF_API_URL || HF_API, json });
+        return await bench(request, url, env, await currentUser(request, env), { hfHeaders, apiBase: e => e.HF_API_URL || HF_API, json, imageSize });
       if (url.pathname === "/api/generate" || url.pathname.startsWith("/api/generate/")) {
         if ((request.method === "POST" || request.method === "DELETE") && !sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
         const user = await currentUser(request, env);

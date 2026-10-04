@@ -17,6 +17,38 @@ const FAMILIES = [
 const CATALOG = ["/models", "/v1/models", "/api/models", "/catalog"];
 const FALLBACK_PROMPT = "Photorealistic full-body photo of a person standing in a sunny park, natural light, 35mm lens, vertical 3:4 frame.";
 
+// Pola jakości: wysyłamy wartość spoza listy, walidacja odpowiada listą dozwolonych (400, nic nie kosztuje).
+// Pole, którego model nie zna, jest pomijane; gdy żadne nie zostało, zlecenie przechodzi i od razu je anulujemy.
+const QUALITY_FIELDS = ["resolution", "quality", "image_size", "size", "rendering_speed", "output_resolution", "mode"];
+async function qualityOptions(base, env, hfHeaders, model) {
+  const found = {};
+  let fields = [...QUALITY_FIELDS];
+  for (let i = 0; i < 8 && fields.length; i++) {
+    const body = { prompt: "test" };
+    for (const f of fields) body[f] = 12345;
+    let r, data = null;
+    try { r = await fetch(base + "/" + model, { method: "POST", headers: hfHeaders(env), body: JSON.stringify(body), signal: AbortSignal.timeout(10000) }); data = await r.json().catch(() => null); } catch (e) { break; }
+    if (r.ok) { if (data && data.request_id) await fetch(base + "/requests/" + data.request_id + "/cancel", { method: "POST", headers: hfHeaders(env) }).catch(() => {}); break; }
+    const m = String(data && data.detail || "").match(/^(\w+): (.*)$/s);
+    if (!m || !fields.includes(m[1])) break;
+    const list = m[2].match(/not one of \[(.*)\]/s);
+    found[m[1]] = list ? [...list[1].matchAll(/'([^']*)'|(-?\d+(?:\.\d+)?)/g)].map(x => x[1] !== undefined ? x[1] : Number(x[2])) : m[2];
+    fields = fields.filter(f => f !== m[1]);
+  }
+  return found;
+}
+// Najlepsza wartość z listy: większa rozdzielczość, potem słowa jakości
+const WORDS = [[/ultra|max|best|highest/, 4], [/high|hd|quality|pro/, 3], [/medium|balanced|default|standard/, 2], [/low|fast|turbo|draft/, 0]];
+function bestValue(vals) {
+  if (!Array.isArray(vals) || !vals.length) return undefined;
+  const score = v => {
+    const t = String(v).toLowerCase(), k = t.match(/(\d+(?:\.\d+)?)\s*k\b/), n = t.match(/(\d{3,4})/);
+    const w = WORDS.find(([re]) => re.test(t));
+    return (k ? k[1] * 1000 : n ? +n[1] : 0) * 10 + (w ? w[1] : 1);
+  };
+  return vals.reduce((a, b) => score(b) > score(a) ? b : a);
+}
+
 const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 export async function bench(request, url, env, user, ctx) {
@@ -41,18 +73,27 @@ export async function bench(request, url, env, user, ctx) {
         .bind(run, path, r ? r.status : null, raw.slice(0, 4000), Date.now()).run();
     }
     const pick = (url.searchParams.get("models") || "").split(",").map(x => x.trim()).filter(x => /^[\w.\/-]{3,80}$/.test(x)).slice(0, 12);
-    for (const [family, paths] of pick.length ? pick.map(m => [m, [m]]) : FAMILIES) {
+    // ?best=1: każdy model z najwyższymi ustawieniami jakości, jakie przyjmuje
+    const best = url.searchParams.get("best") === "1";
+    for (const [name, paths] of pick.length ? pick.map(m => [m, [m]]) : FAMILIES) {
       for (const model of paths) {
-        let r, raw = "", data = null, t0;
-        // Przy 422 (model nie zna parametru albo proporcji) jeszcze raz z samym promptem
-        for (const body of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
+        let r, raw = "", data = null, t0, family = name;
+        const extra = {};
+        if (best) {
+          const opts = await qualityOptions(base, env, hfHeaders, model);
+          for (const [f, v] of Object.entries(opts)) { const b = bestValue(v); if (b !== undefined) extra[f] = b; }
+          if (Object.keys(extra).length) family += " · " + Object.entries(extra).map(([f, v]) => f + "=" + v).join(", ");
+        }
+        // Przy 400/422 (model nie zna parametru albo proporcji) jeszcze raz z mniejszą liczbą pól
+        const bodies = [...(Object.keys(extra).length ? [{ prompt, aspect_ratio: aspect, ...extra }] : []), { prompt, aspect_ratio: aspect }, { prompt }];
+        for (const body of bodies) {
           t0 = Date.now(); data = null;
           try {
             r = await fetch(base + "/" + model, { method: "POST", headers: hfHeaders(env), body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
             raw = await r.text();
             try { data = JSON.parse(raw); } catch { data = null; }
           } catch (e) { r = null; raw = String(e); }
-          if (!(r && r.status === 422)) break;
+          if (!(r && (r.status === 422 || r.status === 400))) break;
         }
         const ok = r && r.ok && data && data.request_id;
         await db.prepare("INSERT INTO bench (run, family, model, http, status, request_id, detail, started_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
@@ -73,8 +114,18 @@ export async function bench(request, url, env, user, ctx) {
       if (!d || !d.status || d.status === b.status) return;
       const end = ["completed", "failed", "nsfw"].includes(d.status);
       const img = d.images && d.images[0] && d.images[0].url;
+      const done = end ? Date.now() : null;
+      // Wymiary i waga gotowego zdjęcia (pobieramy je raz, przy zakończeniu)
+      let info = end && !img ? JSON.stringify(d).slice(0, 600) : b.detail;
+      if (img) {
+        try {
+          const buf = new Uint8Array(await (await fetch(img, { signal: AbortSignal.timeout(20000) })).arrayBuffer());
+          const dim = ctx.imageSize(buf);
+          info = (dim ? dim.join("×") + " px · " : "") + Math.round(buf.byteLength / 1024) + " KB";
+        } catch (e) {}
+      }
       await db.prepare("UPDATE bench SET status = ?, image_url = ?, done_ms = ?, detail = ? WHERE id = ?")
-        .bind(d.status, img || null, end ? Date.now() : null, end && !img ? JSON.stringify(d).slice(0, 600) : b.detail, b.id).run();
+        .bind(d.status, img || null, done, info, b.id).run();
     } catch (e) {}
   }));
   const rows = (await db.prepare("SELECT * FROM bench WHERE run = ? ORDER BY id").bind(run || "").all()).results;
@@ -83,7 +134,7 @@ export async function bench(request, url, env, user, ctx) {
   const cards = rows.filter(b => !b.family.startsWith("katalog") && b.status !== "rejected").map(b => {
     const sec = b.done_ms ? ((b.done_ms - b.started_ms) / 1000).toFixed(1) + " s" : Math.round((Date.now() - b.started_ms) / 1000) + " s…";
     return `<figure><div class="img">${b.image_url ? `<a href="${esc(b.image_url)}" target="_blank"><img src="${esc(b.image_url)}"></a>` : `<span>${esc(b.status)}</span>`}</div>
-      <figcaption><b>${esc(b.family)}</b> <span class="t">${sec}</span><br><code>${esc(b.model)}</code></figcaption></figure>`;
+      <figcaption><b>${esc(b.family)}</b> <span class="t">${sec}</span><br>${b.image_url && /px|KB/.test(b.detail || "") ? `<span class="d">${esc(b.detail)}</span><br>` : ""}<code>${esc(b.model)}</code></figcaption></figure>`;
   }).join("");
   const misses = rows.filter(b => b.status === "rejected").map(b => `<li><b>${esc(b.family)}</b> <code>${esc(b.model)}</code>: ${esc(b.http)} ${esc((b.detail || "").slice(0, 160))}</li>`).join("");
   const html = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -91,7 +142,7 @@ export async function bench(request, url, env, user, ctx) {
 <style>body{font:15px system-ui,sans-serif;margin:16px;background:#141416;color:#eee}a{color:#8fd3a8}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}figure{margin:0;background:#1e1e22;border-radius:12px;overflow:hidden}
 .img{aspect-ratio:var(--ar,3/4);display:grid;place-items:center;background:#000;color:#999}.img img{width:100%;height:100%;object-fit:contain;display:block}
-figcaption{padding:8px 10px;font-size:13px}.t{float:right;font-weight:700;color:#8fd3a8}code{font-size:11px;color:#aaa;word-break:break-all}li{margin:4px 0;font-size:13px}</style></head>
+figcaption{padding:8px 10px;font-size:13px}.t{float:right;font-weight:700;color:#8fd3a8}code{font-size:11px;color:#aaa;word-break:break-all}li{margin:4px 0;font-size:13px}.d{color:#f0c674;font-weight:600}</style></head>
 <body><h1>Porównanie modeli Higgsfield</h1><p>${run ? "Start: " + new Date(Number(run)).toLocaleString("pl-PL") + (busy ? " · odświeża się samo…" : " · gotowe") : "Brak porównań."} · <a href="?start=1">Nowe porównanie</a></p>
 <div class="grid">${cards}</div>${misses ? `<h3>Nie przyjęte</h3><ul>${misses}</ul>` : ""}</body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
