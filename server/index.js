@@ -142,6 +142,9 @@ const HF_API = "https://api.higgsfield.ai";
 // Bez modelu zapasowego: Soul Standard kosztuje ok. 0,094 $ (30 razy więcej), więc awaria ma się zakończyć zwrotem kredytu.
 const HF_MODEL = "higgsfield-ai/soul/v2/standard";
 const HF_FALLBACK = [];
+// Premium: Recraft 4.1 Pro w 2K (ok. 15 s, 1664×2560 przy 2:3), droższy, więc za więcej kredytów; bez zdjęcia twarzy
+const PREMIUM_MODEL = "recraft/v4.1/pro/text-to-image";
+const PREMIUM_COST = 4;
 const isWorkersAI = model => model.startsWith("@cf/");
 
 // Wymiary ok. 1 MP w proporcjach kadru, wielokrotność 16
@@ -230,6 +233,9 @@ const aspectFor = (model, a) => model.startsWith("@cf/") && /^\d{1,2}:\d{1,2}$/.
 
 const hfModel = env => env.HF_MODEL || HF_MODEL;
 const genCost = env => Number(env.GEN_COST) || GEN_COST;
+const premiumCost = env => Number(env.PREMIUM_COST) || PREMIUM_COST;
+// Najwyższa jakość, jaką model przyjmuje (sondy schematu: Soul 2 720p/1080p, Recraft Pro 1k/2k)
+const qualityFor = m => m.startsWith("higgsfield-ai/soul/v2/") ? { resolution: SOUL_RES } : m === PREMIUM_MODEL ? { resolution: "2k" } : null;
 // Klucz wklejony w panelu bywa z odstępami albo cudzysłowami; zostawiamy samo KEY_ID:KEY_SECRET
 // Gdy przed kluczem jest dopisek (np. „HF_KEY:”), bierzemy dwie ostatnie części: KEY_ID (UUID) i KEY_SECRET
 const hfKey = env => String(env.HF_KEY || "").trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "").split(":").slice(-2).join(":");
@@ -249,7 +255,7 @@ async function genEta(env, model) {
   const row = await env.DB.prepare(
     "SELECT AVG(d) AS a FROM (SELECT updated_at - created_at AS d FROM generations WHERE model = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 20)"
   ).bind(model).first();
-  return Math.round(row && row.a) || (/recraft/.test(model) ? 11 : 20);
+  return Math.round(row && row.a) || (model === PREMIUM_MODEL ? 15 : /recraft/.test(model) ? 11 : 20);
 }
 
 // Zwrot kredytów za nieudane zlecenie: raz (unikalne reason + ref)
@@ -269,8 +275,10 @@ async function generate(request, env, user, ctx) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return json({ error: "Brak Maniscryptu." }, 400);
   if (prompt.length > MAX_PROMPT) return json({ error: "Maniscrypt jest za długi." }, 413);
-  // Zawsze model domyślny (Soul 2); porównania modeli zakończone 3.10.2026
-  const chosen = hfModel(env);
+  // Soul 2, a na życzenie Premium (Recraft 4.1 Pro); porównania modeli zakończone 4.10.2026
+  const premium = body.premium === true;
+  if (premium && body.face) return json({ error: "Premium nie łączy się ze zdjęciem twarzy." }, 400);
+  const chosen = premium ? PREMIUM_MODEL : hfModel(env);
   const asked = String(body.aspect || ""), aspect = aspectFor(chosen, asked);
   // Zdjęcie twarzy (na razie tylko właściciel): model z wariantem przyjmującym obraz
   const face = body.face ? (faceUrlOk(body.face) ? body.face : "zły") : null;
@@ -288,7 +296,7 @@ async function generate(request, env, user, ctx) {
   }
 
   // Kredyty schodzą tylko, jeśli saldo wystarcza (jedno zapytanie, więc dwa kliknięcia naraz nie zejdą poniżej zera)
-  const id = randomToken(12), cost = genCost(env), t = now();
+  const id = randomToken(12), cost = premium ? premiumCost(env) : genCost(env), t = now();
   const charged = await env.DB.prepare(
     "INSERT INTO credits (user_id, delta, reason, ref, created_at) SELECT ?1, -?2, 'gen', ?3, ?4 " +
     "WHERE (SELECT COALESCE(SUM(delta), 0) FROM credits WHERE user_id = ?1) >= ?2"
@@ -318,7 +326,7 @@ async function generate(request, env, user, ctx) {
   const models = fr ? [model] : [model, ...HF_FALLBACK.filter(m => m !== model)];
   const withFace = b => fr ? { ...b, [fr.field]: fr.field === "image_urls" ? [face] : face } : b;
   attempts: for (const m of models) {
-    const sized = m.startsWith("higgsfield-ai/soul/v2/") ? [withFace({ prompt, aspect_ratio: aspectFor(m, asked), resolution: SOUL_RES })] : [];
+    const q = qualityFor(m), sized = q ? [withFace({ prompt, aspect_ratio: aspectFor(m, asked), ...q })] : [];
     for (const body of [...sized, withFace({ prompt, aspect_ratio: aspectFor(m, asked) }), withFace({ prompt })]) {
       model = m; data = null;
       try {
@@ -494,7 +502,7 @@ async function me(request, env) {
   const active = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND cancelled = 0 AND created_at > ? ORDER BY created_at DESC LIMIT 1")
     .bind(user.id, now() - 600).first();
   const unseen = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'completed' AND seen = 0").bind(user.id).first();
-  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env),
+  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env), premiumCost: premiumCost(env),
     active: active ? active.id : null, unseen: unseen.n });
 }
 

@@ -557,3 +557,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Przy zleceniu zdjęcia aplikacja wysyła migawkę sceny (JSON, do 30 000 znaków) — serwer trzyma ją w kolumnie `scene` (migracja `0006_scena`).
 - Moje ujęcia: dotknięcie kafelka otwiera przeglądarkę zdjęć (poprzednie/następne, przesuwanie palcem, data). Są w niej Zapisz, Udostępnij, **Zrób podobne** (przywraca scenę, z której powstało zdjęcie — tylko dla nowych zdjęć) i **Usuń** (z potwierdzeniem; `DELETE /api/generate/<id>` kasuje plik z KV i oznacza zlecenie jako usunięte).
 - Lepsza jakość: sonda schematu pokazała, że Soul 2 przyjmuje tylko `resolution: '720p' | '1080p'` (2K nie ma). Wysyłamy `1080p`; gdy wariant odrzuci pole, serwer ponawia bez niego. Rozmiar każdego zdjęcia (WxH, KB) trafia do kolumny `detail`.
+
+## Premium 2K (Recraft 4.1 Pro)
+- Porównanie `/api/admin/bench?best=1` (4.10.2026): każdy model z najwyższymi ustawieniami jakości, jakie przyjmuje (wykrywane z komunikatów walidacji), a karty pokazują wymiary i wagę zdjęcia. Najlepszy stosunek jakości do czasu: **Recraft 4.1 Pro, `resolution: 2k`**, 1664×2560 px przy 2:3, ok. 15 s.
+- W panelu Maniscryptu przełącznik **Premium 2K ★** (nad „Zrób zdjęcie tutaj”, zapamiętany w przeglądarce). Premium kosztuje `PREMIUM_COST` = 4 kredyty (można zmienić zmienną w Cloudflare), zwykłe zdjęcie (Soul 2, 1080p) 1 kredyt.
+- Premium nie łączy się ze zdjęciem twarzy (Recraft nie przyjmuje obrazu): przy włączonym „Z moją twarzą” przełącznik Premium znika, a serwer odrzuca taką prośbę.
+- Bez modelu zapasowego: gdy Recraft odrzuci zlecenie, kredyty wracają.
+- Do ustalenia: cena Recraft Pro w panelu Higgsfield → ewentualna korekta liczby kredytów.
