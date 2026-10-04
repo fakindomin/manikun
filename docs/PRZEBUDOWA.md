@@ -522,7 +522,13 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 ## Płatności: plan na później (odłożone 3.10.2026, na razie nie ruszamy)
 
-- Pakiety kredytów (propozycja): Start 19 zł / 50 kredytów, Średni 39 zł / 120, Duży 79 zł / 260. Koszt zdjęcia Soul 2 ok. 0,0032 $, więc marża duża.
+- Pakiety kredytów (ustalone 4.10.2026, 1 kredyt = 1 zdjęcie Soul 2):
+  - 5 zł / 20 kredytów (0,25 zł za zdjęcie), pakiet na start;
+  - 10 zł / 50 kredytów (0,20 zł za zdjęcie);
+  - 20 zł / 120 kredytów (ok. 0,17 zł za zdjęcie);
+  - do tego 5 darmowych kredytów na start dla każdego nowego konta (już działa).
+  - Rachunek (bez VAT, BLIK w Stripe 1,6% + 1 zł, Soul 2 ok. 0,0032 $ ≈ 1,2 gr za zdjęcie): zostaje ok. 3,70 zł / 8,20 zł / 17,20 zł z pakietu. Z VAT 23% odpowiednio mniej. Mały pakiet traci ponad 20% na stałej opłacie 1 zł, więc większe pakiety mają wyraźnie niższą cenę za zdjęcie.
+  - Tło (research 4.10.2026): abonamenty (Higgsfield, Midjourney, Krea, OpenArt) to ok. 0,03–0,18 zł za zdjęcie przy dużych ilościach, jednorazowe paczki w aplikacjach (np. Lensa) ok. 0,30 zł i więcej; Gemini daje ok. 20 zdjęć dziennie za darmo, ChatGPT ok. 2–3. Manikun wygrywa niskim progiem (BLIK, bez abonamentu) i wygodą (zdjęcie w aplikacji, z twarzą, Moje ujęcia), nie ceną za zdjęcie.
 - Stripe Checkout (karty, BLIK 1,6% + 1 zł, Przelewy24 1,9% + 1 zł), najpierw tryb testowy. Serwer: `POST /api/buy` tworzy sesję płatności, `POST /api/stripe/webhook` (podpis HMAC) dopisuje kredyty wpisem `credits` (reason `buy`, ref = id sesji Stripe, więc jedna płatność nie doda się dwa razy).
 - Przed startem: regulamin i polityka prywatności (strony `/regulamin`, `/prywatnosc`; potrzebne dane sprzedawcy: imię i nazwisko albo firma, NIP, adres, e-mail), zgoda na natychmiastowe dostarczenie treści cyfrowej (bez 14 dni na zwrot), zakup przez rodzica przy dzieciach, faktury przez Stripe. Te same strony odblokują publikację aplikacji w Google (ekran zgody OAuth).
 - Domena manikun.pl (Hostinger): przeniesienie serwerów nazw do Cloudflare i podpięcie do Workera; przy okazji wysyłka maili (Email Service wymaga domeny na Cloudflare i płatnego planu Workers).
