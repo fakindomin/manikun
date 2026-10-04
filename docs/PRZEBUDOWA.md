@@ -586,3 +586,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - **Test Sandbox 4.10.2026: działa.** Zakup 20 kredytów / 5 zł dopisany automatycznie przez `transaction.completed` (txn_01m43vcb4qfxcr13yazd1agvhm). Wcześniejszy zakup 120 / 20 zł (txn_01m43tw2fp6b0726fzrysprm5c) dopisany ręcznie w D1, bo destynacja nie miała wtedy zaznaczonego `transaction.completed` (Paddle nie wysyła zdarzeń wstecz). Paddle w Sandbox: z 20 zł → VAT 3,74 zł, prowizja 2,94 zł, netto 13,32 zł.
 - Przejście na Live (po weryfikacji konta Paddle): w koncie Live utworzyć te same 3 produkty (custom data `credits`) i ceny (One-time, PLN, Tax included, max 1), token `live_…`, destynację z 3 zdarzeniami i Default payment link; w `wrangler.jsonc` podmienić `PADDLE_ENV` na `production`, `PADDLE_CLIENT_TOKEN` i `PADDLE_PACKS`; sekret `PADDLE_WEBHOOK_SECRET` w Cloudflare na ten z Live; na `/cennik` usunąć „zakup wkrótce”.
 - Metody płatności (Checkout settings, osobno w Sandbox i Live): BLIK, Google Pay, Apple Pay i karta (karty nie da się wyłączyć); reszta wyłączona.
+
+## Uporządkowane menu (4.10.2026)
+- Na górze „Manikun” i przycisk zamknięcia. Karta konta: awatar z inicjałem, imię i e-mail (albo „Zaloguj przez Google · 5 darmowych kredytów na start”), pod spodem saldo i przycisk „Dokup” (gdy sklep jest włączony).
+- Grupy z nagłówkami: **Scena** (Nowa scena, Moje ujęcia z plakietką nowych – tylko po zalogowaniu, Poziom), **Ustawienia** (Głos Manikuna), **Pomoc** (tutorial, Jak używać Maniscryptu, O Manikunie). Wartości (poziom, głos) szarym tekstem po prawej.
+- Stopka: Cennik, Regulamin, Prywatność i Wyloguj. Usunięte nieaktywne pozycje „Wkrótce” (Historia Maniscryptów, Ustawienia). Dymek Manikuna chowa się, gdy menu jest otwarte.
