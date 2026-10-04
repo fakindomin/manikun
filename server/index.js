@@ -434,7 +434,11 @@ async function refresh(env, g) {
       await refund(env, g, "failed", "Generator nie zdążył. Kredyt wrócił na konto.");
     }
   }
-  if (g.status === "completed") await storePhoto(env, g);
+  if (g.status === "completed") {
+    const fresh = !g.stored;
+    await storePhoto(env, g);
+    if (fresh) await prunePhotos(env, g.user_id);
+  }
   return g;
 }
 
@@ -483,12 +487,25 @@ async function generationSeen(env, user, id) {
 }
 
 // Moje ujęcia: udane zdjęcia (nowe pierwsze); najpierw dopytanie o zlecenia w toku
+// Moje ujęcia: zostaje 5 najnowszych zdjęć, starsze kasujemy (plik z KV i adres), status 'expired'
+const KEEP_PHOTOS = 5;
+async function prunePhotos(env, userId) {
+  const old = (await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT -1 OFFSET ?")
+    .bind(userId, KEEP_PHOTOS).all()).results;
+  if (!old.length) return 0;
+  if (env.PHOTOS) await Promise.all(old.map(g => env.PHOTOS.delete("gen/" + g.id)));
+  await env.DB.prepare("UPDATE generations SET status = 'expired', stored = 0, image_url = NULL, updated_at = ? WHERE id IN (" + old.map(() => "?").join(",") + ")")
+    .bind(now(), ...old.map(g => g.id)).run();
+  return old.length;
+}
+
 async function library(env, user) {
   const open = await env.DB.prepare("SELECT * FROM generations WHERE user_id = ? AND (status IN ('queued', 'in_progress') OR (status = 'completed' AND stored = 0)) AND created_at > ?")
     .bind(user.id, now() - 7 * 86400).all();
   for (const g of open.results) await refresh(env, g);
-  const rows = await env.DB.prepare("SELECT * FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 60").bind(user.id).all();
-  return json({ photos: rows.results.map(g => ({ id: g.id, url: photoUrl(g), seen: !!g.seen, aspect: g.aspect, at: g.created_at, scene: g.scene || null })) });
+  await prunePhotos(env, user.id);
+  const rows = await env.DB.prepare("SELECT * FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT ?").bind(user.id, KEEP_PHOTOS).all();
+  return json({ keep: KEEP_PHOTOS, photos: rows.results.map(g => ({ id: g.id, url: photoUrl(g), seen: !!g.seen, aspect: g.aspect, at: g.created_at, scene: g.scene || null })) });
 }
 
 async function photo(env, user, id) {

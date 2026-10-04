@@ -8210,6 +8210,7 @@
       syncGenBtn();
       genFrame.classList.add("done"); genImg.classList.add("on");
       genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s! Zdjęcie jest też w Moich ujęciach (menu).", false);
+      genNote.textContent = "W Moich ujęciach zostaje 5 ostatnich zdjęć. Chcesz zachować to na dłużej? Stuknij „Zapisz”.";
       genAgain.hidden = false;
       if (genOpenNow()) { sfx("klap"); nod("nod"); markSeen(d.id); }
       else genNotify(true, "Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.");
@@ -8414,7 +8415,9 @@
     const list = d.photos || [];
     shotsList = list;
     const word = n => n === 1 ? "zdjęcie" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? "zdjęcia" : "zdjęć";
-    shotsNote.textContent = list.length ? list.length + " " + word(list.length) + ". Stuknij, żeby otworzyć. Nowe są oznaczone." : "Tu trafią zdjęcia zrobione w Manikunie. Zrób pierwsze w panelu Maniscryptu!";
+    const keep = d.keep || 5;
+    shotsNote.textContent = (list.length ? list.length + " z " + keep + ". Stuknij, żeby otworzyć. " : "Tu trafią zdjęcia zrobione w Manikunie. Zrób pierwsze w panelu Maniscryptu! ")
+      + "Trzymamy " + keep + " ostatnich zdjęć – starsze znikają same, więc zapisz te, które chcesz zachować.";
     list.forEach((ph, idx) => {
       const b = document.createElement("button");
       b.type = "button";

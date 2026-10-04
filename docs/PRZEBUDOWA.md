@@ -591,3 +591,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Na górze „Manikun” i przycisk zamknięcia. Karta konta: awatar z inicjałem, imię i e-mail (albo „Zaloguj przez Google · 5 darmowych kredytów na start”), pod spodem saldo i przycisk „Dokup” (gdy sklep jest włączony).
 - Grupy z nagłówkami: **Scena** (Nowa scena, Moje ujęcia z plakietką nowych – tylko po zalogowaniu, Poziom), **Ustawienia** (Głos Manikuna), **Pomoc** (tutorial, Jak używać Maniscryptu, O Manikunie). Wartości (poziom, głos) szarym tekstem po prawej.
 - Stopka: Cennik, Regulamin, Prywatność i Wyloguj. Usunięte nieaktywne pozycje „Wkrótce” (Historia Maniscryptów, Ustawienia). Dymek Manikuna chowa się, gdy menu jest otwarte.
+
+## Moje ujęcia: tylko 5 ostatnich zdjęć
+- Serwer trzyma 5 najnowszych zdjęć na konto (`KEEP_PHOTOS`). Starsze (`prunePhotos`) są kasowane z KV i dostają status `expired` – przy zapisie nowego zdjęcia i przy otwarciu biblioteki.
+- Informacja: w Moich ujęciach („N z 5… Trzymamy 5 ostatnich zdjęć – starsze znikają same, więc zapisz te, które chcesz zachować.”), pod gotowym zdjęciem („…Chcesz zachować to na dłużej? Stuknij „Zapisz”.”), w Regulaminie §2 i w Polityce prywatności (przechowywanie).
