@@ -342,6 +342,26 @@ async function generate(request, env, user, ctx) {
   return json(genView(g, await balance(env, user.id), await genEta(env, model)));
 }
 
+// Wymiary obrazu z nagłówka (JPEG, PNG, WebP), do diagnozy jakości
+function imageSize(b) {
+  if (b[0] === 0x89 && b[1] === 0x50) return [(b[16] << 24 | b[17] << 16 | b[18] << 8 | b[19]) >>> 0, (b[20] << 24 | b[21] << 16 | b[22] << 8 | b[23]) >>> 0];
+  if (b[0] === 0x52 && b[8] === 0x57) {
+    const t = String.fromCharCode(b[12], b[13], b[14], b[15]);
+    if (t === "VP8X") return [1 + (b[24] | b[25] << 8 | b[26] << 16), 1 + (b[27] | b[28] << 8 | b[29] << 16)];
+    if (t === "VP8 ") return [(b[26] | b[27] << 8) & 0x3fff, (b[28] | b[29] << 8) & 0x3fff];
+    if (t === "VP8L") { const n = b[21] | b[22] << 8 | b[23] << 16 | b[24] << 24; return [1 + (n & 0x3fff), 1 + (n >> 14 & 0x3fff)]; }
+  }
+  if (b[0] === 0xff && b[1] === 0xd8) {
+    for (let i = 2; i < b.length - 9;) {
+      if (b[i] !== 0xff) { i++; continue; }
+      const m = b[i + 1], len = b[i + 2] << 8 | b[i + 3];
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return [b[i + 7] << 8 | b[i + 8], b[i + 5] << 8 | b[i + 6]];
+      i += 2 + len;
+    }
+  }
+  return null;
+}
+
 // Kopia zdjęcia u nas (KV PHOTOS): adresy Higgsfield wygasają, a Moje ujęcia mają zostać
 async function storePhoto(env, g) {
   if (!env.PHOTOS || g.stored || !g.image_url) return;
@@ -351,7 +371,9 @@ async function storePhoto(env, g) {
     if (r.ok) {
       const buf = await r.arrayBuffer();
       await env.PHOTOS.put("gen/" + g.id, buf, { metadata: { type: r.headers.get("Content-Type") || "image/jpeg" } });
-      await env.DB.prepare("UPDATE generations SET stored = 1 WHERE id = ?").bind(g.id).run();
+      const dim = imageSize(new Uint8Array(buf));
+      await env.DB.prepare("UPDATE generations SET stored = 1, detail = COALESCE(detail || ' | ', '') || ? WHERE id = ?")
+        .bind((dim ? dim.join("x") + " px, " : "") + Math.round(buf.byteLength / 1024) + " KB", g.id).run();
       g.stored = 1;
       return;
     }
