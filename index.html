@@ -8116,7 +8116,7 @@
     x.beginPath(); x.roundRect ? x.roundRect(bx, by, w + pad * 2, u * 2.2 + pad * 1.4, u) : x.rect(bx, by, w + pad * 2, u * 2.2 + pad * 1.4); x.fill();
     x.fillStyle = "rgba(255,255,255,0.9)"; x.textBaseline = "top";
     x.fillText(text, bx + pad, by + pad * 0.75);
-    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.95));
     return new File([out], photoName(), { type: "image/jpeg" });
   }
   async function savePhoto(url, btn) {
