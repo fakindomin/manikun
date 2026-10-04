@@ -595,3 +595,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 ## Moje ujęcia: tylko 5 ostatnich zdjęć
 - Serwer trzyma 5 najnowszych zdjęć na konto (`KEEP_PHOTOS`). Starsze (`prunePhotos`) są kasowane z KV i dostają status `expired` – przy zapisie nowego zdjęcia i przy otwarciu biblioteki.
 - Informacja: w Moich ujęciach („N z 5… Trzymamy 5 ostatnich zdjęć – starsze znikają same, więc zapisz te, które chcesz zachować.”), pod gotowym zdjęciem („…Chcesz zachować to na dłużej? Stuknij „Zapisz”.”), w Regulaminie §2 i w Polityce prywatności (przechowywanie).
+
+## Tematy na starcie: Obiekt odblokowany (4.10.2026)
+- Kafelek **Obiekt** („produkt, podstawa, kolor”) działa: Swoboda (Obiekt, Podstawa, Kolor + wspólne Scena, Kamera, Styl), Gotowe (6 presetów produktowych), Losuj, Próbny kadr, Maniscrypt (zdjęcie produktowe) i Zdjęcie od AI (bez „Z moją twarzą”).
+- Kreator: nowy rozdział **Obiekt** (Co fotografujemy? → W jakim kolorze? → Na czym stoi?), potem wspólne Miejsce, Kamera (bez Kadru – tylko dla postaci) i Styl. Rozdziały i pytania mają `subj`; pytanie pomija się, gdy jego kategoria nie pasuje do tematu.
+- Poprawka: Maniscrypt obiektu zawiera teraz miejsce (tło, dodatki, pora dnia) – wcześniej je pomijał.
+- Zostały: **Zwierzę** i **Dowolne** (nadal z kłódką).

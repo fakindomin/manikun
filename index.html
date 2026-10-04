@@ -868,7 +868,7 @@
       <svg id="trialSvg" class="ink" role="img" aria-label="Próbny kadr: makieta ujęcia z Manikunem"></svg>
       <svg id="trialDraft" class="ink trial-draft" aria-hidden="true"></svg>
     </div>
-    <p class="sheet-lead">To makieta: kadr, poza, światło i klimat na drewnianym Manikunie. <b class="preview-better">Prawdziwe ujęcie zrobi generator z listy, np. ChatGPT, Gemini, Midjourney czy Kling:</b> skopiuj Maniscrypt i wklej go tam. Zapisany kadr możesz też dołączyć jako szkic kompozycji.</p>
+    <p class="sheet-lead">To makieta: <span id="previewWhat">kadr, poza, światło i klimat na drewnianym Manikunie</span>. <b class="preview-better">Prawdziwe ujęcie zrobi generator z listy, np. ChatGPT, Gemini, Midjourney czy Kling:</b> skopiuj Maniscrypt i wklej go tam. Zapisany kadr możesz też dołączyć jako szkic kompozycji.</p>
     <div class="preview-actions">
       <button class="chip" type="button" id="previewSave">Zapisz kadr</button>
       <button class="chip" type="button" id="previewCopy">Kopiuj Maniscrypt</button>
@@ -1921,7 +1921,8 @@
     const parts = scene.subject === "object" ? [
       // Obiekt: zdjęcie produktowe przedmiotu na wybranej podstawie
       (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
-      lightPrompt()
+      lightPrompt(),
+      bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : [
       shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) && scene.turn !== "back" ? ", " + lookOpt("expr", exprOf(scene)).prompt : "") + (gazePrompt() ? ", " + gazePrompt() : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
@@ -5389,14 +5390,15 @@
   let wiz = null;
   // Rozdział Rzeczy tylko w Ekspercie (w Podstawowym pytania o rzeczy są w rozdziale Poza)
   const CHAPTERS_ALL = [
-    { id: "person", name: "Postać", icon: "body", done: "Postać gotowa." },
-    { id: "pose", name: "Poza", icon: "pose", done: "Poza jest." },
-    { id: "stuff", name: "Rzeczy", icon: "things", done: "Rzeczy gotowe.", expert: true },
+    { id: "object", name: "Obiekt", icon: "item", done: "Obiekt gotowy.", subj: "object" },
+    { id: "person", name: "Postać", icon: "body", done: "Postać gotowa.", subj: "person" },
+    { id: "pose", name: "Poza", icon: "pose", done: "Poza jest.", subj: "person" },
+    { id: "stuff", name: "Rzeczy", icon: "things", done: "Rzeczy gotowe.", expert: true, subj: "person" },
     { id: "place", name: "Miejsce", icon: "background", done: "Miejsce mamy." },
     { id: "camera", name: "Kamera", icon: "camera", done: "Kamera ustawiona." },
     { id: "style", name: "Styl", icon: "style", done: "" }
   ];
-  const chapters = () => CHAPTERS_ALL.filter(c => !c.expert || level === "expert");
+  const chapters = () => CHAPTERS_ALL.filter(c => (!c.expert || level === "expert") && (!c.subj || c.subj === scene.subject));
   const him = () => scene.body === "female" ? "ją" : "go";
   const own = () => wiz.ans.dress === "own";
   const face = () => wiz.ans.face === true;
@@ -5404,6 +5406,10 @@
   const wornParts = () => PARTS.filter(p => scene.wear[p] && scene.wear[p] !== "none" && !(p === "top" && isDress()));
   const partLabel = p => p === "bottom" && isDress() ? "Sukienka" : WEAR[p].name;
   const WIZ_Q = [
+    // Obiekt (zdjęcie produktowe): przedmiot, kolor, podstawa; dalej wspólne Miejsce, Kamera i Styl
+    { id: "item", ch: "object", subj: "object", say: "Co fotografujemy?", cat: "item" },
+    { id: "itemColor", subj: "object", say: "W jakim kolorze?", cat: "itemColor" },
+    { id: "base", subj: "object", say: "Na czym stoi?", cat: "base" },
     { id: "body", ch: "person", say: "Kogo ustawiamy?", cat: "body" },
     { id: "age", say: "Dorosły czy dziecko?", cat: "traits", sub: "age" },
     { id: "dress", say: () => `Jak ${him()} ubierzemy?`, choice: [["set", "Gotowy zestaw", "gotowe"], ["own", "Składam sam", "część po części"]] },
@@ -5456,10 +5462,13 @@
   ];
   // Rozdział każdego pytania: ten z najbliższego pytania wyżej, które go podaje
   WIZ_Q.reduce((ch, q) => (q.ch = q.ch || ch), "person");
+  // Pytania od „Kogo ustawiamy?” do zwierzaka dotyczą tylko postaci
+  WIZ_Q.slice(WIZ_Q.findIndex(q => q.id === "body"), WIZ_Q.findIndex(q => q.id === "pets") + 1).forEach(q => { q.subj = q.subj || "person"; });
   const AUTO_Q = { id: "auto" };
   const qById = id => id === "auto" ? { ...AUTO_Q, ch: wiz.autoCh } : WIZ_Q.find(q => q.id === id);
   const qIndex = id => id === "auto" ? WIZ_Q.findIndex(q => q.ch === wiz.autoCh) : WIZ_Q.findIndex(q => q.id === id);
-  const qOn = q => !q.when || q.when();
+  // Pytanie pasuje do tematu, a jego kategoria jest w tej scenie dostępna (np. Kadr tylko przy postaci)
+  const qOn = q => (!q.subj || q.subj === scene.subject) && (!q.cat || activeCats().some(c => c.id === q.cat)) && (!q.when || q.when());
   const qText = q => q.id === "auto" ? wiz.autoText : typeof q.say === "function" ? q.say() : q.say;
   const qSub = q => typeof q.sub === "function" ? q.sub() : q.sub || null;
   const chIndex = id => chapters().findIndex(c => c.id === id);
@@ -5473,8 +5482,9 @@
 
   function wizardStart() {
     flow = "wizard";
-    wiz = { q: "body", hist: [], ans: {}, chosen: false, far: "body", part: null, thingIdx: null, seen: {}, autoCh: null, autoText: "" };
-    nav = [{ kind: "wizard", open: "wiz-ch-person" }, { kind: "q", q: "body" }];
+    const ch0 = chapters()[0].id, q0 = firstOn(ch0);
+    wiz = { q: q0, hist: [], ans: {}, chosen: false, far: q0, part: null, thingIdx: null, seen: {}, autoCh: null, autoText: "" };
+    nav = [{ kind: "wizard", open: "wiz-ch-" + ch0 }, { kind: "q", q: q0 }];
   }
   function wizSay(prefix = "") {
     if (!wiz || phase !== "director") return;
@@ -5533,18 +5543,24 @@
   const partText = p => scene.wear[p] === "suit" ? "spodnie garniturowe" : low(partValue(p));
   const nameOf = cat => optionOf(cat, scene[cat]).name;
   const CH_SUMMARY = {
+    object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + nameOf("item") + ", " + low(nameOf("base")),
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
     pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(optionOf("arms", armsFor(scene)).name) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
     place: () => nameOf("background") + ", " + bgLook(scene).map(id => low(bgVar(scene.background, id).name)).join(", ") + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
-    camera: () => `${nameOf("shot")}, ${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
+    camera: () => `${scene.subject === "object" ? "" : nameOf("shot") + ", "}${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
     style: () => "Styl " + nameOf("style"),
     stuff: () => (scene.things || []).length ? (scene.things || []).map(it => (it.color ? colorOf(it.color).name.toLowerCase() + " " : "") + THING[it.id].name.toLowerCase()).join(", ")
       + (activeItems(scene).length ? ", na blacie: " + activeItems(scene).map(it => itemInfo(it).name.toLowerCase()).join(", ") : "") : "Bez rzeczy"
   };
-  const wizSummary = () => [CH_SUMMARY.person(), low(CH_SUMMARY.pose()), CH_SUMMARY.place().split(", światło")[0], nameOf("style")].join(" · ");
+  const wizSummary = () => (scene.subject === "object" ? [CH_SUMMARY.object()] : [CH_SUMMARY.person(), low(CH_SUMMARY.pose())]).concat(CH_SUMMARY.place().split(", światło")[0], nameOf("style")).join(" · ");
 
   // "Zdaj się na mnie": Manikun ustawia cały rozdział z sensem (w nocy bez okularów słonecznych itp.)
   const CH_RANDOM = {
+    object() {
+      scene.item = anyOf(optionsOf("item")).id;
+      scene.base = anyOf(optionsOf("base")).id;
+      scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
+    },
     person() {
       scene.body = anyOf(optionsOf("body")).id;
       const d = dressIn(anyOf(optionsOf("outfit").filter(o => fitsBody(o, scene))).id);
@@ -5580,7 +5596,7 @@
       if (scene.time === "night" && scene.look.glasses === "sun") scene.look = { ...scene.look, glasses: "none" };
     },
     camera() {
-      scene.shot = anyOf(["full", "full", "portrait", "face"]);
+      if (scene.subject !== "object") scene.shot = anyOf(["full", "full", "portrait", "face"]);
       scene.camera = anyOf(leavesOf("camera").filter(o => fitsBody(o, scene))).id;
       if (scene.camera === "D") scene.shot = "full";
       if (scene.mode === "video") scene.motion = anyOf(optionsOf("motion")).id;
@@ -7224,6 +7240,7 @@
   }
   function setPreview(open) {
     document.body.classList.toggle("preview-open", open);
+    if (open) document.getElementById("previewWhat").textContent = scene.subject === "object" ? "kadr, przedmiot, światło i klimat" : "kadr, poza, światło i klimat na drewnianym Manikunie";
     pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
   }
   // Szkic roboczy tej samej sceny na wierzchu; po otwarciu przelatuje magiczna różdżka:
@@ -7701,7 +7718,7 @@
   const LOCK = '<svg class="lock ink" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
   const SUBJECTS = [
     { id: "person", name: "Postać", desc: "poza, ubiór, twarz" },
-    { id: "object", name: "Obiekt", desc: "wkrótce", locked: true, joke: "Obiekty? Zgubiłem gdzieś rekwizyty… Szukam za kanapą." },
+    { id: "object", name: "Obiekt", desc: "produkt, podstawa, kolor" },
     { id: "animal", name: "Zwierzę", desc: "wkrótce", locked: true, joke: "Kot miał tu być o dziewiątej. Szukamy go od rana." },
     { id: "any", name: "Dowolne", desc: "wkrótce", locked: true, joke: "Dowolne? Ambitnie. Najpierw muszę się nauczyć rysować." }
   ];
