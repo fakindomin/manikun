@@ -1083,6 +1083,8 @@
   const isPet = it => !!(it && THING[it.id] && THING[it.id].pet);
   const petCoat = it => PET_COATS[it.id].find(c => c.id === it.coat) || PET_COATS[it.id][0];
   const petPose = it => PET_POSES.find(p => p.id === it.pose) || PET_POSES[0];
+  // Zwierzę jako temat sceny (kategoria Zwierzę): ten sam opis co zwierzak przy postaci
+  const animalIt = (st = scene) => ({ id: st.animal, pose: st.animalPose, coat: PET_COATS[st.animal].some(c => c.id === st.animalCoat) ? st.animalCoat : PET_COATS[st.animal][0].id });
   // Rzeczy bez zwierzaków (siedzisko, oparcie, blat)
   const propsOf = st => (st.things || []).filter(it => !isPet(it));
   const THING = Object.fromEntries(THINGS.map(t => [t.id, t]));
@@ -1170,6 +1172,13 @@
       { id: "float", name: "Lewitacja", short: "Lewitacja", prompt: "levitating in mid-air above the ground with a soft shadow below" }
     ]},
     { id: "itemColor", label: "Kolor", subjects: ["object"], patch: "#A8433C", options: [] },
+    // Zwierzę: gatunek, poza i umaszczenie (rysunek i opisy wspólne ze zwierzakami przy postaci); reszta wspólna
+    { id: "animal", label: "Zwierzę", subjects: ["animal"], patch: "#C98A4E", options: [
+      { id: "dog", name: "Pies", short: "Pies" }, { id: "cat", name: "Kot", short: "Kot" },
+      { id: "bunny", name: "Królik", short: "Królik" }, { id: "dragon", name: "Smok", short: "Smok" }
+    ]},
+    { id: "animalPose", label: "Poza", subjects: ["animal"], patch: "#C29682", options: PET_POSES.map(o => ({ id: o.id, name: o.name, short: o.name })) },
+    { id: "animalCoat", label: "Umaszczenie", subjects: ["animal"], patch: "#B98A5E", options: [] },
     { id: "body", label: "Sylwetka", subjects: ["person"], patch: "#BB5695", options: [
       { id: "female", name: "Kobieta", short: "Kobieta", prompt: "of a single adult woman" },
       { id: "male", name: "Mężczyzna", short: "Mężczyz.", prompt: "of a single adult man" }
@@ -1342,6 +1351,10 @@
     fantasy: { lead: "Fantasy digital painting", end: { photo: "fantasy digital painting, magical glowing atmosphere, rich detailed illustration", video: "fantasy animated film style, magical glowing atmosphere, rich detailed painterly look" }, frame: "#B08CFF", frame2: "#E8C66A", tag: "FANTASY" }
   };
   const styleOf = st => STYLES[st.style] || null;
+  const ENDING_ANIMAL = {
+    photo: "85mm lens, photorealistic animal photography, detailed fur and eyes, high detail",
+    video: "85mm lens, cinematic photorealistic video, detailed fur and eyes, high detail"
+  };
   const ENDING_OBJECT = {
     photo: "100mm lens, photorealistic commercial product photography, crisp detail, clean composition",
     video: "100mm lens, cinematic photorealistic commercial product video, crisp detail, clean composition"
@@ -1465,7 +1478,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", animal: "dog", animalPose: "sit", animalCoat: "golden", body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -1923,6 +1936,11 @@
       (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt(),
       bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
+    ] : scene.subject === "animal" ? [
+      // Zwierzę: jedno zwierzę jako główny temat, w wybranej pozie i umaszczeniu
+      (!styleOf(scene) || styleOf(scene).photo ? "Photograph of " : "Image of ") + "a single " + petCoat(animalIt()).word + " " + petPose(animalIt()).word + ", the animal as the only main subject in sharp focus, whole animal visible",
+      lightPrompt(),
+      bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : [
       shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) && scene.turn !== "back" ? ", " + lookOpt("expr", exprOf(scene)).prompt : "") + (gazePrompt() ? ", " + gazePrompt() : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
@@ -1935,7 +1953,7 @@
     ];
     if (scene.mode === "video") parts.push(isSelfie(scene.camera) ? "handheld selfie video filmed by the phone itself, moving slightly with the subject's hand" : optionOf("motion", scene.motion).prompt);
     if (isSelfie(scene.camera)) parts.push("no phone visible in the picture");
-    parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", styleOf(scene) ? styleOf(scene).end[scene.mode] : (scene.subject === "object" ? ENDING_OBJECT : ENDING)[scene.mode]);
+    parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", styleOf(scene) ? styleOf(scene).end[scene.mode] : (scene.subject === "object" ? ENDING_OBJECT : scene.subject === "animal" ? ENDING_ANIMAL : ENDING)[scene.mode]);
     const lead = styleOf(scene) ? styleOf(scene).lead + ". " : "";
     return optionOf("camera", scene.camera).prompt + ". " + lead + parts.join(", ") + ".";
   }
@@ -4264,6 +4282,12 @@
   }
   // Miejsce przedmiotu w kadrze: ten sam poziom podłoża co Manikun
   function objectPlace(st, W, H) {
+    if (st.subject === "animal") {
+      // Zwierzę stoi na podłożu, wyśrodkowane; skala z jego rozmiaru (tak, by smok i królik były podobnie duże w kadrze)
+      const [x0, x1, h] = THING[st.animal].box, far = 1 - 0.42 * droneFar(st), gy = H * 0.86;
+      const s = Math.min(H * 0.4 / h, W * 0.62 / (x1 - x0)) * far, x = W / 2 - (x0 + x1) / 2 * s;
+      return { x: x + x0 * s, y: gy - h * s, w: (x1 - x0) * s, h: h * s, bottom: gy, gy, s, px: x };
+    }
     const gy = H * 0.86, s = H * 0.36 / 100 * (1 - 0.42 * droneFar(st)), bottom = gy - H * BASE_H[st.base] * (1 - 0.42 * droneFar(st));
     return { x: W / 2 - 30 * s, y: bottom - 100 * s, w: 60 * s, h: 100 * s, bottom, gy, s };
   }
@@ -4323,7 +4347,7 @@
     const A = anchors(st, W, H, layers.has("things"));
     const { u } = A;
     // Obiekt albo postać: przy przejściu jedno przenika się z drugim (subj 0 = Manikun, 1 = przedmiot)
-    const subj = st.props && st.props.subj != null ? st.props.subj : (st.subject === "object" ? 1 : 0);
+    const subj = st.props && st.props.subj != null ? st.props.subj : (st.subject !== "person" ? 1 : 0);
     const ob = objectPlace(st, W, H);
     const pl = subj >= 0.5 ? { ...ob, groundY: ob.gy } : A.pl, cx = pl.x + pl.w / 2;
     // Położenie aparatu i lampy: w trakcie animacji lub przeciągania z props, inaczej środek strefy
@@ -4448,9 +4472,14 @@
     if (layers.has("background") && reveal > 0 && bgExtras(st).length) drawFxFront(layer(), bgExtras(st), W, H, u);
     if (subj > 0) {
       const og = subj < 1 ? el("g", { opacity: f(subj) }, g) : g;
-      drawBase(og, st.base, W, H, ob.gy, u, false);
-      drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st));
-      drawBase(og, st.base, W, H, ob.gy, u, true);
+      if (st.subject === "animal") {
+        el("ellipse", { cx: f(ob.x + ob.w / 2), cy: f(ob.gy), rx: f(ob.w * 0.42), ry: f(u * 1.2), style: "fill:#000;stroke:none;opacity:0.3" }, og);
+        drawThing(og, st.animal, ob.px, ob.gy, ob.s, petCoat(animalIt(st)).hex, animalIt(st));
+      } else {
+        drawBase(og, st.base, W, H, ob.gy, u, false);
+        drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st));
+        drawBase(og, st.base, W, H, ob.gy, u, true);
+      }
     }
 
     // Ruch: przednia połowa orbity albo najazd kamery
@@ -4562,6 +4591,9 @@
     item: svg => drawItem(svg, el("defs", {}, svg), scene.item, 12, 23, 0.21, itemHex()),
     base: svg => { el("path", { d: "M3 13h18 M6 13v8 M18 13v8" }, svg); el("path", { d: "M10 13V8h4v5", class: "thin" }, svg); },
     itemColor: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${itemHex()};stroke:rgba(255,255,255,0.3)` }, svg); },
+    animal: svg => petThumb(svg, animalIt()),
+    animalPose: svg => petThumb(svg, animalIt()),
+    animalCoat: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${petCoat(animalIt()).hex};stroke:rgba(255,255,255,0.3)` }, svg); },
     look: svg => { el("circle", { cx: 12, cy: 12, r: 7 }, svg); el("path", { d: "M5.5 10 Q7 4 12 4.5 Q17 4 18.5 10 Q14 7.5 5.5 10 Z" }, svg); el("path", { d: "M8 12.5 h3 M13 12.5 h3", class: "thin" }, svg); }
   };
 
@@ -4580,6 +4612,7 @@
     if (cat.id === "format") return currentFormat().short;
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
+    if (cat.id === "animalCoat") return petCoat(animalIt()).name;
     if (cat.id === "outfit") return setName();
     if (cat.id === "things") { const pr = propsOf(scene); return pr.length ? THING[pr[0].id].name : "Nic"; }
     if (cat.id === "pets") { const pl = (scene.things || []).filter(isPet); return pl.length ? pl.map(it => THING[it.id].name).join(", ") : "Brak"; }
@@ -4685,6 +4718,14 @@
       { id: "watch", name: "Zegarek nad wodą", set: { item: "watch", base: "water", itemColor: "brown", camera: "L3", light: "nat-back", lightZone: "R2", background: "lake", bgv: { lake: "calm" }, fx: ["fog"], time: "golden" } },
       { id: "dessert", name: "Deser w piekarni", set: { item: "food", base: "table", itemColor: "white", camera: "T", light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "bakery" } } },
       { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, bga: { beach: ["rocks"] }, time: "golden" } }
+    ],
+    animal: [
+      { id: "dogbeach", name: "Pies na plaży", set: { animal: "dog", animalCoat: "golden", animalPose: "stand", camera: "L2", light: "nat-front", lightZone: "L1", background: "beach", bgv: { beach: "sand" }, time: "golden" } },
+      { id: "catroom", name: "Kot w salonie", set: { animal: "cat", animalCoat: "ginger", animalPose: "lie", camera: "R1", light: "nat-front", lightZone: "L2", background: "room", bgv: { room: "living" }, time: "day" } },
+      { id: "bunnymeadow", name: "Królik na łące", set: { animal: "bunny", animalCoat: "white", animalPose: "sit", camera: "L3", light: "nat-back", lightZone: "R2", background: "meadow", time: "golden" } },
+      { id: "dragonforest", name: "Smok we mgle", set: { animal: "dragon", animalCoat: "green", animalPose: "stand", camera: "B", light: "nat-back", lightZone: "L2", background: "forest", fx: ["fog"], time: "day" } },
+      { id: "dogstudio", name: "Portret psa w studiu", set: { animal: "dog", animalCoat: "black", animalPose: "sit", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: { studio: "grey" } } },
+      { id: "catnight", name: "Kot nocą w mieście", set: { animal: "cat", animalCoat: "black", animalPose: "sit", camera: "L3", light: "art-back", lightZone: "R1", background: "street", bgv: { street: "old" }, bga: { street: ["neon"] }, time: "night" } }
     ]
   };
   // Scena onboardingu: jedno źródło dla szkicu w intro i dla linku ?intro, pod którym generuje się do niej zdjęcia
@@ -4787,7 +4828,11 @@
     scene.fx = randomFx(T.fx || FX_LIST.map(x => x.id), T.fx ? 0.6 : 0.3);
     scene.time = anyOf(T.time || optionsOf("time").map(o => o.id));
     scene.light = anyOf(leavesOf("light")).id;
-    if (scene.subject === "object") {
+    if (scene.subject === "animal") {
+      scene.animal = anyOf(optionsOf("animal")).id;
+      scene.animalPose = anyOf(PET_POSES).id;
+      scene.animalCoat = anyOf(PET_COATS[scene.animal]).id;
+    } else if (scene.subject === "object") {
       scene.item = anyOf(optionsOf("item")).id;
       scene.base = anyOf(optionsOf("base")).id;
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
@@ -5219,6 +5264,18 @@
         svg => thingTile(svg, it.id, (scene.things[i] || {}).color), () => (scene.things[i] || {}).color ? colorOf(scene.things[i].color).name : "Domyślny"))).filter(Boolean);
     }
     if (catId === "background" && scene.sub && scene.sub.startsWith("v:")) return variantTiles(scene.sub.slice(2));
+    if (catId === "animal") {
+      // Gatunek: umaszczenie, którego nowy gatunek nie ma, wraca do jego pierwszego
+      return optionsOf("animal").map(o => tile("opt-animal-" + o.id, o.name, () => scene.animal === o.id, () => {
+        scene.animal = o.id;
+        if (!PET_COATS[o.id].some(c => c.id === scene.animalCoat)) scene.animalCoat = PET_COATS[o.id][0].id;
+        render();
+      }, svg => petThumb(svg, animalIt({ ...scene, animal: o.id }))));
+    }
+    if (catId === "animalPose") return PET_POSES.map(o => tile("opt-animalPose-" + o.id, o.name, () => scene.animalPose === o.id,
+      () => { scene.animalPose = o.id; render(); }, svg => petThumb(svg, animalIt({ ...scene, animalPose: o.id }))));
+    if (catId === "animalCoat") return PET_COATS[scene.animal].map(c => tile("opt-animalCoat-" + c.id, c.name, () => animalIt().coat === c.id,
+      () => { scene.animalCoat = c.id; render(); }, svg => petThumb(svg, animalIt({ ...scene, animalCoat: c.id }))));
     if (catId === "itemColor") {
       // Kolor przedmiotu: domyślny dla danego przedmiotu albo z palety
       return [{ id: "auto", name: "Domyślny", hex: ITEMS[scene.item].color }, ...COLORS].map(c => tile("opt-itemColor-" + c.id, c.name,
@@ -5352,6 +5409,7 @@
     { id: "person", label: "Postać", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Obiekt", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
+    { id: "animal", label: "Zwierzę", cats: ["animal", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
     { id: "style", label: "Styl", cat: "style", icon: "style" },
@@ -5361,7 +5419,7 @@
   const catById = id => CATEGORIES.find(c => c.id === id);
   const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
-  const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", scene: "background", camera: "camera", style: "style" };
+  const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", animal: "animal", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
   const catOff = id => (id === "turn" && (isSelfie(scene.camera) || LYING.includes(scene.pose))) || (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   // from: rodzaj rzędu, w którym stuknięto. Grupa i kategoria mogą mieć to samo id (Kamera, Styl):
@@ -5377,11 +5435,11 @@
   let flow = "free";
   const NAV_MS = 460, TILE_STEP = 35;
   function navInit(open) {
-    const g = open || (scene.subject === "object" ? "object" : "person");
+    const g = open || scene.subject;
     nav = [{ kind: "groups", open: g }, childOf(g)];
   }
   // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
-  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, JSON.stringify(scene.wear), lampAllowed(scene), (scene.things || []).length, level, st.kind === "q" ? st.q + ":" + (wiz && wiz.part) + ":" + (wiz && wiz.thingIdx) : ""].join("|");
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, scene.animal, JSON.stringify(scene.wear), lampAllowed(scene), (scene.things || []).length, level, st.kind === "q" ? st.q + ":" + (wiz && wiz.part) + ":" + (wiz && wiz.thingIdx) : ""].join("|");
 
   // ---------- Kreator: Manikun pyta, odpowiedzi są w górnym rzędzie ----------
   // Jedno pytanie = jeden dymek = jeden rząd odpowiedzi. Dolny rząd: Wstecz, 5 rozdziałów, Swoboda.
@@ -5391,6 +5449,7 @@
   // Rozdział Rzeczy tylko w Ekspercie (w Podstawowym pytania o rzeczy są w rozdziale Poza)
   const CHAPTERS_ALL = [
     { id: "object", name: "Obiekt", icon: "item", done: "Obiekt gotowy.", subj: "object" },
+    { id: "animal", name: "Zwierzę", icon: "animal", done: "Zwierzak gotowy.", subj: "animal" },
     { id: "person", name: "Postać", icon: "body", done: "Postać gotowa.", subj: "person" },
     { id: "pose", name: "Poza", icon: "pose", done: "Poza jest.", subj: "person" },
     { id: "stuff", name: "Rzeczy", icon: "things", done: "Rzeczy gotowe.", expert: true, subj: "person" },
@@ -5410,6 +5469,10 @@
     { id: "item", ch: "object", subj: "object", say: "Co fotografujemy?", cat: "item" },
     { id: "itemColor", subj: "object", say: "W jakim kolorze?", cat: "itemColor" },
     { id: "base", subj: "object", say: "Na czym stoi?", cat: "base" },
+    // Zwierzę: gatunek, umaszczenie, poza
+    { id: "animal", ch: "animal", subj: "animal", say: "Jakie zwierzę?", cat: "animal" },
+    { id: "animalCoat", subj: "animal", say: "Jakie umaszczenie?", cat: "animalCoat" },
+    { id: "animalPose", subj: "animal", say: "Co robi?", cat: "animalPose" },
     { id: "body", ch: "person", say: "Kogo ustawiamy?", cat: "body" },
     { id: "age", say: "Dorosły czy dziecko?", cat: "traits", sub: "age" },
     { id: "dress", say: () => `Jak ${him()} ubierzemy?`, choice: [["set", "Gotowy zestaw", "gotowe"], ["own", "Składam sam", "część po części"]] },
@@ -5544,18 +5607,24 @@
   const nameOf = cat => optionOf(cat, scene[cat]).name;
   const CH_SUMMARY = {
     object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + nameOf("item") + ", " + low(nameOf("base")),
+    animal: () => nameOf("animal") + ", " + low(petCoat(animalIt()).name) + ", " + low(petPose(animalIt()).name),
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
     pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(optionOf("arms", armsFor(scene)).name) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
     place: () => nameOf("background") + ", " + bgLook(scene).map(id => low(bgVar(scene.background, id).name)).join(", ") + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
-    camera: () => `${scene.subject === "object" ? "" : nameOf("shot") + ", "}${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
+    camera: () => `${scene.subject !== "person" ? "" : nameOf("shot") + ", "}${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
     style: () => "Styl " + nameOf("style"),
     stuff: () => (scene.things || []).length ? (scene.things || []).map(it => (it.color ? colorOf(it.color).name.toLowerCase() + " " : "") + THING[it.id].name.toLowerCase()).join(", ")
       + (activeItems(scene).length ? ", na blacie: " + activeItems(scene).map(it => itemInfo(it).name.toLowerCase()).join(", ") : "") : "Bez rzeczy"
   };
-  const wizSummary = () => (scene.subject === "object" ? [CH_SUMMARY.object()] : [CH_SUMMARY.person(), low(CH_SUMMARY.pose())]).concat(CH_SUMMARY.place().split(", światło")[0], nameOf("style")).join(" · ");
+  const wizSummary = () => (scene.subject === "object" ? [CH_SUMMARY.object()] : scene.subject === "animal" ? [CH_SUMMARY.animal()] : [CH_SUMMARY.person(), low(CH_SUMMARY.pose())]).concat(CH_SUMMARY.place().split(", światło")[0], nameOf("style")).join(" · ");
 
   // "Zdaj się na mnie": Manikun ustawia cały rozdział z sensem (w nocy bez okularów słonecznych itp.)
   const CH_RANDOM = {
+    animal() {
+      scene.animal = anyOf(optionsOf("animal")).id;
+      scene.animalPose = anyOf(PET_POSES).id;
+      scene.animalCoat = anyOf(PET_COATS[scene.animal]).id;
+    },
     object() {
       scene.item = anyOf(optionsOf("item")).id;
       scene.base = anyOf(optionsOf("base")).id;
@@ -5596,7 +5665,7 @@
       if (scene.time === "night" && scene.look.glasses === "sun") scene.look = { ...scene.look, glasses: "none" };
     },
     camera() {
-      if (scene.subject !== "object") scene.shot = anyOf(["full", "full", "portrait", "face"]);
+      if (scene.subject === "person") scene.shot = anyOf(["full", "full", "portrait", "face"]);
       scene.camera = anyOf(leavesOf("camera").filter(o => fitsBody(o, scene))).id;
       if (scene.camera === "D") scene.shot = "full";
       if (scene.mode === "video") scene.motion = anyOf(optionsOf("motion")).id;
@@ -6135,7 +6204,7 @@
     light: isBackLight(scene.light) ? 1 : 0, kind: isNaturalLight(scene.light) ? 0 : 1,
     tod: TOD[scene.time], sky: isOutdoor(scene.background) && isNaturalLight(scene.light) ? 1 : 0,
     skyX: skySide(scene),
-    subj: scene.subject === "object" ? 1 : 0,
+    subj: scene.subject !== "person" ? 1 : 0,
     drone: scene.camera === "D" ? 1 : 0
   });
   const PROP_KEYS = ["camX", "camY", "litX", "litY", "light", "kind", "tod", "sky", "skyX", "subj", "drone"];
@@ -6233,7 +6302,7 @@
     const st = { ...scene, props: { ...props } };
     if (bgTrans && bgTrans.newOff !== undefined) st.bgTrans = bgTrans;
     if (belt) st.belt = belt;
-    if (!reduceMotion.matches && scene.subject !== "object") {
+    if (!reduceMotion.matches && scene.subject === "person") {
       const base = shown || baseShown();
       st.fig = computeFigure(livePose(base.pose, performance.now()), base.rig, clothOf(scene.body));
     } else if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== rigOf(scene.body))) {
@@ -6380,7 +6449,7 @@
     if (scene.camera === "D" && !isOutdoor(scene.background)) scene.camera = "T";
     if (scene.camera === "D" && scene.shot !== "full") scene.shot = "full";
     // Selfie tylko z postacią
-    if (scene.subject === "object" && isSelfie(scene.camera)) scene.camera = "L2";
+    if (scene.subject !== "person" && isSelfie(scene.camera)) scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
     // Sukienka i spódnica tylko dla kobiety: po zmianie postaci wraca zestaw codzienny albo zwykłe spodnie
     if (scene.body !== "female" && isDress()) Object.assign(scene, dressIn("casual"));
@@ -7205,7 +7274,7 @@
     const beamC = isNaturalLight(scene.light) ? "#FFE3B0" : "#EAF2FF";
     glow("trialLit", lx, ly, R * 0.6, beamC, 0.16);
     // Smugi światła: kilka miękkich klinów od lampy (albo słońca) w stronę Manikuna, jak światło w lekkiej mgiełce
-    if (scene.subject !== "object" && !isBackLight(scene.light)) {
+    if (scene.subject === "person" && !isBackLight(scene.light)) {
       const tx = W / 2, ty = H * 0.45, a0 = Math.atan2(ty - ly, tx - lx), len = Math.hypot(tx - lx, ty - ly) * 1.5;
       const bg = el("linearGradient", { id: "trialBeam", gradientUnits: "userSpaceOnUse", x1: f(lx), y1: f(ly), x2: f(lx + Math.cos(a0) * len), y2: f(ly + Math.sin(a0) * len) }, defs);
       el("stop", { offset: 0, style: `stop-color:${beamC};stop-opacity:0.3` }, bg);
@@ -7240,7 +7309,7 @@
   }
   function setPreview(open) {
     document.body.classList.toggle("preview-open", open);
-    if (open) document.getElementById("previewWhat").textContent = scene.subject === "object" ? "kadr, przedmiot, światło i klimat" : "kadr, poza, światło i klimat na drewnianym Manikunie";
+    if (open) document.getElementById("previewWhat").textContent = scene.subject === "object" ? "kadr, przedmiot, światło i klimat" : scene.subject === "animal" ? "kadr, zwierzę, światło i klimat" : "kadr, poza, światło i klimat na drewnianym Manikunie";
     pvEl("previewSheet").setAttribute("aria-hidden", String(!open));
   }
   // Szkic roboczy tej samej sceny na wierzchu; po otwarciu przelatuje magiczna różdżka:
@@ -7511,6 +7580,7 @@
       lastThingTap = hit.i;
     }
     else if (scene.subject === "object") sketchGo("object", "item");
+    else if (scene.subject === "animal") sketchGo("animal", "animal");
     else sketchGo("scene", "background", null, "opt-background-" + scene.background);
     return true;
   }
@@ -7719,7 +7789,7 @@
   const SUBJECTS = [
     { id: "person", name: "Postać", desc: "poza, ubiór, twarz" },
     { id: "object", name: "Obiekt", desc: "produkt, podstawa, kolor" },
-    { id: "animal", name: "Zwierzę", desc: "wkrótce", locked: true, joke: "Kot miał tu być o dziewiątej. Szukamy go od rana." },
+    { id: "animal", name: "Zwierzę", desc: "pies, kot, królik, smok" },
     { id: "any", name: "Dowolne", desc: "wkrótce", locked: true, joke: "Dowolne? Ambitnie. Najpierw muszę się nauczyć rysować." }
   ];
   const SOON = "Ta opcja będzie dostępna wkrótce. Na razie zróbmy świetną postać!";
