@@ -520,6 +520,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Do testów doszły modele Cloudflare Workers AI (binding `AI`): FLUX.2 klein 4B (ok. 0,0012 $ za ok. 1 MP) i FLUX.2 klein 9B (ok. 0,015 $). Obraz wraca od razu w odpowiedzi (`multipart` z promptem i wymiarami ok. 1 MP w proporcjach kadru), trafia prosto do KV, a czas w ms zapisuje się w kolumnie `detail`. Przy błędzie kredyt wraca. Research (3.10.2026): szybkie i tanie API to też FLUX.1 schnell (Runware, Together, Cloudflare; ucina długie prompty), Z-Image Turbo (fal, ok. 0,005 $), Imagen 4 Fast (0,02 $), Nano Banana 2 Lite (0,034 $).
 - Test FLUX.2 klein 4B na Workers AI (3.10.2026): dwa zlecenia nie oddały obrazu (zatrzymane na wywołaniu modelu, po 2 min kredyt wrócił). Na darmowym planie Workers to nie działa, więc model zdjęty z listy testowej; kod został w `server/index.js` na wypadek płatnego planu.
 
+- Wywołanie zdjęcia w trakcie generowania: na start szkic sceny; w tempie paska postępu (od ok. 12% do 62% szacowanego czasu, tj. ok. 2–12 s przy Soul 2) szkic gaśnie, a pod nim pojawia się Próbny kadr tej sceny (kopia renderu z okna Próbnego kadru z własnymi id, bez napisu), który się wyostrza (rozmycie 7,6 → 0,6 px) i nabiera kolorów. Gotowe zdjęcie „wywołuje się” na wierzchu jak polaroid (z rozmycia, bladych kolorów i prześwietlenia do pełnej ostrości, ok. 2 s), potem Próbny kadr znika spod spodu.
+
 ## Płatności: plan na później (odłożone 3.10.2026, na razie nie ruszamy)
 
 - Pakiety kredytów (ustalone 4.10.2026, 1 kredyt = 1 zdjęcie Soul 2):
@@ -532,7 +534,6 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Stripe Checkout (karty, BLIK 1,6% + 1 zł, Przelewy24 1,9% + 1 zł), najpierw tryb testowy. Serwer: `POST /api/buy` tworzy sesję płatności, `POST /api/stripe/webhook` (podpis HMAC) dopisuje kredyty wpisem `credits` (reason `buy`, ref = id sesji Stripe, więc jedna płatność nie doda się dwa razy).
 - Przed startem: regulamin i polityka prywatności (strony `/regulamin`, `/prywatnosc`; potrzebne dane sprzedawcy: imię i nazwisko albo firma, NIP, adres, e-mail), zgoda na natychmiastowe dostarczenie treści cyfrowej (bez 14 dni na zwrot), zakup przez rodzica przy dzieciach, faktury przez Stripe. Te same strony odblokują publikację aplikacji w Google (ekran zgody OAuth).
 - Domena manikun.pl (Hostinger): przeniesienie serwerów nazw do Cloudflare i podpięcie do Workera; przy okazji wysyłka maili (Email Service wymaga domeny na Cloudflare i płatnego planu Workers).
-- Wywołanie zdjęcia w trakcie generowania: na start szkic sceny; w tempie paska postępu (od ok. 12% do 62% szacowanego czasu, tj. ok. 2–12 s przy Soul 2) szkic gaśnie, a pod nim pojawia się Próbny kadr tej sceny (kopia renderu z okna Próbnego kadru z własnymi id, bez napisu), który się wyostrza (rozmycie 7,6 → 0,6 px) i nabiera kolorów. Gotowe zdjęcie „wywołuje się” na wierzchu jak polaroid (z rozmycia, bladych kolorów i prześwietlenia do pełnej ostrości, ok. 2 s), potem Próbny kadr znika spod spodu.
 
 ## Zdjęcie twarzy w „Zrób zdjęcie tutaj” (test, tylko właściciel)
 
