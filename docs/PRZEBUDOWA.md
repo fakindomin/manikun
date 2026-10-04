@@ -565,3 +565,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Bez modelu zapasowego: gdy Recraft odrzuci zlecenie, kredyty wracają.
 - **Wyłączone 4.10.2026:** Recraft Pro kosztuje ok. 0,41 $ (ok. 1,50 zł) za zdjęcie — opłacałoby się dopiero przy ok. 10 kredytach. Soul 2 w 1080p daje już 1344×2016 px (2:3) za ok. 0,003 $. Kod zostaje; przełącznik pojawi się po ustawieniu zmiennej `PREMIUM_COST` w Cloudflare.
 - Wyniki porównania (2:3, najwyższe ustawienia): Soul 2 1080p 1344×2016, 21 s · Recraft 4.1 Pro 2k 1664×2560, 15 s, 0,41 $ · Recraft 4.1 1k 832×1280, 11 s · Ideogram 4 QUALITY 1664×2496, 27 s · Marketing Studio 4k/high 2336×3504, 106 s.
+
+## Regulamin, Polityka prywatności, Polityka zwrotów
+- Strony `/regulamin`, `/prywatnosc`, `/zwroty` (pliki `regulamin.html`, `prywatnosc.html`, `zwroty.html`, wspólny styl `prawne.css`), każda po polsku i angielsku (`#en`); wersja polska rozstrzyga.
+- Usługodawca: Dominik Chróścik, kontakt fakindomin@gmail.com. Kredyty nie wygasają; darmowe 5 na start bez zwrotu; zwrot pełny w 14 dni tylko, gdy z pakietu nie powstało żadne zdjęcie (wariant „a”); nieudane zdjęcia — automatyczny zwrot Kredytów; Paddle jako Merchant of Record.
+- W aplikacji: pozycja menu „Regulamin i prywatność” i notka „Logując się, akceptujesz…” pod „Zrób zdjęcie tutaj” (tylko niezalogowanym).
+- Przy płatnościach (do zrobienia): przed przejściem do Paddle pole zgody **niezaznaczone domyślnie**, przycisk zakupu aktywny dopiero po zaznaczeniu: „Wyrażam zgodę na rozpoczęcie świadczenia usługi przed upływem terminu do odstąpienia od umowy i przyjmuję do wiadomości, że z chwilą wygenerowania pierwszego zdjęcia z pakietu tracę prawo do odstąpienia. Akceptuję Regulamin i Politykę zwrotów.” Zapisać w bazie czas zgody i pokazać ją w potwierdzeniu zakupu.
+- Przed płatnościami: dopisać adres usługodawcy (wymagany w Regulaminie przy sprzedaży konsumentom) i dane zgodne z kontem Paddle; rozważyć najmniejszy pakiet 10 zł (prowizja Paddle 5% + 0,50 $).

@@ -342,6 +342,9 @@
     background: transparent; border: 0; border-radius: 12px; padding: 12px 10px; display: flex; align-items: center; gap: 12px; cursor: default;
   }
   .menu-item svg { width: 20px; height: 20px; flex: none; }
+  a.menu-item { text-decoration: none; }
+  .legal-note { margin: -4px 4px 0; font-size: 12px; color: var(--muted); }
+  .legal-note a { color: inherit; }
   .menu-item:not(:disabled) { color: var(--ink); cursor: pointer; }
   /* Okno informacji z menu (instrukcja Maniscryptu, O Manikunie): wysuwa się od dołu jak panel Maniscryptu */
   body.info-open .sheet.info { transform: none; }
@@ -719,6 +722,7 @@
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Historia Maniscryptów<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" disabled><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ustawienia<span class="soon">Wkrótce</span></button>
     <button class="menu-item" type="button" id="menuAbout"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.5"/></svg>O Manikunie</button>
+    <a class="menu-item" href="/regulamin" id="menuLegal"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z"/><path d="M14 3.5V8h4M9.5 12h5M9.5 15.5h5"/></svg>Regulamin i prywatność</a>
   </nav>
   <!-- Panel kopiowania: opcja własnego zdjęcia, instrukcja z przykładem i przycisk kopiowania -->
   <div class="sheet-scrim" id="sheetScrim"></div>
@@ -754,6 +758,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7l1.3-2h5l1.3 2h1.7A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
       <span class="sp-text"><b>Zrób zdjęcie tutaj</b><small id="sheetGenNote">generator AI w Manikunie, za kredyty</small></span>
     </button>
+    <p class="legal-note" id="loginLegal" hidden>Logując się, akceptujesz <a href="/regulamin">Regulamin</a> i <a href="/prywatnosc">Politykę prywatności</a>.</p>
     <input type="file" id="faceFile" accept="image/*" hidden>
     <p class="sheet-or" id="sheetOr">Skopiuj i wklej w generatorze:</p>
     <!-- Generatory dla bieżącego trybu: stuknięcie kopiuje Maniscrypt i otwiera stronę generatora -->
@@ -7728,6 +7733,7 @@
     if (a && a.premiumCost) premiumNote.textContent = "ostrzejsze zdjęcie, więcej szczegółów · " + a.premiumCost + " " + creditsWord(a.premiumCost);
     sheetGen.hidden = !a || (!u && !a.login) || (u && !a.gen);
     premiumSwitch.hidden = sheetGen.hidden || !u || !a.premiumCost || withFace();
+    document.getElementById("loginLegal").hidden = sheetGen.hidden || !!u;
     if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
     else if (genBusy) sheetGenNote.textContent = "zdjęcie się robi, stuknij, żeby zobaczyć";
     else sheetGenNote.textContent = (withFace() ? (faceAllowed() ? "z Twoim zdjęciem twarzy · " : "zdjęcie twarzy: na razie w generatorze z listy · ") : "")
