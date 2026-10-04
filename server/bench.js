@@ -132,12 +132,17 @@ export async function schemas(url, env, user, ctx) {
   // API nie ma opisu parametrów, więc wysyłamy zlecenia, które walidacja odrzuci (nic nie kosztują), i czytamy jej komunikaty:
   // puste ciało (lista wymaganych pól) i sam prompt z obrazem pod kilkoma możliwymi nazwami pola o złym typie
   const bodies = [{}, { prompt: "test", image_url: 1, input_image: 1, input_images: 1, images: 1, image: 1, image_urls: 1, reference_images: 1, input_image_urls: 1 }];
-  for (const slug of SCHEMA_MODELS) {
+  // ?soul=1: tylko Soul 2 i pola jakości/rozdzielczości z wartościami spoza listy (walidacja wypisze dozwolone)
+  const soul = url.searchParams.get("soul") === "1";
+  const list = soul ? ["higgsfield-ai/soul/v2/standard", "higgsfield-ai/soul/v2/image-to-image"] : SCHEMA_MODELS;
+  if (soul) bodies.splice(0, bodies.length, ...["quality", "resolution", "size", "image_size", "width", "batch_size", "style_id", "enhance_prompt", "seed", "aspect_ratio"]
+    .map(f => ({ prompt: "test", [f]: f === "seed" || f === "width" || f === "batch_size" ? "zle" : 12345, ...(f === "aspect_ratio" ? { aspect_ratio: "7:7" } : {}) })));
+  for (const slug of list) {
     for (const [k, body] of bodies.entries()) {
       let r, raw = "";
       try { r = await fetch(base + "/" + slug, { method: "POST", headers: hfHeaders(env), body: JSON.stringify(body), signal: AbortSignal.timeout(10000) }); raw = await r.text(); } catch (e) { raw = String(e); }
       await env.DB.prepare("INSERT INTO bench (run, family, model, http, status, detail, started_ms) VALUES (?, 'schema', ?, ?, 'info', ?, ?)")
-        .bind(run, slug + (k ? " [pola obrazu]" : " [puste]"), r ? r.status : null, raw.slice(0, 6000), Date.now()).run();
+        .bind(run, slug + (soul ? " [" + Object.keys(body).filter(x => x !== "prompt").join(",") + "]" : k ? " [pola obrazu]" : " [puste]"), r ? r.status : null, raw.slice(0, 6000), Date.now()).run();
       out.push(`<li><code>${esc(slug)}</code> ${k ? "pola obrazu" : "puste"} → ${esc(r ? r.status : "-")} <small>${esc(raw.slice(0, 200))}</small></li>`);
       // Gdyby model przyjął zlecenie (2xx z request_id), od razu je anulujemy
       if (r && r.ok) { try { const d = JSON.parse(raw); if (d.request_id) await fetch(base + "/requests/" + d.request_id + "/cancel", { method: "POST", headers: hfHeaders(env) }); } catch (e) {} }
