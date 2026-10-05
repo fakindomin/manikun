@@ -791,13 +791,13 @@
     <p class="tut-note">Skopiuj i wklej w generatorze AI.</p>
     <!-- Uproszczony panel: 1) z twarzą czy bez, 2) zdjęcie tutaj (główne), 3) albo kopiuj i wklej w innym generatorze, 4) dodatki na dole -->
     <button class="switch-row" type="button" id="faceSwitch" role="switch" aria-checked="false">
-      <span class="switch-text"><b>Z moją twarzą</b><small>twarz z Twojego zdjęcia, reszta z Maniscryptu</small></span>
+      <span class="switch-text"><b id="faceSwitchTitle">Z moją twarzą</b><small id="faceSwitchNote">twarz z Twojego zdjęcia, reszta z Maniscryptu</small></span>
       <span class="switch" aria-hidden="true"><span></span></span>
     </button>
     <div class="face-guide" id="faceGuide" hidden>
       <div class="guide-row">
         <svg id="guidePhoto" class="ink guide-photo" aria-label="Przykład dobrego zdjęcia: twarz na wprost, głowa i ramiona w kadrze"></svg>
-        <ul class="guide-list">
+        <ul class="guide-list" id="guideList">
           <li>Twarz na wprost, duża w kadrze</li>
           <li>Dzienne światło, bez filtrów</li>
           <li>Jedna osoba, bez okularów i czapki</li>
@@ -2090,9 +2090,12 @@
       + (scene.look.hairPicked ? "Use the photo only for the face; take everything else, including the hairstyle, from the description below.\n\n"
         : "Use the photo only for the face and hair; take everything else from the description below.\n\n");
   };
+  // Wzór produktu (Manito): wygląd produktu ze zdjęcia, wszystko inne z opisu
+  const productBlock = () => "IMPORTANT – PRODUCT REFERENCE: use the attached photo as the product reference. The product in the generated image must look exactly like the product in the photo: the same shape, proportions, colours, materials, label, logo and text. "
+    + "Do not redesign, simplify or change the product and do not invent a different label. Use the photo only for the product; take the setting, surface, lighting and camera from the description below.\n\n";
   function buildPrompt(photo = false) {
-    withPhoto = photo && scene.subject === "person";
-    try { return (withPhoto ? photoBlock() : "") + buildPromptBody(); } finally { withPhoto = false; }
+    withPhoto = photo && refSubject(scene);
+    try { return (withPhoto ? (scene.subject === "object" ? productBlock() : photoBlock()) : "") + buildPromptBody(); } finally { withPhoto = false; }
   }
   // Poza z rękami i zwrotem ciała (zamiast stałego „facing the camera” w opisach póz)
   function posePrompt() {
@@ -2106,7 +2109,7 @@
     const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
     const parts = scene.subject === "object" ? [
       // Obiekt: zdjęcie produktowe przedmiotu na wybranej podstawie
-      (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
+      (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + (withPhoto ? "the product from the attached reference photo, keeping its shape, colours, label and details exactly the same" : ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ")) + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt(),
       bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : scene.subject === "place" ? [
@@ -7720,7 +7723,14 @@
   const sheetEl = document.getElementById("copySheet"), faceSwitch = document.getElementById("faceSwitch");
   const faceGuide = document.getElementById("faceGuide"), sheetCopy = document.getElementById("sheetCopy"), sheetCopyLabel = document.getElementById("sheetCopyLabel");
   const gensEl = document.getElementById("gens"), stepPaste = document.getElementById("stepPaste");
-  const withFace = () => sheetPhoto && scene.subject === "person";
+  // Zdjęcie-wzór: twarz przy Manikunie, produkt przy Manito (ten sam przełącznik, wysyłka i generowanie)
+  const refSubject = st => st.subject === "person" || st.subject === "object";
+  const withFace = () => sheetPhoto && refSubject(scene);
+  const refWord = () => scene.subject === "object" ? "zdjęcie produktu" : "zdjęcie twarzy";
+  const REF_UI = {
+    person: { title: "Z moją twarzą", note: "twarz z Twojego zdjęcia, reszta z Maniscryptu", tips: ["Twarz na wprost, duża w kadrze", "Dzienne światło, bez filtrów", "Jedna osoba, bez okularów i czapki"] },
+    object: { title: "Z moim produktem", note: "produkt z Twojego zdjęcia, reszta z Maniscryptu", tips: ["Sam produkt, cały w kadrze", "Jasne, gładkie tło i dzienne światło", "Ostro, etykieta czytelna, bez innych rzeczy"] }
+  };
   // Drzewko sceny otwierane linkiem obok Próbnego kadru (samo podsumowanie <summary> ukryte)
   const treeLink = document.getElementById("treeLink"), sceneTreeEl = document.getElementById("sceneTree");
   treeLink.addEventListener("click", () => {
@@ -7729,8 +7739,13 @@
     if (sceneTreeEl.open) sceneTreeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
   function syncSheet() {
-    const person = scene.subject === "person";
-    faceSwitch.hidden = !person;
+    const ui = REF_UI[scene.subject];
+    faceSwitch.hidden = !ui;
+    if (ui) {
+      document.getElementById("faceSwitchTitle").textContent = ui.title;
+      document.getElementById("faceSwitchNote").textContent = ui.note;
+      document.getElementById("guideList").replaceChildren(...ui.tips.map(t => { const li = document.createElement("li"); li.textContent = t; return li; }));
+    }
     faceSwitch.setAttribute("aria-checked", String(withFace()));
     faceGuide.hidden = !withFace();
     stepPaste.textContent = withFace() ? "Wklej i dołącz zdjęcie" : "Wklej";
@@ -7863,7 +7878,7 @@
         copyManiscrypt(ok => {
           if (ok) sfx("klap");
           a.classList.add("used");
-          showToast(ok ? `Skopiowano. Wklej w ${g.name}` + (withFace() ? " i dołącz zdjęcie twarzy" : "") : "Nie udało się skopiować. Użyj przycisku Kopiuj Maniscrypt");
+          showToast(ok ? `Skopiowano. Wklej w ${g.name}` + (withFace() ? " i dołącz " + refWord() : "") : "Nie udało się skopiować. Użyj przycisku Kopiuj Maniscrypt");
         });
       });
       return a;
@@ -7874,6 +7889,14 @@
   // Rysunek jest szerszy niż miniatura, a widok wycina okno wyśrodkowane na głowie, więc twarz zawsze jest w kadrze.
   function drawGuidePhoto() {
     const svg = document.getElementById("guidePhoto");
+    if (scene.subject === "object") {
+      svg.replaceChildren();
+      svg.setAttribute("viewBox", "0 0 80 100");
+      el("rect", { x: 0, y: 0, width: 80, height: 100, rx: 6, style: "fill:#E9E7E2;stroke:none" }, svg);
+      drawItem(svg, el("defs", {}, svg), scene.item, 40, 84, 0.62, itemHex(), prodOf(scene));
+      el("rect", { x: 6, y: 8, width: 68, height: 84, rx: 4, style: "fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:4 3" }, svg);
+      return;
+    }
     const saved = { ...scene };
     Object.assign(scene, { shot: "face", camera: "L2", background: "studio", bgv: { studio: "white" }, bga: {}, fx: [], style: "real", pose: "stand", arms: "down", turn: "camera",
       things: [], items: [], subject: "person", look: { ...scene.look, expr: "neutral", glasses: "none", gaze: "auto" } });
@@ -7910,7 +7933,7 @@
     if (tut) { tut.copied = true; return; }
     sheetCopyLabel.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
     sheetCopy.classList.toggle("done", ok);
-    if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz zdjęcie twarzy" : ""));
+    if (ok) showToast("Skopiowano. Otwórz generator i wklej" + (withFace() ? ", potem dołącz " + refWord() : ""));
   }));
 
   // ---------- Próbny kadr ----------
@@ -8854,7 +8877,7 @@
   function syncOr() {
     const gen = !sheetGen.hidden, face = withFace();
     document.getElementById("copySheet").classList.toggle("has-gen", gen);
-    document.getElementById("sheetOr").textContent = (gen ? "Albo skopiuj i wklej w innym generatorze" : "Skopiuj i wklej w generatorze") + (face ? ", potem dołącz zdjęcie twarzy:" : ":");
+    document.getElementById("sheetOr").textContent = (gen ? "Albo skopiuj i wklej w innym generatorze" : "Skopiuj i wklej w generatorze") + (face ? ", potem dołącz " + refWord() + ":" : ":");
   }
   // Premium (zapamiętany w przeglądarce); ze zdjęciem twarzy niedostępny
   const premiumSwitch = document.getElementById("premiumSwitch"), premiumNote = document.getElementById("premiumNote");
@@ -8877,7 +8900,7 @@
     document.getElementById("loginLegal").hidden = sheetGen.hidden || !!u;
     if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
     else if (genBusy) sheetGenNote.textContent = "zdjęcie się robi, stuknij, żeby zobaczyć";
-    else sheetGenNote.textContent = (withFace() ? (faceAllowed() ? "z Twoim zdjęciem twarzy · " : "zdjęcie twarzy: na razie w generatorze z listy · ") : "")
+    else sheetGenNote.textContent = (withFace() ? (faceAllowed() ? "z Twoim " + (scene.subject === "object" ? "zdjęciem produktu" : "zdjęciem twarzy") + " · " : refWord() + ": na razie w generatorze z listy · ") : "")
       + (premiumOn() ? "Premium 2K · " : "") + costNow() + " " + creditsWord(costNow()) + " za zdjęcie · masz " + a.credits;
     syncShotsMenu();
     syncOr();
@@ -9116,7 +9139,7 @@
     let d;
     try {
       const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({ prompt, aspect: fmt.short, scene: sceneSnapshot(), ...(face ? { face } : premiumOn() ? { premium: true } : {}) }) });
+        body: JSON.stringify({ prompt, aspect: fmt.short, scene: sceneSnapshot(), ...(face ? { face, ref: scene.subject === "object" ? "product" : "face" } : premiumOn() ? { premium: true } : {}) }) });
       d = await r.json();
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
     if (run !== genRun) return;
@@ -9212,6 +9235,7 @@
     return new Promise(res => c.toBlob(res, "image/jpeg", 0.9));
   }
   function faceConsent() {
+    if (scene.subject === "object") return true;
     try { if (localStorage.getItem("manikun-face-ok") === "1") return true; } catch (e) {}
     const ok = confirm("Zdjęcie twarzy wyślę tylko do zrobienia tego ujęcia i nie zapiszę go w Manikunie (generator trzyma je chwilowo). Czy to Twoje zdjęcie albo masz zgodę tej osoby (a gdy to dziecko, zgodę rodzica)?");
     if (ok) try { localStorage.setItem("manikun-face-ok", "1"); } catch (e) {}
@@ -9246,7 +9270,7 @@
       return;
     }
     if (withFace()) {
-      if (!faceAllowed()) { say("Zdjęcie z Twoją twarzą zrobisz na razie w generatorze z listy. Tutaj już wkrótce!", 5000); return; }
+      if (!faceAllowed()) { say((scene.subject === "object" ? "Zdjęcie z Twoim produktem" : "Zdjęcie z Twoją twarzą") + " zrobisz na razie w generatorze z listy. Tutaj już wkrótce!", 5000); return; }
       faceFile.click();
       return;
     }
@@ -9257,7 +9281,7 @@
   genCopy.addEventListener("click", () => {
     const text = (genJob && genJob.sent) || buildPrompt(withFace());
     const done = ok => {
-      if (ok) { sfx("klap"); showToast("Skopiowano. Wklej w generatorze" + (genJob && genJob.face ? " i dołącz zdjęcie twarzy" : "")); }
+      if (ok) { sfx("klap"); showToast("Skopiowano. Wklej w generatorze" + (genJob && genJob.face ? " i dołącz " + refWord() : "")); }
       genCopy.textContent = ok ? "Skopiowano" : "Nie udało się skopiować";
       setTimeout(() => { genCopy.textContent = "Kopiuj Maniscrypt"; }, 2200);
     };

@@ -654,3 +654,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Warianty (`BG_VARIANTS.season`, `tone` = kolor aranżacji): Wiosna, Lato, Jesień, Zima, Boże Narodzenie, Halloween, Walentynki, Wielkanoc, Sylwester, Dzień Matki, Black Friday; dodatki: Konfetti, Światełka, Prezenty.
 - Rysunek `seasonSet` (szkic i Próbny kadr): tło w tonie okazji i motywy po bokach i u góry (kwitnące gałązki, słońce i muszle, liście i dynie, śnieg i choinki, bombki, nietoperze i lampiony z dyni, serca, pisanki i tulipany, serpentyny, torby z zakupami). Bez pory dnia (jak studio).
 - Gotowce Manito: „Świąteczny prezent”, „Walentynkowy kosmetyk”.
+
+## „Z moim produktem” (Manito) – jak „Z moją twarzą”
+
+- Ten sam przełącznik w panelu Maniscryptu (`faceSwitch`): przy Manikunie „Z moją twarzą”, przy Manito „Z moim produktem” (`REF_UI`, `refSubject`); wskazówki i przykład zdjęcia (rysunek produktu w ramce) zależne od tematu.
+- Maniscrypt: akapit „IMPORTANT – PRODUCT REFERENCE…” na początku (`productBlock`) i produkt opisany jako „the product from the attached reference photo…” zamiast gotowego przedmiotu; reszta (podstawa, tło, światło, kamera) z opisu.
+- „Zrób zdjęcie tutaj”: ta sama wysyłka zdjęcia (`/api/upload-face`, plik tymczasowy u Higgsfield) i Soul 2 image-to-image; bez pytania o zgodę osoby; w bazie `detail = 'ze zdjęciem produktu'` (pole `ref: "product"`).
+- Teksty przypomnień („dołącz zdjęcie produktu”) i polityka prywatności (PL/EN) uzupełnione.

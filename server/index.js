@@ -346,7 +346,7 @@ async function generate(request, env, user, ctx) {
       break attempts;
     }
   }
-  if (model !== chosen || face) await env.DB.prepare("UPDATE generations SET model = ?, detail = ? WHERE id = ?").bind(model, face ? "ze zdjęciem twarzy" : null, g.id).run();
+  if (model !== chosen || face) await env.DB.prepare("UPDATE generations SET model = ?, detail = ? WHERE id = ?").bind(model, face ? (body.ref === "product" ? "ze zdjęciem produktu" : "ze zdjęciem twarzy") : null, g.id).run();
   if (!res || !res.ok || !data || !data.request_id) {
     const detail = log.join(" || ").slice(0, 1500) + (res && res.status === 401 ? " | " + hfKeyShape(env) : "");
     console.log("Higgsfield start: " + detail);
