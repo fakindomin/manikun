@@ -1502,8 +1502,24 @@
     studio: [
       { id: "grey", name: "Szare", prompt: "plain seamless studio backdrop in neutral grey" },
       { id: "white", name: "Białe", prompt: "clean seamless white studio backdrop" },
+      { id: "packshot", name: "Packshot", prompt: "pure white seamless infinity cove background, bright even shadowless lighting, clean e-commerce packshot look" },
       { id: "black", name: "Czarne", prompt: "seamless deep black studio backdrop" },
-      { id: "color", name: "Kolorowe", prompt: "seamless studio backdrop in a muted teal colour" }
+      { id: "beige", name: "Beżowe", prompt: "seamless studio backdrop in warm sand beige" },
+      { id: "pink", name: "Pudrowy róż", prompt: "seamless studio backdrop in soft powder pink" },
+      { id: "sage", name: "Szałwia", prompt: "seamless studio backdrop in muted sage green" },
+      { id: "sky", name: "Błękit", prompt: "seamless studio backdrop in pale sky blue" },
+      { id: "terra", name: "Terakota", prompt: "seamless studio backdrop in warm terracotta" },
+      { id: "mustard", name: "Musztarda", prompt: "seamless studio backdrop in mustard yellow" },
+      { id: "color", name: "Morskie", prompt: "seamless studio backdrop in a muted teal colour" },
+      // Scenografia studia (dodatki, kilka naraz)
+      { id: "arch", name: "Łuk", add: "a large rounded arch shape standing behind the subject", excl: ["circle"] },
+      { id: "circle", name: "Koło", add: "a large circular disc backdrop behind the subject", excl: ["arch"] },
+      { id: "blocks", name: "Bryły", add: "simple geometric plinths, cubes and cylinders arranged in the background" },
+      { id: "leaves", name: "Cień liści", add: "soft shadows of palm leaves cast across the backdrop", excl: ["blinds"] },
+      { id: "blinds", name: "Cień żaluzji", add: "striped shadows of window blinds cast across the backdrop", excl: ["leaves"] },
+      { id: "plants", name: "Rośliny", add: "dried pampas grass and green leaves in vases at the sides" },
+      { id: "fabric", name: "Tkanina", add: "a softly draped fabric hanging behind the subject" },
+      { id: "gel", name: "Kolorowe światło", add: "a soft coloured gel light glow on the backdrop" }
     ],
     street: [
       { id: "old", name: "Kamienice", prompt: "empty city street lined with old tenement houses in the background, softly out of focus" },
@@ -1554,6 +1570,8 @@
       { id: "living", name: "Salon", prompt: "minimal living room interior with a window and a sofa in the background, softly out of focus" },
       { id: "bedroom", name: "Sypialnia", prompt: "calm bedroom interior with a bed and a window in the background, softly out of focus" },
       { id: "office", name: "Biuro", prompt: "modern office interior with a desk and a monitor in the background, softly out of focus" },
+      { id: "bathroom", name: "Łazienka", prompt: "bright bathroom interior with white tiles, a mirror and a washbasin in the background, softly out of focus" },
+      { id: "boutique", name: "Butik", prompt: "elegant boutique interior with display shelves and soft warm lighting in the background, softly out of focus" },
       { id: "loft", name: "Loft", add: "exposed brick walls in an industrial loft style" }
     ],
     desert: [
@@ -3741,18 +3759,55 @@
     for (let k = 0; k < 4; k++) paint("rect", { x: f(W * 0.025), y: f(hz - H * (0.07 - k * 0.022)), width: f(W * 0.05), height: f(H * 0.006) }, "#5E5A54", g, 0.6);
   }
 
+  // Kolory studia: ściana (pierwszy), dalej odcienie w dół do podłogi; nowe tony z jednego koloru
+  const STUDIO_TONE = { beige: "#D8C6A8", pink: "#E3B9BE", sage: "#A9B9A0", sky: "#A9C4DA", terra: "#C27F62", mustard: "#D6AE48", packshot: "#F4F3F0" };
+  const studioShades = v => ({ grey: ["#7C7C83", "#64646B", "#58585E", "#4A4A50"], white: ["#E7E5E0", "#D6D4CF", "#CDCBC6", "#BDBBB6"], black: ["#2C2C31", "#222226", "#1E1E22", "#17171A"], color: ["#5D858A", "#4A6E73", "#43666B", "#36565A"] })[v]
+    || (STUDIO_TONE[v] ? [0, -0.1, -0.15, -0.24].map(k => k ? shadeHex(STUDIO_TONE[v], k) : STUDIO_TONE[v]) : ["#7C7C83", "#64646B", "#58585E", "#4A4A50"]);
   function richStudio(g, defs, uid, W, H, hz, gy, u, v) {
     // Bezszwowe tło fotograficzne: ściana łagodnie przechodzi w podłogę, za postacią plama światła
-    const C = { grey: ["#7C7C83", "#64646B", "#58585E", "#4A4A50"], white: ["#E7E5E0", "#D6D4CF", "#CDCBC6", "#BDBBB6"], black: ["#2C2C31", "#222226", "#1E1E22", "#17171A"], color: ["#5D858A", "#4A6E73", "#43666B", "#36565A"] }[v || "grey"] || ["#7C7C83", "#64646B", "#58585E", "#4A4A50"];
+    const C = v === "packshot" ? ["#F6F5F2", "#F2F1EE", "#EFEEEA", "#E9E8E4"] : studioShades(v || "grey");
     const fy = Math.min(gy, H * 0.92);
     paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "sw", [[0, C[0]], [(fy - H * 0.2) / H, C[1]], [fy / H, C[2]], [1, C[3]]]), g);
-    radGlow(g, defs, uid + "sp", W / 2, H * 0.48, Math.max(W, H) * 0.42, "#FFFFFF", v === "white" ? "0.35" : v === "black" ? "0.12" : "0.22", H * 0.46);
+    radGlow(g, defs, uid + "sp", W / 2, H * 0.48, Math.max(W, H) * 0.42, "#FFFFFF", v === "white" || STUDIO_TONE[v] ? "0.35" : v === "black" ? "0.12" : "0.22", H * 0.46);
     radGlow(g, defs, uid + "sf", W / 2, fy, W * 0.55, "#FFFFFF", v === "black" ? "0.06" : "0.12", H * 0.07);
     // Winieta po bokach (miękkie zejście światła)
     const vg = el("radialGradient", { id: uid + "sv", cx: "50%", cy: "50%", r: "70%" }, defs);
     el("stop", { offset: "0.6", "stop-color": "#000", "stop-opacity": "0" }, vg);
-    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": v === "white" ? "0.18" : "0.35" }, vg);
+    el("stop", { offset: "1", "stop-color": "#000", "stop-opacity": v === "packshot" ? "0" : v === "white" || STUDIO_TONE[v] ? "0.18" : "0.35" }, vg);
     paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, `url(#${uid}sv)`, g);
+  }
+
+  // Scenografia studia: łuk albo koło za tematem, bryły, cienie liści / żaluzji, rośliny w wazonach, tkanina, kolorowe światło.
+  // Kolory z tonu ściany (jaśniej / ciemniej), żeby całość wyglądała jak jedna aranżacja.
+  function studioSet(g, defs, uid, W, H, gy, u, v) {
+    const has = id => v.includes(id);
+    if (!v.slice(1).length) return;
+    const base = (v[0] === "packshot" ? "#F4F3F0" : studioShades(v[0] || "grey")[0]), fy = Math.min(gy, H * 0.92), m = Math.min(W, H);
+    const lt = shadeHex(base, 0.12), dk = shadeHex(base, -0.18), line = shadeHex(base, -0.4);
+    const st = (fill, op = 1) => `fill:${fill};stroke:${line};stroke-width:${f(Math.max(0.6, u * 0.18))};opacity:${op}`;
+    if (has("gel")) radGlow(g, defs, uid + "gel", W * 0.3, H * 0.35, m * 0.55, "#E86AA8", "0.35", H * 0.4);
+    if (has("gel")) radGlow(g, defs, uid + "gel2", W * 0.75, H * 0.4, m * 0.5, "#5AA8E8", "0.3", H * 0.35);
+    if (has("arch")) { const w = m * 0.5, h = H * 0.62, x = W / 2 - w / 2, y = fy - h; el("path", { d: `M${f(x)},${f(fy)} L${f(x)},${f(y + w / 2)} Q${f(x)},${f(y)} ${f(W / 2)},${f(y)} Q${f(x + w)},${f(y)} ${f(x + w)},${f(y + w / 2)} L${f(x + w)},${f(fy)} Z`, style: st(lt) }, g); }
+    if (has("circle")) el("circle", { cx: f(W / 2), cy: f(fy - H * 0.36), r: f(m * 0.3), style: st(dk) }, g);
+    if (has("fabric")) { const x0 = W * 0.14, x1 = W * 0.86, y0 = H * 0.06; el("path", { d: `M${f(x0)},${f(y0)} Q${f(W / 2)},${f(y0 + H * 0.05)} ${f(x1)},${f(y0)} L${f(x1 + W * 0.04)},${f(fy)} L${f(x0 - W * 0.04)},${f(fy)} Z`, style: st(shadeHex(base, 0.2), 0.9) }, g);
+      for (let k = 1; k < 8; k++) { const x = x0 + (x1 - x0) * k / 8; el("path", { d: `M${f(x)},${f(y0 + H * 0.03)} Q${f(x + W * 0.02)},${f(H * 0.5)} ${f(x + (x - W / 2) * 0.08)},${f(fy)}`, style: `fill:none;stroke:${dk};stroke-width:${f(u * 0.4)};opacity:0.6` }, g); } }
+    if (has("leaves")) [[0.2, 0.2, 30], [0.75, 0.15, -25], [0.62, 0.45, 15], [0.12, 0.5, -40]].forEach(([x, y, r], k) => {
+      for (let j = -3; j <= 3; j++) el("ellipse", { cx: f(W * x + j * u * 2.6), cy: f(H * y + Math.abs(j) * u * 1.6), rx: f(u * 1.3), ry: f(u * 5), transform: `rotate(${r + j * 14} ${f(W * x)} ${f(H * y)})`, style: "fill:#000;stroke:none;opacity:0.13" }, g);
+    });
+    if (has("blinds")) for (let k = 0; k < 9; k++) { const y = H * 0.08 + k * H * 0.065; el("path", { d: `M${f(-W * 0.1)},${f(y)} L${f(W * 1.1)},${f(y + H * 0.18)} L${f(W * 1.1)},${f(y + H * 0.2)} L${f(-W * 0.1)},${f(y + H * 0.02)} Z`, style: "fill:#000;stroke:none;opacity:0.1" }, g); }
+    if (has("blocks")) {
+      el("rect", { x: f(W * 0.08), y: f(fy - H * 0.26), width: f(W * 0.14), height: f(H * 0.26), style: st(lt) }, g);
+      el("rect", { x: f(W * 0.2), y: f(fy - H * 0.13), width: f(W * 0.12), height: f(H * 0.13), style: st(dk) }, g);
+      const cx = W * 0.82, rx = W * 0.08, ry = rx * 0.25, top = fy - H * 0.2;
+      el("path", { d: `M${f(cx - rx)},${f(top)} L${f(cx - rx)},${f(fy)} L${f(cx + rx)},${f(fy)} L${f(cx + rx)},${f(top)} Z`, style: st(lt) }, g);
+      el("ellipse", { cx: f(cx), cy: f(top), rx: f(rx), ry: f(ry), style: st(shadeHex(base, 0.22)) }, g);
+      el("circle", { cx: f(W * 0.7), cy: f(fy - m * 0.06), r: f(m * 0.06), style: st(dk) }, g);
+    }
+    if (has("plants")) [[0.1, 1], [0.9, -1]].forEach(([x, sd]) => {
+      const cx = W * x, vh = H * 0.11, vw = W * 0.06;
+      for (let k = 0; k < 5; k++) { const a = (-60 + k * 30) * sd * Math.PI / 180, L = H * (0.18 + (k % 2) * 0.06); el("path", { d: `M${f(cx)},${f(fy - vh)} Q${f(cx + Math.sin(a) * L * 0.4)},${f(fy - vh - L * 0.6)} ${f(cx + Math.sin(a) * L * 0.7)},${f(fy - vh - L * Math.cos(a))}`, style: `fill:none;stroke:${k % 2 ? "#C9B48A" : "#6E8B4A"};stroke-width:${f(u * (k % 2 ? 1.6 : 1))};stroke-linecap:round` }, g); }
+      el("path", { d: `M${f(cx - vw / 2)},${f(fy)} L${f(cx - vw * 0.6)},${f(fy - vh)} L${f(cx + vw * 0.6)},${f(fy - vh)} L${f(cx + vw / 2)},${f(fy)} Z`, style: st(dk) }, g);
+    });
   }
 
   // Pokój: jasna ściana z listwą, podłoga z desek w perspektywie (okno, meble i dodatki rysuje dalej drawBackgroundBase)
@@ -3972,19 +4027,21 @@
       el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
       paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
     };
-    if (kind === "studio" && !flatDraw) { richStudio(g, defs, uid, W, H, hz, gy, u, v && v[0]); return; }
+    if (kind === "studio" && !flatDraw) { richStudio(g, defs, uid, W, H, hz, gy, u, v && v[0]); studioSet(g, defs, uid, W, H, gy, u, v || []); return; }
     if (kind === "studio") {
       // Ciemna ściana, jaśniejsza podłoga z miękkim przejściem i plama światła za postacią
       const SC = { grey: ["#2F2F36", "#24242A", "#2A2A30", "#36363D", "#2B2B31"], white: ["#BDBBB6", "#A9A7A2", "#B3B1AC", "#C7C5C0", "#B0AEA9"],
-        black: ["#141417", "#101012", "#121215", "#1A1A1E", "#111114"], color: ["#3E5A5E", "#324A4E", "#34494C", "#40585C", "#314548"] }[(v && v[0]) || "grey"];
+        black: ["#141417", "#101012", "#121215", "#1A1A1E", "#111114"], color: ["#3E5A5E", "#324A4E", "#34494C", "#40585C", "#314548"] }[(v && v[0]) || "grey"]
+        || [-0.12, -0.2, -0.17, -0.06, -0.19].map(k => shadeHex(STUDIO_TONE[v[0]] || "#7C7C83", k));
       paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "w", [[0, SC[0]], [1, SC[1]]]), g);
       const fy = Math.min(gy, H * 0.92) - H * 0.12;
       paint("rect", { x: 0, y: f(fy), width: f(W), height: f(H - fy) }, vGrad(defs, uid + "f", [[0, SC[2]], [0.25, SC[3]], [1, SC[4]]]), g);
-      if (flatDraw) return;
+      if (flatDraw) { studioSet(g, defs, uid, W, H, gy, u, v || []); return; }
       const spot = el("radialGradient", { id: uid + "s" }, defs);
       el("stop", { offset: "0", "stop-color": "#FFFFFF", "stop-opacity": "0.09" }, spot);
       el("stop", { offset: "1", "stop-color": "#FFFFFF", "stop-opacity": "0" }, spot);
       paint("ellipse", { cx: f(W / 2), cy: f(H * 0.45), rx: f(Math.max(W, H) * 0.45), ry: f(H * 0.45) }, `url(#${uid}s)`, g);
+      studioSet(g, defs, uid, W, H, gy, u, v || []);
       return;
     }
     if (kind === "street") {
@@ -5195,7 +5252,10 @@
       { id: "sneaker", name: "But w locie", set: { item: "sneaker", base: "float", itemColor: "red", camera: "B", light: "art-front", lightZone: "R1", background: "studio", bgv: { studio: "color" } } },
       { id: "watch", name: "Zegarek nad wodą", set: { item: "watch", base: "water", itemColor: "brown", camera: "L3", light: "nat-back", lightZone: "R2", background: "lake", bgv: { lake: "calm" }, fx: ["fog"], time: "golden" } },
       { id: "dessert", name: "Deser w piekarni", set: { item: "food", base: "table", itemColor: "white", camera: "T", light: "art-front", lightZone: "L1", background: "cafe", bgv: { cafe: "bakery" } } },
-      { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, bga: { beach: ["rocks"] }, time: "golden" } }
+      { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, bga: { beach: ["rocks"] }, time: "golden" } },
+      // Studio z aranżacją: kolorowe tło, łuk, cień liści, rośliny; packshot na białym pod własny produkt
+      { id: "archstudio", name: "Kosmetyk pod łukiem", set: { item: "serum", base: "pedestal", itemColor: "cream", camera: "L2", light: "art-front", lightZone: "L1", background: "studio", bgv: { studio: "beige" }, bga: { studio: ["arch", "leaves", "plants"] } } },
+      { id: "packshot", name: "Packshot własnego", set: { item: "own", prod: { ...PROD0 }, base: "float", itemColor: "auto", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: { studio: "packshot" } } }
     ],
     place: [
       { id: "peaks", name: "Góry o zachodzie", set: { camera: "L2", light: "nat-back", lightZone: "R2", background: "mountains", time: "golden" } },

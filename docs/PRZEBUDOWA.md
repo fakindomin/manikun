@@ -640,3 +640,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Własny Manimal w scenie z Manikunem (z Ekipy) może być siedziskiem: Rzeczy › Zwierzaki › (Manimal) › **Wsiądź** / ponownie: zsiądź.
 - Kto może usiąść (`rideWho`, `canRide`): wielkość „Jak koń” i „Olbrzym” – dorosły i dziecko; „Jak pies” – tylko dziecko (Cechy › Wiek); mniejsze i gotowce (pies, kot, królik, smoczek) – nikt, z wyjaśnieniem w dymku.
 - Siedzisko (`rideSeat`): wysokie, wysokość = grzbiet Manimala × skala wielkości; punkt „Pod postacią” tylko z ręcznego wyboru (bez automatu). Maniscrypt: „riding on the back of … sitting astride…”.
+
+## Studio fotograficzne: kolory, packshot i scenografia
+
+- Tło Studio (wspólne dla Manikuna, Manimala i Manito): kolory szare, białe, czarne, beżowe, pudrowy róż, szałwia, błękit, terakota, musztarda, morskie oraz **Packshot** (czysta biel bez cieni, e-commerce). Nowe tony z jednego koloru (`STUDIO_TONE`, `studioShades`).
+- Scenografia jako dodatki tła (kilka naraz, `studioSet`): łuk albo koło, bryły (postumenty, kostki, walce), cień liści albo żaluzji, rośliny w wazonach, tkanina, kolorowe światło. Rysowane w szkicu i w Próbnym kadrze; do Maniscryptu jako „with …”.
+- Wnętrza: Pokój ma też Łazienkę i Butik.
+- Gotowce Manito: „Kosmetyk pod łukiem” (beż, łuk, cień liści, rośliny) i „Packshot własnego” (własna bryła na białym).
