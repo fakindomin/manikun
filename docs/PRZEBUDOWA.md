@@ -617,3 +617,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Manimal / Manito: kafelek „Do ekipy” zapisuje bieżący gatunek + umaszczenie + pozę albo przedmiot + kolor (bez konta → logowanie, scena wraca po zalogowaniu; duplikaty są pomijane).
 - Manikun: Rzeczy › Ekipa – Manimal dołącza jako zwierzak obok postaci, Manito staje na stole (stół dodawany sam, gdy w scenie nie ma powierzchni). Tryb „Usuń z ekipy”.
 - Polityka prywatności: dopisany punkt „Ekipa”.
+
+## Konstruktor Manimala (własny stworek z części)
+
+- Gatunek › **Własny**: przepis `scene.beast` z części (`BEAST`): tułów, wielkość, nogi (0–8), stopy, długość nóg, głowa, uszy, rogi, grzywa/kolce, oczy (liczba, wielkość, kolor, źrenice), pysk, zęby, wąsy/język, mina, ogon, skrzydła, pokrycie, dwa kolory, wzór, dodatki. Kategorie Ciało, Głowa, Twarz, Ogon i skrzydła, Pokrycie (`BEAST_CATS`) widać tylko przy Własnym.
+- Start z bieżącego gotowca (`beastFrom`); gotowce zostają. Bez zmian względem gotowca Maniscrypt używa nazwy gatunku, po zmianach opis „fantasy creature” z listą części (`petDesc`).
+- Rysunek `drawBeast` (obłe bryły jak zwierzaki), pozy: siedzi, stoi, leży, leci. Pudełko z części (`beastBox`), w scenie z Manikunem skala z wielkości.
+- Zmutuj (1–2 części), Krzyżówka (głowa i twarz jednego gotowca, reszta drugiego); Losuj daje co trzeci raz własnego stworka.
+- Kreator: po „Własny” pytania o najważniejsze części (tułów, nogi, stopy, uszy, rogi, oczy, pysk, ogon, skrzydła, pokrycie, kolor, wzór).
+- Ekipa: własny stworek zapisuje cały przepis i dostaje imię; przy Manikunie rysowany i opisany tak samo (opis w nawiasie przed miejscem).
