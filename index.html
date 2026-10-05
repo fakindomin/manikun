@@ -250,7 +250,7 @@
   .tree-legend .tree-mine { color: var(--accent); font-weight: 600; }
   body.preview-open #previewSheet { transform: none; }
   body.gen-open #genSheet { transform: none; }
-  body.shots-open #shotsSheet { transform: none; }
+  body.gallery-open #gallerySheet, body.shots-open #shotsSheet { transform: none; }
   body.view-open #viewSheet { transform: none; }
   body.view-open #viewScrim { opacity: 1; pointer-events: auto; }
   #viewSheet, #viewScrim { z-index: 60; }
@@ -281,7 +281,8 @@
   .gen-frame.compare img { clip-path: inset(0 0 0 var(--cut, 50%)); transition: none; }
   .gen-frame.compare .gen-draft { opacity: 1 !important; }
   .gen-frame.compare .gen-trial { opacity: 0 !important; }
-  body.shots-open #shotsScrim { opacity: 1; pointer-events: auto; }
+  body.shots-open #shotsScrim, body.gallery-open #galleryScrim { opacity: 1; pointer-events: auto; }
+  .shots .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px; font-size: 10.5px; line-height: 1.25; color: #fff; text-align: left; background: linear-gradient(transparent, rgba(0,0,0,0.65)); }
   /* Moje ujęcia: siatka zdjęć od AI, nowe (nieobejrzane) z plakietką */
   .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 70dvh; overflow-y: auto; }
   .shots button { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; aspect-ratio: 3 / 4; background: var(--stage); cursor: pointer; }
@@ -765,6 +766,7 @@
     </div>
     <span class="menu-label">Scena</span>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
+    <button class="menu-item" type="button" id="menuGallery"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="3.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>Galeria przykładów</button>
     <button class="menu-item" type="button" id="menuShots" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="menu-badge" id="menuShotsVal" hidden></span></button>
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="menu-val" id="menuLevelVal">Podstawowy</span></button>
     <span class="menu-label">Ustawienia</span>
@@ -831,6 +833,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>
       <span>Próbny kadr</span>
     </button>
+      <button class="sheet-link" type="button" id="shareScene"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.2"/><circle cx="17" cy="6" r="2.2"/><circle cx="17" cy="18" r="2.2"/><path d="M8 11l7-4M8 13l7 4"/></svg><span>Udostępnij scenę</span></button>
       <button class="sheet-link" type="button" id="treeLink" aria-controls="sceneTree" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M5 8h6M5 14h6M11 8h8M11 14h8"/></svg><span>Drzewko sceny</span></button>
     </div>
     <details class="scene-tree" id="sceneTree">
@@ -919,6 +922,18 @@
     <div class="shots" id="shotsGrid"></div>
   </section>
 
+  <!-- Galeria przykładów: zdjęcia wybrane przez autora, każde z „Zrób podobne” -->
+  <div class="sheet-scrim" id="galleryScrim"></div>
+  <section class="sheet preview" id="gallerySheet" aria-label="Galeria przykładów" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2>Galeria przykładów</h2>
+      <button class="icon-btn" type="button" id="galleryClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="sheet-lead" id="galleryNote">Wczytuję…</p>
+    <div class="shots" id="galleryGrid"></div>
+  </section>
+
   <!-- Przeglądarka zdjęcia z Moich ujęć: przesuwanie palcem, zapis, udostępnianie, „Zrób podobne”, usuwanie -->
   <div class="sheet-scrim" id="viewScrim"></div>
   <section class="sheet preview" id="viewSheet" aria-label="Zdjęcie" aria-hidden="true">
@@ -936,6 +951,7 @@
       <button class="chip" type="button" id="viewSave">Zapisz</button>
       <button class="chip" type="button" id="viewShare">Udostępnij</button>
       <button class="chip" type="button" id="viewLike">Zrób podobne</button>
+      <button class="chip" type="button" id="viewPub" hidden>Do galerii</button>
       <button class="chip view-del" type="button" id="viewDel">Usuń</button>
     </div>
   </section>
@@ -8861,7 +8877,7 @@
   loadAccount().then(a => {
     if (a && a.user) loadCrew();
     if (loginReturn) return; // scenę i komunikat przywraca restoreAfterLogin()
-    if (accountBack === "ok" && a && a.user) say("Jesteś zalogowany. Masz " + a.credits + " " + creditsWord(a.credits) + ".", 5000);
+    if (accountBack === "ok" && a && a.user) say(a.gen ? "Jesteś zalogowany. Masz " + a.credits + " " + creditsWord(a.credits) + "." : a.free ? "Jesteś zalogowany. Dziś masz " + (a.free.left ?? a.free.daily) + " " + dailyWord(a.free.left ?? a.free.daily) + "." : "Jesteś zalogowany.", 5000);
     else if (accountBack) say("Nie udało się zalogować. Spróbuj jeszcze raz.", 5000);
   });
   // Zdjęcie od AI: Maniscrypt idzie do serwera (Higgsfield), kredyt schodzi przy zleceniu, a wraca, gdy się nie uda
@@ -8885,6 +8901,10 @@
   let sheetPremium = false;
   try { sheetPremium = localStorage.getItem("manikun-premium") === "1"; } catch (e) {}
   const premiumOn = () => sheetPremium && !withFace() && !!(account && account.premiumCost);
+  // Darmowe zdjęcie (FLUX.1 schnell na Cloudflare): kwadrat, kilka dziennie, bez zdjęcia twarzy/produktu
+  const freeMode = () => !!(account && !account.gen && account.free);
+  const freeLeftNow = () => account && account.free ? (account.free.left ?? account.free.daily) : 0;
+  const dailyWord = n => n === 1 ? "darmowe zdjęcie" : n >= 2 && n <= 4 ? "darmowe zdjęcia" : "darmowych zdjęć";
   const costNow = () => premiumOn() ? account.premiumCost : account.cost;
   premiumSwitch.addEventListener("click", () => {
     sheetPremium = !sheetPremium;
@@ -8896,10 +8916,12 @@
     const a = account, u = a && a.user;
     premiumSwitch.setAttribute("aria-checked", String(premiumOn()));
     if (a && a.premiumCost) premiumNote.textContent = "ostrzejsze zdjęcie, więcej szczegółów · " + a.premiumCost + " " + creditsWord(a.premiumCost);
-    sheetGen.hidden = !a || !a.gen || (!u && !a.login);
+    sheetGen.hidden = !a || !(a.gen || a.free) || (!u && !a.login);
     premiumSwitch.hidden = sheetGen.hidden || !u || !a.premiumCost || withFace();
     document.getElementById("loginLegal").hidden = sheetGen.hidden || !!u;
-    if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
+    if (!u) sheetGenNote.textContent = a && !a.gen && a.free ? "zaloguj się przez Google: " + a.free.daily + " " + dailyWord(a.free.daily) + " dziennie" : "zaloguj się przez Google: na start 5 kredytów";
+    else if (freeMode() && !genBusy) sheetGenNote.textContent = withFace() ? "darmowe zdjęcie nie łączy się z " + (scene.subject === "object" ? "Twoim produktem" : "Twoją twarzą") + " – skopiuj Maniscrypt niżej"
+      : freeLeftNow() > 0 ? "darmowe, szybki podgląd AI (kwadrat) · dziś zostało " + freeLeftNow() + " z " + account.free.daily : "dzisiejsze darmowe zdjęcia wykorzystane · wróć jutro";
     else if (genBusy) sheetGenNote.textContent = "zdjęcie się robi, stuknij, żeby zobaczyć";
     else sheetGenNote.textContent = (withFace() ? (faceAllowed() ? "z Twoim " + (scene.subject === "object" ? "zdjęciem produktu" : "zdjęciem twarzy") + " · " : refWord() + ": na razie w generatorze z listy · ") : "")
       + (premiumOn() ? "Premium 2K · " : "") + costNow() + " " + creditsWord(costNow()) + " za zdjęcie · masz " + a.credits;
@@ -9122,8 +9144,8 @@
     tr.style.filter = `blur(${((1 - s) * 7 + 0.6).toFixed(2)}px) saturate(${(0.35 + 0.65 * s).toFixed(2)})`;
   }
   // face: adres zdjęcia twarzy w Higgsfield (gdy przełącznik zdjęcia jest włączony); Maniscrypt wtedy z akapitem o twarzy
-  async function genStart(face) {
-    const fmt = currentFormat(), prompt = buildPrompt(!!face);
+  async function genStart(face, free = false) {
+    const fmt = free ? { w: 1, h: 1, short: "1:1" } : currentFormat(), prompt = buildPrompt(!!face);
     genFrame.style.setProperty("--ar", `${fmt.w} / ${fmt.h}`);
     genFrame.classList.remove("done");
     genImg.classList.remove("on"); genImg.removeAttribute("src");
@@ -9135,20 +9157,21 @@
     document.getElementById("genTime").textContent = "";
     setGen(true);
     const run = ++genRun;
-    genJob = { id: null, prompt: buildPrompt(false), sent: prompt, aspect: fmt.short, t0: Date.now(), run, face: face || null };
+    genJob = { id: null, prompt: buildPrompt(false), sent: prompt, aspect: fmt.short, t0: Date.now(), run, face: face || null, free };
     genBusy = true; syncGenBtn();
     let d;
     try {
       const r = await fetch("/api/generate", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({ prompt, aspect: fmt.short, scene: sceneSnapshot(), ...(face ? { face, ref: scene.subject === "object" ? "product" : "face" } : premiumOn() ? { premium: true } : {}) }) });
+        body: JSON.stringify({ prompt, aspect: fmt.short, scene: sceneSnapshot(), ...(free ? { free: true } : face ? { face, ref: scene.subject === "object" ? "product" : "face" } : premiumOn() ? { premium: true } : {}) }) });
       d = await r.json();
     } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
     if (run !== genRun) return;
     genCredits(d);
+    if (typeof d.freeLeft === "number" && account && account.free) { account.free.left = d.freeLeft; }
     if (!d.id || d.error) {
       genBusy = false; syncGenBtn();
       genState(d.error || "Nie udało się. Spróbuj jeszcze raz.", false);
-      genAgain.hidden = d.error === "Brak kredytów." || !!d.id;
+      genAgain.hidden = d.error === "Brak kredytów." || (free && d.freeLeft === 0) || (!!d.id && !free);
       // Poprzednie zlecenie jeszcze trwa: pokazujemy je
       if (d.id) { genJob = { id: d.id, prompt: null, aspect: null, t0: Date.now(), run }; genFollow(d.id, Date.now(), 20, run); return; }
       genNotify(false, d.error || "Zdjęcie się nie udało. Spróbuj jeszcze raz.");
@@ -9265,6 +9288,12 @@
   sheetGen.addEventListener("click", () => {
     if (!account || !account.user) { goLogin(); return; }
     if (genBusy || genReady) { setGen(true); return; }
+    if (freeMode()) {
+      if (withFace()) { say("Darmowe zdjęcie robi się z samego opisu. Ze zdjęciem " + (scene.subject === "object" ? "produktu" : "twarzy") + " skopiuj Maniscrypt i wklej go w generatorze z listy.", 6500); return; }
+      if (freeLeftNow() <= 0) { say("Dzisiejsze darmowe zdjęcia już wykorzystane. Wróć jutro albo skopiuj Maniscrypt do generatora z listy.", 5500); return; }
+      genStart(undefined, true);
+      return;
+    }
     if (account.credits < costNow()) {
       if (account.shop) openShop("Brakuje kredytów na to zdjęcie.");
       else say("Brakuje kredytów. Wkrótce dokupisz je w menu.", 4500);
@@ -9290,6 +9319,11 @@
   });
   genAgain.addEventListener("click", () => {
     if (genBusy) return;
+    if (freeMode()) {
+      if (freeLeftNow() <= 0) { genState("Dzisiejsze darmowe zdjęcia wykorzystane. Wróć jutro!", false); genAgain.hidden = true; return; }
+      genStart(undefined, true);
+      return;
+    }
     if (account && account.user && account.credits < costNow()) {
       genState("Brak kredytów.", false); genAgain.hidden = true;
       if (account.shop) openShop("Brakuje kredytów na kolejne zdjęcie.");
@@ -9368,7 +9402,7 @@
     let saved;
     try { saved = JSON.parse(json); } catch (e) { return false; }
     Object.assign(scene, saved, { open: null, sub: null });
-    setView(false); setShots(false); setGen(false); setSheet(false); setMenu(false);
+    setView(false); setShots(false); setGallery(false); setGen(false); setSheet(false); setMenu(false);
     if (phase !== "director") enterDirector("free"); else { fixScene(); render(); }
     if (!quiet) setTimeout(() => say("Scena wróciła! Popraw, co chcesz, i zrób kolejne zdjęcie.", 4500), 600);
     return true;
@@ -9381,7 +9415,7 @@
     setTimeout(() => {
       setSheet(true);
       // Komunikat jako pasek (dymek zasłoniłby przycisk zdjęcia w otwartym panelu)
-      if (accountBack === "ok" && a && a.user) showToast("Jesteś zalogowany, scena czeka. Masz " + a.credits + " " + creditsWord(a.credits) + ".");
+      if (accountBack === "ok" && a && a.user) showToast("Jesteś zalogowany, scena czeka." + (a.gen ? " Masz " + a.credits + " " + creditsWord(a.credits) + "." : a.free ? " Dziś masz " + (a.free.left ?? a.free.daily) + " " + dailyWord(a.free.left ?? a.free.daily) + "." : ""));
       else showToast("Nie udało się zalogować, ale scena jest cała. Spróbuj jeszcze raz.");
     }, reduceMotion.matches ? 100 : 1500);
   }
@@ -9410,7 +9444,7 @@
     let d = {};
     try { d = await (await fetch("/api/library", { credentials: "same-origin" })).json(); } catch (e) {}
     const list = d.photos || [];
-    shotsList = list;
+    shotsList = list; viewMode = "shots";
     const word = n => n === 1 ? "zdjęcie" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? "zdjęcia" : "zdjęć";
     const keep = d.keep || 5;
     shotsNote.textContent = (list.length ? list.length + " z " + keep + ". Stuknij, żeby otworzyć. " : "Tu trafią zdjęcia zrobione w Manikunie. Zrób pierwsze w panelu Maniscryptu! ")
@@ -9423,10 +9457,64 @@
       im.onerror = () => { im.remove(); b.insertAdjacentHTML("beforeend", '<span class="gone">Zdjęcie niedostępne</span>'); };
       im.src = ph.url;
       ph.tile = b;
-      b.addEventListener("click", () => openView(idx));
+      b.addEventListener("click", () => { viewMode = "shots"; shotsList = list; openView(idx); });
       shotsGrid.appendChild(b);
     });
   }
+
+  // ---------- Udostępnianie sceny: krótki link manikun.pl/s/<id> (scena, nie zdjęcie) ----------
+  const shareTitle = () => { try { return wizSummary().split(" · ").slice(0, 2).join(" · ").slice(0, 100); } catch (e) { return ""; } };
+  document.getElementById("shareScene").addEventListener("click", async e => {
+    const btn = e.currentTarget.querySelector("span"), was = btn.textContent;
+    btn.textContent = "Tworzę link…";
+    let d = {};
+    try { d = await (await fetch("/api/share", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scene: sceneSnapshot(), title: shareTitle() }) })).json(); } catch (x) { d = { error: "Brak połączenia." }; }
+    btn.textContent = was;
+    if (!d.url) { showToast(d.error || "Nie udało się utworzyć linku."); return; }
+    const text = "Zobacz moją scenę w Manikunie – popraw ją po swojemu i zrób zdjęcie AI:";
+    try { if (navigator.share) { await navigator.share({ title: "Scena na Manikunie", text, url: d.url }); return; } } catch (x) { if (x && x.name === "AbortError") return; }
+    const ok = await navigator.clipboard.writeText(d.url).then(() => true).catch(() => hiddenCopyOk(d.url));
+    showToast(ok ? "Link skopiowany: " + d.url.replace("https://", "") : d.url);
+  });
+  // Wejście z linku /s/<id>: scena od razu w Swobodzie (bez tutorialu i ekranu startu)
+  const sharedId = (location.pathname.match(/^\/s\/([\w-]{6,16})$/) || [])[1] || null;
+  async function openShared(id) {
+    let d = {};
+    try { d = await (await fetch("/api/share/" + id)).json(); } catch (e) {}
+    history.replaceState(null, "", "/");
+    if (!d.scene || !restoreScene(d.scene, true)) { render(); showStart(SUBJECTS); greet(); say("Nie znalazłem tej sceny. Ułóż własną – co kręcimy?", 6000); return; }
+    setTimeout(() => say("Ktoś udostępnił Ci scenę" + (d.title ? ": " + d.title : "") + ". Zmień, co chcesz, i skopiuj Maniscrypt zielonym przyciskiem.", 7500), reduceMotion.matches ? 100 : 900);
+  }
+
+  // ---------- Galeria przykładów: publiczne zdjęcia z „Zrób podobne” (dodaje je autor z Moich ujęć) ----------
+  const galleryGrid = document.getElementById("galleryGrid"), galleryNote = document.getElementById("galleryNote");
+  let galleryList = [], viewMode = "shots";
+  function setGallery(open) {
+    document.body.classList.toggle("gallery-open", open);
+    document.getElementById("gallerySheet").setAttribute("aria-hidden", String(!open));
+  }
+  async function openGallery() {
+    setMenu(false); setGallery(true);
+    galleryNote.textContent = "Wczytuję…"; galleryGrid.replaceChildren();
+    let d = {};
+    try { d = await (await fetch("/api/gallery", { credentials: "same-origin" })).json(); } catch (e) {}
+    galleryList = d.photos || [];
+    galleryNote.textContent = galleryList.length ? "Zdjęcia zrobione z Maniscryptów. Stuknij i wybierz „Zrób podobne” – scena trafi do Ciebie do poprawek."
+      : "Galeria jeszcze się zapełnia. Zajrzyj wkrótce!";
+    galleryList.forEach((ph, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.innerHTML = `<img alt="" loading="lazy">` + (ph.title ? `<span class="cap"></span>` : "");
+      b.querySelector("img").src = ph.url;
+      b.querySelector("img").alt = ph.title || "Przykład";
+      if (ph.title) b.querySelector(".cap").textContent = ph.title;
+      b.addEventListener("click", () => { viewMode = "gallery"; shotsList = galleryList; openView(idx); });
+      galleryGrid.appendChild(b);
+    });
+  }
+  document.getElementById("menuGallery").addEventListener("click", openGallery);
+  document.getElementById("galleryClose").addEventListener("click", () => setGallery(false));
+  document.getElementById("galleryScrim").addEventListener("click", () => setGallery(false));
 
   // ---------- Przeglądarka zdjęcia: strzałki i przesuwanie palcem, zapis, udostępnianie, „Zrób podobne”, usuwanie ----------
   let shotsList = [], viewIdx = 0;
@@ -9442,12 +9530,19 @@
     viewImg.onload = () => { viewImg.style.opacity = "1"; };
     viewImg.src = ph.url;
     const d = new Date(ph.at * 1000);
-    document.getElementById("viewTitle").textContent = d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" }) + ", " + d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    const gal = viewMode === "gallery";
+    document.getElementById("viewTitle").textContent = gal ? (ph.title || "Przykład") : d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" }) + ", " + d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    // Galeria: bez zapisu i usuwania (autor ma „Usuń z galerii”); Moje ujęcia: autor może dodać zdjęcie do galerii
+    document.getElementById("viewSave").hidden = gal;
+    const del = document.getElementById("viewDel");
+    del.hidden = gal && !(account && account.owner);
+    del.textContent = gal ? "Usuń z galerii" : "Usuń";
+    document.getElementById("viewPub").hidden = gal || !(account && account.owner);
     document.getElementById("viewPrev").hidden = viewIdx <= 0;
     document.getElementById("viewNext").hidden = viewIdx >= shotsList.length - 1;
-    document.getElementById("viewShare").hidden = !canShareFiles();
+    document.getElementById("viewShare").hidden = gal || !canShareFiles();
     document.getElementById("viewLike").hidden = !ph.scene;
-    if (!ph.seen) { ph.seen = true; ph.tile && ph.tile.querySelector(".new")?.remove(); markSeen(ph.id); shotsUnseen = Math.max(0, shotsUnseen - 1); syncShotsMenu(); }
+    if (!gal && !ph.seen) { ph.seen = true; ph.tile && ph.tile.querySelector(".new")?.remove(); markSeen(ph.id); shotsUnseen = Math.max(0, shotsUnseen - 1); syncShotsMenu(); }
   }
   function openView(idx) { viewIdx = idx; setView(true); viewShow(); }
   const viewStep = k => { const n = viewIdx + k; if (n < 0 || n >= shotsList.length) return; viewIdx = n; viewShow(); sfx("tik"); };
@@ -9466,6 +9561,14 @@
   document.getElementById("viewLike").addEventListener("click", () => { const ph = shotsList[viewIdx]; if (ph && ph.scene) restoreScene(ph.scene); });
   document.getElementById("viewDel").addEventListener("click", async () => {
     const ph = shotsList[viewIdx];
+    if (viewMode === "gallery") {
+      if (!ph || !confirm("Usunąć to zdjęcie z galerii przykładów?")) return;
+      let ok = false;
+      try { ok = (await fetch("/api/gallery/" + ph.id, { method: "DELETE", credentials: "same-origin" })).ok; } catch (e) {}
+      showToast(ok ? "Usunięto z galerii" : "Nie udało się usunąć");
+      if (ok) { setView(false); openGallery(); }
+      return;
+    }
     if (!ph || !confirm("Usunąć to zdjęcie z Moich ujęć? Tego nie da się cofnąć.")) return;
     let ok = false;
     try { ok = (await fetch("/api/generate/" + ph.id, { method: "DELETE", credentials: "same-origin" })).ok; } catch (e) {}
@@ -9478,6 +9581,16 @@
     viewShow();
   });
   menuShots.addEventListener("click", openShots);
+  // Autor: zdjęcie z Moich ujęć do publicznej galerii (z krótkim podpisem)
+  document.getElementById("viewPub").addEventListener("click", async () => {
+    const ph = shotsList[viewIdx];
+    if (!ph) return;
+    const title = prompt("Podpis w galerii (np. „Kot w salonie”):", "");
+    if (title === null) return;
+    let ok = false;
+    try { ok = (await fetch("/api/gallery", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: ph.id, title }) })).ok; } catch (e) {}
+    showToast(ok ? "Dodane do galerii przykładów" : "Nie udało się dodać");
+  });
   document.getElementById("shotsClose").addEventListener("click", () => setShots(false));
   document.getElementById("shotsScrim").addEventListener("click", () => setShots(false));
   // Po wczytaniu strony: zlecenie w toku wraca do śledzenia, nieobejrzane zdjęcia zapalają kropkę
@@ -9785,6 +9898,9 @@
     navInit("style");
     render();
     showToast("Scena z intro. Skopiuj Maniscrypt, potem przełącz styl na Fantasy i skopiuj drugi.");
+  } else if (sharedId) {
+    render();
+    openShared(sharedId);
   } else if (!tutorialSeen()) {
     render();
     startTutorial();

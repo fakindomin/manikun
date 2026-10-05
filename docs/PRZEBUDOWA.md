@@ -676,3 +676,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - `/api/me`: `gen` = HF_KEY i (GEN_OPEN albo właściciel); dla niezalogowanych też `gen`. Aplikacja chowa „Zrób zdjęcie tutaj”, saldo kredytów w menu i obietnicę „5 kredytów”. Logowanie zostaje (Ekipa).
 - Włączenie z powrotem dla wszystkich: `"GEN_OPEN": "1"` w `vars` w wrangler.jsonc.
 - Regulamin, Zwroty i Cennik (PL/EN): „Zdjęcie od AI” chwilowo wyłączone, nowe konta bez kredytów.
+
+## Darmowe zdjęcia (FLUX.1 schnell), udostępnianie scen i galeria przykładów
+
+- **Darmowe zdjęcia:** `POST /api/generate` z `free: true` → `generateFree`: Cloudflare Workers AI `@cf/black-forest-labs/flux-1-schnell` (6 kroków, kwadrat 1024×1024, prompt przycięty do 2000 znaków), wywołanie wprost w zapytaniu (bez `waitUntil`, które przy FLUX.2 klein wisiało na darmowym planie). Limit `FREE_DAILY` (domyślnie 2 na konto na dobę UTC) i wspólny `FREE_GLOBAL` (domyślnie 90 dziennie, w puli 10 000 neuronów ≈ 100 zdjęć). Nieudane nie liczą się do limitu. Bez zdjęcia twarzy/produktu. Zdjęcia trafiają do Moich ujęć.
+- Aplikacja: gdy płatne zdjęcia są wyłączone (`gen: false`), a jest `free`, „Zrób zdjęcie tutaj” robi darmowe (podpis: ile zostało dziś); niezalogowani widzą „zaloguj się: 2 darmowe zdjęcia dziennie”.
+- **Udostępnij scenę** (panel Maniscryptu): `POST /api/share` → krótki link `manikun.pl/s/<id>` (tabela `shares`, migracja `0009_udostepnianie.sql`, limit 40 linków dziennie z jednego IP, zapisany tylko skrót IP). `GET /s/<id>` podaje aplikację z tytułem sceny w podglądzie linku (HTMLRewriter, `<base href="/">`); aplikacja wczytuje scenę (`GET /api/share/<id>`) od razu w Swobodzie, bez tutorialu.
+- **Galeria przykładów** (menu): `GET /api/gallery` (publiczne), zdjęcia `GET /api/pub/<id>` (kopia w KV `pub/<id>`, niezależna od 5 Moich ujęć). Właściciel dodaje zdjęcie z Moich ujęć przyciskiem „Do galerii” (z podpisem) i usuwa z galerii; każdy ma „Zrób podobne”.
+- Regulamin, Prywatność (Cloudflare Workers AI, udostępnione sceny) i Cennik zaktualizowane.

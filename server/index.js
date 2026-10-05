@@ -230,6 +230,70 @@ async function uploadFace(request, env, user) {
   if (!up.ok) { console.log("Upload PUT: " + up.status + " " + (await up.text()).slice(0, 200)); return json({ error: "Nie udało się wysłać zdjęcia." }, 502); }
   return json({ url: d.public_url });
 }
+// ---------- Darmowe zdjęcia: FLUX.1 schnell z Cloudflare Workers AI ----------
+// Kwadrat 1024×1024, tylko tekst (bez zdjęcia twarzy/produktu), kilka sekund. Koszt: 4 kafle × 4,8 + kroki × 9,6 neuronu
+// (ok. 0,001 $), więc darmowa dzienna pula Workers AI (10 000 neuronów) starcza na ok. 100 zdjęć. Wywołanie wprost
+// w zapytaniu (nie w tle): na darmowym planie praca w tle przy FLUX.2 klein zawisała.
+const FREE_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+const FREE_STEPS = 6;
+const freeDaily = env => Number(env.FREE_DAILY) >= 0 && env.FREE_DAILY !== undefined ? Number(env.FREE_DAILY) : 2;
+const freeGlobal = env => Number(env.FREE_GLOBAL) || 90;
+const dayStart = () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return Math.floor(d.getTime() / 1000); };
+const freeOn = env => !!env.AI && freeDaily(env) > 0;
+async function freeLeft(env, user) {
+  const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND model = ? AND created_at >= ? AND status <> 'failed'")
+    .bind(user.id, FREE_MODEL, dayStart()).first();
+  return Math.max(0, freeDaily(env) - r.n);
+}
+// Opis dla modelu: najwyżej 2048 znaków; ucinamy na granicy zdania albo przecinka
+function freePrompt(prompt) {
+  let p = prompt.replace(/\s+/g, " ").trim();
+  if (p.length <= 2000) return p;
+  p = p.slice(0, 2000);
+  const cut = Math.max(p.lastIndexOf(". "), p.lastIndexOf(", "));
+  return cut > 1200 ? p.slice(0, cut) : p;
+}
+async function generateFree(env, user, body) {
+  if (!freeOn(env)) return json({ error: "Darmowe zdjęcia są chwilowo wyłączone." }, 503);
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) return json({ error: "Brak Maniscryptu." }, 400);
+  if (prompt.length > MAX_PROMPT) return json({ error: "Maniscrypt jest za długi." }, 413);
+  if (body.face) return json({ error: "Darmowe zdjęcie nie przyjmuje zdjęcia twarzy ani produktu." }, 400);
+  const busy = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND model = ? AND status = 'in_progress' AND created_at > ?")
+    .bind(user.id, FREE_MODEL, now() - 120).first();
+  if (busy) return json({ error: "Poprzednie zdjęcie jeszcze się robi. Naraz robimy jedno." }, 409);
+  if (await freeLeft(env, user) <= 0) return json({ error: "Dzisiejsze darmowe zdjęcia już wykorzystane. Wróć jutro!", freeLeft: 0 }, 429);
+  const all = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE model = ? AND created_at >= ? AND status <> 'failed'").bind(FREE_MODEL, dayStart()).first();
+  if (all.n >= freeGlobal(env)) return json({ error: "Dzisiejsza pula darmowych zdjęć dla wszystkich się skończyła. Wróć jutro!", freeLeft: 0 }, 429);
+  const id = randomToken(12), t = now();
+  let sceneJson = null;
+  if (typeof body.scene === "string" && body.scene.length <= 30000) { try { JSON.parse(body.scene); sceneJson = body.scene; } catch (e) {} }
+  await env.DB.prepare(
+    "INSERT INTO generations (id, user_id, model, aspect, cost, prompt, status, created_at, updated_at, scene) VALUES (?, ?, ?, '1:1', 0, ?, 'in_progress', ?, ?, ?)"
+  ).bind(id, user.id, FREE_MODEL, prompt, t, t, sceneJson).run();
+  const g = { id, user_id: user.id, cost: 0, status: "in_progress" };
+  let bytes = null, why = "";
+  const t0 = Date.now();
+  try {
+    const out = await env.AI.run(FREE_MODEL, { prompt: freePrompt(prompt), steps: FREE_STEPS, seed: Math.floor(Math.random() * 1e9) });
+    if (out && typeof out.image === "string") bytes = await fromBase64(out.image);
+    else why = "brak obrazu: " + JSON.stringify(out).slice(0, 200);
+  } catch (e) { why = String(e && e.message || e).slice(0, 400); }
+  const ms = Date.now() - t0;
+  if (!bytes || !env.PHOTOS) {
+    const nsfw = /nsfw|safety|flagged/i.test(why);
+    await env.DB.prepare("UPDATE generations SET status = 'failed', error = ?, detail = ?, updated_at = ? WHERE id = ?")
+      .bind(nsfw ? "Generator odrzucił ten opis. Zmień scenę i spróbuj jeszcze raz." : "Generator nie zrobił zdjęcia. Spróbuj jeszcze raz.", "free " + ms + " ms: " + (why || "brak magazynu"), now(), id).run();
+    console.log("Darmowe zdjęcie: " + why);
+    return json({ id, status: "failed", error: nsfw ? "Generator odrzucił ten opis. Zmień scenę i spróbuj jeszcze raz." : "Generator nie zrobił zdjęcia. Spróbuj jeszcze raz.", freeLeft: await freeLeft(env, user) });
+  }
+  await env.PHOTOS.put("gen/" + id, bytes, { metadata: { type: "image/jpeg" } });
+  await env.DB.prepare("UPDATE generations SET status = 'completed', stored = 1, detail = ?, updated_at = ? WHERE id = ?").bind("free " + ms + " ms", now(), id).run();
+  Object.assign(g, { status: "completed", stored: 1 });
+  await prunePhotos(env, user.id);
+  return json({ ...genView(g), freeLeft: await freeLeft(env, user) });
+}
+
 const GEN_COST = 1;
 const MAX_PROMPT = 6000;
 // Formaty z aplikacji → proporcje, które przyjmuje model (Recraft ma 4:5, nie ma 21:9; Soul nie ma 4:5)
@@ -275,10 +339,11 @@ async function refund(env, g, status, error) {
 }
 
 async function generate(request, env, user, ctx) {
-  if (!env.HF_KEY) return json({ error: "Generator nie jest jeszcze podłączony." }, 503);
-  if (!genFor(env, user)) return json({ error: "Zdjęcia w Manikunie są chwilowo wyłączone." }, 403);
   let body;
   try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
+  if (body.free === true) return generateFree(env, user, body);
+  if (!env.HF_KEY) return json({ error: "Generator nie jest jeszcze podłączony." }, 503);
+  if (!genFor(env, user)) return json({ error: "Zdjęcia w Manikunie są chwilowo wyłączone." }, 403);
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return json({ error: "Brak Maniscryptu." }, 400);
   if (prompt.length > MAX_PROMPT) return json({ error: "Maniscrypt jest za długi." }, 413);
@@ -516,6 +581,79 @@ async function crewDelete(env, user, id) {
   return json({ ok: true });
 }
 
+// ---------- Udostępnione sceny: krótki link /s/<id> ----------
+// Każdy może udostępnić scenę (bez konta); limit 40 linków dziennie z jednego adresu IP (skrót adresu, nie sam adres)
+const SHARE_DAILY = 40;
+async function shareCreate(request, env, user) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
+  const scene = typeof body.scene === "string" ? body.scene : "";
+  if (!scene || scene.length > 30000) return json({ error: "Zła scena." }, 400);
+  try { JSON.parse(scene); } catch { return json({ error: "Zła scena." }, 400); }
+  const title = typeof body.title === "string" ? body.title.replace(/[<>"]/g, "").trim().slice(0, 100) : "";
+  const ip = await sha256((request.headers.get("CF-Connecting-IP") || "local") + ":manikun");
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM shares WHERE ip_hash = ? AND created_at > ?").bind(ip, now() - 86400).first();
+  if (n.n >= SHARE_DAILY) return json({ error: "Dziś udostępniono już dużo scen z tego połączenia. Spróbuj jutro." }, 429);
+  const id = randomToken(6);
+  await env.DB.prepare("INSERT INTO shares (id, scene, title, user_id, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, scene, title || null, user ? user.id : null, ip, now()).run();
+  return json({ id, url: "https://" + (env.CANONICAL_HOST || "manikun.pl") + "/s/" + id });
+}
+async function shareGet(env, id) {
+  const r = await env.DB.prepare("SELECT scene, title FROM shares WHERE id = ?").bind(id).first();
+  if (!r) return json({ error: "Nie ma takiej sceny." }, 404);
+  return json({ scene: r.scene, title: r.title || null });
+}
+// Strona aplikacji z tytułem sceny w podglądzie linku (Messenger, WhatsApp, Facebook)
+async function sharePage(request, env, url, id) {
+  const r = await env.DB.prepare("SELECT title FROM shares WHERE id = ?").bind(id).first();
+  const page = await env.ASSETS.fetch(new Request(new URL("/", url), request));
+  // Pliki aplikacji są podawane względnie; pod /s/<id> mają się brać z katalogu głównego (także gdy sceny nie ma)
+  const base = new HTMLRewriter().on("meta[charset]", { element(e) { e.after('<base href="/">', { html: true }); } });
+  if (!r) return base.transform(page);
+  const title = "Scena na Manikunie" + (r.title ? ": " + r.title : "");
+  const desc = "Ktoś ułożył tę scenę na wirtualnym manekinie. Otwórz, popraw po swojemu i skopiuj Maniscrypt do generatora AI.";
+  const set = v => ({ element(e) { e.setAttribute("content", v); } });
+  return base
+    .on('meta[property="og:title"]', set(title))
+    .on('meta[property="og:description"]', set(desc))
+    .on('meta[name="description"]', set(desc))
+    .on('meta[property="og:url"]', set("https://" + (env.CANONICAL_HOST || url.host) + "/s/" + id))
+    .on("title", { element(e) { e.setInnerContent(title); } })
+    .transform(page);
+}
+
+// ---------- Galeria przykładów: zdjęcia wybrane przez właściciela, publiczne, z „Zrób podobne” ----------
+// Kopia pliku pod pub/<id> (niezależna od Moich ujęć, które trzymają 5 ostatnich)
+async function galleryList(env, user) {
+  const rows = (await env.DB.prepare("SELECT id, title, scene, aspect, created_at FROM gallery ORDER BY created_at DESC LIMIT 60").all()).results;
+  return json({ owner: isOwner(user), photos: rows.map(g => ({ id: g.id, url: "/api/pub/" + g.id, title: g.title, aspect: g.aspect, scene: g.scene, at: g.created_at })) },
+    200);
+}
+async function galleryPhoto(env, id) {
+  const obj = env.PHOTOS && await env.PHOTOS.getWithMetadata("pub/" + id, { type: "arrayBuffer" });
+  if (!obj || !obj.value) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+  return new Response(obj.value, { headers: { "Content-Type": (obj.metadata && obj.metadata.type) || "image/jpeg", "Cache-Control": "public, max-age=86400" } });
+}
+async function galleryAdd(request, env, user) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
+  const id = typeof body.id === "string" ? body.id : "";
+  const g = await env.DB.prepare("SELECT id, scene, aspect, stored FROM generations WHERE id = ? AND user_id = ? AND status = 'completed'").bind(id, user.id).first();
+  if (!g || !g.stored) return json({ error: "Nie ma takiego zdjęcia." }, 404);
+  const obj = await env.PHOTOS.getWithMetadata("gen/" + id, { type: "arrayBuffer" });
+  if (!obj || !obj.value) return json({ error: "Plik zdjęcia zniknął." }, 404);
+  await env.PHOTOS.put("pub/" + id, obj.value, { metadata: obj.metadata || { type: "image/jpeg" } });
+  const title = typeof body.title === "string" ? body.title.replace(/[<>"]/g, "").trim().slice(0, 100) : null;
+  await env.DB.prepare("INSERT OR REPLACE INTO gallery (id, title, scene, aspect, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, title, g.scene, g.aspect, now()).run();
+  return json({ ok: true });
+}
+async function galleryDelete(env, id) {
+  await env.DB.prepare("DELETE FROM gallery WHERE id = ?").bind(id).run();
+  if (env.PHOTOS) await env.PHOTOS.delete("pub/" + id);
+  return json({ ok: true });
+}
+
 // Moje ujęcia: zostaje 5 najnowszych zdjęć, starsze kasujemy (plik z KV i adres), status 'expired'
 const KEEP_PHOTOS = 5;
 async function prunePhotos(env, userId) {
@@ -547,11 +685,12 @@ async function photo(env, user, id) {
 
 async function me(request, env) {
   const user = await currentUser(request, env);
-  if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_SECRET, gen: !!env.HF_KEY && genOpenAll(env), v: 3 });
+  if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_SECRET, gen: !!env.HF_KEY && genOpenAll(env), free: freeOn(env) ? { daily: freeDaily(env) } : null, v: 3 });
   const active = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND cancelled = 0 AND created_at > ? ORDER BY created_at DESC LIMIT 1")
     .bind(user.id, now() - 600).first();
   const unseen = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'completed' AND seen = 0").bind(user.id).first();
   return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY && genFor(env, user), cost: genCost(env), premiumCost: premiumCost(env), shop: shopInfo(env),
+    free: freeOn(env) ? { daily: freeDaily(env), left: await freeLeft(env, user) } : null, owner: isOwner(user),
     active: active ? active.id : null, unseen: unseen.n });
 }
 
@@ -566,6 +705,9 @@ export default {
     if (main && url.hostname !== main && !LOCAL_HOSTS.has(url.hostname) && request.method === "GET"
       && (!url.pathname.startsWith("/api/") || url.pathname === "/api/auth/google"))
       return Response.redirect("https://" + main + url.pathname + url.search, 301);
+    // Udostępniona scena: strona aplikacji z własnym tytułem i opisem w podglądzie linku (aplikacja sama wczyta scenę)
+    const sm = url.pathname.match(/^\/s\/([\w-]{6,16})$/);
+    if (sm && request.method === "GET") return await sharePage(request, env, url, sm[1]);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
       const route = request.method + " " + url.pathname;
@@ -592,6 +734,24 @@ export default {
         if (request.method === "POST" && m && m[2] === "/cancel") return await generationCancel(env, user, m[1]);
         if (request.method === "POST" && m && m[2] === "/seen") return await generationSeen(env, user, m[1]);
         if (request.method === "DELETE" && m && !m[2]) return await generationDelete(env, user, m[1]);
+      }
+      // Udostępnianie scen i galeria przykładów
+      if (route === "POST /api/share") {
+        if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        return await shareCreate(request, env, await currentUser(request, env));
+      }
+      const shm = url.pathname.match(/^\/api\/share\/([\w-]{6,16})$/);
+      if (request.method === "GET" && shm) return await shareGet(env, shm[1]);
+      if (route === "GET /api/gallery") return await galleryList(env, await currentUser(request, env));
+      const pm = url.pathname.match(/^\/api\/pub\/([\w-]{8,40})$/);
+      if (request.method === "GET" && pm) return await galleryPhoto(env, pm[1]);
+      if (route === "POST /api/gallery" || (request.method === "DELETE" && url.pathname.startsWith("/api/gallery/"))) {
+        if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        const user = await currentUser(request, env);
+        if (!isOwner(user)) return json({ error: "Tylko dla właściciela." }, 403);
+        if (route === "POST /api/gallery") return await galleryAdd(request, env, user);
+        const gm = url.pathname.match(/^\/api\/gallery\/([\w-]{8,40})$/);
+        if (gm) return await galleryDelete(env, gm[1]);
       }
       // Zakup kredytów (Paddle): zgoda przed kasą i powiadomienia o płatnościach (podpisane, bez sprawdzania źródła)
       if (route === "POST /api/paddle/webhook") return await paddleWebhook(request, env, { json });
