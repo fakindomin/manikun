@@ -231,7 +231,8 @@ async function uploadFace(request, env, user) {
   return json({ url: d.public_url });
 }
 // ---------- Darmowe zdjęcia: FLUX.1 schnell z Cloudflare Workers AI ----------
-// Kwadrat 1024×1024, tylko tekst (bez zdjęcia twarzy/produktu), kilka sekund. Koszt: 4 kafle × 4,8 + kroki × 9,6 neuronu
+// Kwadrat 1024×1024, tylko tekst (bez zdjęcia twarzy/produktu), kilka sekund. Model przyjmuje wyłącznie prompt i steps
+// (seed odrzuca błędem 5006 „Additional properties '/seed' not allowed”, sprawdzone na produkcji 5.10.2026). Koszt: 4 kafle × 4,8 + kroki × 9,6 neuronu
 // (ok. 0,001 $), więc darmowa dzienna pula Workers AI (10 000 neuronów) starcza na ok. 100 zdjęć. Wywołanie wprost
 // w zapytaniu (nie w tle): na darmowym planie praca w tle przy FLUX.2 klein zawisała.
 const FREE_MODEL = "@cf/black-forest-labs/flux-1-schnell";
@@ -275,7 +276,7 @@ async function generateFree(env, user, body) {
   let bytes = null, why = "";
   const t0 = Date.now();
   try {
-    const out = await env.AI.run(FREE_MODEL, { prompt: freePrompt(prompt), steps: FREE_STEPS, seed: Math.floor(Math.random() * 1e9) });
+    const out = await env.AI.run(FREE_MODEL, { prompt: freePrompt(prompt), steps: FREE_STEPS });
     if (out && typeof out.image === "string") bytes = await fromBase64(out.image);
     else why = "brak obrazu: " + JSON.stringify(out).slice(0, 200);
   } catch (e) { why = String(e && e.message || e).slice(0, 400); }
