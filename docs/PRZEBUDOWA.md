@@ -684,3 +684,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - **Udostępnij scenę** (panel Maniscryptu): `POST /api/share` → krótki link `manikun.pl/s/<id>` (tabela `shares`, migracja `0009_udostepnianie.sql`, limit 40 linków dziennie z jednego IP, zapisany tylko skrót IP). `GET /s/<id>` podaje aplikację z tytułem sceny w podglądzie linku (HTMLRewriter, `<base href="/">`); aplikacja wczytuje scenę (`GET /api/share/<id>`) od razu w Swobodzie, bez tutorialu.
 - **Galeria przykładów** (menu): `GET /api/gallery` (publiczne), zdjęcia `GET /api/pub/<id>` (kopia w KV `pub/<id>`, niezależna od 5 Moich ujęć). Właściciel dodaje zdjęcie z Moich ujęć przyciskiem „Do galerii” (z podpisem) i usuwa z galerii; każdy ma „Zrób podobne”.
 - Regulamin, Prywatność (Cloudflare Workers AI, udostępnione sceny) i Cennik zaktualizowane.
+
+## Manito › Własny = zdjęcie produktu domyślnie
+
+- Przy przedmiocie „Własny” panel Maniscryptu otwiera się z włączonym „Z moim produktem” (`ownItem`, `ownPhoto`; gdy użytkownik go wyłączy, zostaje wyłączony do końca wizyty). Przy innych przedmiotach startuje wyłączony.
+- Opis ze zdjęciem i Własnym: „the product from the attached reference photo (a hand-sized cylindrical product), keeping…” – bryła podpowiada skalę i kształt.
+- Wybór „Własny” w Swobodzie: dymek z wyjaśnieniem (bryła w miejscu produktu, zdjęcie w panelu Maniscryptu).

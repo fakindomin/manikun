@@ -2125,7 +2125,7 @@
     const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
     const parts = scene.subject === "object" ? [
       // Obiekt: zdjęcie produktowe przedmiotu na wybranej podstawie
-      (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + (withPhoto ? "the product from the attached reference photo, keeping its shape, colours, label and details exactly the same" : ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ")) + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
+      (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + (withPhoto ? "the product from the attached reference photo" + (scene.item === "own" ? " (" + an(prodOpt("size", prodNow().size).en + " " + prodOpt("shape", prodNow().shape).en) + ")" : "") + ", keeping its shape, colours, label and details exactly the same" : ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ")) + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt(),
       bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : scene.subject === "place" ? [
@@ -5924,6 +5924,8 @@
 
   // Wybór opcji z listy; tło od razu otwiera swoje warianty (opcjonalne, można wrócić strzałką)
   function pickLeaf(catId, id) {
+    if (catId === "item" && id === "own" && scene.item !== "own" && flow === "free")
+      setTimeout(() => say("Własny: bryła w miejscu Twojego produktu. Ustaw kształt i wielkość, a w panelu Maniscryptu dołączysz zdjęcie produktu („Z moim produktem” jest już włączone).", 7000), 300);
     scene[catId] = id;
     if (catId === "background" && BG_VARIANTS[id]) scene.sub = "v:" + id;
     render();
@@ -7931,10 +7933,12 @@
       done(hiddenCopyOk(text));
     }
   }
-  // Przy każdym otwarciu panelu wybór zdjęcia startuje wyłączony
-  let sheetPhoto = false;
+  // Przy każdym otwarciu panelu wybór zdjęcia startuje wyłączony; przy własnym produkcie (Manito › Własny) włączony,
+  // chyba że użytkownik go wyłączył (zapamiętane do końca wizyty)
+  let sheetPhoto = false, ownPhoto = true;
+  const ownItem = () => scene.subject === "object" && scene.item === "own";
   function setSheet(open) {
-    if (open) { sheetPhoto = false; syncSheet(); try { if (account) syncGenBtn(); } catch (e) {} }
+    if (open) { sheetPhoto = ownItem() && ownPhoto; syncSheet(); try { if (account) syncGenBtn(); } catch (e) {} }
     document.body.classList.toggle("sheet-open", open);
     sheetEl.setAttribute("aria-hidden", String(!open));
     sheetCopyLabel.textContent = "Kopiuj Maniscrypt";
@@ -7943,7 +7947,7 @@
   copyBtn.addEventListener("click", () => openManiscrypt());
   document.getElementById("sheetScrim").addEventListener("click", () => setSheet(false));
   document.getElementById("sheetClose").addEventListener("click", () => setSheet(false));
-  faceSwitch.addEventListener("click", () => { sheetPhoto = !sheetPhoto; syncSheet(); try { if (account) syncGenBtn(); } catch (e) {} });
+  faceSwitch.addEventListener("click", () => { sheetPhoto = !sheetPhoto; if (ownItem()) ownPhoto = sheetPhoto; syncSheet(); try { if (account) syncGenBtn(); } catch (e) {} });
   sheetCopy.addEventListener("click", () => copyManiscrypt(ok => {
     if (ok) { sfx("klap"); nod("nod"); }
     if (tut) { tut.copied = true; return; }
