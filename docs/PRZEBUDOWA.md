@@ -634,3 +634,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Bez wybranego koloru: naturalny kolor materiału (drewno, metal, szkło…), inaczej biały. Rysunek `prodParts` w polu 100×100 (te same części co ITEMS + accent, cork, thick).
 - Kreator: po „Własny” pytania o kształt, proporcje, materiał, wykończenie, zamknięcie i etykietę. Losuj: losowa bryła z pustą etykietą.
 - Ekipa: własny produkt zapisuje przepis i dostaje nazwę; przy Manikunie stoi na stole narysowany ze swojego przepisu.
+
+## Manikun na Manimalu (wierzchowiec)
+
+- Własny Manimal w scenie z Manikunem (z Ekipy) może być siedziskiem: Rzeczy › Zwierzaki › (Manimal) › **Wsiądź** / ponownie: zsiądź.
+- Kto może usiąść (`rideWho`, `canRide`): wielkość „Jak koń” i „Olbrzym” – dorosły i dziecko; „Jak pies” – tylko dziecko (Cechy › Wiek); mniejsze i gotowce (pies, kot, królik, smoczek) – nikt, z wyjaśnieniem w dymku.
+- Siedzisko (`rideSeat`): wysokie, wysokość = grzbiet Manimala × skala wielkości; punkt „Pod postacią” tylko z ręcznego wyboru (bez automatu). Maniscrypt: „riding on the back of … sitting astride…”.

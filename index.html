@@ -2326,13 +2326,22 @@
   const AUTO_ORDER = ["right", "left", "behind", "front", "background", "rightFar", "leftFar", "foreground"];
   // Położenie każdej rzeczy: wskazane ręcznie (Ekspert) ma pierwszeństwo, potem automat (siedzisko pod postacią,
   // reszta w swoim zwykłym miejscu albo w pierwszym wolnym). Dwie rzeczy nie dzielą jednego punktu, póki są wolne.
+  // Wierzchowiec: własny Manimal jak koń albo olbrzym uniesie dorosłego, jak pies – tylko dziecko; mniejsze nikogo.
+  // Siedzisko „wysokie” z wysokością grzbietu (w skali Manikuna), postać siada okrakiem.
+  const rideWho = it => { if (!it || it.id !== "beast") return null; const z = beastOf(it).size; return z === "large" || z === "giant" ? "adult" : z === "medium" ? "child" : null; };
+  const canRide = (st, it) => { const w = rideWho(it); return w === "adult" || (w === "child" && isChild(st)); };
+  function rideSeat(it) {
+    const r = beastOf(it), g = beastGeom(r, petPose(it).id);
+    return { ...THING.beast, seat: "high", ride: true, top: g.bp(0, 0.95)[1] * (BEAST_SIZE[r.size] || 1), sitOn: p => "the back of " + p };
+  }
+  const seatThing = (st, it) => it && it.id === "beast" && canRide(st, it) ? rideSeat(it) : THING[it.id];
   function resolveAnchors(st) {
     const list = st.things || [], out = list.map(() => null), used = new Set();
     // Oparty: pierwsza rzecz stoi tuż za plecami postaci (punkt „lean”)
     const li = leanIndex(st);
     if (li >= 0) out[li] = "lean";
     list.forEach((it, i) => {
-      const t = THING[it.id];
+      const t = seatThing(st, it);
       if (!out[i] && t && it.anchor && anchorOK(st, it.anchor, t) && !used.has(it.anchor)) { out[i] = it.anchor; used.add(it.anchor); }
     });
     list.forEach((it, i) => {
@@ -2345,7 +2354,7 @@
     });
     return out;
   }
-  const seatOf = st => { const i = resolveAnchors(st).indexOf("under"); return i >= 0 ? THING[st.things[i].id] : null; };
+  const seatOf = st => { const i = resolveAnchors(st).indexOf("under"); return i >= 0 ? seatThing(st, st.things[i]) : null; };
   // Geometria pozy: na siedzisku wysokim prosto i pochylony siedzi jak na krześle, na niskim jak na kamieniu
   // Pozy „jak na krześle” (stopy na ziemi, siedzisko pod biodrami); na niskim siedzisku wszystkie siedzą jak na kamieniu.
   // Bez siedziska: rozparty i noga na nogę odchylają się na rękach, na brzegu siada zwyczajnie. Oparty bez rzeczy stoi prosto.
@@ -2800,6 +2809,7 @@
     if (st.pose === "belly") return `lying on their stomach on ${on}, ${armTxt()}, lower legs raised behind them`;
     if (st.pose === "side") return `lying on their side on ${on}, ${armTxt()}, legs slightly bent`;
     if (!seat) return optionOf("pose", st.pose).prompt;
+    if (seat.ride) return `riding on ${on}, sitting astride with one leg on each side of its body, hands resting on its back, facing the camera`;
     if (seat.id === "stool" && (st.pose === "sit" || st.pose === "lean")) return `perched on ${on}, feet resting on the footrest, ${st.pose === "lean" ? "leaning forward with the elbows on the knees" : "hands resting on the thighs"}, facing the camera`;
     if (st.pose === "sit") return seat.seat === "low" ? `sitting on ${on} with knees bent, forearms resting on the knees, back straight, facing the camera` : `sitting upright on ${on}, feet flat on the floor, hands resting on the thighs, facing the camera`;
     if (st.pose === "lean") return `sitting on ${on}, leaning forward with the elbows resting on the knees, hands relaxed between the knees, facing the camera`;
@@ -5625,10 +5635,14 @@
       const out = [backTile(null)];
       PET_POSES.forEach(po => out.push(tile("opt-petpose-" + po.id, po.name, () => petPose(scene.things[i] || it).id === po.id, () => upd({ pose: po.id }), svg => petThumb(svg, { ...it, ...scene.things[i], pose: po.id }))));
       (it.id === "beast" ? [] : PET_COATS[it.id]).forEach(co => out.push(tile("opt-petcoat-" + co.id, co.name, () => petCoat(scene.things[i] || it).id === co.id, () => upd({ coat: co.id }), svg => petThumb(svg, { ...it, ...scene.things[i], coat: co.id }))));
+      if (it.id === "beast") out.push(rideTile(i));
       out.push(tile("opt-petdel", "Usuń", () => false, () => { removeThingAt(i); scene.sub = null; render(); }, svg => { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M22 22l20 20M42 22L22 42", class: "thin" }, svg); }));
       return out;
     }
-    return [{ id: "none", name: "Brak" }, ...THINGS.filter(t => t.pet && !t.custom)].map(o => tile("opt-pets-" + o.id, o.name,
+    // Własne Manimale (z Ekipy) w scenie: kafelek otwiera ich pozy i Wsiądź
+    const own = list.map((x, i) => x.id === "beast" ? tile("opt-pets-beast-" + i, (crew.find(c => c.data && c.data.animal === "beast" && JSON.stringify(beastOf(c.data)) === JSON.stringify(beastOf(x))) || {}).name || "Manimal",
+      () => true, () => { scene.sub = "pet:" + i; render(); }, svg => petThumb(svg, x)) : null).filter(Boolean);
+    return own.concat([{ id: "none", name: "Brak" }, ...THINGS.filter(t => t.pet && !t.custom)].map(o => tile("opt-pets-" + o.id, o.name,
       () => o.id === "none" ? !list.some(isPet) && !(scene.things || []).some(isPet) : idxOf(o.id) >= 0 || (scene.things || []).some(x => x.id === o.id),
       () => {
         const cur = scene.things || [];
@@ -5640,7 +5654,27 @@
         scene.things = [...base, { id: o.id, pose: "sit", coat: PET_COATS[o.id][0].id }];
         scene.sub = "pet:" + (scene.things.length - 1);
         render();
-      }, svg => petThumb(svg, (scene.things || []).find(x => x.id === o.id) || { id: o.id })));
+      }, svg => petThumb(svg, (scene.things || []).find(x => x.id === o.id) || { id: o.id }))));
+  }
+  // Wsiądź / Zsiądź: postać siada okrakiem na grzbiecie (jeśli Manimal ją uniesie)
+  function rideTile(i) {
+    const riding = () => resolveAnchors(scene)[i] === "under";
+    const t = tile("opt-pet-ride", "Wsiądź", () => riding(), () => {
+      const it = scene.things[i];
+      if (riding()) { scene.things = scene.things.map((x, j) => j === i ? { ...x, anchor: null } : x); scene.pose = "stand"; render(); return; }
+      const who = rideWho(it);
+      if (!canRide(scene, it)) {
+        say(who === "child" ? "Ten Manimal jest wielkości psa: uniesie tylko dziecko (Manikun › Cechy › Wiek). Dorosły potrzebuje Manimala jak koń albo olbrzyma."
+          : "Za mały, żeby na nim usiąść. Dziecko usiądzie na Manimalu wielkości psa, dorosły – jak koń albo olbrzym (Ciało › Wielkość).", 6500);
+        return;
+      }
+      // Siedzisko pod postacią może być tylko jedno: inne rzeczy schodzą z „pod”
+      scene.things = scene.things.map((x, j) => j === i ? { ...x, anchor: "under", pose: x.pose === "sit" ? "stand" : x.pose } : x.anchor === "under" ? { ...x, anchor: null } : x);
+      if (!seated(scene) || ["back", "belly", "side"].includes(scene.pose)) scene.pose = "sit";
+      render(); checkFit();
+    }, svg => { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: "M14 44 Q32 34 50 44 M24 40 L24 22 M24 22 a5 5 0 1 0 0.1 0 M24 30 L34 38 L30 48", class: "thin" }, svg); },
+      () => riding() ? "zsiądź" : rideWho(scene.things[i]) ? (canRide(scene, scene.things[i]) ? "na grzbiet" : "za mały") : "za mały");
+    return t;
   }
   // Cechy: grupy (Skóra, Wiek, Budowa, Wzrost, Piegi, Tatuaże, Kolczyki), w grupie warianty z miniaturą Manikuna
   function traitThumb(svg, k, id) {
@@ -8503,6 +8537,7 @@
       if (cur.some(same)) scene.things = cur.filter(x => !same(x));
       else scene.things = [...(level === "expert" ? cur : cur.filter(x => !isPet(x))), pet];
       render(); checkFit();
+      if (scene.things.some(same) && rideWho(pet)) setTimeout(() => say(c.name + " jest duży: można na nim usiąść. Rzeczy › Zwierzaki › " + c.name + " › Wsiądź.", 5500), 400);
       return;
     }
     if (!ITEMS[c.data.item]) return;
