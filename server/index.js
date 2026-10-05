@@ -7,6 +7,8 @@ import { shopInfo, checkoutStart, paddleWebhook } from "./paddle.js";
 // Generowanie obrazów: Higgsfield API (api.higgsfield.ai), sekret HF_KEY w postaci KEY_ID:KEY_SECRET.
 
 const START_CREDITS = 5;
+// Zdjęcia od AI dla wszystkich tylko przy GEN_OPEN = "1" (wtedy też kredyty na start). Bez tego generuje wyłącznie właściciel (testy).
+const genOpenAll = env => env.GEN_OPEN === "1";
 const SESSION_DAYS = 30;
 const SESSION_COOKIE = "mk_s";
 const OAUTH_COOKIE = "mk_oauth";
@@ -118,9 +120,9 @@ async function googleCallback(request, url, env) {
   const user = await env.DB.prepare("SELECT id FROM users WHERE google_sub = ?").bind(claims.sub).first();
   const token = randomToken(32);
   await env.DB.batch([
-    // Kredyty na start: raz na konto (unikalne reason + ref)
-    env.DB.prepare("INSERT OR IGNORE INTO credits (user_id, delta, reason, ref, created_at) VALUES (?1, ?2, 'start', ?3, ?4)")
-      .bind(user.id, START_CREDITS, String(user.id), t),
+    // Kredyty na start: raz na konto (unikalne reason + ref), tylko gdy zdjęcia są otwarte dla wszystkich
+    ...(genOpenAll(env) ? [env.DB.prepare("INSERT OR IGNORE INTO credits (user_id, delta, reason, ref, created_at) VALUES (?1, ?2, 'start', ?3, ?4)")
+      .bind(user.id, START_CREDITS, String(user.id), t)] : []),
     env.DB.prepare("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)")
       .bind(await sha256(token), user.id, t + SESSION_DAYS * 86400),
     env.DB.prepare("DELETE FROM sessions WHERE expires_at <= ?").bind(t)
@@ -195,6 +197,7 @@ async function generateWorkersAI(env, g, model, prompt, aspect) {
   Object.assign(g, { status: "completed", stored: 1 });
 }
 const isOwner = user => user && user.id === 1;
+const genFor = (env, user) => genOpenAll(env) || isOwner(user);
 
 // Zdjęcie twarzy (dla wszystkich; wybrany po testach Soul 2 image-to-image): którym modelem i pod jakim polem (z komunikatów walidacji API, 3.10.2026).
 // Soul 2 przyjmuje resolution '720p' albo '1080p' (sonda schematu 4.10.2026) — bierzemy wyższą
@@ -213,6 +216,7 @@ const faceUrlOk = u => typeof u === "string" && /^https:\/\/[\w-]+\.cloudfront\.
 
 // Wysłanie zdjęcia twarzy do Higgsfield (plik tymczasowy, znacznik retention=temporary); u nas nie zostaje
 async function uploadFace(request, env, user) {
+  if (!genFor(env, user)) return json({ error: "Zdjęcia w Manikunie są chwilowo wyłączone." }, 403);
   // Wysłać zdjęcie może każdy zalogowany, kto ma kredyt na zdjęcie (bez tego wysyłanie nie ma po co się odbywać)
   if (await balance(env, user.id) < genCost(env)) return json({ error: "Brak kredytów." }, 402);
   const type = (request.headers.get("Content-Type") || "").split(";")[0];
@@ -272,6 +276,7 @@ async function refund(env, g, status, error) {
 
 async function generate(request, env, user, ctx) {
   if (!env.HF_KEY) return json({ error: "Generator nie jest jeszcze podłączony." }, 503);
+  if (!genFor(env, user)) return json({ error: "Zdjęcia w Manikunie są chwilowo wyłączone." }, 403);
   let body;
   try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
@@ -542,11 +547,11 @@ async function photo(env, user, id) {
 
 async function me(request, env) {
   const user = await currentUser(request, env);
-  if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_SECRET, v: 3 });
+  if (!user) return json({ user: null, login: !!env.GOOGLE_CLIENT_SECRET, gen: !!env.HF_KEY && genOpenAll(env), v: 3 });
   const active = await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status IN ('queued', 'in_progress') AND cancelled = 0 AND created_at > ? ORDER BY created_at DESC LIMIT 1")
     .bind(user.id, now() - 600).first();
   const unseen = await env.DB.prepare("SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'completed' AND seen = 0").bind(user.id).first();
-  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY, cost: genCost(env), premiumCost: premiumCost(env), shop: shopInfo(env),
+  return json({ user: { email: user.email, name: user.name }, credits: await balance(env, user.id), gen: !!env.HF_KEY && genFor(env, user), cost: genCost(env), premiumCost: premiumCost(env), shop: shopInfo(env),
     active: active ? active.id : null, unseen: unseen.n });
 }
 

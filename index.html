@@ -8629,10 +8629,11 @@
     document.getElementById("menuAcct").hidden = !account || (!u && !account.login);
     menuLogout.hidden = !u;
     menuAccountLabel.textContent = u ? (u.name || u.email) : "Zaloguj przez Google";
-    document.getElementById("menuAccountSub").textContent = u ? (u.name ? u.email : "Twoje konto") : "5 darmowych kredytów na start";
+    document.getElementById("menuAccountSub").textContent = u ? (u.name ? u.email : "Twoje konto") : account && account.gen ? "5 darmowych kredytów na start" : "Ekipa zapisana na koncie";
     document.getElementById("menuAvatar").textContent = u ? ((u.name || u.email || "?").trim()[0] || "?").toUpperCase() : "G";
     menuAccountVal.hidden = !u;
-    document.getElementById("menuAcctRow").hidden = !u;
+    // Saldo kredytów tylko, gdy zdjęcia od AI są dostępne
+    document.getElementById("menuAcctRow").hidden = !u || !account.gen;
     if (u) menuAccountVal.textContent = account.credits + " " + creditsWord(account.credits);
     document.getElementById("menuBuy").hidden = !u || !account.shop;
     if (typeof syncGenBtn === "function") syncGenBtn();
@@ -8895,7 +8896,7 @@
     const a = account, u = a && a.user;
     premiumSwitch.setAttribute("aria-checked", String(premiumOn()));
     if (a && a.premiumCost) premiumNote.textContent = "ostrzejsze zdjęcie, więcej szczegółów · " + a.premiumCost + " " + creditsWord(a.premiumCost);
-    sheetGen.hidden = !a || (!u && !a.login) || (u && !a.gen);
+    sheetGen.hidden = !a || !a.gen || (!u && !a.login);
     premiumSwitch.hidden = sheetGen.hidden || !u || !a.premiumCost || withFace();
     document.getElementById("loginLegal").hidden = sheetGen.hidden || !!u;
     if (!u) sheetGenNote.textContent = "zaloguj się przez Google: na start 5 kredytów";
