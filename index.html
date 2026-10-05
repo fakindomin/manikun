@@ -521,6 +521,12 @@
   [data-phase="director"] .dock-start { pointer-events: none; }
   .start-grid { height: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: var(--row-gap); }
   .start-grid.one { grid-template-columns: 1fr; }
+  /* Wstecz na starcie: niższy kafelek pod dwoma wyborami */
+  /* Wstecz na starcie: wąska strzałka po lewej na wysokość obu rzędów (jak w nawigacji reżysera) */
+  .start-grid.one.has-back { grid-template-columns: var(--row-h) 1fr; grid-template-rows: 1fr 1fr; }
+  .start-grid.has-back .start-tile:not(.back-tile) { grid-column: 2; }
+  .start-tile.back-tile { grid-column: 1; grid-row: 1 / 3; justify-content: center; padding: 0; border-style: dashed; }
+  .start-tile.back-tile .txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .start-tile { height: auto; min-width: 0; max-width: none; transition: transform 420ms var(--ease), opacity 320ms ease, border-color 300ms ease; }
   .start-tile.locked { color: var(--muted); }
   .start-tile.locked .name { color: var(--muted); }
@@ -8600,6 +8606,7 @@
     animal: '<circle cx="7" cy="9" r="1.8"/><circle cx="12" cy="6.5" r="1.8"/><circle cx="17" cy="9" r="1.8"/><path d="M12 11.5c-3 0-5.5 3.5-5.5 6 0 1.7 1.5 2.5 3 2.5 1 0 1.6-.5 2.5-.5s1.5.5 2.5.5c1.5 0 3-.8 3-2.5 0-2.5-2.5-6-5.5-6z"/>',
     place: '<path d="M2.5 19.5l6-9 4 5.5 2.5-3.5 6.5 7z"/><circle cx="17" cy="6.5" r="2"/>',
     wizard: '<path d="M4 18h4v-4h4v-4h4V6h4"/><circle cx="20" cy="6" r="1.5"/>',
+    back: '<path d="M14 6l-6 6 6 6M8 12h12"/>',
     basic: '<path d="M4 12h16"/><circle cx="12" cy="12" r="2.6"/>',
     expert: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2.2"/><circle cx="16" cy="12" r="2.2"/><circle cx="7" cy="18" r="2.2"/>',
     free: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>'
@@ -9626,6 +9633,7 @@
     { id: "free", name: "Swoboda", desc: "wszystkie opcje naraz" }
   ];
   const startGrid = document.getElementById("startGrid");
+  const START_BACK = { subject: { id: "back", name: "Wstecz", desc: "inny temat" }, level: { id: "back", name: "Wstecz", desc: "inny poziom" } };
   const jokeSeen = {};
   let startStep = "subject";
   // Kafelki startu wjeżdżają spod spodu jak kafelki w rzędach
@@ -9635,10 +9643,12 @@
     setTimeout(() => {
       startGrid.replaceChildren();
       startGrid.classList.toggle("one", !!oneCol);
+      startGrid.classList.toggle("has-back", list.some(c => c.id === "back"));
       list.forEach((c, i) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.className = "tile cat start-tile below" + (c.locked ? " locked" : "");
+        b.className = "tile cat start-tile below" + (c.locked ? " locked" : "") + (c.id === "back" ? " back-tile" : "");
+        if (c.id === "back") b.setAttribute("aria-label", "Wstecz: " + c.desc);
         b.id = "pick-" + c.id;
         if (c.pressed) b.setAttribute("aria-pressed", "true");
         b.innerHTML = `<svg class="ink" viewBox="0 0 24 24" aria-hidden="true">${ICON[c.id]}</svg><span class="txt"><span class="name">${c.name}</span><span class="value">${c.desc}</span></span>` + (c.locked ? LOCK : "");
@@ -9660,6 +9670,21 @@
       jokeSeen[c.id] = true;
       return;
     }
+    // Wstecz: poziom → temat, sposób pracy → poziom (bez zaczynania od nowa z menu)
+    if (c.id === "back") {
+      if (startStep === "level") {
+        startStep = "subject";
+        Object.assign(scene, { background: SCENE0.background, time: SCENE0.time, light: SCENE0.light, lightZone: SCENE0.lightZone });
+        render();
+        showStart(SUBJECTS);
+        say("Dobra, jeszcze raz. Co kręcimy?", 4000);
+      } else if (startStep === "flow") {
+        startStep = "level";
+        showStart([...LEVELS.map(l => ({ ...l, pressed: l.id === level })), START_BACK.subject], true);
+        say("Na jakim poziomie?", 3500);
+      }
+      return;
+    }
     if (startStep === "subject") {
       startStep = "level";
       scene.subject = c.id;
@@ -9667,7 +9692,7 @@
       if (c.id === "place" && scene.background === "studio") Object.assign(scene, { background: "mountains", time: "golden", light: "nat-back", lightZone: "R2" });
       playFrames([{ pose: MP.pointLeft, dur: 700 }, { pose: MP.pointLeft, dur: 200 }, { pose: MP.hip, dur: 900 }]);
       // Ostatnio wybrany poziom jest podświetlony
-      showStart(LEVELS.map(l => ({ ...l, pressed: l.id === level })), true);
+      showStart([...LEVELS.map(l => ({ ...l, pressed: l.id === level })), START_BACK.subject], true);
       say("Na jakim poziomie? Podstawowy to najważniejsze opcje, Ekspert daje wszystkie możliwości. Zmienisz to w menu.", 6500);
       return;
     }
@@ -9675,7 +9700,7 @@
       startStep = "flow";
       setLevel(c.id);
       playFrames([{ pose: MP.lookHand, dur: 700 }, { pose: MP.hip, dur: 800 }]);
-      showStart(FLOWS, true);
+      showStart([...FLOWS, START_BACK.level], true);
       say(c.id === "expert" ? "Ekspert, szacunek. Jak pracujemy? Kreator prowadzi krok po kroku, w Swobodzie wszystko jest pod ręką." : "Jak pracujemy? Kreator prowadzi krok po kroku, w Swobodzie wszystko jest pod ręką.", 6000);
       return;
     }
