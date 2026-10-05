@@ -647,3 +647,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Scenografia jako dodatki tła (kilka naraz, `studioSet`): łuk albo koło, bryły (postumenty, kostki, walce), cień liści albo żaluzji, rośliny w wazonach, tkanina, kolorowe światło. Rysowane w szkicu i w Próbnym kadrze; do Maniscryptu jako „with …”.
 - Wnętrza: Pokój ma też Łazienkę i Butik.
 - Gotowce Manito: „Kosmetyk pod łukiem” (beż, łuk, cień liści, rośliny) i „Packshot własnego” (własna bryła na białym).
+
+## Tła sezonowe (tylko Manito)
+
+- Tło **Sezon** (`subjects: ["object"]`, filtrowane przez `fitsBody`; przy zmianie tematu `fixScene` wraca do Studia, losowanie innych tematów go nie wybiera).
+- Warianty (`BG_VARIANTS.season`, `tone` = kolor aranżacji): Wiosna, Lato, Jesień, Zima, Boże Narodzenie, Halloween, Walentynki, Wielkanoc, Sylwester, Dzień Matki, Black Friday; dodatki: Konfetti, Światełka, Prezenty.
+- Rysunek `seasonSet` (szkic i Próbny kadr): tło w tonie okazji i motywy po bokach i u góry (kwitnące gałązki, słońce i muszle, liście i dynie, śnieg i choinki, bombki, nietoperze i lampiony z dyni, serca, pisanki i tulipany, serpentyny, torby z zakupami). Bez pory dnia (jak studio).
+- Gotowce Manito: „Świąteczny prezent”, „Walentynkowy kosmetyk”.

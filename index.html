@@ -1418,6 +1418,8 @@
     ]},
     { id: "background", label: "Tło", patch: "#8580B1", options: [
       { id: "studio", name: "Studio", short: "Studio", prompt: "plain seamless studio backdrop in neutral grey" },
+      // Sezonowe aranżacje studia: tylko dla Manito (zdjęcia produktowe na okazje)
+      { id: "season", name: "Sezon", short: "Sezon", subjects: ["object"], prompt: "festive seasonal product set" },
       { id: "city", name: "Miasto", children: [
         { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in the background, softly out of focus" },
         { id: "rooftop", name: "Dach", short: "Dach", prompt: "city rooftop with a skyline in the background, softly out of focus" },
@@ -1499,6 +1501,23 @@
   // Warianty tła: podstawa (jedna do wyboru, pierwsza domyślna, własny opis w prompcie) i dodatki (add: opis),
   // które łączą się z podstawą i ze sobą. excl: dodatki, które się wykluczają (rysunki leżałyby na sobie).
   const BG_VARIANTS = {
+    // tone: kolor tła aranżacji (szkic i Próbny kadr), motywy rysuje seasonSet
+    season: [
+      { id: "spring", name: "Wiosna", tone: "#CFE3C0", prompt: "fresh spring product set with a soft pastel green backdrop, blooming cherry blossom branches and scattered petals" },
+      { id: "summer", name: "Lato", tone: "#F2D9A0", prompt: "sunny summer product set with warm sand, seashells, palm leaf shadows and bright sunlight" },
+      { id: "autumn", name: "Jesień", tone: "#D9A06A", prompt: "cosy autumn product set with a warm orange backdrop, fallen maple leaves, small pumpkins and pine cones" },
+      { id: "winter", name: "Zima", tone: "#DCE6EE", prompt: "frosty winter product set with a pale icy blue backdrop, snowflakes, soft fake snow and frosted pine twigs" },
+      { id: "christmas", name: "Boże Narodzenie", tone: "#8E2F2F", prompt: "festive Christmas product set with a deep red backdrop, fir branches, golden baubles and warm fairy-light bokeh" },
+      { id: "halloween", name: "Halloween", tone: "#3A2A44", prompt: "spooky Halloween product set with a dark purple backdrop, carved jack-o'-lanterns, bats, cobwebs and candlelight" },
+      { id: "valentine", name: "Walentynki", tone: "#E8A0B0", prompt: "romantic Valentine's Day product set with a soft pink backdrop, red hearts, rose petals and roses" },
+      { id: "easter", name: "Wielkanoc", tone: "#F0E6B8", prompt: "cheerful Easter product set with a pastel yellow backdrop, painted Easter eggs, tulips and fresh grass" },
+      { id: "newyear", name: "Sylwester", tone: "#1E2236", prompt: "glamorous New Year's Eve product set with a dark navy backdrop, gold confetti, streamers and sparkling bokeh" },
+      { id: "mothers", name: "Dzień Matki", tone: "#F2D4D0", prompt: "tender Mother's Day product set with a blush backdrop, fresh peonies and a handwritten card" },
+      { id: "blackfriday", name: "Black Friday", tone: "#18181B", prompt: "bold Black Friday sale product set with a black backdrop, a dramatic spotlight and shopping bags" },
+      { id: "confetti", name: "Konfetti", add: "colourful confetti scattered around" },
+      { id: "bokeh", name: "Światełka", add: "soft glowing bokeh lights in the background" },
+      { id: "gifts", name: "Prezenty", add: "wrapped gift boxes with ribbons beside the product" }
+    ],
     studio: [
       { id: "grey", name: "Szare", prompt: "plain seamless studio backdrop in neutral grey" },
       { id: "white", name: "Białe", prompt: "clean seamless white studio backdrop" },
@@ -1677,7 +1696,7 @@
   const isBackLight = id => id.endsWith("-back");
   const isNaturalLight = id => id.startsWith("nat");
   // Na zewnątrz jest niebo: naturalne światło to słońce albo księżyc. We wnętrzu i studiu to okno.
-  const isOutdoor = bg => !["studio", "room", "cafe", "kitchen"].includes(bg);
+  const isOutdoor = bg => !["studio", "season", "room", "cafe", "kitchen"].includes(bg);
   // Strona kamery i zwrot ciała. Manikun jest rysowany przodem w prawo. Kamera po lewej stronie postaci oznacza postać
   // zwróconą w lewą stronę kadru (tak zrobi generator), więc wtedy rysunek się odbija; odwrócenie się od kamery odbija z powrotem.
   const camSide = st => /^L/.test(st.camera) ? "L" : /^R/.test(st.camera) ? "R" : "C";
@@ -1714,7 +1733,7 @@
     return ["L1", "L2", "T", "R2", "R1"];
   }
   // Pora dnia nie zmienia studia: tam kategoria jest wyłączona
-  const timeApplies = st => st.background !== "studio";
+  const timeApplies = st => st.background !== "studio" && st.background !== "season";
   function lightPrompt() {
     const from = ZONES[scene.lightZone].from;
     if (!isNaturalLight(scene.light)) return optionOf("light", scene.light).prompt.replace("{from}", from);
@@ -2089,17 +2108,17 @@
       // Obiekt: zdjęcie produktowe przedmiotu na wybranej podstawie
       (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ") + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt(),
-      bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
+      bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : scene.subject === "place" ? [
       // Manitam: samo miejsce jako temat, ostre, bez ludzi i zwierząt
       (!styleOf(scene) || styleOf(scene).photo ? "Scenic photograph of the " : "Scenic image of the ") + placeOf() + ", the place itself is the main motif, everything in sharp focus, no people, no animals",
       placeLight(),
-      ...(scene.background === "studio" ? [] : [optionOf("time", scene.time).prompt])
+      ...(!timeApplies(scene) ? [] : [optionOf("time", scene.time).prompt])
     ] : scene.subject === "animal" ? [
       // Zwierzę: jedno zwierzę jako główny temat, w wybranej pozie i umaszczeniu
       (!styleOf(scene) || styleOf(scene).photo ? "Photograph of " : "Image of ") + petDesc(animalIt(), "a single ") + ", the animal as the only main subject in sharp focus, whole animal visible",
       lightPrompt(),
-      bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
+      bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : [
       shot.prompt + " " + bodyPrompt() + " " + outfitPrompt() + lookPrompt() + (exprOf(scene) && scene.turn !== "back" ? ", " + lookOpt("expr", exprOf(scene)).prompt : "") + (gazePrompt() ? ", " + gazePrompt() : ""),
       // Przy zbliżeniu na twarz poza ciała nie jest widoczna
@@ -2108,7 +2127,7 @@
         ? [...(isSelfie(scene.camera) || (standArms(scene) && ["chin", "shade"].includes(scene.arms)) ? [standArms(scene) ? armsPrompt() : selfieArm()] : []), ...(turnOf(scene) !== "camera" ? [turnPrompt()] : [])]
         : [posePrompt() + thingsPrompt(scene)]),
       lightPrompt(),
-      bgPrompt() + (scene.background === "studio" ? "" : ", " + optionOf("time", scene.time).prompt)
+      bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
     if (scene.mode === "video") parts.push(isSelfie(scene.camera) ? "handheld selfie video filmed by the phone itself, moving slightly with the subject's hand" : optionOf("motion", scene.motion).prompt);
     if (isSelfie(scene.camera)) parts.push("no phone visible in the picture");
@@ -3810,6 +3829,73 @@
     });
   }
 
+  // Sezonowa aranżacja: ściana i podłoga w tonie okazji, motywy po bokach i u góry (środek zostaje dla produktu)
+  function seasonSet(g, defs, uid, W, H, gy, u, v) {
+    const id = v[0] || "spring", has = k => v.includes(k), tone = (BG_VARIANTS.season.find(x => x.id === id) || BG_VARIANTS.season[0]).tone;
+    const fy = Math.min(gy, H * 0.92), m = Math.min(W, H), dark = ["christmas", "halloween", "newyear", "blackfriday"].includes(id);
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, vGrad(defs, uid + "zw", [[0, shadeHex(tone, flatDraw ? -0.1 : 0.06)], [(fy - H * 0.2) / H, tone], [fy / H, shadeHex(tone, -0.08)], [1, shadeHex(tone, -0.2)]]), g);
+    if (!flatDraw) radGlow(g, defs, uid + "zs", W / 2, H * 0.5, Math.max(W, H) * 0.42, "#FFFFFF", dark ? "0.12" : "0.3", H * 0.45);
+    const P = (d, fill, op = 1, stroke = "none", sw = 0) => el("path", { d, style: `fill:${fill};stroke:${stroke};stroke-width:${f(sw)};opacity:${op}` }, g);
+    const C = (x, y, r, fill, op = 1) => el("circle", { cx: f(x), cy: f(y), r: f(r), style: `fill:${fill};stroke:none;opacity:${op}` }, g);
+    const E = (x, y, rx, ry, rot, fill, op = 1) => el("ellipse", { cx: f(x), cy: f(y), rx: f(rx), ry: f(ry), transform: `rotate(${rot} ${f(x)} ${f(y)})`, style: `fill:${fill};stroke:rgba(0,0,0,0.25);stroke-width:${f(u * 0.15)};opacity:${op}` }, g);
+    const heart = (x, y, r, fill, op = 1) => P(`M${f(x)},${f(y + r * 0.9)} C${f(x - r * 1.6)},${f(y - r * 0.2)} ${f(x - r * 0.6)},${f(y - r * 1.3)} ${f(x)},${f(y - r * 0.45)} C${f(x + r * 0.6)},${f(y - r * 1.3)} ${f(x + r * 1.6)},${f(y - r * 0.2)} ${f(x)},${f(y + r * 0.9)} Z`, fill, op);
+    const line = (d, color, w, op = 1) => el("path", { d, style: `fill:none;stroke:${color};stroke-width:${f(w)};stroke-linecap:round;opacity:${op}` }, g);
+    const pumpkin = (x, y, r, face) => { line(`M${f(x)},${f(y - r * 0.8)} L${f(x + r * 0.15)},${f(y - r * 1.15)}`, "#4E6B2E", u * 0.8); [-0.5, 0.5, 0].forEach(dx => E(x + dx * r, y, r * 0.55, r * 0.75, 0, "#E07A28")); if (face) { P(`M${f(x - r * 0.4)},${f(y - r * 0.2)} L${f(x - r * 0.2)},${f(y - r * 0.45)} L${f(x - r * 0.05)},${f(y - r * 0.2)} Z M${f(x + r * 0.05)},${f(y - r * 0.2)} L${f(x + r * 0.2)},${f(y - r * 0.45)} L${f(x + r * 0.4)},${f(y - r * 0.2)} Z M${f(x - r * 0.35)},${f(y + r * 0.15)} L${f(x + r * 0.35)},${f(y + r * 0.15)} L${f(x)},${f(y + r * 0.4)} Z`, "#FFD36B"); } };
+    const bat = (x, y, r) => P(`M${f(x)},${f(y)} Q${f(x - r * 0.6)},${f(y - r * 0.6)} ${f(x - r * 1.4)},${f(y - r * 0.3)} Q${f(x - r * 1)},${f(y)} ${f(x - r * 0.9)},${f(y + r * 0.3)} Q${f(x - r * 0.4)},${f(y)} ${f(x)},${f(y + r * 0.3)} Q${f(x + r * 0.4)},${f(y)} ${f(x + r * 0.9)},${f(y + r * 0.3)} Q${f(x + r)},${f(y)} ${f(x + r * 1.4)},${f(y - r * 0.3)} Q${f(x + r * 0.6)},${f(y - r * 0.6)} ${f(x)},${f(y)} Z`, "#1A1420");
+    const flake = (x, y, r, op = 0.9) => [0, 60, 120].forEach(a => { const c = Math.cos(a * Math.PI / 180) * r, s2 = Math.sin(a * Math.PI / 180) * r; line(`M${f(x - c)},${f(y - s2)} L${f(x + c)},${f(y + s2)}`, "#FFFFFF", u * 0.35, op); });
+    const sprinkle = (n, a, b, fn) => { for (let k = 0; k < n; k++) fn(((k * 0.618034 + a) % 1) * W, ((k * 0.414214 + b) % 1) * H, k); };
+    const sideFloor = (fn) => [[0.12, 1], [0.86, -1], [0.24, 1], [0.76, -1]].forEach(([x, sd], k) => fn(W * x, fy - (k < 2 ? 0 : -H * 0.02), sd, k));
+    if (id === "spring") {
+      line(`M${f(-W * 0.02)},${f(H * 0.12)} Q${f(W * 0.2)},${f(H * 0.16)} ${f(W * 0.38)},${f(H * 0.08)}`, "#6B4A36", u * 0.9);
+      line(`M${f(W * 1.02)},${f(H * 0.2)} Q${f(W * 0.82)},${f(H * 0.22)} ${f(W * 0.68)},${f(H * 0.14)}`, "#6B4A36", u * 0.9);
+      sprinkle(16, 0.1, 0.05, (x, y, k) => { const yy = H * 0.06 + (y / H) * H * 0.2, xx = k % 2 ? W * 0.05 + x * 0.33 : W * 0.65 + x * 0.33; C(xx, yy, u * (1 + (k % 3) * 0.4), k % 3 ? "#F4B8C8" : "#FFFFFF", 0.95); });
+      sprinkle(10, 0.3, 0.7, (x, y) => E(x, fy + (y / H) * (H - fy) * 0.8, u * 0.8, u * 0.45, x, "#F4B8C8", 0.9));
+    } else if (id === "summer") {
+      C(W * 0.84, H * 0.14, m * 0.09, "#FFD86B", 0.9);
+      P(`M0,${f(fy - H * 0.02)} Q${f(W * 0.3)},${f(fy - H * 0.05)} ${f(W * 0.6)},${f(fy - H * 0.01)} T${f(W)},${f(fy - H * 0.03)} L${f(W)},${f(H)} L0,${f(H)} Z`, "#E8CF98");
+      [[0.14, 0.95], [0.82, 0.97], [0.3, 1.0]].forEach(([x, y], k) => P(`M${f(W * x - u * 2)},${f(fy * y)} Q${f(W * x)},${f(fy * y - u * 3.5)} ${f(W * x + u * 2)},${f(fy * y)} Z`, k % 2 ? "#F2C7B0" : "#FFF3E6", 1, "rgba(0,0,0,0.3)", u * 0.15));
+      for (let k = 0; k < 6; k++) E(W * 0.04 + k * u * 2.2, H * 0.3 + k * u * 1.6, u * 1.2, u * 5, 40 + k * 8, "#000", 0.1);
+    } else if (id === "autumn") {
+      sprinkle(18, 0.2, 0.4, (x, y, k) => E(x, fy - H * 0.01 + (y / H) * (H - fy) * 0.9, u * 1.6, u * 0.8, (k * 47) % 180, ["#C8643A", "#D9A441", "#A8433C"][k % 3]));
+      pumpkin(W * 0.13, fy - u * 2.5, u * 4.5, false); pumpkin(W * 0.86, fy - u * 2, u * 3.5, false);
+      E(W * 0.24, fy - u, u * 1.6, u * 2.4, 0, "#7A5232");
+    } else if (id === "winter") {
+      sprinkle(24, 0.37, 0.71, (x, y, k) => flake(x, y * 0.75, u * (k % 3 ? 0.9 : 1.5), 0.8));
+      P(`M0,${f(fy + H * 0.01)} Q${f(W * 0.15)},${f(fy - H * 0.05)} ${f(W * 0.3)},${f(fy)} Q${f(W * 0.7)},${f(fy + H * 0.02)} ${f(W * 0.85)},${f(fy - H * 0.04)} Q${f(W * 0.95)},${f(fy - H * 0.05)} ${f(W)},${f(fy)} L${f(W)},${f(H)} L0,${f(H)} Z`, "#F4F7FA", 0.95);
+      [0.1, 0.9].forEach(x => { line(`M${f(W * x)},${f(fy)} L${f(W * x)},${f(fy - H * 0.16)}`, "#5E422B", u * 0.6); for (let k = 0; k < 4; k++) P(`M${f(W * x - u * (4 - k * 0.6))},${f(fy - H * 0.03 - k * H * 0.035)} L${f(W * x)},${f(fy - H * 0.08 - k * H * 0.035)} L${f(W * x + u * (4 - k * 0.6))},${f(fy - H * 0.03 - k * H * 0.035)} Z`, "#5E8A6A"); });
+    } else if (id === "christmas") {
+      if (!flatDraw) sprinkle(14, 0.5, 0.2, (x, y, k) => radGlow(g, defs, uid + "zb" + k, x, y * 0.6, u * 3, "#FFD68A", "0.55", u * 3));
+      P(`M0,0 L${f(W)},0 L${f(W)},${f(H * 0.05)} Q${f(W * 0.75)},${f(H * 0.12)} ${f(W * 0.5)},${f(H * 0.06)} Q${f(W * 0.25)},${f(H * 0.12)} 0,${f(H * 0.05)} Z`, "#2E5A3A");
+      [[0.15, 0.16, "#D9A441"], [0.35, 0.12, "#C0392B"], [0.65, 0.13, "#D9A441"], [0.85, 0.17, "#F2E6C4"]].forEach(([x, y, c]) => { line(`M${f(W * x)},${f(H * 0.07)} L${f(W * x)},${f(H * y)}`, "#D9C8A0", u * 0.2); C(W * x, H * y + u * 1.8, u * 2, c); });
+      if (!has("gifts")) [[0.12, 1], [0.85, 0.8]].forEach(([x, k]) => { el("rect", { x: f(W * x - u * 4 * k), y: f(fy - u * 6 * k), width: f(u * 8 * k), height: f(u * 6 * k), style: "fill:#C0392B;stroke:rgba(0,0,0,0.3);stroke-width:0.5" }, g); line(`M${f(W * x)},${f(fy - u * 6 * k)} L${f(W * x)},${f(fy)}`, "#F2D27A", u * 0.8); });
+    } else if (id === "halloween") {
+      C(W * 0.82, H * 0.16, m * 0.08, "#F2E6C4", 0.85);
+      bat(W * 0.25, H * 0.15, u * 3); bat(W * 0.62, H * 0.1, u * 2.2); bat(W * 0.72, H * 0.26, u * 1.8);
+      for (let k = 0; k < 5; k++) line(`M0,0 L${f(Math.cos(k * 0.39) * m * 0.22)},${f(Math.sin(k * 0.39) * m * 0.22)}`, "#C8C0D0", u * 0.15, 0.6);
+      [0.07, 0.12, 0.17].forEach(r => line(`M${f(m * r)},0 Q${f(m * r * 0.8)},${f(m * r * 0.8)} 0,${f(m * r)}`, "#C8C0D0", u * 0.15, 0.6));
+      pumpkin(W * 0.14, fy - u * 3, u * 5, true); pumpkin(W * 0.86, fy - u * 2.4, u * 4, true);
+    } else if (id === "valentine" || id === "mothers") {
+      if (id === "valentine") sprinkle(12, 0.15, 0.1, (x, y, k) => heart(x, y * 0.7, u * (1.4 + (k % 3)), k % 2 ? "#C0392B" : "#E05A7A", 0.85));
+      else sprinkle(8, 0.15, 0.1, (x, y, k) => C(x, y * 0.6, u * 2.4, k % 2 ? "#F4B8C8" : "#FFFFFF", 0.7));
+      sprinkle(10, 0.6, 0.8, (x, y) => E(x, fy + (y / H) * (H - fy) * 0.8, u * 1, u * 0.55, x, "#C0392B", 0.85));
+      [[0.12, 1], [0.88, -1]].forEach(([x, sd]) => { line(`M${f(W * x)},${f(fy)} L${f(W * x + sd * u * 2)},${f(fy - H * 0.14)}`, "#4E7A44", u * 0.6); C(W * x + sd * u * 2, fy - H * 0.14, u * 2.6, id === "valentine" ? "#B3262E" : "#F4A0B8"); });
+    } else if (id === "easter") {
+      P(`M0,${f(fy)} ${Array.from({ length: 30 }, (_, k) => `L${f(W * k / 29)},${f(fy - (k % 2 ? u * 2.2 : 0))}`).join(" ")} L${f(W)},${f(H)} L0,${f(H)} Z`, "#8CBF6A");
+      [[0.13, "#E58FB0"], [0.2, "#7FB8E0"], [0.82, "#F2D27A"], [0.89, "#B9A0E0"]].forEach(([x, c]) => { E(W * x, fy - u * 2, u * 2.2, u * 3, 0, c); line(`M${f(W * x - u * 2)},${f(fy - u * 2)} L${f(W * x + u * 2)},${f(fy - u * 2)}`, "#FFFFFF", u * 0.5); });
+      [0.06, 0.94].forEach(x => { line(`M${f(W * x)},${f(fy)} L${f(W * x)},${f(fy - H * 0.16)}`, "#4E7A44", u * 0.6); P(`M${f(W * x - u * 2)},${f(fy - H * 0.16)} L${f(W * x - u * 2)},${f(fy - H * 0.2)} L${f(W * x)},${f(fy - H * 0.18)} L${f(W * x + u * 2)},${f(fy - H * 0.2)} L${f(W * x + u * 2)},${f(fy - H * 0.16)} Q${f(W * x)},${f(fy - H * 0.14)} ${f(W * x - u * 2)},${f(fy - H * 0.16)} Z`, "#E05A5A"); });
+    } else if (id === "newyear") {
+      if (!flatDraw) sprinkle(12, 0.4, 0.3, (x, y, k) => radGlow(g, defs, uid + "zn" + k, x, y * 0.7, u * 3.5, "#F2D27A", "0.45", u * 3.5));
+      [[0.1, "#D9A441"], [0.4, "#C8C8D8"], [0.7, "#D9A441"]].forEach(([x, c]) => line(`M${f(W * x)},0 Q${f(W * x + u * 6)},${f(H * 0.12)} ${f(W * x - u * 3)},${f(H * 0.24)} T${f(W * x + u * 4)},${f(H * 0.4)}`, c, u * 0.6, 0.9));
+      sprinkle(30, 0.2, 0.6, (x, y, k) => C(x, y, u * 0.5, k % 2 ? "#F2D27A" : "#FFFFFF", 0.9));
+    } else if (id === "blackfriday") {
+      P(`M${f(W * 0.42)},0 L${f(W * 0.58)},0 L${f(W * 0.8)},${f(fy)} L${f(W * 0.2)},${f(fy)} Z`, "#FFFFFF", 0.08);
+      [[0.12, "#C0392B", 1], [0.22, "#F2F2F2", 0.8], [0.85, "#D9A441", 0.9]].forEach(([x, c, k]) => { const w = u * 7 * k, h = u * 8 * k; el("rect", { x: f(W * x - w / 2), y: f(fy - h), width: f(w), height: f(h), style: `fill:${c};stroke:rgba(0,0,0,0.35);stroke-width:0.5` }, g); line(`M${f(W * x - w * 0.25)},${f(fy - h)} Q${f(W * x)},${f(fy - h - u * 4 * k)} ${f(W * x + w * 0.25)},${f(fy - h)}`, "#2B2C30", u * 0.4); });
+    }
+    if (has("bokeh")) sprinkle(12, 0.66, 0.15, (x, y, k) => C(x, y * 0.7, u * (2 + (k % 3)), ["#FFE3A8", "#FFFFFF", "#F4B8C8"][k % 3], 0.35));
+    if (has("confetti")) sprinkle(40, 0.9, 0.45, (x, y, k) => el("rect", { x: f(x), y: f(y), width: f(u * 0.9), height: f(u * 0.45), transform: `rotate(${(k * 53) % 180} ${f(x)} ${f(y)})`, style: `fill:${["#E05A7A", "#F2D27A", "#5AA8E8", "#8CBF6A", "#B9A0E0"][k % 5]};stroke:none` }, g));
+    if (has("gifts")) [[0.1, "#C0392B", 1.1], [0.2, "#4E86C8", 0.75], [0.86, "#D9A441", 0.95]].forEach(([x, c, k]) => { const w = u * 7 * k, h = u * 6 * k; el("rect", { x: f(W * x - w / 2), y: f(fy - h), width: f(w), height: f(h), style: `fill:${c};stroke:rgba(0,0,0,0.3);stroke-width:0.5` }, g); line(`M${f(W * x)},${f(fy - h)} L${f(W * x)},${f(fy)}`, "#F2E6C4", u * 0.7); line(`M${f(W * x - w / 2)},${f(fy - h / 2)} L${f(W * x + w / 2)},${f(fy - h / 2)}`, "#F2E6C4", u * 0.7); E(W * x - u, fy - h - u * 0.6, u * 1.2, u * 0.7, -25, "#F2E6C4"); E(W * x + u, fy - h - u * 0.6, u * 1.2, u * 0.7, 25, "#F2E6C4"); });
+  }
+
   // Pokój: jasna ściana z listwą, podłoga z desek w perspektywie (okno, meble i dodatki rysuje dalej drawBackgroundBase)
   function richRoomBase(g, defs, uid, W, H, hz, gy, u, fy) {
     paint("rect", { x: 0, y: 0, width: f(W), height: f(fy) }, vGrad(defs, uid + "rw", [[0, "#B7AB98"], [0.5, "#CABFAD"], [1, "#BFB39F"]]), g);
@@ -4027,6 +4113,7 @@
       el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
       paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
     };
+    if (kind === "season") { seasonSet(g, defs, uid, W, H, gy, u, v || []); return; }
     if (kind === "studio" && !flatDraw) { richStudio(g, defs, uid, W, H, hz, gy, u, v && v[0]); studioSet(g, defs, uid, W, H, gy, u, v || []); return; }
     if (kind === "studio") {
       // Ciemna ściana, jaśniejsza podłoga z miękkim przejściem i plama światła za postacią
@@ -5255,6 +5342,9 @@
       { id: "bottle", name: "Butelka na skałach", set: { item: "bottle", base: "stone", itemColor: "auto", camera: "R2", light: "nat-back", lightZone: "L2", background: "beach", bgv: { beach: "sand" }, bga: { beach: ["rocks"] }, time: "golden" } },
       // Studio z aranżacją: kolorowe tło, łuk, cień liści, rośliny; packshot na białym pod własny produkt
       { id: "archstudio", name: "Kosmetyk pod łukiem", set: { item: "serum", base: "pedestal", itemColor: "cream", camera: "L2", light: "art-front", lightZone: "L1", background: "studio", bgv: { studio: "beige" }, bga: { studio: ["arch", "leaves", "plants"] } } },
+      // Sezonowe: tło Sezon (tylko Manito)
+      { id: "xmas", name: "Świąteczny prezent", set: { item: "bag", base: "table", itemColor: "burgundy", camera: "L2", light: "art-front", lightZone: "L1", background: "season", bgv: { season: "christmas" }, bga: { season: ["gifts", "bokeh"] } } },
+      { id: "valentine", name: "Walentynkowy kosmetyk", set: { item: "serum", base: "pedestal", itemColor: "pink", camera: "L2", light: "art-front", lightZone: "R1", background: "season", bgv: { season: "valentine" } } },
       { id: "packshot", name: "Packshot własnego", set: { item: "own", prod: { ...PROD0 }, base: "float", itemColor: "auto", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: { studio: "packshot" } } }
     ],
     place: [
@@ -5341,7 +5431,7 @@
     for (let k = 0; ; k++) {
       // Co piąte losowanie bez motywu: całkiem dowolna scena
       const th = Math.random() < 0.2 ? null : anyOf(R_THEMES);
-      const bg = th ? anyOf(Object.keys(th.bg)) : anyOf(leavesOf("background")).id;
+      const bg = th ? anyOf(Object.keys(th.bg)) : anyOf(leavesOf("background").filter(o => fitsBody(o, scene))).id;
       if (k < 8 && (rollRecent.bg.includes(bg) || (th && rollRecent.theme.includes(th.id)))) continue;
       return { th, bg };
     }
@@ -7132,6 +7222,8 @@
     // Dron tylko w plenerze (we wnętrzu kamera przechodzi na ujęcie z góry) i zawsze z całą sylwetką
     if (scene.camera === "D" && !isOutdoor(scene.background)) scene.camera = "T";
     if (scene.camera === "D" && scene.shot !== "full") scene.shot = "full";
+    // Sezonowe tła są tylko dla Manito
+    if (scene.background === "season" && scene.subject !== "object") scene.background = "studio";
     // Selfie tylko z postacią
     if (scene.subject !== "person" && isSelfie(scene.camera)) scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
@@ -7853,8 +7945,8 @@
     // Kontra na krawędzi Manikuna w kolorze miejsca i pory dnia (własna kopia filtra, szkic i start się nie zmieniają)
     const rim = document.getElementById("figRim").cloneNode(true), defs0 = trialSvg.querySelector("defs");
     rim.id = "trialRim";
-    const tc = scene.background === "studio" ? null : { golden: "#FFB070", night: "#8AA6FF" }[scene.time];
-    const RIM_BG = { studio: "#FFFFFF", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", desert: "#FFD9A0", park: "#DDEFC4", snowpeaks: "#E6F0FF", kitchen: "#FFF0D8", cafe: "#FFC88C" };
+    const tc = !timeApplies(scene) ? null : { golden: "#FFB070", night: "#8AA6FF" }[scene.time];
+    const RIM_BG = { studio: "#FFFFFF", season: "#FFF2E0", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", desert: "#FFD9A0", park: "#DDEFC4", snowpeaks: "#E6F0FF", kitchen: "#FFF0D8", cafe: "#FFC88C" };
     rim.querySelectorAll("[id]").forEach(n => { n.id = "trial-" + n.id; });
     const flood = rim.querySelector("feFlood"), off = rim.querySelector("feOffset");
     flood.setAttribute("flood-color", tc || RIM_BG[scene.background] || "#FFFFFF");
