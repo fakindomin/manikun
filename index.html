@@ -1277,8 +1277,13 @@
       { id: "bottle", name: "Butelka", short: "Butelka" }, { id: "serum", name: "Kosmetyk", short: "Kosmetyk" },
       { id: "mug", name: "Kubek", short: "Kubek" }, { id: "sneaker", name: "But", short: "But" },
       { id: "watch", name: "Zegarek", short: "Zegarek" }, { id: "bag", name: "Torebka", short: "Torebka" },
-      { id: "phone", name: "Telefon", short: "Telefon" }, { id: "food", name: "Jedzenie", short: "Jedzenie" }
+      { id: "phone", name: "Telefon", short: "Telefon" }, { id: "food", name: "Jedzenie", short: "Jedzenie" },
+      { id: "own", name: "Własny", short: "Własny" }
     ]},
+    // Konstruktor własnego Manito: bryła zastępcza pod własny produkt (kafelki buduje prodTiles)
+    { id: "pShape", label: "Kształt", subjects: ["object"], patch: "#6E8B4A", options: [], when: st => st.item === "own" },
+    { id: "pMat", label: "Materiał", subjects: ["object"], patch: "#8E7A62", options: [], when: st => st.item === "own" },
+    { id: "pDetail", label: "Detale", subjects: ["object"], patch: "#5E7FA3", options: [], when: st => st.item === "own" },
     { id: "base", label: "Podstawa", subjects: ["object"], patch: "#8E7A62", options: [
       { id: "table", name: "Stół", short: "Stół", prompt: "standing on a wooden table" },
       { id: "pedestal", name: "Cokół", short: "Cokół", prompt: "displayed on a minimalist stone pedestal" },
@@ -1609,7 +1614,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", animal: "dog", animalPose: "sit", animalCoat: "golden", beast: null, body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", prod: null, animal: "dog", animalPose: "sit", animalCoat: "golden", beast: null, body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -2855,7 +2860,7 @@
     // Manito z ekipy: ten sam rysunek co w trybie Manito, w skali drobiazgu na blacie
     if (it.manito && ITEMS[it.manito.item]) {
       const hex = it.manito.color && it.manito.color !== "auto" && colorOf(it.manito.color) ? colorOf(it.manito.color).hex : ITEMS[it.manito.item].color;
-      drawItem(g, el("defs", {}, g), it.manito.item, x, y, s * ITEM_SCALE * 0.16, hex);
+      drawItem(g, el("defs", {}, g), it.manito.item, x, y, s * ITEM_SCALE * 0.16, hex, it.manito.prod ? prodOf({ prod: it.manito.prod }) : null);
       return;
     }
     if (info.sign) { drawSign(g, info.name, info.kind, x, y, s); return; }
@@ -4525,6 +4530,128 @@
     if (kind > 0) lampGlyph(el("g", { opacity: f(kind * depth) }, g), L.x, L.y, r);
   }
 
+  // ---------- Własne Manito: bryła zastępcza (kształt, proporcje, materiał, zamknięcie, etykieta) ----------
+  // Pusta etykieta = czysty produkt bez napisów: łatwo wstawić w jego miejsce własny produkt (w edytorze albo generatorze)
+  const PROD = {
+    shape: { name: "Bryła", opts: [{ id: "cube", name: "Kostka", en: "cube-shaped product" }, { id: "box", name: "Pudełko", en: "rectangular box-shaped product" },
+      { id: "cylinder", name: "Walec", en: "cylindrical product" }, { id: "can", name: "Puszka", en: "can-shaped product container" }, { id: "sphere", name: "Kula", en: "spherical product" },
+      { id: "cone", name: "Stożek", en: "cone-shaped product" }, { id: "pyramid", name: "Ostrosłup", en: "pyramid-shaped product" }, { id: "bottle", name: "Butelka", en: "product bottle" },
+      { id: "jar", name: "Słoik", en: "product jar" }, { id: "tube", name: "Tubka", en: "squeeze tube" }, { id: "pouch", name: "Saszetka", en: "stand-up pouch" },
+      { id: "disc", name: "Krążek", en: "flat round disc-shaped product" }, { id: "slab", name: "Płytka", en: "flat rectangular slab-shaped product" }] },
+    prop: { name: "Proporcje", opts: [{ id: "low", name: "Niski, szeroki", en: "short and wide" }, { id: "regular", name: "Zwykłe", en: "" }, { id: "tall", name: "Wysoki, smukły", en: "tall and slim" }] },
+    size: { name: "Wielkość", opts: [{ id: "tiny", name: "Malutki", en: "tiny" }, { id: "hand", name: "Do dłoni", en: "hand-sized" }, { id: "medium", name: "Średni", en: "medium-sized" },
+      { id: "large", name: "Duży", en: "large" }, { id: "huge", name: "Wielki", en: "very large waist-high" }] },
+    material: { name: "Materiał", opts: [{ id: "plastic", name: "Plastik", en: "plastic" }, { id: "glass", name: "Szkło", en: "clear glass" }, { id: "frosted", name: "Szkło matowe", en: "frosted glass" },
+      { id: "metal", name: "Metal", en: "brushed metal" }, { id: "chrome", name: "Chrom", en: "polished chrome" }, { id: "wood", name: "Drewno", en: "natural wood" },
+      { id: "ceramic", name: "Ceramika", en: "ceramic" }, { id: "cardboard", name: "Karton", en: "cardboard" }, { id: "fabric", name: "Tkanina", en: "fabric" },
+      { id: "leather", name: "Skóra", en: "leather" }, { id: "stone", name: "Kamień", en: "stone" }, { id: "concrete", name: "Beton", en: "concrete" }, { id: "rubber", name: "Silikon", en: "soft silicone" }] },
+    finish: { name: "Wykończenie", opts: [{ id: "matte", name: "Matowe", en: "matte" }, { id: "satin", name: "Satynowe", en: "satin" }, { id: "gloss", name: "Błyszczące", en: "glossy" },
+      { id: "metallic", name: "Metaliczne", en: "metallic" }, { id: "pearl", name: "Perłowe", en: "pearlescent" }] },
+    color2: { name: "Kolor detali", opts: [] },
+    top: { name: "Zamknięcie", opts: [{ id: "none", name: "Brak", en: "" }, { id: "cap", name: "Nakrętka", en: "screw cap" }, { id: "lid", name: "Pokrywka", en: "wide lid" },
+      { id: "pump", name: "Pompka", en: "pump dispenser" }, { id: "dropper", name: "Pipeta", en: "dropper cap" }, { id: "spray", name: "Atomizer", en: "spray nozzle" },
+      { id: "cork", name: "Korek", en: "cork stopper" }, { id: "handle", name: "Uchwyt", en: "carry handle" }] },
+    label: { name: "Etykieta", opts: [{ id: "blank", name: "Pusta (do podmiany)", en: "" }, { id: "plain", name: "Gładka etykieta", en: "a plain blank label" },
+      { id: "band", name: "Pasek", en: "band around it" }, { id: "logo", name: "Miejsce na logo", en: "a small blank logo area" }, { id: "text", name: "Twój napis", en: "" }] }
+  };
+  const PROD_CATS = { pShape: ["shape", "prop", "size"], pMat: ["material", "finish", "color2"], pDetail: ["top", "label"] };
+  const PROD0 = { shape: "cylinder", prop: "regular", size: "hand", material: "plastic", finish: "matte", color2: "black", top: "cap", label: "blank", text: "" };
+  const prodOf = (st = scene) => ({ ...PROD0, ...(st.prod || {}) });
+  const prodNow = () => prodOf(scene);
+  const prodOpt = (k, id) => k === "color2" ? colorOf(id) || COLORS[0] : PROD[k].opts.find(o => o.id === id) || PROD[k].opts[0];
+  // Kafelek zamknięcia nie ma sensu przy kuli, stożku, ostrosłupie i tubce (tubka ma nakrętkę na dole)
+  const prodPartOn = (r, k) => !(k === "top" && ["sphere", "cone", "pyramid", "tube", "pouch", "slab"].includes(r.shape));
+  // Opis do Maniscryptu; c: słowo koloru (puste = biały)
+  function prodPhrase(r, c) {
+    const o = k => prodOpt(k, r[k]), en = k => o(k).en, c2 = (colorOf(r.color2) || COLORS[0]).word;
+    const head = [en("size"), en("prop"), r.finish === "matte" && ["glass", "chrome"].includes(r.material) ? "" : en("finish"), (c || (MAT_HEX[r.material] ? "" : "white ")).trim(), en("material"), en("shape")].filter(Boolean).join(" ");
+    const extra = [];
+    if (prodPartOn(r, "top") && en("top")) extra.push(`with a ${c2} ${en("top")}`);
+    if (r.shape === "tube") extra.push(`with a ${c2} cap at the bottom`);
+    if (r.label === "band") extra.push(`with a ${c2} band around it`);
+    else if (r.label === "plain" || r.label === "logo") extra.push("with " + en("label"));
+    else if (r.label === "text" && r.text) extra.push(`with a clean label with the text "${r.text}"`);
+    const blank = r.label === "blank" ? ", plain and blank with no label, no text and no logo, clean simple surfaces, a neutral stand-in that can be replaced with a real product" : "";
+    return an(head) + (extra.length ? " " + extra.join(", ") : "") + blank;
+  }
+  // Rysunek bryły w polu 100×100 (dół = 100, środek x = 50): części jak w ITEMS + accent (kolor detali), face (etykieta)
+  function prodParts(r) {
+    const BASE = { cube: [50, 50], box: [60, 46], cylinder: [44, 58], can: [40, 56], sphere: [56, 56], cone: [52, 62], pyramid: [58, 56], bottle: [38, 74],
+      jar: [50, 48], tube: [34, 70], pouch: [50, 62], disc: [64, 16], slab: [62, 12] }[r.shape] || [44, 58];
+    const k = { low: [1.3, 0.62], tall: [0.74, 1.35], regular: [1, 1] }[r.prop] || [1, 1];
+    const hasTop = prodPartOn(r, "top") && r.top !== "none", maxH = hasTop ? 80 : 92;
+    let w = Math.min(90, BASE[0] * k[0]), h = Math.min(maxH, BASE[1] * k[1]);
+    if (r.shape === "sphere") w = h = Math.min(w, h, 80);
+    const x0 = 50 - w / 2, x1 = 50 + w / 2, yt = 100 - h, out = [], n = v => v.toFixed(1);
+    const P = (d, kind) => out.push([d, kind]);
+    let topY = yt, topW = w * 0.42, mid = yt + h * 0.55, labW = w * 0.72, labH = h * 0.34;
+    if (r.shape === "cube" || r.shape === "box" || r.shape === "slab") {
+      const d = Math.min(w, h) * 0.22;
+      P(`M${n(x0)} ${n(yt + d)} L${n(x1 - d)} ${n(yt + d)} L${n(x1 - d)} 100 L${n(x0)} 100 Z`, "main");
+      P(`M${n(x0)} ${n(yt + d)} L${n(x0 + d)} ${n(yt)} L${n(x1)} ${n(yt)} L${n(x1 - d)} ${n(yt + d)} Z`, "light");
+      P(`M${n(x1 - d)} ${n(yt + d)} L${n(x1)} ${n(yt)} L${n(x1)} ${n(100 - d)} L${n(x1 - d)} 100 Z`, "dark");
+      topY = yt + d / 2; mid = yt + d + (h - d) * 0.5; labW = (w - d) * 0.7; labH = (h - d) * 0.4;
+      out.labX = 50 - d / 2;
+    } else if (["cylinder", "can", "disc", "jar"].includes(r.shape)) {
+      const rx = w / 2, ry = Math.max(2.5, w * 0.13), body = r.shape === "jar" ? yt + h * 0.14 : yt;
+      P(`M${n(x0)} ${n(body + ry)} L${n(x0)} ${n(100 - ry)} A${n(rx)} ${n(ry)} 0 0 0 ${n(x1)} ${n(100 - ry)} L${n(x1)} ${n(body + ry)} Z`, "main");
+      P(`M${n(x0)} ${n(body + ry)} A${n(rx)} ${n(ry)} 0 1 0 ${n(x1)} ${n(body + ry)} A${n(rx)} ${n(ry)} 0 1 0 ${n(x0)} ${n(body + ry)} Z`, "light");
+      if (r.shape === "can") [body + ry + 3, 100 - ry - 3].forEach(y => P(`M${n(x0)} ${n(y)} A${n(rx)} ${n(ry)} 0 0 0 ${n(x1)} ${n(y)}`, "line"));
+      if (r.shape === "jar") { const nx = w * 0.4; P(`M${n(50 - nx)} ${n(yt + ry)} L${n(50 - nx)} ${n(body + ry)} L${n(50 + nx)} ${n(body + ry)} L${n(50 + nx)} ${n(yt + ry)} Z`, "dark"); topW = nx * 2.1; }
+      topY = yt + ry * 0.4; mid = body + ry + (100 - body - 2 * ry) * 0.5; labH = Math.min(labH, (100 - body - 2 * ry) * 0.6);
+      if (r.shape === "disc") labH = 0;
+    } else if (r.shape === "sphere") {
+      const rr = w / 2, cy = 100 - rr;
+      P(`M${n(50 - rr)} ${n(cy)} A${n(rr)} ${n(rr)} 0 1 1 ${n(50 + rr)} ${n(cy)} A${n(rr)} ${n(rr)} 0 1 1 ${n(50 - rr)} ${n(cy)} Z`, "main");
+      P(`M${n(50 - rr * 0.55)} ${n(cy - rr * 0.35)} A${n(rr * 0.22)} ${n(rr * 0.14)} -30 1 1 ${n(50 - rr * 0.2)} ${n(cy - rr * 0.55)} A${n(rr * 0.22)} ${n(rr * 0.14)} -30 1 1 ${n(50 - rr * 0.55)} ${n(cy - rr * 0.35)} Z`, "light");
+      mid = cy; labW = rr * 1.1; labH = rr * 0.5;
+    } else if (r.shape === "cone") {
+      const ry = w * 0.13;
+      P(`M${n(x0)} ${n(100 - ry)} L50 ${n(yt)} L${n(x1)} ${n(100 - ry)} A${n(w / 2)} ${n(ry)} 0 0 1 ${n(x0)} ${n(100 - ry)} Z`, "main");
+      mid = yt + h * 0.7; labW = w * 0.4; labH = h * 0.18;
+    } else if (r.shape === "pyramid") {
+      const d = w * 0.2, ax = 50 - d * 0.3;
+      P(`M${n(x0)} 100 L${n(ax)} ${n(yt)} L${n(x1 - d)} 100 Z`, "main");
+      P(`M${n(x1 - d)} 100 L${n(ax)} ${n(yt)} L${n(x1)} ${n(100 - d)} Z`, "dark");
+      mid = yt + h * 0.72; labW = w * 0.32; labH = h * 0.16; out.labX = (x0 + x1 - d) / 2;
+    } else if (r.shape === "bottle") {
+      const nw = w * 0.34, ny = yt + h * 0.2, sh = yt + h * 0.4;
+      P(`M${n(x0 + 4)} 100 Q${n(x0)} 100 ${n(x0)} 96 L${n(x0)} ${n(sh)} Q${n(x0)} ${n(ny + 4)} ${n(50 - nw / 2)} ${n(ny)} L${n(50 - nw / 2)} ${n(yt)} L${n(50 + nw / 2)} ${n(yt)} L${n(50 + nw / 2)} ${n(ny)} Q${n(x1)} ${n(ny + 4)} ${n(x1)} ${n(sh)} L${n(x1)} 96 Q${n(x1)} 100 ${n(x1 - 4)} 100 Z`, "main");
+      topW = nw * 1.15; mid = sh + (100 - sh) * 0.48; labH = (100 - sh) * 0.45;
+    } else if (r.shape === "tube") {
+      const capH = Math.max(6, h * 0.12), bw = w * 0.5;
+      P(`M${n(x0)} ${n(yt + 3)} L${n(x1)} ${n(yt + 3)} L${n(50 + bw / 2)} ${n(100 - capH)} L${n(50 - bw / 2)} ${n(100 - capH)} Z`, "main");
+      P(`M${n(x0 - 1)} ${n(yt)} L${n(x1 + 1)} ${n(yt)} L${n(x1 + 1)} ${n(yt + 5)} L${n(x0 - 1)} ${n(yt + 5)} Z`, "light");
+      P(`M${n(50 - bw * 0.45)} ${n(100 - capH)} L${n(50 + bw * 0.45)} ${n(100 - capH)} L${n(50 + bw * 0.45)} 100 L${n(50 - bw * 0.45)} 100 Z`, "accent");
+      mid = yt + h * 0.42; labW = w * 0.62; labH = h * 0.3;
+    } else if (r.shape === "pouch") {
+      P(`M${n(x0 + 3)} ${n(yt)} L${n(x1 - 3)} ${n(yt)} L${n(x1)} 92 Q${n(x1)} 100 ${n(x1 - 7)} 100 L${n(x0 + 7)} 100 Q${n(x0)} 100 ${n(x0)} 92 Z`, "main");
+      P(`M${n(x0 + 3)} ${n(yt + 7)} L${n(x1 - 3)} ${n(yt + 7)}`, "line");
+      P(`M${n(x0 + 4)} 96 Q50 ${n(100 - h * 0.12)} ${n(x1 - 4)} 96`, "line");
+      mid = yt + h * 0.52;
+    }
+    // Zamknięcie na górze (kolor detali)
+    if (hasTop) {
+      const cw = r.top === "lid" ? Math.max(topW, w * 0.9) : topW, cx0 = 50 - cw / 2, cx1 = 50 + cw / 2;
+      if (r.top === "cap" || r.top === "lid") { const ch = r.top === "lid" ? 6 : 9; P(`M${n(cx0)} ${n(topY - ch + 1)} L${n(cx1)} ${n(topY - ch + 1)} L${n(cx1)} ${n(topY + 2)} L${n(cx0)} ${n(topY + 2)} Z`, "accent"); }
+      else if (r.top === "pump") { P(`M${n(50 - topW * 0.4)} ${n(topY - 8)} L${n(50 + topW * 0.4)} ${n(topY - 8)} L${n(50 + topW * 0.4)} ${n(topY + 2)} L${n(50 - topW * 0.4)} ${n(topY + 2)} Z`, "accent"); P(`M47 ${n(topY - 8)} L47 ${n(topY - 14)} L60 ${n(topY - 14)} L60 ${n(topY - 11)} L53 ${n(topY - 11)} L53 ${n(topY - 8)} Z`, "accent"); }
+      else if (r.top === "dropper") { P(`M${n(50 - topW * 0.4)} ${n(topY - 6)} L${n(50 + topW * 0.4)} ${n(topY - 6)} L${n(50 + topW * 0.4)} ${n(topY + 2)} L${n(50 - topW * 0.4)} ${n(topY + 2)} Z`, "accent"); P(`M44 ${n(topY - 11)} A6 7 0 1 1 56 ${n(topY - 11)} A6 7 0 1 1 44 ${n(topY - 11)} Z`, "accent"); }
+      else if (r.top === "spray") { P(`M${n(50 - topW * 0.45)} ${n(topY - 10)} L${n(50 + topW * 0.45)} ${n(topY - 10)} L${n(50 + topW * 0.45)} ${n(topY + 2)} L${n(50 - topW * 0.45)} ${n(topY + 2)} Z`, "accent"); P(`M${n(50 + topW * 0.45)} ${n(topY - 8)} L${n(50 + topW * 0.45 + 4)} ${n(topY - 8)} L${n(50 + topW * 0.45 + 4)} ${n(topY - 5)} L${n(50 + topW * 0.45)} ${n(topY - 5)} Z`, "dark"); }
+      else if (r.top === "cork") P(`M${n(50 - topW * 0.42)} ${n(topY - 9)} L${n(50 + topW * 0.42)} ${n(topY - 9)} L${n(50 + topW * 0.34)} ${n(topY + 2)} L${n(50 - topW * 0.34)} ${n(topY + 2)} Z`, "cork");
+      else if (r.top === "handle") P(`M${n(50 - w * 0.25)} ${n(topY + 1)} Q${n(50 - w * 0.25)} ${n(topY - 14)} 50 ${n(topY - 14)} Q${n(50 + w * 0.25)} ${n(topY - 14)} ${n(50 + w * 0.25)} ${n(topY + 1)}`, "thick");
+    }
+    // Etykieta na środku bryły
+    const lx = out.labX || 50;
+    if (labH > 0) {
+      if (r.label === "band") P(`M${n(lx - labW * 0.69)} ${n(mid - labH * 0.28)} L${n(lx + labW * 0.69)} ${n(mid - labH * 0.28)} L${n(lx + labW * 0.69)} ${n(mid + labH * 0.28)} L${n(lx - labW * 0.69)} ${n(mid + labH * 0.28)} Z`, "accent");
+      else if (r.label === "plain" || r.label === "text") {
+        P(`M${n(lx - labW / 2)} ${n(mid - labH / 2)} L${n(lx + labW / 2)} ${n(mid - labH / 2)} L${n(lx + labW / 2)} ${n(mid + labH / 2)} L${n(lx - labW / 2)} ${n(mid + labH / 2)} Z`, "face");
+        if (r.label === "text") [-0.18, 0.12].forEach((dy, i) => P(`M${n(lx - labW * (i ? 0.25 : 0.35))} ${n(mid + labH * dy)} L${n(lx + labW * (i ? 0.25 : 0.35))} ${n(mid + labH * dy)}`, "line"));
+      } else if (r.label === "logo") { const rr = Math.min(labW, labH) * 0.32; P(`M${n(lx - rr)} ${n(mid)} A${n(rr)} ${n(rr)} 0 1 1 ${n(lx + rr)} ${n(mid)} A${n(rr)} ${n(rr)} 0 1 1 ${n(lx - rr)} ${n(mid)} Z`, "face"); }
+    }
+    return out;
+  }
+
   // ---------- Obiekt: szkice przedmiotów w polu 100×100 (dół = 100, środek x = 50) ----------
   // Części: main (kolor przedmiotu z cieniowaniem), dark/light (odcienie), line (sama kreska) i stałe kolory detali
   const ITEMS = {
@@ -4552,21 +4679,30 @@
     food: { color: "#E6E3DC", prompt: c => `a beautifully plated gourmet dish on a ${c}plate`, parts: [
       ["M10 94 Q10 88 50 88 Q90 88 90 94 Q90 100 50 100 Q10 100 10 94 Z", "main"],
       ["M24 90 Q26 66 50 64 Q74 66 76 90 Z", "food"], ["M36 70 A4 4 0 1 1 44 70 A4 4 0 1 1 36 70 Z", "green"],
-      ["M55 74 A3 3 0 1 1 61 74 A3 3 0 1 1 55 74 Z", "red"]] }
+      ["M55 74 A3 3 0 1 1 61 74 A3 3 0 1 1 55 74 Z", "red"]] },
+    // Własne: części z prodParts(przepis), opis z prodPhrase (scene.prod)
+    own: { color: "#E9E6E0", prompt: c => prodPhrase(prodNow(), c), parts: [] }
   };
-  const itemHex = (st = scene) => st.itemColor === "auto" ? ITEMS[st.item].color : colorOf(st.itemColor).hex;
+  // Własne bez wybranego koloru: naturalny kolor materiału (drewno, metal, szkło…), inaczej biały
+  const MAT_HEX = { wood: "#B88A5A", metal: "#A8ADB3", chrome: "#C9CDD2", cardboard: "#C8A57A", stone: "#8D8A85", concrete: "#A3A09A", glass: "#CFE3EA", frosted: "#E4ECEE", leather: "#7A4A2E" };
+  const itemHex = (st = scene) => st.itemColor !== "auto" ? colorOf(st.itemColor).hex : st.item === "own" ? MAT_HEX[prodOf(st).material] || ITEMS.own.color : ITEMS[st.item].color;
   let itemSeq = 0;
   // Rysuje przedmiot: środek podstawy w (x, yBottom), skala s px na jednostkę
-  function drawItem(parent, defs, kind, x, yBottom, s, color) {
+  function drawItem(parent, defs, kind, x, yBottom, s, color, prod = null) {
     const g = el("g", { transform: `translate(${f(x - 50 * s)} ${f(yBottom - 100 * s)}) scale(${f(s)})` }, parent);
     const id = "itm" + (++itemSeq);
     const lg = el("linearGradient", { id, x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
     [[0, shadeHex(color, -0.28)], [0.35, shadeHex(color, 0.18)], [0.7, color], [1, shadeHex(color, -0.35)]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lg));
     const FILL = { main: flatDraw ? color : `url(#${id})`, dark: shadeHex(color, -0.45), light: shadeHex(color, 0.35), sole: "#EDEAE3", metal: "#BFC3C8",
-      face: "#F1EFEA", screen: "#15161A", food: "#B8743C", green: "#6E8B4A", red: "#B3262E" };
-    ITEMS[kind].parts.forEach(([d, kindOf]) => {
+      face: "#F1EFEA", screen: "#15161A", food: "#B8743C", green: "#6E8B4A", red: "#B3262E", cork: "#B88A5A" };
+    const pr = kind === "own" ? prod || prodNow() : null;
+    if (pr) FILL.accent = (colorOf(pr.color2) || COLORS[0]).hex;
+    // Szkło prześwituje, chrom i metal mają mocniejszy połysk
+    const see = pr && (pr.material === "glass" || pr.material === "frosted") ? (pr.material === "glass" ? 0.45 : 0.7) : 1;
+    (pr ? prodParts(pr) : ITEMS[kind].parts).forEach(([d, kindOf]) => {
       const style = kindOf === "line" ? "fill:none;stroke:#2A2622;stroke-width:1.4"
-        : `fill:${FILL[kindOf]};stroke:#2A2622;stroke-width:1.2` + (kindOf === "light" ? ";fill-opacity:0.55" : "");
+        : kindOf === "thick" ? `fill:none;stroke:${FILL.accent || "#2A2622"};stroke-width:3.2;stroke-linecap:round`
+        : `fill:${FILL[kindOf]};stroke:#2A2622;stroke-width:1.2` + (kindOf === "light" ? ";fill-opacity:0.55" : kindOf === "main" && see < 1 ? `;fill-opacity:${see}` : "");
       el("path", { d, style }, g);
     });
   }
@@ -4796,7 +4932,7 @@
         drawThing(og, st.animal, ob.px, ob.gy, ob.s, petCoat(animalIt(st)).hex, animalIt(st));
       } else {
         drawBase(og, st.base, W, H, ob.gy, u, false);
-        drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st));
+        drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st), prodOf(st));
         drawBase(og, st.base, W, H, ob.gy, u, true);
       }
     }
@@ -4908,6 +5044,9 @@
     style: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); [[8.5, 9.5], [12.5, 7.5], [15.5, 11]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.3, style: "fill:currentColor" }, svg)); el("path", { d: "M12 20.5c-1.5 0-2-1.5-1-2.5s2.5-.5 3-2" }, svg); },
     preset: svg => el("path", { d: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" }, svg),
     item: svg => drawItem(svg, el("defs", {}, svg), scene.item, 12, 23, 0.21, itemHex()),
+    pShape: svg => { el("rect", { x: 4, y: 9, width: 9, height: 11, rx: 1 }, svg); el("path", { d: "M14.5 9.5 a4 1.6 0 0 1 8 0 v9 a4 1.6 0 0 1 -8 0z M14.5 9.5 a4 1.6 0 0 0 8 0" }, svg); },
+    pMat: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); el("path", { d: "M7 9.5a6 6 0 0 1 5-4", class: "thin" }, svg); },
+    pDetail: svg => { el("rect", { x: 8, y: 9, width: 8, height: 12, rx: 1.5 }, svg); el("rect", { x: 9.5, y: 4, width: 5, height: 4, rx: 0.8 }, svg); el("path", { d: "M8 14h8", class: "thin" }, svg); },
     base: svg => { el("path", { d: "M3 13h18 M6 13v8 M18 13v8" }, svg); el("path", { d: "M10 13V8h4v5", class: "thin" }, svg); },
     itemColor: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${itemHex()};stroke:rgba(255,255,255,0.3)` }, svg); },
     animal: svg => petThumb(svg, animalIt()),
@@ -4939,6 +5078,7 @@
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "animalCoat") return petCoat(animalIt()).name;
+    if (PROD_CATS[cat.id]) { const r = prodNow(); return PROD_CATS[cat.id].filter(k => prodPartOn(r, k)).slice(0, 2).map(k => prodOpt(k, r[k]).name).join(", "); }
     if (BEAST_CATS[cat.id]) { const r = beastOf({ beast: scene.beast }); return BEAST_CATS[cat.id].filter(k => beastPartOn(r, k)).slice(0, 2).map(k => beastOpt(k, r[k]).name).join(", "); }
     if (cat.id === "crew") return !(account && account.user) ? "zaloguj się" : crew.length ? crew.length + " w ekipie" : "pusto";
     if (cat.id === "outfit") return setName();
@@ -5432,6 +5572,29 @@
     return BEAST_CATS[catId].filter(k => beastPartOn(beastNow(), k)).map(k => groupMark(tile("opt-beast-" + k, BEAST[k].name, () => beastNow()[k] !== base()[k],
       () => { scene.sub = k; render(); }, svg => beastThumb(svg, {}, zoom(k)), () => beastOpt(k, beastNow()[k]).name)));
   }
+  // Konstruktor Manito: grupa części → warianty; miniatura to bryła z tą częścią (kolor detali jako próbka)
+  function prodThumb(svg, patch) {
+    const st = { ...scene, item: "own", prod: { ...prodNow(), ...patch } };
+    svg.setAttribute("viewBox", "-6 -8 112 112");
+    drawItem(svg, el("defs", {}, svg), "own", 50, 100, 1, itemHex(st), prodOf(st));
+  }
+  function prodTiles(catId) {
+    const sub = scene.sub, set = (k, id) => { scene.prod = { ...prodNow(), [k]: id }; render(); };
+    if (sub === "color2") return [backTile(null)].concat(COLORS.map(c => tile("opt-prod-color2-" + c.id, c.name, () => prodNow().color2 === c.id, () => set("color2", c.id),
+      svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, c.hex); })));
+    if (sub && PROD[sub]) return [backTile(null)].concat(PROD[sub].opts.map(o => tile("opt-prod-" + sub + "-" + o.id, o.name, () => prodNow()[sub] === o.id, () => {
+      // Własny napis: krótki tekst na etykiecie (trafia do Maniscryptu w cudzysłowie)
+      if (sub === "label" && o.id === "text") {
+        const t = (window.prompt("Jaki napis ma być na etykiecie?", prodNow().text || "") || "").replace(/["\\]/g, "").trim().slice(0, 40);
+        if (!t) return;
+        scene.prod = { ...prodNow(), label: "text", text: t }; render(); return;
+      }
+      set(sub, o.id);
+    }, svg => prodThumb(svg, { [sub]: o.id }), sub === "label" && o.id === "text" && prodNow().text ? () => "„" + prodNow().text + "”" : undefined)));
+    return PROD_CATS[catId].filter(k => prodPartOn(prodNow(), k)).map(k => groupMark(tile("opt-prod-" + k, PROD[k].name, () => prodNow()[k] !== PROD0[k],
+      () => { scene.sub = k; render(); }, k === "color2" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, prodOpt("color2", prodNow().color2).hex); } : svg => prodThumb(svg, {}),
+      () => prodOpt(k, prodNow()[k]).name)));
+  }
   // Losowe zmiany: Zmutuj (1–2 części), Krzyżówka (głowa i twarz jednego gotowca, reszta drugiego), cały losowy stworek
   function beastMutate(r, n = 2) {
     const out = { ...r }, keys = Object.keys(BEAST).filter(k => k !== "color2" || out.pattern !== "solid");
@@ -5661,13 +5824,14 @@
     if (catId === "animalPose") return BEAST_POSES.filter(o => o.id !== "fly" || scene.animal === "beast").map(o => tile("opt-animalPose-" + o.id, o.name, () => scene.animalPose === o.id,
       () => { scene.animalPose = o.id; render(); }, svg => petThumb(svg, animalIt({ ...scene, animalPose: o.id }))));
     if (BEAST_CATS[catId]) return beastTiles(catId);
+    if (PROD_CATS[catId]) return prodTiles(catId);
     if (catId === "animalCoat") return PET_COATS[scene.animal].map(c => tile("opt-animalCoat-" + c.id, c.name, () => animalIt().coat === c.id,
       () => { scene.animalCoat = c.id; render(); }, svg => petThumb(svg, animalIt({ ...scene, animalCoat: c.id }))));
     if (catId === "itemColor") {
       // Kolor przedmiotu: domyślny dla danego przedmiotu albo z palety
-      return [{ id: "auto", name: "Domyślny", hex: ITEMS[scene.item].color }, ...COLORS].map(c => tile("opt-itemColor-" + c.id, c.name,
+      return [{ id: "auto", name: "Domyślny", hex: itemHex({ ...scene, itemColor: "auto" }) }, ...COLORS].map(c => tile("opt-itemColor-" + c.id, c.name,
         () => scene.itemColor === c.id, () => { scene.itemColor = c.id; render(); },
-        svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, c.id === "auto" ? ITEMS[scene.item].color : c.hex, c.id === "auto"); }));
+        svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, c.id === "auto" ? itemHex({ ...scene, itemColor: "auto" }) : c.hex, c.id === "auto"); }));
     }
     if (catId === "body") {
       // Postać i przełącznik "Moja twarz" (włącz/wyłącz, niezależnie od sylwetki)
@@ -5795,7 +5959,7 @@
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Manikun", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["crew", "things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
-    { id: "object", label: "Manito", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
+    { id: "object", label: "Manito", cats: ["item", "pShape", "pMat", "pDetail", "itemColor", "base"], subjects: ["object"], icon: "item" },
     { id: "animal", label: "Manimal", cats: ["animal", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
@@ -5827,7 +5991,7 @@
     nav = [{ kind: "groups", open: g }, childOf(g)];
   }
   // Klucz rzędu: przy jego zmianie rząd buduje się od nowa, poza tym tylko odświeża
-  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, scene.animal, scene.animal === "beast" ? BEAST_CATS.bBody.concat(BEAST_CATS.bCoat).filter(k => beastPartOn(beastNow(), k)).length : "", JSON.stringify(scene.wear), lampAllowed(scene), (scene.things || []).length, level, st.kind === "q" ? st.q + ":" + (wiz && wiz.part) + ":" + (wiz && wiz.thingIdx) : ""].join("|");
+  const rowKey = st => [st.kind, st.group, st.cat, st.sub, scene.mode, scene.subject, scene.body, scene.animal, scene.item === "own" ? prodPartOn(prodNow(), "top") : "", scene.animal === "beast" ? BEAST_CATS.bBody.concat(BEAST_CATS.bCoat).filter(k => beastPartOn(beastNow(), k)).length : "", JSON.stringify(scene.wear), lampAllowed(scene), (scene.things || []).length, level, st.kind === "q" ? st.q + ":" + (wiz && wiz.part) + ":" + (wiz && wiz.thingIdx) : ""].join("|");
 
   // ---------- Kreator: Manikun pyta, odpowiedzi są w górnym rzędzie ----------
   // Jedno pytanie = jeden dymek = jeden rząd odpowiedzi. Dolny rząd: Wstecz, 5 rozdziałów, Swoboda.
@@ -5854,7 +6018,14 @@
   const partLabel = p => p === "bottom" && isDress() ? "Sukienka" : WEAR[p].name;
   const WIZ_Q = [
     // Obiekt (zdjęcie produktowe): przedmiot, kolor, podstawa; dalej wspólne Miejsce, Kamera i Styl
-    { id: "item", ch: "object", subj: "object", say: "Co fotografujemy?", cat: "item" },
+    { id: "item", ch: "object", subj: "object", say: "Co fotografujemy? Własny to bryła pod Twój produkt.", cat: "item" },
+    // Własny: bryła zastępcza pod własny produkt
+    { id: "pmShape", subj: "object", say: "Jaki kształt ma Twój produkt?", cat: "pShape", sub: "shape" },
+    { id: "pmProp", subj: "object", say: "Jakie proporcje?", cat: "pShape", sub: "prop" },
+    { id: "pmMat", subj: "object", say: "Z czego jest?", cat: "pMat", sub: "material" },
+    { id: "pmFinish", subj: "object", say: "Jakie wykończenie?", cat: "pMat", sub: "finish" },
+    { id: "pmTop", subj: "object", say: "Jakie zamknięcie?", cat: "pDetail", sub: "top", when: () => prodPartOn(prodNow(), "top") },
+    { id: "pmLabel", subj: "object", say: "Etykieta? Pusta zostawia czysty produkt do podmiany.", cat: "pDetail", sub: "label" },
     { id: "itemColor", subj: "object", say: "W jakim kolorze?", cat: "itemColor" },
     { id: "base", subj: "object", say: "Na czym stoi?", cat: "base" },
     // Zwierzę: gatunek, umaszczenie, poza
@@ -6008,7 +6179,7 @@
   const partText = p => scene.wear[p] === "suit" ? "spodnie garniturowe" : low(partValue(p));
   const nameOf = cat => optionOf(cat, scene[cat]).name;
   const CH_SUMMARY = {
-    object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + nameOf("item") + ", " + low(nameOf("base")),
+    object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + (scene.item === "own" ? prodOpt("shape", prodNow().shape).name : nameOf("item")) + ", " + low(nameOf("base")),
     animal: () => scene.animal === "beast" ? "Własny Manimal, " + low(beastOpt("body", beastNow().body).name) + ", " + low(petPose(animalIt()).name)
       : nameOf("animal") + ", " + low(petCoat(animalIt()).name) + ", " + low(petPose(animalIt()).name),
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
@@ -6033,6 +6204,8 @@
     },
     object() {
       scene.item = anyOf(optionsOf("item")).id;
+      // Własny: losowa bryła, materiał i zamknięcie, zawsze z pustą etykietą
+      if (scene.item === "own") scene.prod = { ...PROD0, shape: anyOf(PROD.shape.opts).id, prop: anyOf(PROD.prop.opts).id, material: anyOf(PROD.material.opts).id, finish: anyOf(PROD.finish.opts).id, top: anyOf(PROD.top.opts).id, color2: anyOf(COLORS).id };
       scene.base = anyOf(optionsOf("base")).id;
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     },
@@ -8285,16 +8458,16 @@
       return { kind: "animal", name: nameOf("animal") + " · " + petCoat(it).name, data: { animal: it.id, coat: it.coat, pose: it.pose } };
     }
     const color = scene.itemColor !== "auto" ? scene.itemColor : null;
-    return { kind: "object", name: nameOf("item") + (color ? " · " + colorOf(color).name.toLowerCase() : ""),
-      data: { item: scene.item, color: color || "auto", en: ITEMS[scene.item].prompt(color ? colorOf(color).word + " " : "") } };
+    return { kind: "object", name: (scene.item === "own" ? "Produkt" : nameOf("item")) + (color ? " · " + colorOf(color).name.toLowerCase() : ""),
+      data: { item: scene.item, color: color || "auto", en: ITEMS[scene.item].prompt(color ? colorOf(color).word + " " : ""), ...(scene.item === "own" ? { prod: prodNow() } : {}) } };
   }
   async function saveToCrew() {
     if (!account || !account.user) { say("Ekipa trzyma się na koncie. Zaloguj się, a scena poczeka.", 4000); setTimeout(goLogin, 1200); return; }
     const e = crewEntry();
     if (crew.some(c => c.kind === e.kind && JSON.stringify(c.data) === JSON.stringify(e.data))) { say((c => c ? c.name : e.name)(crew.find(c => c.kind === e.kind && JSON.stringify(c.data) === JSON.stringify(e.data))) + " już jest w ekipie.", 3500); return; }
     // Własny stworek dostaje imię (pod nim jest w Ekipie)
-    if (e.data.animal === "beast") {
-      const nm = (window.prompt("Jak nazwiesz swojego Manimala?", "Stworek") || "").trim().slice(0, 40);
+    if (e.data.animal === "beast" || e.data.item === "own") {
+      const nm = (window.prompt(e.data.item === "own" ? "Jak nazwiesz ten produkt?" : "Jak nazwiesz swojego Manimala?", e.data.item === "own" ? "Mój produkt" : "Stworek") || "").trim().slice(0, 40);
       if (!nm) return;
       e.name = nm;
     }
@@ -8312,9 +8485,10 @@
   // Ten sam zwierzak: gatunek z umaszczeniem albo cały przepis własnego stworka
   const petKey = x => x.id + ":" + (x.id === "beast" ? JSON.stringify(beastOf(x)) : x.coat || PET_COATS[x.id][0].id);
   const crewPet = c => ({ id: c.data.animal, coat: c.data.coat, pose: c.data.pose || "sit", ...(c.data.animal === "beast" ? { beast: beastOf(c.data) } : {}) });
+  const sameManito = (x, c) => !!x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto") && JSON.stringify(x.manito.prod || null) === JSON.stringify(c.data.prod || null);
   const crewInScene = c => c.kind === "animal"
     ? (scene.things || []).some(x => isPet(x) && petKey(x) === petKey(crewPet(c)))
-    : (scene.items || []).some(x => x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto"));
+    : (scene.items || []).some(x => sameManito(x, c));
   function crewUse(c) {
     if (crewDel) {
       fetch("/api/crew/" + c.id, { method: "DELETE", credentials: "same-origin" }).catch(() => {});
@@ -8332,10 +8506,10 @@
       return;
     }
     if (!ITEMS[c.data.item]) return;
-    if (crewInScene(c)) { scene.items = (scene.items || []).filter(x => !(x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto"))); render(); return; }
+    if (crewInScene(c)) { scene.items = (scene.items || []).filter(x => !sameManito(x, c)); render(); return; }
     // Manito stoi na blacie: bez stołu w scenie dostawiamy stół (zwierzaki zostają)
     if (!surfaceOf(scene)) scene.things = [{ id: "table" }, ...(level === "expert" ? (scene.things || []) : (scene.things || []).filter(isPet))];
-    pickItem({ id: "custom", name: c.name, en: c.data.en || ITEMS[c.data.item].prompt(""), known: true, manito: { item: c.data.item, color: c.data.color || "auto" } });
+    pickItem({ id: "custom", name: c.name, en: c.data.en || ITEMS[c.data.item].prompt(""), known: true, manito: { item: c.data.item, color: c.data.color || "auto", ...(c.data.prod ? { prod: c.data.prod } : {}) } });
     render(); checkFit();
   }
   function crewTiles() {
@@ -8344,7 +8518,7 @@
       () => say("Stwórz Manimala albo Manito (Nowa scena) i stuknij Do ekipy. Potem wróć tu do Manikuna.", 6000), svg => CAT_ICONS.crew(svgBox(svg)), () => "jak dodać?")];
     const out = crew.map(c => tile("opt-crew-" + c.id, (crewDel ? "✕ " : "") + c.name, () => !crewDel && crewInScene(c), () => crewUse(c), svg => {
       if (c.kind === "animal" && PET_COATS[c.data.animal]) petThumb(svg, crewPet(c));
-      else if (ITEMS[c.data.item]) { svg.setAttribute("viewBox", "16 2 68 100"); drawItem(svg, el("defs", {}, svg), c.data.item, 50, 98, 0.9, c.data.color && c.data.color !== "auto" ? colorOf(c.data.color).hex : ITEMS[c.data.item].color); }
+      else if (ITEMS[c.data.item]) { svg.setAttribute("viewBox", "16 2 68 100"); drawItem(svg, el("defs", {}, svg), c.data.item, 50, 98, 0.9, c.data.color && c.data.color !== "auto" ? colorOf(c.data.color).hex : ITEMS[c.data.item].color, c.data.prod ? prodOf({ prod: c.data.prod }) : null); }
     }, () => c.kind === "animal" ? "Manimal" : "Manito"));
     const del = tile("opt-crew-del", crewDel ? "Gotowe" : "Usuń z ekipy", () => crewDel, () => { crewDel = !crewDel; render(); },
       svg => { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: crewDel ? "M20 33l8 8 16-18" : "M22 22l20 20M42 22L22 42", class: "thin" }, svg); });

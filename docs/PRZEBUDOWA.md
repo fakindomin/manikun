@@ -626,3 +626,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Zmutuj (1–2 części), Krzyżówka (głowa i twarz jednego gotowca, reszta drugiego); Losuj daje co trzeci raz własnego stworka.
 - Kreator: po „Własny” pytania o najważniejsze części (tułów, nogi, stopy, uszy, rogi, oczy, pysk, ogon, skrzydła, pokrycie, kolor, wzór).
 - Ekipa: własny stworek zapisuje cały przepis i dostaje imię; przy Manikunie rysowany i opisany tak samo (opis w nawiasie przed miejscem).
+
+## Konstruktor Manito (bryła pod własny produkt)
+
+- Przedmiot › **Własny**: przepis `scene.prod` (`PROD`): bryła (kostka, pudełko, walec, puszka, kula, stożek, ostrosłup, butelka, słoik, tubka, saszetka, krążek, płytka), proporcje, wielkość, materiał, wykończenie, kolor detali, zamknięcie (nakrętka, pokrywka, pompka, pipeta, atomizer, korek, uchwyt), etykieta. Kategorie Kształt, Materiał, Detale (`PROD_CATS`) widać tylko przy Własnym; Kolor i Podstawa wspólne.
+- Etykieta „Pusta (do podmiany)” (domyślna): Maniscrypt prosi o czysty produkt bez napisów i logo – neutralną bryłę, w miejsce której wstawia się własny produkt. „Twój napis”: tekst w cudzysłowie na etykiecie.
+- Bez wybranego koloru: naturalny kolor materiału (drewno, metal, szkło…), inaczej biały. Rysunek `prodParts` w polu 100×100 (te same części co ITEMS + accent, cork, thick).
+- Kreator: po „Własny” pytania o kształt, proporcje, materiał, wykończenie, zamknięcie i etykietę. Losuj: losowa bryła z pustą etykietą.
+- Ekipa: własny produkt zapisuje przepis i dostaje nazwę; przy Manikunie stoi na stole narysowany ze swojego przepisu.
