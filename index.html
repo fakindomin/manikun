@@ -7873,7 +7873,7 @@
   menuAccount.addEventListener("click", () => {
     if (!account) return;
     if (account.user) { if (account.shop) openShop(); return; }
-    location.href = "/api/auth/google";
+    goLogin();
   });
   document.getElementById("menuBuy").addEventListener("click", () => openShop());
 
@@ -7893,7 +7893,7 @@
     shopBuy.textContent = shopPick ? "Zapłać " + plnText(shopPick.pln) + " · " + shopPick.credits + " " + creditsWord(shopPick.credits) : "Przejdź do płatności";
   }
   function openShop(why) {
-    if (!account || !account.user) { location.href = "/api/auth/google"; return; }
+    if (!account || !account.user) { goLogin(); return; }
     if (!account.shop) { say("Zakup kredytów będzie dostępny wkrótce.", 4000); return; }
     const list = account.shop.packs;
     if (!shopPick || !list.some(p => p.price === shopPick.price)) shopPick = list[Math.min(1, list.length - 1)];
@@ -7984,10 +7984,22 @@
     setMenu(false);
     say("Wylogowano. Do zobaczenia!", 3500);
   });
+  // Logowanie przez Google przeładowuje stronę: przed wyjściem zapisujemy scenę (i poziom) w pamięci karty,
+  // a po powrocie przywracamy ją i otwieramy panel Maniscryptu, żeby można było od razu zrobić zdjęcie
+  function goLogin() {
+    if (phase === "director") try { sessionStorage.setItem("manikun-return", JSON.stringify({ scene: sceneSnapshot(), level, at: Date.now() })); } catch (e) {}
+    location.href = "/api/auth/google";
+  }
   // Powrót z logowania (?konto=ok|blad): zamiast powitania Manikun mówi, jak poszło
   const accountBack = new URLSearchParams(location.search).get("konto");
+  let loginReturn = null;
+  if (accountBack) {
+    try { loginReturn = JSON.parse(sessionStorage.getItem("manikun-return") || "null"); sessionStorage.removeItem("manikun-return"); } catch (e) {}
+    if (!loginReturn || !loginReturn.scene || Date.now() - loginReturn.at > 30 * 60000) loginReturn = null;
+  }
   if (accountBack) history.replaceState(null, "", location.pathname + location.hash);
   loadAccount().then(a => {
+    if (loginReturn) return; // scenę i komunikat przywraca restoreAfterLogin()
     if (accountBack === "ok" && a && a.user) say("Jesteś zalogowany. Masz " + a.credits + " " + creditsWord(a.credits) + ".", 5000);
     else if (accountBack) say("Nie udało się zalogować. Spróbuj jeszcze raz.", 5000);
   });
@@ -8389,7 +8401,7 @@
     genStart(faceUrl);
   });
   sheetGen.addEventListener("click", () => {
-    if (!account || !account.user) { location.href = "/api/auth/google"; return; }
+    if (!account || !account.user) { goLogin(); return; }
     if (genBusy || genReady) { setGen(true); return; }
     if (account.credits < costNow()) {
       if (account.shop) openShop("Brakuje kredytów na to zdjęcie.");
@@ -8490,14 +8502,26 @@
 
   // ---------- Scena zdjęcia: zapis przy zleceniu, „Zrób podobne” przywraca ją do poprawek ----------
   const sceneSnapshot = () => { try { const { open, sub, ...rest } = scene; return JSON.stringify(rest); } catch (e) { return null; } };
-  function restoreScene(json) {
+  function restoreScene(json, quiet = false) {
     let saved;
     try { saved = JSON.parse(json); } catch (e) { return false; }
     Object.assign(scene, saved, { open: null, sub: null });
     setView(false); setShots(false); setGen(false); setSheet(false); setMenu(false);
     if (phase !== "director") enterDirector("free"); else { fixScene(); render(); }
-    setTimeout(() => say("Scena wróciła! Popraw, co chcesz, i zrób kolejne zdjęcie.", 4500), 600);
+    if (!quiet) setTimeout(() => say("Scena wróciła! Popraw, co chcesz, i zrób kolejne zdjęcie.", 4500), 600);
     return true;
+  }
+  // Po powrocie z logowania: ta sama scena i od razu panel Maniscryptu z „Zrób zdjęcie tutaj”
+  async function restoreAfterLogin() {
+    if (loginReturn.level && loginReturn.level !== level) setLevel(loginReturn.level);
+    if (!restoreScene(loginReturn.scene, true)) return;
+    const a = await loadAccount();
+    setTimeout(() => {
+      setSheet(true);
+      // Komunikat jako pasek (dymek zasłoniłby przycisk zdjęcia w otwartym panelu)
+      if (accountBack === "ok" && a && a.user) showToast("Jesteś zalogowany, scena czeka. Masz " + a.credits + " " + creditsWord(a.credits) + ".");
+      else showToast("Nie udało się zalogować, ale scena jest cała. Spróbuj jeszcze raz.");
+    }, reduceMotion.matches ? 100 : 1500);
   }
 
   // ---------- Moje ujęcia: zdjęcia od AI zapisane na koncie ----------
@@ -8907,6 +8931,7 @@
     showStart(SUBJECTS);
     greet();
     startIdle();
-    if (!accountBack) setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
+    if (loginReturn) restoreAfterLogin();
+    else if (!accountBack) setTimeout(() => say("Cześć, jestem Manikun! Ustawiasz scenę, a ja piszę dla niej Maniscrypt dla generatora AI. Co kręcimy?", 7000), reduceMotion.matches ? 0 : 900);
   }
 </script>
