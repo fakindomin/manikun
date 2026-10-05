@@ -25,11 +25,9 @@
     // Paddle (zakup kredytów): środowisko, pakiety, token przeglądarki (jawny). Sekret powiadomień PADDLE_WEBHOOK_SECRET – w panelu.
     "PADDLE_ENV": "sandbox",
     "PADDLE_CLIENT_TOKEN": "test_27e0c22585ebb4e563694213489",
-    "PADDLE_PACKS": [
-      { "price": "pri_01m43shstn6w3751x3ky4rjtxc", "product": "pro_01m43seawck34ezkjsckhnc8zg", "credits": 20, "pln": 5 },
-      { "price": "pri_01m43snnd261c42h62q5ge32gz", "product": "pro_01m43skd7apx9kqz7f0dbdpph5", "credits": 50, "pln": 10 },
-      { "price": "pri_01m43sr0adg83n3d3ymyc78yk8", "product": "pro_01m43spvz5hbx6n1c6x6qxjkf8", "credits": 120, "pln": 20 }
-    ],
+    // Sklep wyłączony (Paddle odrzucił konto; sandbox na produkcji dawałby darmowe kredyty z kartą testową).
+    // Pakiety sandbox (do testów lokalnych): w docs/PRZEBUDOWA.md, sekcja „Paddle odrzucony”.
+    "PADDLE_PACKS": [],
     "CANONICAL_HOST": "manikun.pl", "GOOGLE_CLIENT_ID": "331864294353-thj64786rfai33kid9v7sbahg52vicb3.apps.googleusercontent.com" },
   "observability": { "enabled": true }
 }

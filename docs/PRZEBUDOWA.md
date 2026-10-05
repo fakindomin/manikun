@@ -661,3 +661,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Maniscrypt: akapit „IMPORTANT – PRODUCT REFERENCE…” na początku (`productBlock`) i produkt opisany jako „the product from the attached reference photo…” zamiast gotowego przedmiotu; reszta (podstawa, tło, światło, kamera) z opisu.
 - „Zrób zdjęcie tutaj”: ta sama wysyłka zdjęcia (`/api/upload-face`, plik tymczasowy u Higgsfield) i Soul 2 image-to-image; bez pytania o zgodę osoby; w bazie `detail = 'ze zdjęciem produktu'` (pole `ref: "product"`).
 - Teksty przypomnień („dołącz zdjęcie produktu”) i polityka prywatności (PL/EN) uzupełnione.
+
+## Paddle odrzucony – sklep wyłączony
+
+- Paddle odmówił weryfikacji konta (decyzja ostateczna, bez podania przyczyny). Sklep na produkcji wyłączony: `PADDLE_PACKS: []` → `shopInfo` zwraca null, menu bez „Dokup”, przy braku kredytów komunikat „wkrótce”.
+- Powód wyłączenia: sandbox na produkcji przyjmował karty testowe, więc dawał darmowe kredyty.
+- Kod `server/paddle.js` i tabele `checkouts` / `purchases` zostają (można podmienić operatora). Pakiety sandbox do testów lokalnych:
+  `[{ "price": "pri_01m43shstn6w3751x3ky4rjtxc", "credits": 20, "pln": 5 }, { "price": "pri_01m43snnd261c42h62q5ge32gz", "credits": 50, "pln": 10 }, { "price": "pri_01m43sr0adg83n3d3ymyc78yk8", "credits": 120, "pln": 20 }]`
+- Do zmiany po wyborze nowego operatora: Regulamin, Zwroty, Cennik i Prywatność (wzmianki o Paddle jako sprzedawcy).
