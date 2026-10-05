@@ -609,3 +609,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - **Manitam** (`subject: "place"`): bez bohatera w szkicu; Maniscrypt „Scenic photograph of the <miejsce bez „in the background, softly out of focus”>, the place itself is the main motif, everything in sharp focus, no people, no animals” + światło opisane względem sceny (`placeLight`), pora dnia, `ENDING_PLACE` (24 mm); w opisie kamery „the subject” → „the scene”. Start: góry o złotej godzinie. Kreator: Miejsce → Kamera → Styl. Gotowe: góry o zachodzie, las we mgle, miasto nocą w deszczu, jezioro o świcie, wydmy z drona, przytulna kawiarnia.
 - Następny krok (uzgodniony kierunek): zapisywanie Manimali i Manito, żeby dodać je do sceny z Manikunem.
 - **Poprawka 5.10.2026: scena przeżywa logowanie.** Każde przejście do logowania Google (`goLogin`) zapisuje w `sessionStorage` (`manikun-return`) scenę i poziom, jeśli trwa reżyserowanie. Po powrocie (`?konto=ok|blad`, do 30 min) `restoreAfterLogin` przywraca scenę, otwiera panel Maniscryptu z „Zrób zdjęcie tutaj” i pokazuje pasek „Jesteś zalogowany, scena czeka…” (dymek zasłaniałby przycisk). Wcześniej scena znikała, bo logowanie przeładowuje stronę.
+
+## Ekipa na koncie (Manimale i Manito przy Manikunie)
+
+- Tabela `crew` (migracja `0008_ekipa.sql`): `id, user_id, kind ('animal'|'object'), name, data (JSON ≤ 1000 znaków), created_at`; do 40 pozycji na konto.
+- API: `GET /api/crew`, `POST /api/crew` (`{kind, name, data}`), `DELETE /api/crew/:id` – tylko zalogowani, zapis tylko z tej samej domeny.
+- Manimal / Manito: kafelek „Do ekipy” zapisuje bieżący gatunek + umaszczenie + pozę albo przedmiot + kolor (bez konta → logowanie, scena wraca po zalogowaniu; duplikaty są pomijane).
+- Manikun: Rzeczy › Ekipa – Manimal dołącza jako zwierzak obok postaci, Manito staje na stole (stół dodawany sam, gdy w scenie nie ma powierzchni). Tryb „Usuń z ekipy”.
+- Polityka prywatności: dopisany punkt „Ekipa”.

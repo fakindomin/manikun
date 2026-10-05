@@ -487,6 +487,30 @@ async function generationSeen(env, user, id) {
 }
 
 // Moje ujęcia: udane zdjęcia (nowe pierwsze); najpierw dopytanie o zlecenia w toku
+// Ekipa: Manimale i Manito zapisane na koncie (najwyżej 40 na konto)
+const CREW_MAX = 40;
+async function crewList(env, user) {
+  const rows = (await env.DB.prepare("SELECT id, kind, name, data, created_at FROM crew WHERE user_id = ? ORDER BY created_at").bind(user.id).all()).results;
+  return json({ crew: rows.map(r => { let data = {}; try { data = JSON.parse(r.data); } catch (e) {} return { id: r.id, kind: r.kind, name: r.name, data, at: r.created_at }; }) });
+}
+async function crewAdd(request, env, user) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
+  const kind = body.kind, name = typeof body.name === "string" ? body.name.trim().slice(0, 60) : "";
+  if (!["animal", "object"].includes(kind) || !name || !body.data || typeof body.data !== "object") return json({ error: "Niepełne dane." }, 400);
+  const data = JSON.stringify(body.data);
+  if (data.length > 1000) return json({ error: "Za dużo danych." }, 413);
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM crew WHERE user_id = ?").bind(user.id).first();
+  if (n.n >= CREW_MAX) return json({ error: "Ekipa jest pełna (" + CREW_MAX + "). Usuń kogoś, żeby dodać nowego." }, 409);
+  const id = randomToken(9), t = now();
+  await env.DB.prepare("INSERT INTO crew (id, user_id, kind, name, data, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, user.id, kind, name, data, t).run();
+  return json({ id, kind, name, data: body.data, at: t });
+}
+async function crewDelete(env, user, id) {
+  await env.DB.prepare("DELETE FROM crew WHERE id = ? AND user_id = ?").bind(id, user.id).run();
+  return json({ ok: true });
+}
+
 // Moje ujęcia: zostaje 5 najnowszych zdjęć, starsze kasujemy (plik z KV i adres), status 'expired'
 const KEEP_PHOTOS = 5;
 async function prunePhotos(env, userId) {
@@ -571,6 +595,15 @@ export default {
         const user = await currentUser(request, env);
         if (!user) return json({ error: "Zaloguj się." }, 401);
         return await checkoutStart(request, env, user, { json, randomToken });
+      }
+      if (url.pathname === "/api/crew" || url.pathname.startsWith("/api/crew/")) {
+        if (request.method !== "GET" && !sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Zaloguj się." }, 401);
+        if (route === "GET /api/crew") return await crewList(env, user);
+        if (route === "POST /api/crew") return await crewAdd(request, env, user);
+        const m = url.pathname.match(/^\/api\/crew\/([\w-]{6,20})$/);
+        if (request.method === "DELETE" && m) return await crewDelete(env, user, m[1]);
       }
       if (route === "POST /api/upload-face") {
         if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);

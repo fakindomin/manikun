@@ -1179,6 +1179,8 @@
     ]},
     { id: "animalPose", label: "Poza", subjects: ["animal"], patch: "#C29682", options: PET_POSES.map(o => ({ id: o.id, name: o.name, short: o.name })) },
     { id: "animalCoat", label: "Umaszczenie", subjects: ["animal"], patch: "#B98A5E", options: [] },
+    // Ekipa (przy Manikunie): Manimale i Manito zapisane na koncie
+    { id: "crew", label: "Ekipa", subjects: ["person"], patch: "#7DB896", options: [] },
     { id: "body", label: "Sylwetka", subjects: ["person"], patch: "#BB5695", options: [
       { id: "female", name: "Kobieta", short: "Kobieta", prompt: "of a single adult woman" },
       { id: "male", name: "Mężczyzna", short: "Mężczyz.", prompt: "of a single adult man" }
@@ -2553,6 +2555,12 @@
   function drawSmall(g, it, x, y, s) {
     const info = itemInfo(it);
     if (!info) return;
+    // Manito z ekipy: ten sam rysunek co w trybie Manito, w skali drobiazgu na blacie
+    if (it.manito && ITEMS[it.manito.item]) {
+      const hex = it.manito.color && it.manito.color !== "auto" && colorOf(it.manito.color) ? colorOf(it.manito.color).hex : ITEMS[it.manito.item].color;
+      drawItem(g, el("defs", {}, g), it.manito.item, x, y, s * ITEM_SCALE * 0.16, hex);
+      return;
+    }
     if (info.sign) { drawSign(g, info.name, info.kind, x, y, s); return; }
     const pen = thingPen(g, x, y, s * ITEM_SCALE);
     ITEM_DRAW[it.id](pen);
@@ -4607,6 +4615,7 @@
     itemColor: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${itemHex()};stroke:rgba(255,255,255,0.3)` }, svg); },
     animal: svg => petThumb(svg, animalIt()),
     animalPose: svg => petThumb(svg, animalIt()),
+    crew: svg => { el("circle", { cx: 8, cy: 8, r: 3 }, svg); el("circle", { cx: 16.5, cy: 9.5, r: 2.4 }, svg); el("path", { d: "M2.5 19.5a5.5 5.5 0 0 1 11 0 M13 19.5a4 4 0 0 1 8.5 0" }, svg); },
     animalCoat: svg => { el("circle", { cx: 12, cy: 12, r: 8, style: `fill:${petCoat(animalIt()).hex};stroke:rgba(255,255,255,0.3)` }, svg); },
     look: svg => { el("circle", { cx: 12, cy: 12, r: 7 }, svg); el("path", { d: "M5.5 10 Q7 4 12 4.5 Q17 4 18.5 10 Q14 7.5 5.5 10 Z" }, svg); el("path", { d: "M8 12.5 h3 M13 12.5 h3", class: "thin" }, svg); }
   };
@@ -4627,6 +4636,7 @@
     if (cat.id === "preset") { const pr = lastPreset && PRESETS[scene.subject].find(p => p.id === lastPreset); return pr ? pr.name.split(" ")[0] : "Wybierz"; }
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "animalCoat") return petCoat(animalIt()).name;
+    if (cat.id === "crew") return !(account && account.user) ? "zaloguj się" : crew.length ? crew.length + " w ekipie" : "pusto";
     if (cat.id === "outfit") return setName();
     if (cat.id === "things") { const pr = propsOf(scene); return pr.length ? THING[pr[0].id].name : "Nic"; }
     if (cat.id === "pets") { const pl = (scene.things || []).filter(isPet); return pl.length ? pl.map(it => THING[it.id].name).join(", ") : "Brak"; }
@@ -5288,6 +5298,7 @@
         svg => thingTile(svg, it.id, (scene.things[i] || {}).color), () => (scene.things[i] || {}).color ? colorOf(scene.things[i].color).name : "Domyślny"))).filter(Boolean);
     }
     if (catId === "background" && scene.sub && scene.sub.startsWith("v:")) return variantTiles(scene.sub.slice(2));
+    if (catId === "crew") return crewTiles();
     if (catId === "animal") {
       // Gatunek: umaszczenie, którego nowy gatunek nie ma, wraca do jego pierwszego
       return optionsOf("animal").map(o => tile("opt-animal-" + o.id, o.name, () => scene.animal === o.id, () => {
@@ -5431,12 +5442,13 @@
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Manikun", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
-    { id: "stuff", label: "Rzeczy", cats: ["things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
+    { id: "stuff", label: "Rzeczy", cats: ["crew", "things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Manito", cats: ["item", "base", "itemColor"], subjects: ["object"], icon: "item" },
     { id: "animal", label: "Manimal", cats: ["animal", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
     { id: "style", label: "Styl", cat: "style", icon: "style" },
+    { id: "save", label: "Do ekipy", action: true, subjects: ["animal", "object"] },
     { id: "random", label: "Losuj", action: true },
     { id: "reset", label: "Układ domyślny", action: true }
   ];
@@ -5865,6 +5877,14 @@
 
   const iconDraw = id => svg => { svg.setAttribute("viewBox", "0 0 24 24"); CAT_ICONS[id](svg); };
   function groupTile(g) {
+    if (g.id === "save") {
+      const t = tile("nav-save", "Do ekipy", () => false, () => saveToCrew(), svg => {
+        svg.setAttribute("viewBox", "0 0 24 24");
+        el("circle", { cx: 9, cy: 8, r: 3.2 }, svg); el("path", { d: "M3 20a6 6 0 0 1 12 0" }, svg); el("path", { d: "M18 8v6M15 11h6" }, svg);
+      }, () => "zapisz na koncie");
+      t.action = true;
+      return t;
+    }
     if (g.id === "random") {
       const t = tile("nav-random", "Losuj", () => false, () => { rollRandom(); }, svg => {
         svg.setAttribute("viewBox", "0 0 24 24");
@@ -7877,6 +7897,78 @@
   });
   document.getElementById("menuBuy").addEventListener("click", () => openShop());
 
+  // ---------- Ekipa: Manimale i Manito zapisane na koncie, do użycia przy Manikunie (Rzeczy › Ekipa) ----------
+  let crew = [], crewDel = false;
+  async function loadCrew() {
+    if (!account || !account.user) { crew = []; return; }
+    try { const d = await (await fetch("/api/crew", { credentials: "same-origin" })).json(); crew = d.crew || []; } catch (e) {}
+    if (phase === "director") render();
+  }
+  // Zapis bieżącego Manimala albo Manito (opis, nazwa do kafelka)
+  function crewEntry() {
+    if (scene.subject === "animal") {
+      const it = animalIt();
+      return { kind: "animal", name: nameOf("animal") + " · " + petCoat(it).name, data: { animal: it.id, coat: it.coat, pose: it.pose } };
+    }
+    const color = scene.itemColor !== "auto" ? scene.itemColor : null;
+    return { kind: "object", name: nameOf("item") + (color ? " · " + colorOf(color).name.toLowerCase() : ""),
+      data: { item: scene.item, color: color || "auto", en: ITEMS[scene.item].prompt(color ? colorOf(color).word + " " : "") } };
+  }
+  async function saveToCrew() {
+    if (!account || !account.user) { say("Ekipa trzyma się na koncie. Zaloguj się, a scena poczeka.", 4000); setTimeout(goLogin, 1200); return; }
+    const e = crewEntry();
+    if (crew.some(c => c.kind === e.kind && JSON.stringify(c.data) === JSON.stringify(e.data))) { say(e.name + " już jest w ekipie.", 3500); return; }
+    let d = {};
+    try {
+      const r = await fetch("/api/crew", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(e) });
+      d = await r.json();
+    } catch (x) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
+    if (!d.id) { say(d.error || "Nie udało się zapisać.", 4500); return; }
+    crew.push(d);
+    try { sfx("klap"); } catch (x) {}
+    say("Zapisane w ekipie: " + d.name + ". W scenie z Manikunem znajdziesz " + (e.kind === "animal" ? "go" : "je") + " w Rzeczy › Ekipa.", 6000);
+    render();
+  }
+  const crewInScene = c => c.kind === "animal"
+    ? (scene.things || []).some(x => isPet(x) && x.id === c.data.animal && (x.coat || PET_COATS[x.id][0].id) === c.data.coat)
+    : (scene.items || []).some(x => x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto"));
+  function crewUse(c) {
+    if (crewDel) {
+      fetch("/api/crew/" + c.id, { method: "DELETE", credentials: "same-origin" }).catch(() => {});
+      crew = crew.filter(x => x.id !== c.id);
+      say("Usunięte z ekipy: " + c.name + ".", 3000);
+      render();
+      return;
+    }
+    if (c.kind === "animal") {
+      if (!PET_COATS[c.data.animal]) return;
+      const cur = scene.things || [], same = x => isPet(x) && x.id === c.data.animal && (x.coat || PET_COATS[x.id][0].id) === c.data.coat;
+      if (cur.some(same)) scene.things = cur.filter(x => !same(x));
+      else scene.things = [...(level === "expert" ? cur : cur.filter(x => !isPet(x))), { id: c.data.animal, coat: c.data.coat, pose: c.data.pose || "sit" }];
+      render(); checkFit();
+      return;
+    }
+    if (!ITEMS[c.data.item]) return;
+    if (crewInScene(c)) { scene.items = (scene.items || []).filter(x => !(x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto"))); render(); return; }
+    // Manito stoi na blacie: bez stołu w scenie dostawiamy stół (zwierzaki zostają)
+    if (!surfaceOf(scene)) scene.things = [{ id: "table" }, ...(level === "expert" ? (scene.things || []) : (scene.things || []).filter(isPet))];
+    pickItem({ id: "custom", name: c.name, en: c.data.en || ITEMS[c.data.item].prompt(""), known: true, manito: { item: c.data.item, color: c.data.color || "auto" } });
+    render(); checkFit();
+  }
+  function crewTiles() {
+    if (!account || !account.user) return [tile("opt-crew-login", "Zaloguj się", () => false, () => goLogin(), svg => CAT_ICONS.crew(svgBox(svg)), () => "ekipa jest na koncie")];
+    if (!crew.length) return [tile("opt-crew-empty", "Ekipa jest pusta", () => false,
+      () => say("Stwórz Manimala albo Manito (Nowa scena) i stuknij Do ekipy. Potem wróć tu do Manikuna.", 6000), svg => CAT_ICONS.crew(svgBox(svg)), () => "jak dodać?")];
+    const out = crew.map(c => tile("opt-crew-" + c.id, (crewDel ? "✕ " : "") + c.name, () => !crewDel && crewInScene(c), () => crewUse(c), svg => {
+      if (c.kind === "animal" && PET_COATS[c.data.animal]) petThumb(svg, { id: c.data.animal, coat: c.data.coat, pose: c.data.pose });
+      else if (ITEMS[c.data.item]) { svg.setAttribute("viewBox", "16 2 68 100"); drawItem(svg, el("defs", {}, svg), c.data.item, 50, 98, 0.9, c.data.color && c.data.color !== "auto" ? colorOf(c.data.color).hex : ITEMS[c.data.item].color); }
+    }, () => c.kind === "animal" ? "Manimal" : "Manito"));
+    const del = tile("opt-crew-del", crewDel ? "Gotowe" : "Usuń z ekipy", () => crewDel, () => { crewDel = !crewDel; render(); },
+      svg => { svg.setAttribute("viewBox", "0 0 64 64"); el("path", { d: crewDel ? "M20 33l8 8 16-18" : "M22 22l20 20M42 22L22 42", class: "thin" }, svg); });
+    return out.concat(del);
+  }
+  const svgBox = svg => { svg.setAttribute("viewBox", "0 0 24 24"); return svg; };
+
   // ---------- Dokup kredyty (Paddle) ----------
   // Pakiety i token z /api/me (shop). Najpierw zgoda zapisana na serwerze (/api/checkout), potem kasa Paddle (nakładka)
   // z custom_data { c: id zgody }. Kredyty dopisuje serwer po powiadomieniu od Paddle; aplikacja czeka, aż saldo wzrośnie.
@@ -7999,6 +8091,7 @@
   }
   if (accountBack) history.replaceState(null, "", location.pathname + location.hash);
   loadAccount().then(a => {
+    if (a && a.user) loadCrew();
     if (loginReturn) return; // scenę i komunikat przywraca restoreAfterLogin()
     if (accountBack === "ok" && a && a.user) say("Jesteś zalogowany. Masz " + a.credits + " " + creditsWord(a.credits) + ".", 5000);
     else if (accountBack) say("Nie udało się zalogować. Spróbuj jeszcze raz.", 5000);
