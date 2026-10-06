@@ -1704,17 +1704,38 @@
       { id: "pano", name: "Panorama", en: "ultra-wide panoramic view" }, { id: "drone", name: "Z drona", en: "aerial drone view from high above" },
       { id: "tilt", name: "Tilt-shift", en: "tilt-shift miniature effect" }, { id: "blue", name: "Niebieska godzina", en: "during the blue hour, deep blue twilight tones" }] }
   };
-  const LAND_CATS = { lLand: ["terrain", "water", "flora", "build"], lAir: ["sky", "season", "weather"], lLook: ["look"] };
-  const LAND0 = { terrain: "mountains", water: "lake", flora: "conifer", build: "none", sky: "clouds", season: "summer", weather: "fair", look: "natural" };
+  // Kolory części (Naturalny albo kolor z palety): opts budowane z COLORS przy pierwszym użyciu
+  const LAND_COLOR = { tColor: { name: "Kolor terenu", of: "terrain" }, wColor: { name: "Kolor wody", of: "water" }, fColor: { name: "Kolor roślin", of: "flora" }, sColor: { name: "Kolor nieba", of: "sky" } };
+  // Do krajobrazu paleta ubrań plus barwy, których w ubraniach nie ma (fiolet, turkus, złoto, limonka, magenta)
+  const LAND_EXTRA = [{ id: "violet", name: "Fiolet", hex: "#8A5CC8", word: "violet" }, { id: "turquoise", name: "Turkus", hex: "#2FB8B0", word: "turquoise" },
+    { id: "gold", name: "Złoto", hex: "#E0B040", word: "golden" }, { id: "lime", name: "Limonka", hex: "#9ACD32", word: "lime green" }, { id: "magenta", name: "Magenta", hex: "#D03A9A", word: "magenta" }];
+  const landColor = id => COLORS.find(c => c.id === id) || LAND_EXTRA.find(c => c.id === id);
+  Object.entries(LAND_COLOR).forEach(([k, c]) => {
+    LAND[k] = { name: c.name, color: true, get opts() { return [{ id: "auto", name: "Naturalny", en: "" }, ...COLORS.concat(LAND_EXTRA).map(x => ({ id: x.id, name: x.name, en: x.word, hex: x.hex }))]; } };
+  });
+  const LAND_CATS = { lLand: ["terrain", "tColor", "water", "wColor", "flora", "fColor", "build"], lAir: ["sky", "sColor", "season", "weather"], lLook: ["look"] };
+  const LAND0 = { terrain: "mountains", water: "lake", flora: "conifer", build: "none", sky: "clouds", season: "summer", weather: "fair", look: "natural", tColor: "auto", wColor: "auto", fColor: "auto", sColor: "auto" };
   const landOf = (st = scene) => ({ ...LAND0, ...(st.land || {}) });
   const landOpt = (k, id) => LAND[k].opts.find(o => o.id === id) || LAND[k].opts[0];
+  // Kolor części do rysunku (null = naturalny)
+  const landHex = (r, k) => r[k] && r[k] !== "auto" ? (landColor(r[k]) || {}).hex || null : null;
+  // Woda jest też przy klifach i wyspie (morze), roślin nie ma przy „Bez roślin”
+  const landColorOn = (r, k) => k === "wColor" ? r.water !== "none" || ["cliffs", "island"].includes(r.terrain) : k === "fColor" ? r.flora !== "none" : true;
+  // Rzeczowniki do opisu koloru w Maniscrypcie
+  const LAND_NOUN = { terrain: { mountains: "mountains", hills: "hills", plain: "ground", dunes: "sand dunes", cliffs: "cliffs", canyon: "canyon rocks", island: "island", volcano: "volcano", glacier: "ice" },
+    flora: { meadow: "meadow", conifer: "trees", leafy: "trees", jungle: "jungle", savanna: "grass and trees", lavender: "flowers", palms: "palm leaves", fields: "fields" } };
   // Opis do Maniscryptu: teren w porze roku, z wodą, roślinnością i zabudową, pod niebem, z pogodą
   function landPhrase(r) {
     const en = k => k === "water" && r.water === "sea" && ["cliffs", "island"].includes(r.terrain) ? "" : landOpt(k, r[k]).en, withs = ["water", "flora", "build"].map(en).filter(Boolean);
-    return [en("terrain") + " " + en("season") + (withs.length ? ", with " + andList(withs) : ""), en("sky"), en("weather")].filter(Boolean).join(", ");
+    // Własne kolory: „red mountains, pink water…” i nierealistyczna paleta (inaczej generator wraca do naturalnych barw)
+    const col = (k, noun) => landColorOn(r, k) && r[k] !== "auto" && landColor(r[k]) ? landColor(r[k]).word + " " + noun : "";
+    const colors = [col("tColor", LAND_NOUN.terrain[r.terrain]), col("wColor", "water"), col("fColor", LAND_NOUN.flora[r.flora] || "plants"), col("sColor", "sky")].filter(Boolean);
+    return [en("terrain") + " " + en("season") + (withs.length ? ", with " + andList(withs) : ""), en("sky"), en("weather"),
+      colors.length ? "in surreal colours: " + andList(colors) + ", a bold unnatural colour palette" : ""].filter(Boolean).join(", ");
   }
   // Krótko po polsku (drzewko sceny, podsumowanie Kreatora): części inne niż „brak”
-  const landSummary = st => { const r = landOf(st); return ["terrain", "water", "flora", "build", "sky", "season", "weather", "look"].filter(k => !["none", "fair", "natural"].includes(r[k])).map(k => landOpt(k, r[k]).name).join(" + "); };
+  const landSummary = st => { const r = landOf(st); return ["terrain", "water", "flora", "build", "sky", "season", "weather", "look"].filter(k => !["none", "fair", "natural"].includes(r[k])).map(k => landOpt(k, r[k]).name)
+    .concat(Object.keys(LAND_COLOR).filter(k => r[k] !== "auto" && landColorOn(r, k)).map(k => LAND[k].name.toLowerCase() + ": " + landOpt(k, r[k]).name.toLowerCase())).join(" + "); };
   // Niebo z gwiazdami albo zorzą jest nocne, kolorowe o złotej godzinie
   const SKY_TIME = { stars: "night", aurora: "night", colorful: "golden" };
   function randomLand() {
@@ -1726,7 +1747,9 @@
   }
   function landRandom() {
     const r = {};
-    Object.keys(LAND).forEach(k => { r[k] = anyOf(LAND[k].opts).id; });
+    Object.keys(LAND).forEach(k => { r[k] = LAND[k].color ? "auto" : anyOf(LAND[k].opts).id; });
+    // Raz na kilka losowań jedna część w nienaturalnym kolorze
+    if (Math.random() < 0.15) r[anyOf(Object.keys(LAND_COLOR))] = anyOf(COLORS.concat(LAND_EXTRA)).id;
     // Częściej bez dziwnych zestawień: zwykle naturalne ujęcie i ładna pogoda
     if (Math.random() < 0.6) r.look = "natural";
     if (Math.random() < 0.5) r.weather = "fair";
@@ -4221,12 +4244,17 @@
     if (r.terrain === "canyon") G = win ? ["#E6E2DE", "#D9CFC8", "#C9B8AE"] : ["#D59A6A", "#C27E52", "#A8663E"];
     if (r.terrain === "glacier") G = ["#E4EFF7", "#D2E3EF", "#BCD3E4"];
     if (r.flora === "savanna" && !win) G = ["#DCC680", "#C9AD62", "#AE914A"];
-    const WATER_C = [[0, "#86A8C4"], [1, "#4C7896"]];
+    // Własne kolory: teren (bryły gór i skał albo sama ziemia), woda, rośliny, niebo; odcienie liczone od wybranego koloru
+    const tC = landHex(r, "tColor"), wC = landHex(r, "wColor"), fC = landHex(r, "fColor"), sC = landHex(r, "sColor");
+    const rockT = ["mountains", "glacier", "volcano", "canyon", "cliffs"].includes(r.terrain);
+    if (tC && !rockT) G = [shadeHex(tC, 0.18), tC, shadeHex(tC, -0.18)];
+    const WATER_C = wC ? [[0, shadeHex(wC, 0.22)], [1, shadeHex(wC, -0.2)]] : [[0, "#86A8C4"], [1, "#4C7896"]];
     const puff = (x, y, s, c, op) => [[0, 0, 1], [-0.9, 0.25, 0.7], [0.9, 0.2, 0.75], [0.4, -0.35, 0.7], [-0.4, -0.25, 0.6]].forEach(([dx, dy, k]) => paint("ellipse", { cx: f(x + dx * s), cy: f(y + dy * s), rx: f(s * k), ry: f(s * k * 0.62) }, c, g, op));
 
     // 1. Niebo i to, co na nim
     const SKY = { clear: [[0, "#4F86C6"], [1, "#C3DCF0"]], clouds: [[0, "#6A8DB4"], [1, "#CBD7E3"]], storm: [[0, "#252B35"], [1, "#5C6673"]],
       colorful: [[0, "#4B3F86"], [0.55, "#D9708F"], [1, "#F4B36A"]], stars: [[0, "#060B24"], [1, "#25315C"]], aurora: [[0, "#06101F"], [1, "#173447"]] }[r.sky];
+    if (sC) SKY.splice(0, SKY.length, [0, shadeHex(sC, ["stars", "aurora", "storm"].includes(r.sky) ? -0.45 : -0.15)], [1, shadeHex(sC, ["stars", "aurora", "storm"].includes(r.sky) ? -0.2 : 0.3)]);
     paint("rect", { x: 0, y: 0, width: f(W), height: f(hz + 2) }, vGrad(defs, uid + "ls", SKY), g);
     drawSky(g, defs, uid, W, H, hz, u, tod, r.sky === "storm" ? 0 : cel, skyX);
     if (r.sky === "stars" || r.sky === "aurora") {
@@ -4255,8 +4283,8 @@
     const snowK = win ? 0.5 : 0.2;
     if (r.terrain === "mountains" || r.terrain === "glacier") {
       const ice = r.terrain === "glacier";
-      range(g, W, H, hz + H * 0.01, [[0, 0.14], [0.1, 0.25], [0.2, 0.15], [0.33, 0.3], [0.45, 0.16], [0.58, 0.32], [0.7, 0.17], [0.82, 0.27], [0.92, 0.15], [1, 0.21]], ice ? "#B8CFE2" : "#A3B0C2", ice ? "#93B0CA" : "#7C8AA0", "#F2F5F8", ice ? 0.6 : snowK, sunLeft);
-      range(g, W, H, hz + H * 0.02, [[0, 0.1], [0.14, 0.19], [0.29, 0.08], [0.46, 0.21], [0.6, 0.09], [0.77, 0.18], [0.9, 0.07], [1, 0.12]], ice ? "#9DBAD2" : "#6E7E93", ice ? "#7C9CB8" : "#526076", "#E8EEF4", ice ? 0.5 : snowK * 0.7, sunLeft);
+      range(g, W, H, hz + H * 0.01, [[0, 0.14], [0.1, 0.25], [0.2, 0.15], [0.33, 0.3], [0.45, 0.16], [0.58, 0.32], [0.7, 0.17], [0.82, 0.27], [0.92, 0.15], [1, 0.21]], tC ? shadeHex(tC, 0.2) : ice ? "#B8CFE2" : "#A3B0C2", tC ? shadeHex(tC, -0.05) : ice ? "#93B0CA" : "#7C8AA0", "#F2F5F8", ice ? 0.6 : snowK, sunLeft);
+      range(g, W, H, hz + H * 0.02, [[0, 0.1], [0.14, 0.19], [0.29, 0.08], [0.46, 0.21], [0.6, 0.09], [0.77, 0.18], [0.9, 0.07], [1, 0.12]], tC || (ice ? "#9DBAD2" : "#6E7E93"), tC ? shadeHex(tC, -0.25) : ice ? "#7C9CB8" : "#526076", "#E8EEF4", ice ? 0.5 : snowK * 0.7, sunLeft);
     } else if (r.terrain === "hills") {
       paint("path", { d: ridge(W, hz, x => hz - H * (0.07 + 0.04 * Math.sin(x * 5 + 1)), 0.02, hz + 2) }, shadeHex(G[0], 0.12), g);
       paint("path", { d: ridge(W, hz, x => hz - H * (0.025 + 0.03 * Math.sin(x * 3.3 + 2.4)), 0.02, hz + 2) }, G[0], g);
@@ -4265,12 +4293,12 @@
     } else if (r.terrain === "dunes") {
       paint("path", { d: ridge(W, hz, x => hz - H * (0.05 + 0.035 * Math.sin(x * 4 + 0.5)), 0.02, hz + 2) }, shadeHex(G[0], 0.08), g);
     } else if (r.terrain === "canyon") {
-      paint("path", { d: `M0,${f(hz)} L0,${f(hz - H * 0.1)} L${f(W * 0.18)},${f(hz - H * 0.1)} L${f(W * 0.22)},${f(hz - H * 0.04)} L${f(W * 0.4)},${f(hz - H * 0.05)} L${f(W * 0.43)},${f(hz - H * 0.14)} L${f(W * 0.6)},${f(hz - H * 0.14)} L${f(W * 0.63)},${f(hz - H * 0.06)} L${f(W * 0.82)},${f(hz - H * 0.07)} L${f(W * 0.85)},${f(hz - H * 0.11)} L${f(W)},${f(hz - H * 0.11)} L${f(W)},${f(hz)} Z` }, win ? "#CDBFB6" : "#C7865C", g);
+      paint("path", { d: `M0,${f(hz)} L0,${f(hz - H * 0.1)} L${f(W * 0.18)},${f(hz - H * 0.1)} L${f(W * 0.22)},${f(hz - H * 0.04)} L${f(W * 0.4)},${f(hz - H * 0.05)} L${f(W * 0.43)},${f(hz - H * 0.14)} L${f(W * 0.6)},${f(hz - H * 0.14)} L${f(W * 0.63)},${f(hz - H * 0.06)} L${f(W * 0.82)},${f(hz - H * 0.07)} L${f(W * 0.85)},${f(hz - H * 0.11)} L${f(W)},${f(hz - H * 0.11)} L${f(W)},${f(hz)} Z` }, tC ? shadeHex(tC, 0.2) : win ? "#CDBFB6" : "#C7865C", g);
     } else if (r.terrain === "volcano") {
       paint("path", { d: ridge(W, hz, x => hz - H * (0.03 + 0.02 * Math.sin(x * 6)), 0.02, hz + 2) }, "#6E7480", g);
       const vx = W * 0.52, vt = hz - H * 0.3;
-      paint("path", { d: `M${f(vx - W * 0.42)},${f(hz + 2)} L${f(vx - W * 0.06)},${f(vt)} L${f(vx + W * 0.06)},${f(vt)} L${f(vx + W * 0.42)},${f(hz + 2)} Z` }, win ? "#7D7A80" : "#5A4C4A", g);
-      paint("path", { d: `M${f(vx - W * 0.06)},${f(vt)} L${f(vx + W * 0.06)},${f(vt)} L${f(vx + W * 0.13)},${f(vt + H * 0.08)} L${f(vx - W * 0.12)},${f(vt + H * 0.07)} Z` }, win ? "#F0F3F6" : "#7A6560", g, 0.9);
+      paint("path", { d: `M${f(vx - W * 0.42)},${f(hz + 2)} L${f(vx - W * 0.06)},${f(vt)} L${f(vx + W * 0.06)},${f(vt)} L${f(vx + W * 0.42)},${f(hz + 2)} Z` }, tC || (win ? "#7D7A80" : "#5A4C4A"), g);
+      paint("path", { d: `M${f(vx - W * 0.06)},${f(vt)} L${f(vx + W * 0.06)},${f(vt)} L${f(vx + W * 0.13)},${f(vt + H * 0.08)} L${f(vx - W * 0.12)},${f(vt + H * 0.07)} Z` }, win ? "#F0F3F6" : tC ? shadeHex(tC, 0.2) : "#7A6560", g, 0.9);
       el("path", { d: `M${f(vx + W * 0.01)},${f(vt + H * 0.01)} q${f(-W * 0.03)},${f(H * 0.1)} ${f(W * 0.01)},${f(H * 0.2)}`, style: `fill:none;stroke:#FF7A2E;stroke-width:${f(u * 0.8)};opacity:${f(0.5 + nightW * 0.5)}` }, g);
       [[0, 0.04, 0.035], [0.03, 0.1, 0.05], [0.08, 0.18, 0.065]].forEach(([dx, dy, s]) => paint("circle", { cx: f(vx + W * dx), cy: f(vt - H * dy), r: f(H * s) }, "#8E8A88", g, 0.75));
     }
@@ -4280,7 +4308,7 @@
       for (let k = 0; k < 14; k++) { const t = (k + 1) / 15, y = hz + gd * Math.pow(t, 1.5); strokeP(`M${f(rnd01(k * 9) * W * 0.8)},${f(y)} l${f(W * (0.04 + t * 0.1))},0`, "#DCE8EE", 0.4 + t, 0.4, g); }
       if (r.terrain === "cliffs") {
         const d = `M0,${f(topY(0))} ` + [0.1, 0.2, 0.3, 0.38].map(x => `L${f(x * W)},${f(topY(x))}`).join(" ") + ` L${f(W * 0.42)},${f(hz + gd * 0.3)} L${f(W * 0.47)},${f(H)} L0,${f(H)} Z`;
-        paint("path", { d }, win ? "#B8B4B0" : "#8C7E6E", g);
+        paint("path", { d }, tC || (win ? "#B8B4B0" : "#8C7E6E"), g);
         paint("path", { d: `M${f(W * 0.38)},${f(topY(0.38))} L${f(W * 0.42)},${f(hz + gd * 0.3)} L${f(W * 0.47)},${f(H)} L${f(W * 0.3)},${f(H)} Z` }, "#6E6254", g, 0.6);
         paint("path", { d: `M0,${f(topY(0) - H * 0.005)} ` + [0.1, 0.2, 0.3, 0.38].map(x => `L${f(x * W)},${f(topY(x) - H * 0.005)}`).join(" ") + ` L${f(W * 0.385)},${f(topY(0.38) + H * 0.03)} L0,${f(topY(0) + H * 0.035)} Z` }, G[1], g);
         el("path", { d: `M${f(W * 0.44)},${f(hz + gd * 0.5)} q${f(W * 0.05)},${f(-u)} ${f(W * 0.1)},0 M${f(W * 0.46)},${f(hz + gd * 0.75)} q${f(W * 0.06)},${f(-u)} ${f(W * 0.12)},0`, style: `fill:none;stroke:#FFFFFF;stroke-width:${f(u * 0.6)};opacity:0.6` }, g);
@@ -4289,7 +4317,7 @@
         paint("path", { d: ridge(W, hz + H * 0.005, x => Math.min(hz + H * 0.005, topY(x)), 0.01, hz + H * 0.005) }, G[1], g);
       }
     } else {
-      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(gd) }, vGrad(defs, uid + "lg", [[0, G[0]], [0.45, G[1]], [1, G[2]]]), g);
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(gd) }, vGrad(defs, uid + "lg", r.terrain === "glacier" && tC ? [[0, shadeHex(tC, 0.4)], [1, shadeHex(tC, 0.15)]] : [[0, G[0]], [0.45, G[1]], [1, G[2]]]), g);
       if (r.terrain === "dunes") [[0.3, 0.15], [0.75, 0.4], [0.2, 0.65]].forEach(([x, t], i) => paint("path", { d: `M${f(W * (x - 0.5))},${f(hz + gd * (t + 0.15))} Q${f(W * x)},${f(hz + gd * t)} ${f(W * (x + 0.5))},${f(hz + gd * (t + 0.18))} Z` }, i % 2 ? shadeHex(G[1], 0.1) : shadeHex(G[2], -0.06), g, 0.8));
       if (r.terrain === "glacier") for (let k = 0; k < 7; k++) { const t = 0.15 + k * 0.12, y = hz + gd * t; strokeP(`M${f(W * rnd01(k * 5) * 0.7)},${f(y)} l${f(W * 0.12)},${f(gd * 0.02)}`, "#7FA6C8", 0.8 + t, 0.6, g); }
       if (!flatDraw && !win && ["mountains", "hills", "plain"].includes(r.terrain) && r.flora !== "lavender" && r.flora !== "fields") grassField(g, W, H, hz, hz + gd * 0.05, shadeHex(G[2], -0.1), shadeHex(G[0], 0.15), 10, 26);
@@ -4309,7 +4337,7 @@
       const L = [[W * (0.5 - 0.02 * k), hz], [W * (0.7 - 0.05 * k), hz + gd * 0.3], [W * (0.35 - 0.1 * k), hz + gd * 0.6], [W * (0.5 - 0.2 * k), H]];
       const R = [[W * (0.5 + 0.02 * k), hz], [W * (0.7 + 0.08 * k), hz + gd * 0.3], [W * (0.35 + 0.15 * k), hz + gd * 0.6], [W * (0.5 + 0.25 * k), H]];
       const d = `M${f(L[0][0])},${f(L[0][1])} C${f(L[1][0])},${f(L[1][1])} ${f(L[2][0])},${f(L[2][1])} ${f(L[3][0])},${f(L[3][1])} L${f(R[3][0])},${f(R[3][1])} C${f(R[2][0])},${f(R[2][1])} ${f(R[1][0])},${f(R[1][1])} ${f(R[0][0])},${f(R[0][1])} Z`;
-      paint("path", { d }, vGrad(defs, uid + "lr", [[0, "#A2BFD0"], [1, "#4F7894"]]), g);
+      paint("path", { d }, vGrad(defs, uid + "lr", wC ? WATER_C : [[0, "#A2BFD0"], [1, "#4F7894"]]), g);
       for (let q = 0; q < 14; q++) { const t = 0.05 + rnd01(q * 2.3) * 0.9, a = bez(...L, t), b = bez(...R, t), x = a[0] + (b[0] - a[0]) * (0.2 + rnd01(q) * 0.6); strokeP(`M${f(x)},${f(a[1])} l${f((b[0] - a[0]) * 0.12)},0`, "#E4EEF3", 0.4 + t, 0.5, g); }
     } else if (r.water === "waterfall") {
       const x0 = W * 0.56, x1 = W * 0.82, top = hz - H * 0.16, bot = hz + gd * 0.16;
@@ -4326,48 +4354,48 @@
       strokeP(`M${f(W * 0.14)},${f(hz + gd * 0.5)} l${f(W * 0.12)},0`, "#E4EEF4", 0.8, 0.6, g);
     }
     if (r.terrain === "canyon") {
-      [[0, 1], [1, -1]].forEach(([x0, s]) => paint("path", { d: `M${f(W * x0)},${f(hz - H * 0.32)} L${f(W * (x0 + s * 0.2))},${f(hz - H * 0.3)} L${f(W * (x0 + s * 0.24))},${f(hz + gd * 0.2)} L${f(W * (x0 + s * 0.3))},${f(H)} L${f(W * x0)},${f(H)} Z` }, win ? "#B9A89C" : "#A65A3A", g));
+      [[0, 1], [1, -1]].forEach(([x0, s]) => paint("path", { d: `M${f(W * x0)},${f(hz - H * 0.32)} L${f(W * (x0 + s * 0.2))},${f(hz - H * 0.3)} L${f(W * (x0 + s * 0.24))},${f(hz + gd * 0.2)} L${f(W * (x0 + s * 0.3))},${f(H)} L${f(W * x0)},${f(H)} Z` }, tC || (win ? "#B9A89C" : "#A65A3A"), g));
       [[0.2, 1], [0.8, -1]].forEach(([x, s]) => paint("path", { d: `M${f(W * x)},${f(hz - H * 0.3)} L${f(W * (x + s * 0.04))},${f(hz + gd * 0.2)} L${f(W * (x + s * 0.1))},${f(H)} L${f(W * (x - s * 0.02))},${f(H)} Z` }, "#7E4028", g, sunLeft === (s > 0) ? 0.2 : 0.5));
       for (let k = 0; k < 5; k++) [0, 1].forEach(sd => paint("rect", { x: f(sd ? W * 0.8 : 0), y: f(hz - H * 0.28 + k * H * 0.09), width: f(W * 0.2), height: f(H * 0.008) }, "#7E4028", g, 0.35));
     }
     // 5. Roślinność: rząd w dali wzdłuż lądu i kilka roślin bliżej
     const band = (fn, c, op) => { const gg = el("g", { transform: `translate(${f(ext[0] * W)} 0)` }, g); paint("path", { d: fn((ext[1] - ext[0]) * W) }, c, gg, op); };
     const baseY = sea ? topY(0.5) + H * 0.01 : hz + H * 0.004;
-    const leafC = { spring: "#8DC06A", summer: "#557F3E", autumn: "#D0812F", winter: "#8A847C" }[r.season];
-    const pineC = win ? "#4A6058" : "#3E5E48";
+    const leafC = fC || { spring: "#8DC06A", summer: "#557F3E", autumn: "#D0812F", winter: "#8A847C" }[r.season];
+    const pineC = fC || (win ? "#4A6058" : "#3E5E48");
     const nearX = sea ? (r.terrain === "cliffs" ? [0.06] : []) : [0.05, 0.95];
     const nearBase = H * 0.97;
-    const pine = (x, h) => rich ? richPine(g, x, nearBase, h, pineC, win ? "#E8EEF2" : "#5B7660", sunLeft, Math.round(x)) : paint("path", { d: `M${f(x)},${f(nearBase - h)} L${f(x + h * 0.22)},${f(nearBase)} L${f(x - h * 0.22)},${f(nearBase)} Z` }, pineC, g);
+    const pine = (x, h) => rich ? richPine(g, x, nearBase, h, pineC, win ? "#E8EEF2" : fC ? shadeHex(fC, 0.25) : "#5B7660", sunLeft, Math.round(x)) : paint("path", { d: `M${f(x)},${f(nearBase - h)} L${f(x + h * 0.22)},${f(nearBase)} L${f(x - h * 0.22)},${f(nearBase)} Z` }, pineC, g);
     const crown = (x, h, c) => rich ? richTree(g, x, nearBase, h, c, shadeHex(c, 0.25), sunLeft) : (paint("rect", { x: f(x - h * 0.03), y: f(nearBase - h * 0.5), width: f(h * 0.06), height: f(h * 0.5) }, "#3A2E24", g), paint("circle", { cx: f(x), cy: f(nearBase - h * 0.68), r: f(h * 0.28) }, c, g));
     const palm = (x, h, lean) => {
       const top = [x + lean * h * 0.25, nearBase - h];
       strokeP(`M${f(x)},${f(nearBase)} Q${f(x + lean * h * 0.02)},${f(nearBase - h * 0.6)} ${f(top[0])},${f(top[1])}`, "#6B5038", h * 0.05, 1, g);
-      [-2.6, -2, -1.3, -0.6, 0, 0.6].forEach(a => strokeP(`M${f(top[0])},${f(top[1])} q${f(Math.cos(a - 0.4) * h * 0.2)},${f(Math.sin(a - 0.4) * h * 0.2 - h * 0.05)} ${f(Math.cos(a) * h * 0.35)},${f(Math.sin(a) * h * 0.25 + h * 0.12)}`, win ? "#6E7E6A" : "#3F7A3A", h * 0.035, 1, g));
+      [-2.6, -2, -1.3, -0.6, 0, 0.6].forEach(a => strokeP(`M${f(top[0])},${f(top[1])} q${f(Math.cos(a - 0.4) * h * 0.2)},${f(Math.sin(a - 0.4) * h * 0.2 - h * 0.05)} ${f(Math.cos(a) * h * 0.35)},${f(Math.sin(a) * h * 0.25 + h * 0.12)}`, fC || (win ? "#6E7E6A" : "#3F7A3A"), h * 0.035, 1, g));
     };
     const acacia = (x, y, h) => {
       strokeP(`M${f(x)},${f(y)} l${f(h * 0.05)},${f(-h * 0.7)}`, "#4A3828", h * 0.06, 1, g);
-      paint("ellipse", { cx: f(x + h * 0.05), cy: f(y - h * 0.75), rx: f(h * 0.5), ry: f(h * 0.12) }, win ? "#8A8478" : "#5E7A3A", g);
+      paint("ellipse", { cx: f(x + h * 0.05), cy: f(y - h * 0.75), rx: f(h * 0.5), ry: f(h * 0.12) }, fC || (win ? "#8A8478" : "#5E7A3A"), g);
     };
     const rich = !flatDraw;
     if (r.flora === "conifer") { band(w => pineRow(w, baseY, H * 0.03, H * 0.07, 30, 7), pineC); nearX.forEach((x, i) => { pine(W * x, H * (0.55 + i * 0.05)); pine(W * (x + (x < 0.5 ? 0.11 : -0.11)), H * 0.4); }); }
     if (r.flora === "leafy") { band(w => crownRow(w, baseY, H * 0.03, H * 0.06, 22, 11), shadeHex(leafC, -0.1)); nearX.forEach(x => { crown(W * x, H * 0.55, leafC); crown(W * (x + (x < 0.5 ? 0.12 : -0.12)), H * 0.38, shadeHex(leafC, 0.1)); }); }
     if (r.flora === "leafy" && r.season === "spring") for (let k = 0; k < 30; k++) paint("circle", { cx: f(rnd01(k * 3) * W), cy: f(baseY - H * 0.04 * rnd01(k * 5)), r: f(u * 0.5) }, "#F4C2D4", g, 0.85);
     if (r.flora === "jungle") {
-      band(w => crownRow(w, baseY, H * 0.06, H * 0.12, 16, 3), win ? "#5E6E62" : "#2E5E34");
-      band(w => crownRow(w, baseY + H * 0.01, H * 0.03, H * 0.07, 24, 9), win ? "#6E7E70" : "#3E7A40");
-      nearX.forEach(x => { for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + (k - 2.5) * 0.4 + (x < 0.5 ? 0.3 : -0.3); paint("ellipse", { cx: f(W * x + Math.cos(a) * H * 0.14), cy: f(nearBase + Math.sin(a) * H * 0.14), rx: f(H * 0.13), ry: f(H * 0.035), transform: `rotate(${f(a * 180 / Math.PI)} ${f(W * x + Math.cos(a) * H * 0.14)} ${f(nearBase + Math.sin(a) * H * 0.14)})` }, k % 2 ? "#2F6A34" : "#3E8240", g); } });
+      band(w => crownRow(w, baseY, H * 0.06, H * 0.12, 16, 3), fC ? shadeHex(fC, -0.2) : win ? "#5E6E62" : "#2E5E34");
+      band(w => crownRow(w, baseY + H * 0.01, H * 0.03, H * 0.07, 24, 9), fC || (win ? "#6E7E70" : "#3E7A40"));
+      nearX.forEach(x => { for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + (k - 2.5) * 0.4 + (x < 0.5 ? 0.3 : -0.3); paint("ellipse", { cx: f(W * x + Math.cos(a) * H * 0.14), cy: f(nearBase + Math.sin(a) * H * 0.14), rx: f(H * 0.13), ry: f(H * 0.035), transform: `rotate(${f(a * 180 / Math.PI)} ${f(W * x + Math.cos(a) * H * 0.14)} ${f(nearBase + Math.sin(a) * H * 0.14)})` }, fC ? shadeHex(fC, k % 2 ? -0.15 : 0.05) : k % 2 ? "#2F6A34" : "#3E8240", g); } });
     }
     if (r.flora === "savanna") { [[0.2, 0.08, 0.16], [0.74, 0.14, 0.22], [0.48, 0.03, 0.09], [0.9, 0.02, 0.07]].forEach(([x, t, h]) => acacia(W * rel(x), sea ? topY(rel(x)) : hz + gd * t, H * h)); }
-    if (r.flora === "palms") { (sea ? [[rel(0.35), 0.075, -1], [rel(0.6), 0.06, 1]] : [[0.06, 0.6, 1], [0.94, 0.55, -1], [0.85, 0.35, -1]]).forEach(([x, h, l]) => { if (sea) { const y = topY(x); strokeP(`M${f(W * x)},${f(y)} l${f(l * H * 0.03)},${f(-H * h)}`, "#6B5038", H * 0.006, 1, g); [-3, -2.4, -1.6, -0.8, -0.1].forEach(a => strokeP(`M${f(W * x + l * H * 0.03)},${f(y - H * h)} l${f(Math.cos(a) * H * 0.045)},${f(Math.sin(a) * H * 0.02 + H * 0.02)}`, "#3F7A3A", H * 0.007, 1, g)); } else palm(W * x, H * h, l); }); }
+    if (r.flora === "palms") { (sea ? [[rel(0.35), 0.075, -1], [rel(0.6), 0.06, 1]] : [[0.06, 0.6, 1], [0.94, 0.55, -1], [0.85, 0.35, -1]]).forEach(([x, h, l]) => { if (sea) { const y = topY(x); strokeP(`M${f(W * x)},${f(y)} l${f(l * H * 0.03)},${f(-H * h)}`, "#6B5038", H * 0.006, 1, g); [-3, -2.4, -1.6, -0.8, -0.1].forEach(a => strokeP(`M${f(W * x + l * H * 0.03)},${f(y - H * h)} l${f(Math.cos(a) * H * 0.045)},${f(Math.sin(a) * H * 0.02 + H * 0.02)}`, fC || "#3F7A3A", H * 0.007, 1, g)); } else palm(W * x, H * h, l); }); }
     if (r.flora === "lavender") {
       const vx = W * 0.5, vy = hz + gd * 0.02;
-      for (let k = -6; k <= 6; k++) paint("path", { d: `M${f(vx + k * W * 0.012)},${f(vy)} L${f(vx + (k + 0.45) * W * 0.012)},${f(vy)} L${f(vx + (k + 0.45) * W * 0.16)},${f(H)} L${f(vx + k * W * 0.16)},${f(H)} Z` }, win ? "#A8A2B0" : "#8E6CC0", g, 0.95);
+      for (let k = -6; k <= 6; k++) paint("path", { d: `M${f(vx + k * W * 0.012)},${f(vy)} L${f(vx + (k + 0.45) * W * 0.012)},${f(vy)} L${f(vx + (k + 0.45) * W * 0.16)},${f(H)} L${f(vx + k * W * 0.16)},${f(H)} Z` }, fC || (win ? "#A8A2B0" : "#8E6CC0"), g, 0.95);
     }
     if (r.flora === "fields") [[0.04, ["#C9B25A", "#7E9A4E", "#A8B862"]], [0.12, ["#6E9A4E", "#D6C070", "#8AA85A"]], [0.24, ["#B8A050", "#5E8A44", "#C9B25A"]]].forEach(([t, cs], i) => {
       const y0 = hz + gd * t, y1 = hz + gd * (t + 0.08 + i * 0.05);
-      cs.forEach((c, j) => paint("path", { d: `M${f(W * (j / 3) - W * 0.05 * i)},${f(y0)} L${f(W * ((j + 1) / 3) - W * 0.05 * i)},${f(y0)} L${f(W * ((j + 1) / 3) + W * 0.05 * i)},${f(y1)} L${f(W * (j / 3) + W * 0.05 * i)},${f(y1)} Z` }, win ? "#E2E8EE" : c, g, 0.9));
+      cs.forEach((c, j) => paint("path", { d: `M${f(W * (j / 3) - W * 0.05 * i)},${f(y0)} L${f(W * ((j + 1) / 3) - W * 0.05 * i)},${f(y0)} L${f(W * ((j + 1) / 3) + W * 0.05 * i)},${f(y1)} L${f(W * (j / 3) + W * 0.05 * i)},${f(y1)} Z` }, fC ? shadeHex(fC, (i + j) % 3 * 0.12 - 0.12) : win ? "#E2E8EE" : c, g, 0.9));
     });
-    if (r.flora === "meadow") for (let k = 0; k < (rich ? 70 : 30); k++) { const t = 0.08 + rnd01(k * 2.9) * 0.9, y = depthY(hz, H, t), x = sea ? W * rel(rnd01(k * 1.3)) : rnd01(k * 1.3) * W; if (!sea || y < topY(x / W) + H * 0.03) paint("circle", { cx: f(x), cy: f(sea ? topY(x / W) + H * 0.01 : y), r: f(u * (0.25 + t * 0.6)) }, win ? "#FFFFFF" : ["#F2D24A", "#F4F0E8", "#E87AA0", "#B48AE0"][k % 4], g, 0.9); }
+    if (r.flora === "meadow") for (let k = 0; k < (rich ? 70 : 30); k++) { const t = 0.08 + rnd01(k * 2.9) * 0.9, y = depthY(hz, H, t), x = sea ? W * rel(rnd01(k * 1.3)) : rnd01(k * 1.3) * W; if (!sea || y < topY(x / W) + H * 0.03) paint("circle", { cx: f(x), cy: f(sea ? topY(x / W) + H * 0.01 : y), r: f(u * (0.25 + t * 0.6)) }, fC ? shadeHex(fC, (k % 3) * 0.15 - 0.1) : win ? "#FFFFFF" : ["#F2D24A", "#F4F0E8", "#E87AA0", "#B48AE0"][k % 4], g, 0.9); }
     // 6. Zabudowa: w średnim planie, na linii lądu
     const BX = { cabin: 0.7, lighthouse: 0.8, castle: 0.66, village: 0.62, city: 0.72, ruins: 0.3, bridge: 0.5, windmill: 0.26 };
     if (r.build !== "none") {
@@ -5565,7 +5593,7 @@
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "animalCoat") return petCoat(animalIt()).name;
     if (PROD_CATS[cat.id]) { const r = prodNow(); return PROD_CATS[cat.id].filter(k => prodPartOn(r, k)).slice(0, 2).map(k => prodOpt(k, r[k]).name).join(", "); }
-    if (LAND_CATS[cat.id]) { const r = landOf(scene); return scene.background !== "land" ? "Wybierz" : LAND_CATS[cat.id].slice(0, 2).map(k => landOpt(k, r[k]).name).join(", "); }
+    if (LAND_CATS[cat.id]) { const r = landOf(scene); return scene.background !== "land" ? "Wybierz" : LAND_CATS[cat.id].filter(k => !LAND[k].color).slice(0, 2).map(k => landOpt(k, r[k]).name).join(", "); }
     if (BEAST_CATS[cat.id]) { const r = beastOf({ beast: scene.beast }); return BEAST_CATS[cat.id].filter(k => beastPartOn(r, k)).slice(0, 2).map(k => beastOpt(k, r[k]).name).join(", "); }
     if (cat.id === "crew") return !(account && account.user) ? "zaloguj się" : crew.length ? crew.length + " w ekipie" : "pusto";
     if (cat.id === "outfit") return setName();
@@ -6126,10 +6154,12 @@
   }
   function landTiles(catId) {
     const sub = scene.sub, on = () => scene.background === "land";
+    // Kolor: Naturalny jako miniatura krajobrazu, reszta jako próbki
+    const sw = hex => svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, hex); };
     if (sub && LAND[sub]) return [backTile(null)].concat(LAND[sub].opts.map(o => tile("opt-land-" + sub + "-" + o.id, o.name, () => on() && landOf(scene)[sub] === o.id,
-      () => setLand(sub, o.id), svg => landThumb(svg, { [sub]: o.id }))));
-    return LAND_CATS[catId].map(k => groupMark(tile("opt-land-" + k, LAND[k].name, () => on() && landOf(scene)[k] !== LAND0[k],
-      () => { scene.sub = k; render(); }, svg => landThumb(svg, {}), () => landOpt(k, landOf(scene)[k]).name)));
+      () => setLand(sub, o.id), o.hex ? sw(o.hex) : svg => landThumb(svg, { [sub]: o.id }))));
+    return LAND_CATS[catId].filter(k => landColorOn(landOf(scene), k)).map(k => groupMark(tile("opt-land-" + k, LAND[k].name, () => on() && landOf(scene)[k] !== LAND0[k],
+      () => { scene.sub = k; render(); }, LAND[k].color && landHex(landOf(scene), k) ? sw(landHex(landOf(scene), k)) : svg => landThumb(svg, {}), () => landOpt(k, landOf(scene)[k]).name)));
   }
   // Losowe zmiany: Zmutuj (1–2 części), Krzyżówka (głowa i twarz jednego gotowca, reszta drugiego), cały losowy stworek
   function beastMutate(r, n = 2) {
