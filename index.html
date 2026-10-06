@@ -1306,6 +1306,10 @@
     { id: "pShape", label: "Kształt", subjects: ["object"], patch: "#6E8B4A", options: [], when: st => st.item === "own" },
     { id: "pMat", label: "Materiał", subjects: ["object"], patch: "#8E7A62", options: [], when: st => st.item === "own" },
     { id: "pDetail", label: "Detale", subjects: ["object"], patch: "#5E7FA3", options: [], when: st => st.item === "own" },
+    // Konstruktor krajobrazu Manitamu (kafelki buduje landTiles, wybór części włącza tło Własny krajobraz)
+    { id: "lLand", label: "Krajobraz", subjects: ["place"], patch: "#6E8B4A", options: [] },
+    { id: "lAir", label: "Niebo i pora", subjects: ["place"], patch: "#5E7FA3", options: [] },
+    { id: "lLook", label: "Ujęcie", subjects: ["place"], patch: "#8580B1", options: [] },
     { id: "base", label: "Podstawa", subjects: ["object"], patch: "#8E7A62", options: [
       { id: "table", name: "Stół", short: "Stół", prompt: "standing on a wooden table" },
       { id: "pedestal", name: "Cokół", short: "Cokół", prompt: "displayed on a minimalist stone pedestal" },
@@ -1442,6 +1446,8 @@
       { id: "studio", name: "Studio", short: "Studio", prompt: "plain seamless studio backdrop in neutral grey" },
       // Sezonowe aranżacje studia: tylko dla Manito (zdjęcia produktowe na okazje)
       { id: "season", name: "Sezon", short: "Sezon", subjects: ["object"], prompt: "festive seasonal product set" },
+      // Własny krajobraz: tylko Manitam, składany z części w grupie Manitam (opis buduje landPhrase)
+      { id: "land", name: "Własny krajobraz", short: "Własny", subjects: ["place"], prompt: "landscape" },
       { id: "city", name: "Miasto", children: [
         { id: "street", name: "Ulica", short: "Ulica", prompt: "empty city street in the background, softly out of focus" },
         { id: "rooftop", name: "Dach", short: "Dach", prompt: "city rooftop with a skyline in the background, softly out of focus" },
@@ -1464,7 +1470,7 @@
       ]}
     ]},
     // Elementy miejsca: kafelki buduje makeTiles (scene.fx to lista), tu nazwy dla wyszukiwarki
-    { id: "fx", label: "Elementy", patch: "#6B8FA3", options: [{ id: "none", name: "Brak", short: "Brak" }, ...FX_LIST.map(x => ({ id: x.id, name: x.name, short: x.name }))] },
+    { id: "fx", label: "Elementy", patch: "#6B8FA3", when: st => st.background !== "land", options: [{ id: "none", name: "Brak", short: "Brak" }, ...FX_LIST.map(x => ({ id: x.id, name: x.name, short: x.name }))] },
     { id: "time", label: "Pora dnia", patch: "#D9A441", options: [
       { id: "day", name: "Dzień", short: "Dzień", prompt: "in daylight" },
       { id: "golden", name: "Złota godzina", short: "Złota g.", prompt: "at golden hour" },
@@ -1505,7 +1511,7 @@
   };
   const styleOf = st => STYLES[st.style] || null;
   // Manitam: miejsce jako temat (opis tła bez „w tle, rozmyte”) i światło opisane względem sceny, nie postaci
-  const placeOf = () => bgPrompt().replace(/ in the background/g, "").replace(/, softly out of focus/g, "");
+  const placeOf = () => bgPrompt().replace(/ in the background/g, "").replace(/, softly out of focus/g, "") + (scene.background === "land" && landOpt("look", landOf(scene).look).en ? ", " + landOpt("look", landOf(scene).look).en : "");
   const placeLight = () => lightPrompt().replace(/the subject/g, "the scene").replace(/, (face in [^,]*|outlining the silhouette|glowing rim of light around the silhouette|faint (silver )?rim (of light )?around the silhouette|rim of light around the silhouette)/g, "");
   const ENDING_PLACE = {
     photo: "24mm wide-angle lens, photorealistic landscape and architecture photography, rich detail",
@@ -1523,6 +1529,7 @@
   // Warianty tła: podstawa (jedna do wyboru, pierwsza domyślna, własny opis w prompcie) i dodatki (add: opis),
   // które łączą się z podstawą i ze sobą. excl: dodatki, które się wykluczają (rysunki leżałyby na sobie).
   const BG_VARIANTS = {
+    land: [{ id: "own", name: "Własny", prompt: "landscape" }],
     // tone: kolor tła aranżacji (szkic i Próbny kadr), motywy rysuje seasonSet
     season: [
       { id: "spring", name: "Wiosna", tone: "#CFE3C0", prompt: "fresh spring product set with a soft pastel green backdrop, blooming cherry blossom branches and scattered petals" },
@@ -1651,11 +1658,80 @@
   const bgAdds = (st, bg = st.background) => ((st.bga && st.bga[bg]) || []).filter(id => (bgVar(bg, id) || {}).add);
   // Wszystko, co rysuje tło: podstawa i dodatki
   const bgLook = (st, bg = st.background) => [bgVariant(st, bg), ...bgAdds(st, bg)];
-  const bgExtras = st => (st.fx || []).filter(x => FX[x]);
+  // Własny krajobraz ma pogodę w przepisie, więc bez elementów miejsca
+  const bgExtras = st => st.background === "land" ? [] : (st.fx || []).filter(x => FX[x]);
+  // Rysunek tła: przy własnym krajobrazie przepis zakodowany jako lista "część:wariant"
+  const bgDraw = (st, bg = st.background) => bg === "land" ? Object.entries(landOf(st)).map(([k, id]) => k + ":" + id) : bgLook(st, bg);
   const bgPrompt = () => {
+    if (scene.background === "land") return landPhrase(landOf(scene));
     const more = [...bgAdds(scene).map(id => bgVar(scene.background, id).add), ...bgExtras(scene).map(x => FX[x].en)];
     return bgVar(scene.background, bgVariant(scene)).prompt + (more.length ? ", with " + andList(more) : "");
   };
+  // ---------- Manitam: własny krajobraz z części (teren, woda, roślinność, zabudowa, niebo, pora roku, pogoda, ujęcie) ----------
+  const LAND = {
+    terrain: { name: "Teren", opts: [
+      { id: "mountains", name: "Góry", en: "mountain landscape with jagged peaks" }, { id: "hills", name: "Wzgórza", en: "landscape of soft rolling hills" },
+      { id: "plain", name: "Równina", en: "wide open plain stretching to the horizon" }, { id: "dunes", name: "Wydmy", en: "desert of rolling sand dunes" },
+      { id: "cliffs", name: "Klify", en: "rugged coastal cliffs above the sea" }, { id: "canyon", name: "Kanion", en: "deep red rock canyon" },
+      { id: "island", name: "Wyspa", en: "small island rising from the open sea" }, { id: "volcano", name: "Wulkan", en: "landscape with a smoking volcano" },
+      { id: "glacier", name: "Lodowiec", en: "glacier landscape with blue ice and snowy peaks" }] },
+    water: { name: "Woda", opts: [
+      { id: "none", name: "Bez wody", en: "" }, { id: "lake", name: "Jezioro", en: "a calm mirror-like lake" }, { id: "river", name: "Rzeka", en: "a winding river" },
+      { id: "waterfall", name: "Wodospad", en: "a tall waterfall" }, { id: "sea", name: "Morze", en: "the sea on the horizon" },
+      { id: "stream", name: "Strumień", en: "a small stream" }, { id: "pond", name: "Staw", en: "a small pond" }] },
+    flora: { name: "Roślinność", opts: [
+      { id: "none", name: "Bez roślin", en: "" }, { id: "meadow", name: "Łąka", en: "wildflower meadows" }, { id: "conifer", name: "Las iglasty", en: "pine forest" },
+      { id: "leafy", name: "Las liściasty", en: "deciduous forest" }, { id: "jungle", name: "Dżungla", en: "lush tropical jungle" },
+      { id: "savanna", name: "Sawanna", en: "dry savanna grass with scattered acacia trees" }, { id: "lavender", name: "Lawenda", en: "rows of blooming lavender" },
+      { id: "palms", name: "Palmy", en: "palm trees" }, { id: "fields", name: "Pola", en: "patchwork farm fields" }] },
+    build: { name: "Zabudowa", opts: [
+      { id: "none", name: "Dzika natura", en: "" }, { id: "cabin", name: "Chatka", en: "a small wooden cabin" }, { id: "lighthouse", name: "Latarnia", en: "a lighthouse" },
+      { id: "castle", name: "Zamek", en: "an old stone castle" }, { id: "village", name: "Wioska", en: "a small village with a church tower" },
+      { id: "city", name: "Miasto", en: "a city skyline in the distance" }, { id: "ruins", name: "Ruiny", en: "ancient stone ruins" },
+      { id: "bridge", name: "Most", en: "an old stone arch bridge" }, { id: "windmill", name: "Wiatrak", en: "a windmill" }] },
+    sky: { name: "Niebo", opts: [
+      { id: "clear", name: "Bezchmurne", en: "under a clear blue sky" }, { id: "clouds", name: "Chmury", en: "under a sky with big white clouds" },
+      { id: "storm", name: "Burza", en: "under dark dramatic storm clouds with lightning" }, { id: "colorful", name: "Kolorowe", en: "under a vivid sky with pink and orange clouds" },
+      { id: "stars", name: "Gwiazdy", en: "under a starry sky with the Milky Way" }, { id: "aurora", name: "Zorza", en: "under green northern lights dancing in the sky" }] },
+    season: { name: "Pora roku", opts: [
+      { id: "spring", name: "Wiosna", en: "in spring, fresh green with blossoming trees" }, { id: "summer", name: "Lato", en: "in summer, lush and green" },
+      { id: "autumn", name: "Jesień", en: "in autumn, with golden and red foliage" }, { id: "winter", name: "Zima", en: "in winter, covered in snow" }] },
+    weather: { name: "Pogoda", opts: [
+      { id: "fair", name: "Pogodnie", en: "" }, { id: "fog", name: "Mgła", en: "low mist drifting through the landscape" }, { id: "rain", name: "Deszcz", en: "gentle rain falling" },
+      { id: "snow", name: "Śnieżyca", en: "snow falling" }, { id: "rainbow", name: "Tęcza", en: "a rainbow arching across the sky" }] },
+    look: { name: "Ujęcie", opts: [
+      { id: "natural", name: "Naturalne", en: "" }, { id: "long", name: "Długi czas", en: "long exposure, silky smooth water and streaking clouds" },
+      { id: "pano", name: "Panorama", en: "ultra-wide panoramic view" }, { id: "drone", name: "Z drona", en: "aerial drone view from high above" },
+      { id: "tilt", name: "Tilt-shift", en: "tilt-shift miniature effect" }, { id: "blue", name: "Niebieska godzina", en: "during the blue hour, deep blue twilight tones" }] }
+  };
+  const LAND_CATS = { lLand: ["terrain", "water", "flora", "build"], lAir: ["sky", "season", "weather"], lLook: ["look"] };
+  const LAND0 = { terrain: "mountains", water: "lake", flora: "conifer", build: "none", sky: "clouds", season: "summer", weather: "fair", look: "natural" };
+  const landOf = (st = scene) => ({ ...LAND0, ...(st.land || {}) });
+  const landOpt = (k, id) => LAND[k].opts.find(o => o.id === id) || LAND[k].opts[0];
+  // Opis do Maniscryptu: teren w porze roku, z wodą, roślinnością i zabudową, pod niebem, z pogodą
+  function landPhrase(r) {
+    const en = k => k === "water" && r.water === "sea" && ["cliffs", "island"].includes(r.terrain) ? "" : landOpt(k, r[k]).en, withs = ["water", "flora", "build"].map(en).filter(Boolean);
+    return [en("terrain") + " " + en("season") + (withs.length ? ", with " + andList(withs) : ""), en("sky"), en("weather")].filter(Boolean).join(", ");
+  }
+  // Krótko po polsku (drzewko sceny, podsumowanie Kreatora): części inne niż „brak”
+  const landSummary = st => { const r = landOf(st); return ["terrain", "water", "flora", "build", "sky", "season", "weather", "look"].filter(k => !["none", "fair", "natural"].includes(r[k])).map(k => landOpt(k, r[k]).name).join(" + "); };
+  // Niebo z gwiazdami albo zorzą jest nocne, kolorowe o złotej godzinie
+  const SKY_TIME = { stars: "night", aurora: "night", colorful: "golden" };
+  function randomLand() {
+    scene.background = "land";
+    scene.land = landRandom();
+    scene.fx = [];
+    if (SKY_TIME[scene.land.sky]) scene.time = SKY_TIME[scene.land.sky];
+    else if (scene.time === "night" && Math.random() < 0.6) scene.time = anyOf(["day", "golden"]);
+  }
+  function landRandom() {
+    const r = {};
+    Object.keys(LAND).forEach(k => { r[k] = anyOf(LAND[k].opts).id; });
+    // Częściej bez dziwnych zestawień: zwykle naturalne ujęcie i ładna pogoda
+    if (Math.random() < 0.6) r.look = "natural";
+    if (Math.random() < 0.5) r.weather = "fair";
+    return r;
+  }
   // Dodatek tła: włącza albo wyłącza, zdejmując te, które się z nim wykluczają
   function toggleBgAdd(bg, id) {
     const cur = bgAdds(scene, bg), on = cur.includes(id);
@@ -1673,7 +1749,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", prod: null, animal: "dog", animalPose: "sit", animalCoat: "golden", beast: null, body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", prod: null, animal: "dog", animalPose: "sit", animalCoat: "golden", beast: null, body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, land: null, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -3432,7 +3508,7 @@
   // ---------- Tła w pełnej jakości (Próbny kadr, tutorial): perspektywa podłoża i trzy plany ----------
   // Szkic roboczy rysuje te same miejsca prościej (flatDraw). Daleki plan jasny i zamglony, średni nasycony,
   // bliski ciemniejszy i ostry; podłoże z fakturą, która gęstnieje ku horyzontowi.
-  const RICH_BG = ["beach", "forest", "meadow", "mountains", "lake", "river", "street", "rooftop", "room", "cafe", "studio", "desert", "park", "snowpeaks", "kitchen"];
+  const RICH_BG = ["land", "beach", "forest", "meadow", "mountains", "lake", "river", "street", "rooftop", "room", "cafe", "studio", "desert", "park", "snowpeaks", "kitchen"];
   const rnd01 = k => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   // Głębokość na podłożu: t 0 = horyzont, 1 = dół kadru (odstępy rosną ku widzowi)
   const depthY = (hz, H, t, top = hz) => top + (H - top) * Math.pow(t, 1.7);
@@ -4126,6 +4202,233 @@
     if (nightW > 0) radGlow(g, defs, uid + "ul", W * 0.55, cy - H * 0.08, W * 0.35, "#FFE2B0", f(0.35 * nightW), H * 0.08);
   }
 
+  // ---------- Manitam: rysunek własnego krajobrazu (warstwy od nieba do przodu kadru) ----------
+  // v: lista "część:wariant" (bgDraw). Ląd ma zasięg x0..x1 i górną linię top (klif i wyspa są węższe niż kadr).
+  function drawLand(g, defs, uid, W, H, hz, u, tod, cel, skyX, v) {
+    const r = { ...LAND0 };
+    v.forEach(s => { const [k, id] = String(s).split(":"); if (LAND[k] && LAND[k].opts.some(o => o.id === id)) r[k] = id; });
+    // Z drona: horyzont wyżej, więcej ziemi w kadrze
+    if (r.look === "drone") hz = Math.max(H * 0.14, hz - H * 0.18);
+    const gd = H - hz, sunLeft = skyX < 0.5, nightW = Math.max(0, Math.min(1, tod - 1));
+    const win = r.season === "winter", lit = nightW > 0.4 || r.sky === "stars" || r.sky === "aurora";
+    const sea = r.terrain === "cliffs" || r.terrain === "island";
+    const ext = r.terrain === "cliffs" ? [0, 0.4] : r.terrain === "island" ? [0.24, 0.76] : [0, 1];
+    const topY = x => r.terrain === "cliffs" ? hz - H * 0.17 + H * 0.01 * Math.sin(x * 23) : r.terrain === "island" ? hz - H * 0.07 * Math.sin(Math.PI * Math.min(1, Math.max(0, (x - 0.24) / 0.52))) : hz;
+    const rel = t => ext[0] + (ext[1] - ext[0]) * t;
+    // Kolory ziemi w porze roku: dalej, bliżej, przy widzu
+    let G = { spring: ["#A3C786", "#86B062", "#6E9A4E"], summer: ["#8AAA66", "#668F48", "#4E7A38"], autumn: ["#C7A15E", "#AE8044", "#8E6534"], winter: ["#EEF2F6", "#DEE6ED", "#CDD8E2"] }[r.season];
+    if (r.terrain === "dunes") G = win ? ["#EEEAE2", "#E0D9CC", "#D2C9B8"] : ["#E8CC92", "#D9AE6C", "#C29050"];
+    if (r.terrain === "canyon") G = win ? ["#E6E2DE", "#D9CFC8", "#C9B8AE"] : ["#D59A6A", "#C27E52", "#A8663E"];
+    if (r.terrain === "glacier") G = ["#E4EFF7", "#D2E3EF", "#BCD3E4"];
+    if (r.flora === "savanna" && !win) G = ["#DCC680", "#C9AD62", "#AE914A"];
+    const WATER_C = [[0, "#86A8C4"], [1, "#4C7896"]];
+    const puff = (x, y, s, c, op) => [[0, 0, 1], [-0.9, 0.25, 0.7], [0.9, 0.2, 0.75], [0.4, -0.35, 0.7], [-0.4, -0.25, 0.6]].forEach(([dx, dy, k]) => paint("ellipse", { cx: f(x + dx * s), cy: f(y + dy * s), rx: f(s * k), ry: f(s * k * 0.62) }, c, g, op));
+
+    // 1. Niebo i to, co na nim
+    const SKY = { clear: [[0, "#4F86C6"], [1, "#C3DCF0"]], clouds: [[0, "#6A8DB4"], [1, "#CBD7E3"]], storm: [[0, "#252B35"], [1, "#5C6673"]],
+      colorful: [[0, "#4B3F86"], [0.55, "#D9708F"], [1, "#F4B36A"]], stars: [[0, "#060B24"], [1, "#25315C"]], aurora: [[0, "#06101F"], [1, "#173447"]] }[r.sky];
+    paint("rect", { x: 0, y: 0, width: f(W), height: f(hz + 2) }, vGrad(defs, uid + "ls", SKY), g);
+    drawSky(g, defs, uid, W, H, hz, u, tod, r.sky === "storm" ? 0 : cel, skyX);
+    if (r.sky === "stars" || r.sky === "aurora") {
+      for (let k = 0; k < 46; k++) paint("circle", { cx: f(rnd01(k * 3.1) * W), cy: f(rnd01(k * 7.7) * hz * 0.92), r: f(u * (0.15 + rnd01(k) * 0.3)) }, "#F2F4FA", g, f(0.45 + rnd01(k * 2.2) * 0.5));
+      if (r.sky === "stars") paint("path", { d: `M${f(W * 0.05)},${f(hz * 0.95)} Q${f(W * 0.45)},${f(hz * 0.35)} ${f(W * 0.98)},${f(hz * 0.05)} L${f(W * 0.98)},${f(hz * 0.25)} Q${f(W * 0.5)},${f(hz * 0.55)} ${f(W * 0.2)},${f(hz)} Z` }, "#B9C2E8", g, 0.16);
+      else [[0.1, 0.3, "#5BF0A0"], [0.4, 0.18, "#4FE0C0"], [0.7, 0.28, "#8AF07A"]].forEach(([x, y, c], i) => {
+        const x0 = W * x, w = W * 0.38, top = hz * y;
+        paint("path", { d: `M${f(x0)},${f(top + hz * 0.1)} C${f(x0 + w * 0.3)},${f(top - hz * 0.08)} ${f(x0 + w * 0.6)},${f(top + hz * 0.15)} ${f(x0 + w)},${f(top)} L${f(x0 + w)},${f(top + hz * 0.42)} C${f(x0 + w * 0.6)},${f(top + hz * 0.55)} ${f(x0 + w * 0.3)},${f(top + hz * 0.35)} ${f(x0)},${f(top + hz * 0.5)} Z` },
+          flatDraw ? c : vGrad(defs, uid + "au" + i, [[0, c], [1, "rgba(0,0,0,0)"]]), g, flatDraw ? 0.3 : 0.6);
+      });
+    }
+    if (r.sky === "clouds") [[0.18, 0.2, 0.07], [0.62, 0.12, 0.09], [0.86, 0.32, 0.06], [0.42, 0.36, 0.05]].forEach(([x, y, s]) => puff(W * x, hz * y + H * 0.02, H * s, "#FFFFFF", 0.85));
+    if (r.sky === "storm") {
+      [[0.15, 0.18, 0.1], [0.5, 0.1, 0.12], [0.85, 0.2, 0.1], [0.32, 0.35, 0.07], [0.7, 0.38, 0.08]].forEach(([x, y, s]) => puff(W * x, hz * y + H * 0.02, H * s, "#3A414C", 0.9));
+      const lx = W * (sunLeft ? 0.72 : 0.3), ly = hz * 0.32;
+      el("path", { d: `M${f(lx)},${f(ly)} l${f(-u * 2)},${f(hz * 0.18)} l${f(u * 2.4)},0 l${f(-u * 3)},${f(hz * 0.26)}`, style: `fill:none;stroke:#FFF6C2;stroke-width:${f(u * 0.7)};stroke-linejoin:round` }, g);
+    }
+    if (r.sky === "colorful") [[0.2, 0.25, 0.3], [0.6, 0.15, 0.36], [0.75, 0.4, 0.26], [0.35, 0.5, 0.22]].forEach(([x, y, w], i) => paint("ellipse", { cx: f(W * x), cy: f(hz * y + H * 0.03), rx: f(W * w * 0.5), ry: f(H * 0.014) }, i % 2 ? "#F6A7B4" : "#FFC98A", g, 0.8));
+    if (r.look === "long") for (let k = 0; k < 9; k++) paint("rect", { x: f(W * rnd01(k * 4.1) * 0.6), y: f(hz * (0.1 + k * 0.09)), width: f(W * (0.3 + rnd01(k) * 0.4)), height: f(H * 0.006) }, "#FFFFFF", g, 0.22);
+    if (r.weather === "rainbow") ["#E8524A", "#F2A23A", "#F2E04A", "#5CC25A", "#4A8EE0", "#7A5AC8"].forEach((c, i) => {
+      const rr = W * (0.5 - i * 0.022);
+      el("path", { d: `M${f(W * 0.58 - rr)},${f(hz)} A${f(rr)},${f(rr)} 0 0 1 ${f(W * 0.58 + rr)},${f(hz)}`, style: `fill:none;stroke:${c};stroke-width:${f(W * 0.022)};opacity:0.32` }, g);
+    });
+
+    // 2. Teren w dali
+    const snowK = win ? 0.5 : 0.2;
+    if (r.terrain === "mountains" || r.terrain === "glacier") {
+      const ice = r.terrain === "glacier";
+      range(g, W, H, hz + H * 0.01, [[0, 0.14], [0.1, 0.25], [0.2, 0.15], [0.33, 0.3], [0.45, 0.16], [0.58, 0.32], [0.7, 0.17], [0.82, 0.27], [0.92, 0.15], [1, 0.21]], ice ? "#B8CFE2" : "#A3B0C2", ice ? "#93B0CA" : "#7C8AA0", "#F2F5F8", ice ? 0.6 : snowK, sunLeft);
+      range(g, W, H, hz + H * 0.02, [[0, 0.1], [0.14, 0.19], [0.29, 0.08], [0.46, 0.21], [0.6, 0.09], [0.77, 0.18], [0.9, 0.07], [1, 0.12]], ice ? "#9DBAD2" : "#6E7E93", ice ? "#7C9CB8" : "#526076", "#E8EEF4", ice ? 0.5 : snowK * 0.7, sunLeft);
+    } else if (r.terrain === "hills") {
+      paint("path", { d: ridge(W, hz, x => hz - H * (0.07 + 0.04 * Math.sin(x * 5 + 1)), 0.02, hz + 2) }, shadeHex(G[0], 0.12), g);
+      paint("path", { d: ridge(W, hz, x => hz - H * (0.025 + 0.03 * Math.sin(x * 3.3 + 2.4)), 0.02, hz + 2) }, G[0], g);
+    } else if (r.terrain === "plain") {
+      paint("path", { d: ridge(W, hz, x => hz - H * 0.012 * (1.2 + Math.sin(x * 9)), 0.02, hz + 2) }, shadeHex(G[0], 0.1), g);
+    } else if (r.terrain === "dunes") {
+      paint("path", { d: ridge(W, hz, x => hz - H * (0.05 + 0.035 * Math.sin(x * 4 + 0.5)), 0.02, hz + 2) }, shadeHex(G[0], 0.08), g);
+    } else if (r.terrain === "canyon") {
+      paint("path", { d: `M0,${f(hz)} L0,${f(hz - H * 0.1)} L${f(W * 0.18)},${f(hz - H * 0.1)} L${f(W * 0.22)},${f(hz - H * 0.04)} L${f(W * 0.4)},${f(hz - H * 0.05)} L${f(W * 0.43)},${f(hz - H * 0.14)} L${f(W * 0.6)},${f(hz - H * 0.14)} L${f(W * 0.63)},${f(hz - H * 0.06)} L${f(W * 0.82)},${f(hz - H * 0.07)} L${f(W * 0.85)},${f(hz - H * 0.11)} L${f(W)},${f(hz - H * 0.11)} L${f(W)},${f(hz)} Z` }, win ? "#CDBFB6" : "#C7865C", g);
+    } else if (r.terrain === "volcano") {
+      paint("path", { d: ridge(W, hz, x => hz - H * (0.03 + 0.02 * Math.sin(x * 6)), 0.02, hz + 2) }, "#6E7480", g);
+      const vx = W * 0.52, vt = hz - H * 0.3;
+      paint("path", { d: `M${f(vx - W * 0.42)},${f(hz + 2)} L${f(vx - W * 0.06)},${f(vt)} L${f(vx + W * 0.06)},${f(vt)} L${f(vx + W * 0.42)},${f(hz + 2)} Z` }, win ? "#7D7A80" : "#5A4C4A", g);
+      paint("path", { d: `M${f(vx - W * 0.06)},${f(vt)} L${f(vx + W * 0.06)},${f(vt)} L${f(vx + W * 0.13)},${f(vt + H * 0.08)} L${f(vx - W * 0.12)},${f(vt + H * 0.07)} Z` }, win ? "#F0F3F6" : "#7A6560", g, 0.9);
+      el("path", { d: `M${f(vx + W * 0.01)},${f(vt + H * 0.01)} q${f(-W * 0.03)},${f(H * 0.1)} ${f(W * 0.01)},${f(H * 0.2)}`, style: `fill:none;stroke:#FF7A2E;stroke-width:${f(u * 0.8)};opacity:${f(0.5 + nightW * 0.5)}` }, g);
+      [[0, 0.04, 0.035], [0.03, 0.1, 0.05], [0.08, 0.18, 0.065]].forEach(([dx, dy, s]) => paint("circle", { cx: f(vx + W * dx), cy: f(vt - H * dy), r: f(H * s) }, "#8E8A88", g, 0.75));
+    }
+    // 3. Ziemia (przy morskich terenach najpierw morze, na nim ląd)
+    if (sea) {
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(gd) }, vGrad(defs, uid + "lsea", WATER_C), g);
+      for (let k = 0; k < 14; k++) { const t = (k + 1) / 15, y = hz + gd * Math.pow(t, 1.5); strokeP(`M${f(rnd01(k * 9) * W * 0.8)},${f(y)} l${f(W * (0.04 + t * 0.1))},0`, "#DCE8EE", 0.4 + t, 0.4, g); }
+      if (r.terrain === "cliffs") {
+        const d = `M0,${f(topY(0))} ` + [0.1, 0.2, 0.3, 0.38].map(x => `L${f(x * W)},${f(topY(x))}`).join(" ") + ` L${f(W * 0.42)},${f(hz + gd * 0.3)} L${f(W * 0.47)},${f(H)} L0,${f(H)} Z`;
+        paint("path", { d }, win ? "#B8B4B0" : "#8C7E6E", g);
+        paint("path", { d: `M${f(W * 0.38)},${f(topY(0.38))} L${f(W * 0.42)},${f(hz + gd * 0.3)} L${f(W * 0.47)},${f(H)} L${f(W * 0.3)},${f(H)} Z` }, "#6E6254", g, 0.6);
+        paint("path", { d: `M0,${f(topY(0) - H * 0.005)} ` + [0.1, 0.2, 0.3, 0.38].map(x => `L${f(x * W)},${f(topY(x) - H * 0.005)}`).join(" ") + ` L${f(W * 0.385)},${f(topY(0.38) + H * 0.03)} L0,${f(topY(0) + H * 0.035)} Z` }, G[1], g);
+        el("path", { d: `M${f(W * 0.44)},${f(hz + gd * 0.5)} q${f(W * 0.05)},${f(-u)} ${f(W * 0.1)},0 M${f(W * 0.46)},${f(hz + gd * 0.75)} q${f(W * 0.06)},${f(-u)} ${f(W * 0.12)},0`, style: `fill:none;stroke:#FFFFFF;stroke-width:${f(u * 0.6)};opacity:0.6` }, g);
+      } else {
+        paint("ellipse", { cx: f(W * 0.5), cy: f(hz + H * 0.005), rx: f(W * 0.27), ry: f(H * 0.02) }, win ? "#E6E2DA" : "#E3CF9E", g);
+        paint("path", { d: ridge(W, hz + H * 0.005, x => Math.min(hz + H * 0.005, topY(x)), 0.01, hz + H * 0.005) }, G[1], g);
+      }
+    } else {
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(gd) }, vGrad(defs, uid + "lg", [[0, G[0]], [0.45, G[1]], [1, G[2]]]), g);
+      if (r.terrain === "dunes") [[0.3, 0.15], [0.75, 0.4], [0.2, 0.65]].forEach(([x, t], i) => paint("path", { d: `M${f(W * (x - 0.5))},${f(hz + gd * (t + 0.15))} Q${f(W * x)},${f(hz + gd * t)} ${f(W * (x + 0.5))},${f(hz + gd * (t + 0.18))} Z` }, i % 2 ? shadeHex(G[1], 0.1) : shadeHex(G[2], -0.06), g, 0.8));
+      if (r.terrain === "glacier") for (let k = 0; k < 7; k++) { const t = 0.15 + k * 0.12, y = hz + gd * t; strokeP(`M${f(W * rnd01(k * 5) * 0.7)},${f(y)} l${f(W * 0.12)},${f(gd * 0.02)}`, "#7FA6C8", 0.8 + t, 0.6, g); }
+      if (!flatDraw && !win && ["mountains", "hills", "plain"].includes(r.terrain) && r.flora !== "lavender" && r.flora !== "fields") grassField(g, W, H, hz, hz + gd * 0.05, shadeHex(G[2], -0.1), shadeHex(G[0], 0.15), 10, 26);
+    }
+    // 4. Woda
+    const shoreY = hz + gd * 0.32;
+    if (r.water === "lake") {
+      const y0 = sea ? hz : hz + gd * 0.02;
+      if (!sea) {
+        paint("path", { d: `M0,${f(y0)} L${f(W)},${f(y0)} L${f(W)},${f(shoreY - gd * 0.04)} C${f(W * 0.7)},${f(shoreY + gd * 0.03)} ${f(W * 0.3)},${f(shoreY - gd * 0.05)} 0,${f(shoreY)} Z` }, vGrad(defs, uid + "lw", WATER_C), g);
+        if (r.terrain === "mountains" || r.terrain === "glacier") paint("path", { d: peaks([[0, 0.06], [0.2, 0.1], [0.33, 0.05], [0.58, 0.11], [0.75, 0.05], [1, 0.07]], W, y0, -H * 0.8) }, "#6E7E93", g, 0.3);
+        for (let k = 0; k < 8; k++) strokeP(`M${f(rnd01(k * 6) * W * 0.85)},${f(y0 + (shoreY - y0) * (k + 1) / 9)} l${f(W * 0.08)},0`, "#E4EEF4", 0.6, 0.5, g);
+        if (r.weather !== "rain") strokeP(`M${f(skyX * W - W * 0.03)},${f(y0 + gd * 0.06)} l${f(W * 0.06)},0 M${f(skyX * W - W * 0.05)},${f(y0 + gd * 0.12)} l${f(W * 0.1)},0`, nightW > 0.5 ? "#DCE4F2" : "#FFF0C8", 1, 0.6, g);
+      }
+    } else if (r.water === "river" || r.water === "stream") {
+      const k = r.water === "river" ? 1 : 0.45;
+      const L = [[W * (0.5 - 0.02 * k), hz], [W * (0.7 - 0.05 * k), hz + gd * 0.3], [W * (0.35 - 0.1 * k), hz + gd * 0.6], [W * (0.5 - 0.2 * k), H]];
+      const R = [[W * (0.5 + 0.02 * k), hz], [W * (0.7 + 0.08 * k), hz + gd * 0.3], [W * (0.35 + 0.15 * k), hz + gd * 0.6], [W * (0.5 + 0.25 * k), H]];
+      const d = `M${f(L[0][0])},${f(L[0][1])} C${f(L[1][0])},${f(L[1][1])} ${f(L[2][0])},${f(L[2][1])} ${f(L[3][0])},${f(L[3][1])} L${f(R[3][0])},${f(R[3][1])} C${f(R[2][0])},${f(R[2][1])} ${f(R[1][0])},${f(R[1][1])} ${f(R[0][0])},${f(R[0][1])} Z`;
+      paint("path", { d }, vGrad(defs, uid + "lr", [[0, "#A2BFD0"], [1, "#4F7894"]]), g);
+      for (let q = 0; q < 14; q++) { const t = 0.05 + rnd01(q * 2.3) * 0.9, a = bez(...L, t), b = bez(...R, t), x = a[0] + (b[0] - a[0]) * (0.2 + rnd01(q) * 0.6); strokeP(`M${f(x)},${f(a[1])} l${f((b[0] - a[0]) * 0.12)},0`, "#E4EEF3", 0.4 + t, 0.5, g); }
+    } else if (r.water === "waterfall") {
+      const x0 = W * 0.56, x1 = W * 0.82, top = hz - H * 0.16, bot = hz + gd * 0.16;
+      paint("path", { d: `M${f(x0)},${f(bot)} L${f(x0 + W * 0.02)},${f(top + H * 0.03)} L${f(x0 + W * 0.08)},${f(top)} L${f(x1 - W * 0.04)},${f(top + H * 0.01)} L${f(x1)},${f(top + H * 0.05)} L${f(x1 + W * 0.02)},${f(bot)} Z` }, win ? "#9C9EA6" : "#5E6266", g);
+      paint("path", { d: `M${f(x0 + W * 0.1)},${f(top + H * 0.004)} L${f(x0 + W * 0.15)},${f(top + H * 0.004)} L${f(x0 + W * 0.165)},${f(bot)} L${f(x0 + W * 0.09)},${f(bot)} Z` }, vGrad(defs, uid + "lwf", [[0, "#F4F8FA"], [1, "#CFE0EA"]]), g);
+      paint("ellipse", { cx: f(x0 + W * 0.13), cy: f(bot + gd * 0.06), rx: f(W * 0.2), ry: f(gd * 0.07) }, vGrad(defs, uid + "lwp", WATER_C), g);
+      paint("ellipse", { cx: f(x0 + W * 0.13), cy: f(bot), rx: f(W * 0.09), ry: f(gd * 0.04) }, "#FFFFFF", g, 0.55);
+    } else if (r.water === "sea" && !sea) {
+      paint("rect", { x: 0, y: f(hz), width: f(W), height: f(gd * 0.16) }, vGrad(defs, uid + "lse", WATER_C), g);
+      paint("path", { d: ridge(W, H, x => hz + gd * (0.15 + 0.015 * Math.sin(x * 7)), 0.02, hz + gd * 0.24) }, win ? "#E8E4DC" : "#E3CF9E", g, 0.85);
+      for (let k = 0; k < 6; k++) strokeP(`M${f(rnd01(k * 4) * W * 0.85)},${f(hz + gd * (0.03 + k * 0.022))} l${f(W * 0.07)},0`, "#E4EEF4", 0.6, 0.55, g);
+    } else if (r.water === "pond") {
+      paint("ellipse", { cx: f(W * 0.24), cy: f(hz + gd * 0.5), rx: f(W * 0.2), ry: f(gd * 0.09) }, vGrad(defs, uid + "lpo", WATER_C), g);
+      strokeP(`M${f(W * 0.14)},${f(hz + gd * 0.5)} l${f(W * 0.12)},0`, "#E4EEF4", 0.8, 0.6, g);
+    }
+    if (r.terrain === "canyon") {
+      [[0, 1], [1, -1]].forEach(([x0, s]) => paint("path", { d: `M${f(W * x0)},${f(hz - H * 0.32)} L${f(W * (x0 + s * 0.2))},${f(hz - H * 0.3)} L${f(W * (x0 + s * 0.24))},${f(hz + gd * 0.2)} L${f(W * (x0 + s * 0.3))},${f(H)} L${f(W * x0)},${f(H)} Z` }, win ? "#B9A89C" : "#A65A3A", g));
+      [[0.2, 1], [0.8, -1]].forEach(([x, s]) => paint("path", { d: `M${f(W * x)},${f(hz - H * 0.3)} L${f(W * (x + s * 0.04))},${f(hz + gd * 0.2)} L${f(W * (x + s * 0.1))},${f(H)} L${f(W * (x - s * 0.02))},${f(H)} Z` }, "#7E4028", g, sunLeft === (s > 0) ? 0.2 : 0.5));
+      for (let k = 0; k < 5; k++) [0, 1].forEach(sd => paint("rect", { x: f(sd ? W * 0.8 : 0), y: f(hz - H * 0.28 + k * H * 0.09), width: f(W * 0.2), height: f(H * 0.008) }, "#7E4028", g, 0.35));
+    }
+    // 5. Roślinność: rząd w dali wzdłuż lądu i kilka roślin bliżej
+    const band = (fn, c, op) => { const gg = el("g", { transform: `translate(${f(ext[0] * W)} 0)` }, g); paint("path", { d: fn((ext[1] - ext[0]) * W) }, c, gg, op); };
+    const baseY = sea ? topY(0.5) + H * 0.01 : hz + H * 0.004;
+    const leafC = { spring: "#8DC06A", summer: "#557F3E", autumn: "#D0812F", winter: "#8A847C" }[r.season];
+    const pineC = win ? "#4A6058" : "#3E5E48";
+    const nearX = sea ? (r.terrain === "cliffs" ? [0.06] : []) : [0.05, 0.95];
+    const nearBase = H * 0.97;
+    const pine = (x, h) => rich ? richPine(g, x, nearBase, h, pineC, win ? "#E8EEF2" : "#5B7660", sunLeft, Math.round(x)) : paint("path", { d: `M${f(x)},${f(nearBase - h)} L${f(x + h * 0.22)},${f(nearBase)} L${f(x - h * 0.22)},${f(nearBase)} Z` }, pineC, g);
+    const crown = (x, h, c) => rich ? richTree(g, x, nearBase, h, c, shadeHex(c, 0.25), sunLeft) : (paint("rect", { x: f(x - h * 0.03), y: f(nearBase - h * 0.5), width: f(h * 0.06), height: f(h * 0.5) }, "#3A2E24", g), paint("circle", { cx: f(x), cy: f(nearBase - h * 0.68), r: f(h * 0.28) }, c, g));
+    const palm = (x, h, lean) => {
+      const top = [x + lean * h * 0.25, nearBase - h];
+      strokeP(`M${f(x)},${f(nearBase)} Q${f(x + lean * h * 0.02)},${f(nearBase - h * 0.6)} ${f(top[0])},${f(top[1])}`, "#6B5038", h * 0.05, 1, g);
+      [-2.6, -2, -1.3, -0.6, 0, 0.6].forEach(a => strokeP(`M${f(top[0])},${f(top[1])} q${f(Math.cos(a - 0.4) * h * 0.2)},${f(Math.sin(a - 0.4) * h * 0.2 - h * 0.05)} ${f(Math.cos(a) * h * 0.35)},${f(Math.sin(a) * h * 0.25 + h * 0.12)}`, win ? "#6E7E6A" : "#3F7A3A", h * 0.035, 1, g));
+    };
+    const acacia = (x, y, h) => {
+      strokeP(`M${f(x)},${f(y)} l${f(h * 0.05)},${f(-h * 0.7)}`, "#4A3828", h * 0.06, 1, g);
+      paint("ellipse", { cx: f(x + h * 0.05), cy: f(y - h * 0.75), rx: f(h * 0.5), ry: f(h * 0.12) }, win ? "#8A8478" : "#5E7A3A", g);
+    };
+    const rich = !flatDraw;
+    if (r.flora === "conifer") { band(w => pineRow(w, baseY, H * 0.03, H * 0.07, 30, 7), pineC); nearX.forEach((x, i) => { pine(W * x, H * (0.55 + i * 0.05)); pine(W * (x + (x < 0.5 ? 0.11 : -0.11)), H * 0.4); }); }
+    if (r.flora === "leafy") { band(w => crownRow(w, baseY, H * 0.03, H * 0.06, 22, 11), shadeHex(leafC, -0.1)); nearX.forEach(x => { crown(W * x, H * 0.55, leafC); crown(W * (x + (x < 0.5 ? 0.12 : -0.12)), H * 0.38, shadeHex(leafC, 0.1)); }); }
+    if (r.flora === "leafy" && r.season === "spring") for (let k = 0; k < 30; k++) paint("circle", { cx: f(rnd01(k * 3) * W), cy: f(baseY - H * 0.04 * rnd01(k * 5)), r: f(u * 0.5) }, "#F4C2D4", g, 0.85);
+    if (r.flora === "jungle") {
+      band(w => crownRow(w, baseY, H * 0.06, H * 0.12, 16, 3), win ? "#5E6E62" : "#2E5E34");
+      band(w => crownRow(w, baseY + H * 0.01, H * 0.03, H * 0.07, 24, 9), win ? "#6E7E70" : "#3E7A40");
+      nearX.forEach(x => { for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + (k - 2.5) * 0.4 + (x < 0.5 ? 0.3 : -0.3); paint("ellipse", { cx: f(W * x + Math.cos(a) * H * 0.14), cy: f(nearBase + Math.sin(a) * H * 0.14), rx: f(H * 0.13), ry: f(H * 0.035), transform: `rotate(${f(a * 180 / Math.PI)} ${f(W * x + Math.cos(a) * H * 0.14)} ${f(nearBase + Math.sin(a) * H * 0.14)})` }, k % 2 ? "#2F6A34" : "#3E8240", g); } });
+    }
+    if (r.flora === "savanna") { [[0.2, 0.08, 0.16], [0.74, 0.14, 0.22], [0.48, 0.03, 0.09], [0.9, 0.02, 0.07]].forEach(([x, t, h]) => acacia(W * rel(x), sea ? topY(rel(x)) : hz + gd * t, H * h)); }
+    if (r.flora === "palms") { (sea ? [[rel(0.35), 0.075, -1], [rel(0.6), 0.06, 1]] : [[0.06, 0.6, 1], [0.94, 0.55, -1], [0.85, 0.35, -1]]).forEach(([x, h, l]) => { if (sea) { const y = topY(x); strokeP(`M${f(W * x)},${f(y)} l${f(l * H * 0.03)},${f(-H * h)}`, "#6B5038", H * 0.006, 1, g); [-3, -2.4, -1.6, -0.8, -0.1].forEach(a => strokeP(`M${f(W * x + l * H * 0.03)},${f(y - H * h)} l${f(Math.cos(a) * H * 0.045)},${f(Math.sin(a) * H * 0.02 + H * 0.02)}`, "#3F7A3A", H * 0.007, 1, g)); } else palm(W * x, H * h, l); }); }
+    if (r.flora === "lavender") {
+      const vx = W * 0.5, vy = hz + gd * 0.02;
+      for (let k = -6; k <= 6; k++) paint("path", { d: `M${f(vx + k * W * 0.012)},${f(vy)} L${f(vx + (k + 0.45) * W * 0.012)},${f(vy)} L${f(vx + (k + 0.45) * W * 0.16)},${f(H)} L${f(vx + k * W * 0.16)},${f(H)} Z` }, win ? "#A8A2B0" : "#8E6CC0", g, 0.95);
+    }
+    if (r.flora === "fields") [[0.04, ["#C9B25A", "#7E9A4E", "#A8B862"]], [0.12, ["#6E9A4E", "#D6C070", "#8AA85A"]], [0.24, ["#B8A050", "#5E8A44", "#C9B25A"]]].forEach(([t, cs], i) => {
+      const y0 = hz + gd * t, y1 = hz + gd * (t + 0.08 + i * 0.05);
+      cs.forEach((c, j) => paint("path", { d: `M${f(W * (j / 3) - W * 0.05 * i)},${f(y0)} L${f(W * ((j + 1) / 3) - W * 0.05 * i)},${f(y0)} L${f(W * ((j + 1) / 3) + W * 0.05 * i)},${f(y1)} L${f(W * (j / 3) + W * 0.05 * i)},${f(y1)} Z` }, win ? "#E2E8EE" : c, g, 0.9));
+    });
+    if (r.flora === "meadow") for (let k = 0; k < (rich ? 70 : 30); k++) { const t = 0.08 + rnd01(k * 2.9) * 0.9, y = depthY(hz, H, t), x = sea ? W * rel(rnd01(k * 1.3)) : rnd01(k * 1.3) * W; if (!sea || y < topY(x / W) + H * 0.03) paint("circle", { cx: f(x), cy: f(sea ? topY(x / W) + H * 0.01 : y), r: f(u * (0.25 + t * 0.6)) }, win ? "#FFFFFF" : ["#F2D24A", "#F4F0E8", "#E87AA0", "#B48AE0"][k % 4], g, 0.9); }
+    // 6. Zabudowa: w średnim planie, na linii lądu
+    const BX = { cabin: 0.7, lighthouse: 0.8, castle: 0.66, village: 0.62, city: 0.72, ruins: 0.3, bridge: 0.5, windmill: 0.26 };
+    if (r.build !== "none") {
+      const bx = W * rel(r.terrain === "cliffs" ? 0.7 : BX[r.build]), by = sea ? topY(bx / W) + H * 0.01 : hz + gd * (r.build === "city" || r.water === "lake" || r.water === "sea" ? 0.005 : 0.05), s = H * ({ city: 0.18, ruins: 0.15, castle: 0.12 }[r.build] || 0.1);
+      const winC = lit ? "#FFD27A" : "#5A6470", wall = win ? "#D8D2C8" : "#E6DCC8", stone = "#9A948C";
+      if (r.build === "cabin") {
+        paint("rect", { x: f(bx - s * 0.4), y: f(by - s * 0.45), width: f(s * 0.8), height: f(s * 0.45) }, "#7A5434", g);
+        paint("path", { d: `M${f(bx - s * 0.5)},${f(by - s * 0.42)} L${f(bx)},${f(by - s * 0.8)} L${f(bx + s * 0.5)},${f(by - s * 0.42)} Z` }, win ? "#F2F5F8" : "#5A3A28", g);
+        paint("rect", { x: f(bx - s * 0.15), y: f(by - s * 0.32), width: f(s * 0.18), height: f(s * 0.14) }, winC, g);
+      } else if (r.build === "lighthouse") {
+        const h = s * 1.8;
+        paint("path", { d: `M${f(bx - s * 0.16)},${f(by)} L${f(bx - s * 0.1)},${f(by - h)} L${f(bx + s * 0.1)},${f(by - h)} L${f(bx + s * 0.16)},${f(by)} Z` }, "#F2F0EA", g);
+        [0.2, 0.55].forEach(t => paint("rect", { x: f(bx - s * 0.15 + s * 0.02 * t), y: f(by - h * (t + 0.15)), width: f(s * (0.3 - 0.04 * t)), height: f(h * 0.15) }, "#C8423A", g));
+        paint("rect", { x: f(bx - s * 0.1), y: f(by - h - s * 0.18), width: f(s * 0.2), height: f(s * 0.18) }, lit ? "#FFE08A" : "#D8E0E6", g);
+        paint("path", { d: `M${f(bx - s * 0.14)},${f(by - h - s * 0.18)} L${f(bx)},${f(by - h - s * 0.34)} L${f(bx + s * 0.14)},${f(by - h - s * 0.18)} Z` }, "#3A3A40", g);
+        if (lit) paint("path", { d: `M${f(bx)},${f(by - h - s * 0.1)} L${f(bx - W * 0.5)},${f(by - h - s * 0.5)} L${f(bx - W * 0.5)},${f(by - h + s * 0.4)} Z` }, "#FFF2B8", g, 0.18);
+      } else if (r.build === "castle") {
+        paint("rect", { x: f(bx - s * 0.7), y: f(by - s * 0.5), width: f(s * 1.4), height: f(s * 0.5) }, stone, g);
+        [-0.75, 0, 0.75].forEach((dx, i) => {
+          const h = s * (i === 1 ? 1.2 : 0.85), x = bx + dx * s;
+          paint("rect", { x: f(x - s * 0.15), y: f(by - h), width: f(s * 0.3), height: f(h) }, shadeHex(stone, -0.08), g);
+          paint("path", { d: `M${f(x - s * 0.18)},${f(by - h)} L${f(x)},${f(by - h - s * 0.3)} L${f(x + s * 0.18)},${f(by - h)} Z` }, "#4A4E66", g);
+          paint("rect", { x: f(x - s * 0.04), y: f(by - h * 0.7), width: f(s * 0.08), height: f(s * 0.12) }, winC, g);
+        });
+      } else if (r.build === "village") {
+        [[-0.9, 0.35], [-0.45, 0.42], [0.35, 0.38], [0.8, 0.32], [1.2, 0.3]].forEach(([dx, h]) => {
+          const x = bx + dx * s;
+          paint("rect", { x: f(x - s * 0.18), y: f(by - s * h), width: f(s * 0.36), height: f(s * h) }, wall, g);
+          paint("path", { d: `M${f(x - s * 0.22)},${f(by - s * h)} L${f(x)},${f(by - s * (h + 0.2))} L${f(x + s * 0.22)},${f(by - s * h)} Z` }, win ? "#F2F5F8" : "#B2553A", g);
+          paint("rect", { x: f(x - s * 0.05), y: f(by - s * h * 0.65), width: f(s * 0.1), height: f(s * 0.1) }, winC, g);
+        });
+        paint("rect", { x: f(bx - s * 0.1), y: f(by - s * 0.9), width: f(s * 0.2), height: f(s * 0.9) }, wall, g);
+        paint("path", { d: `M${f(bx - s * 0.12)},${f(by - s * 0.9)} L${f(bx)},${f(by - s * 1.4)} L${f(bx + s * 0.12)},${f(by - s * 0.9)} Z` }, "#5A6A7A", g);
+      } else if (r.build === "city") {
+        for (let k = 0; k < 12; k++) {
+          const x = bx - s * 1.2 + k * s * 0.2, h = s * (0.3 + rnd01(k * 3.3) * 0.7);
+          paint("rect", { x: f(x), y: f(by - h), width: f(s * 0.19), height: f(h) }, k % 2 ? "#5E6878" : "#6E7888", g, 0.92);
+          if (lit) for (let q = 0; q < 4; q++) paint("rect", { x: f(x + s * 0.05), y: f(by - h + q * h / 4 + s * 0.03), width: f(s * 0.04), height: f(s * 0.03) }, "#FFD27A", g, 0.8);
+        }
+      } else if (r.build === "ruins") {
+        [[-0.6, 0.9], [-0.25, 0.55], [0.4, 0.75], [0.75, 0.35]].forEach(([dx, h]) => paint("rect", { x: f(bx + dx * s - s * 0.07), y: f(by - s * h), width: f(s * 0.14), height: f(s * h) }, "#B8AE9C", g));
+        paint("rect", { x: f(bx - s * 0.7), y: f(by - s * 0.98), width: f(s * 0.5), height: f(s * 0.1) }, "#A8A08E", g);
+      } else if (r.build === "bridge") {
+        const y = r.water === "river" || r.water === "stream" ? hz + gd * 0.22 : by, w = W * 0.36;
+        paint("path", { d: `M${f(bx - w / 2)},${f(y)} L${f(bx - w / 2)},${f(y - s * 0.35)} L${f(bx + w / 2)},${f(y - s * 0.35)} L${f(bx + w / 2)},${f(y)} L${f(bx + w * 0.3)},${f(y)} Q${f(bx + w * 0.15)},${f(y - s * 0.3)} ${f(bx)},${f(y)} Q${f(bx - w * 0.15)},${f(y - s * 0.3)} ${f(bx - w * 0.3)},${f(y)} Z` }, "#9A8E7C", g);
+      } else if (r.build === "windmill") {
+        paint("path", { d: `M${f(bx - s * 0.2)},${f(by)} L${f(bx - s * 0.12)},${f(by - s * 0.8)} L${f(bx + s * 0.12)},${f(by - s * 0.8)} L${f(bx + s * 0.2)},${f(by)} Z` }, wall, g);
+        paint("path", { d: `M${f(bx - s * 0.15)},${f(by - s * 0.8)} L${f(bx)},${f(by - s * 1)} L${f(bx + s * 0.15)},${f(by - s * 0.8)} Z` }, "#5A4A3A", g);
+        [0.4, 1.97, 3.54, 5.11].forEach(a => el("path", { d: `M${f(bx)},${f(by - s * 0.85)} L${f(bx + Math.cos(a) * s * 0.6)},${f(by - s * 0.85 + Math.sin(a) * s * 0.6)}`, style: `fill:none;stroke:#3A342E;stroke-width:${f(s * 0.07)}` }, g));
+      }
+    }
+    // 7. Pogoda i ujęcie
+    if (r.weather === "fog") [[-0.1, 0.32], [-0.04, 0.26], [0.03, 0.2], [0.1, 0.14]].forEach(([dy, op]) => { const y = hz + dy * H; paint("path", { d: `M0,${f(y)} C${f(W * 0.3)},${f(y - H * 0.03)} ${f(W * 0.6)},${f(y + H * 0.03)} ${f(W)},${f(y - H * 0.01)} L${f(W)},${f(y + H * 0.08)} C${f(W * 0.6)},${f(y + H * 0.1)} ${f(W * 0.3)},${f(y + H * 0.04)} 0,${f(y + H * 0.09)} Z` }, "#DCE0E4", g, op); });
+    if (r.weather === "rain") { paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, "#2A3440", g, 0.18); for (let k = 0; k < 60; k++) { const x = rnd01(k * 1.7) * W, y = rnd01(k * 3.9) * H; el("line", { x1: f(x), y1: f(y), x2: f(x - H * 0.012), y2: f(y + H * 0.05), style: "stroke:#C9D4E0;stroke-width:0.6;opacity:0.55" }, g); } }
+    if (r.weather === "snow") for (let k = 0; k < 70; k++) paint("circle", { cx: f(rnd01(k * 2.3) * W), cy: f(rnd01(k * 5.1) * H), r: f(u * (0.25 + rnd01(k) * 0.35)) }, "#FFFFFF", g, 0.85);
+    if (r.look === "blue") paint("rect", { x: 0, y: 0, width: f(W), height: f(H) }, "#2A4A9A", g, 0.28);
+    if (r.look === "tilt") [[0, 0.22], [0.78, 0.22]].forEach(([y, h], i) => paint("rect", { x: 0, y: f(H * y), width: f(W), height: f(H * h) }, vGrad(defs, uid + "lt" + i, i ? [[0, "rgba(240,244,248,0)"], [1, "rgba(240,244,248,0.5)"]] : [[0, "rgba(240,244,248,0.5)"], [1, "rgba(240,244,248,0)"]]), g, flatDraw ? 0.25 : 1));
+    if (r.look === "pano") [0, 1].forEach(i => paint("rect", { x: 0, y: f(i ? H * 0.9 : 0), width: f(W), height: f(H * 0.1) }, "#0E0F12", g, 0.9));
+    if (!flatDraw) groundTime(g, W, H, hz - H * 0.3, tod);
+  }
+
   function drawBackgroundBase(g, defs, uid, kind, W, H, hz, gy, u, tod = 0, cel = 1, skyX = 0.3, v = null) {
     // Miękka plama światła (latarnie, lampy w kawiarni)
     // v: podstawa tła i jego dodatki
@@ -4138,6 +4441,7 @@
       el("stop", { offset: "1", "stop-color": color, "stop-opacity": "0" }, gr);
       paint("circle", { cx: f(x), cy: f(y), r: f(r) }, `url(#${gid})`, g);
     };
+    if (kind === "land") { drawLand(g, defs, uid, W, H, hz, u, tod, cel, skyX, v || []); return; }
     if (kind === "season") { seasonSet(g, defs, uid, W, H, gy, u, v || []); return; }
     if (kind === "studio" && !flatDraw) { richStudio(g, defs, uid, W, H, hz, gy, u, v && v[0]); studioSet(g, defs, uid, W, H, gy, u, v || []); return; }
     if (kind === "studio") {
@@ -5026,9 +5330,9 @@
       if (st.bgTrans) {
         // Zmiana tła: stare chowa się w dół, nowe wysuwa się spod spodu (jak rząd kafelków)
         // Zmiana tła jak w teatrze: stara dekoracja stoi, nowa zjeżdża z góry i ją zakrywa; dolna krawędź z belką i cieniem
-        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, st.bgTrans.oldLook || bgLook(st, st.bgTrans.old), bgExtras(st));
+        drawBackground(el("g", { transform: `translate(0 ${f(H * st.bgTrans.oldOff)})` }, layer()), defs, id + "o", st.bgTrans.old, W, H, hz, gy, u, tod, 1 - skyT, skyX, st.bgTrans.oldLook || bgDraw(st, st.bgTrans.old), bgExtras(st));
         const ng = el("g", { transform: `translate(0 ${f(H * st.bgTrans.newOff)})` }, layer());
-        drawBackground(ng, defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgLook(st), bgExtras(st));
+        drawBackground(ng, defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, skyX, bgDraw(st), bgExtras(st));
         if (st.bgTrans.newOff < -0.002) {
           el("rect", { x: 0, y: f(H), width: f(W), height: f(u * 2.2), style: "fill:#000;stroke:none;opacity:0.28" }, ng);
           el("rect", { x: 0, y: f(H - u * 0.9), width: f(W), height: f(u * 0.9), style: "fill:#5A4636;stroke:none" }, ng);
@@ -5037,7 +5341,7 @@
         // split: tło w osobnej grupie, żeby Próbny kadr mógł je rozmyć (głębia ostrości)
         // Słońce jako światło stoi w strefie lampy: odbicie na wodzie i promienie idą za nim
         const bgSkyX = skyT >= 0.5 ? litPt[0] / W : skyX;
-        drawBackground(opts.split ? el("g", { "data-part": "bg" }, layer()) : layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, bgSkyX, bgLook(st), bgExtras(st));
+        drawBackground(opts.split ? el("g", { "data-part": "bg" }, layer()) : layer(), defs, id, st.background, W, H, hz, gy, u, tod, 1 - skyT, bgSkyX, bgDraw(st), bgExtras(st));
       }
       // Pora dnia delikatnie zmienia całe tło (bez studia): ciepło o złotej godzinie, ciemny granat nocą
       if (st.background !== "studio") {
@@ -5223,6 +5527,9 @@
     style: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); [[8.5, 9.5], [12.5, 7.5], [15.5, 11]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.3, style: "fill:currentColor" }, svg)); el("path", { d: "M12 20.5c-1.5 0-2-1.5-1-2.5s2.5-.5 3-2" }, svg); },
     preset: svg => el("path", { d: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" }, svg),
     item: svg => drawItem(svg, el("defs", {}, svg), scene.item, 12, 23, 0.21, itemHex()),
+    lLand: svg => { el("path", { d: "M2 19 L8.5 9 L12 14 L15 10 L22 19 Z" }, svg); el("circle", { cx: 17.5, cy: 5.5, r: 2 }, svg); },
+    lAir: svg => { el("path", { d: "M6.5 16 a3.5 3.5 0 0 1 0.6-6.9 a5 5 0 0 1 9.6 1.2 a3 3 0 0 1 0.3 5.7 Z" }, svg); el("path", { d: "M8 19.5 l-1 2 M12 19.5 l-1 2 M16 19.5 l-1 2", class: "thin" }, svg); },
+    lLook: svg => { el("rect", { x: 3, y: 7, width: 18, height: 12, rx: 2 }, svg); el("circle", { cx: 12, cy: 13, r: 3.5 }, svg); el("path", { d: "M8 7 l1.5-2.5 h5 L16 7" }, svg); },
     pShape: svg => { el("rect", { x: 4, y: 9, width: 9, height: 11, rx: 1 }, svg); el("path", { d: "M14.5 9.5 a4 1.6 0 0 1 8 0 v9 a4 1.6 0 0 1 -8 0z M14.5 9.5 a4 1.6 0 0 0 8 0" }, svg); },
     pMat: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); el("path", { d: "M7 9.5a6 6 0 0 1 5-4", class: "thin" }, svg); },
     pDetail: svg => { el("rect", { x: 8, y: 9, width: 8, height: 12, rx: 1.5 }, svg); el("rect", { x: 9.5, y: 4, width: 5, height: 4, rx: 0.8 }, svg); el("path", { d: "M8 14h8", class: "thin" }, svg); },
@@ -5258,6 +5565,7 @@
     if (cat.id === "itemColor") return scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name;
     if (cat.id === "animalCoat") return petCoat(animalIt()).name;
     if (PROD_CATS[cat.id]) { const r = prodNow(); return PROD_CATS[cat.id].filter(k => prodPartOn(r, k)).slice(0, 2).map(k => prodOpt(k, r[k]).name).join(", "); }
+    if (LAND_CATS[cat.id]) { const r = landOf(scene); return scene.background !== "land" ? "Wybierz" : LAND_CATS[cat.id].slice(0, 2).map(k => landOpt(k, r[k]).name).join(", "); }
     if (BEAST_CATS[cat.id]) { const r = beastOf({ beast: scene.beast }); return BEAST_CATS[cat.id].filter(k => beastPartOn(r, k)).slice(0, 2).map(k => beastOpt(k, r[k]).name).join(", "); }
     if (cat.id === "crew") return !(account && account.user) ? "zaloguj się" : crew.length ? crew.length + " w ekipie" : "pusto";
     if (cat.id === "outfit") return setName();
@@ -5378,7 +5686,20 @@
       { id: "nightcity", name: "Miasto nocą w deszczu", set: { camera: "L2", light: "art-back", lightZone: "R1", background: "street", bgv: { street: "old" }, bga: { street: ["neon"] }, fx: ["rain"], time: "night" } },
       { id: "calmlake", name: "Jezioro o świcie", set: { camera: "R2", light: "nat-front", lightZone: "L1", background: "lake", bgv: { lake: "calm" }, time: "golden" } },
       { id: "dunes", name: "Wydmy w południe", set: { camera: "D", light: "nat-front", lightZone: "L1", background: "desert", time: "day" } },
-      { id: "cafe", name: "Przytulna kawiarnia", set: { camera: "L1", light: "art-front", lightZone: "L1", background: "cafe", time: "day" } }
+      { id: "cafe", name: "Przytulna kawiarnia", set: { camera: "L1", light: "art-front", lightZone: "L1", background: "cafe", time: "day" } },
+      // Własne krajobrazy (konstruktor Manitamu)
+      { id: "land-aurora", name: "Zorza nad fiordem", set: { camera: "L2", light: "nat-back", lightZone: "R2", time: "night", background: "land", land: { ...LAND0, terrain: "mountains", water: "lake", flora: "conifer", build: "cabin", sky: "aurora", season: "winter" } } },
+      { id: "land-lavender", name: "Lawenda o zachodzie", set: { camera: "L2", light: "nat-back", lightZone: "R2", time: "golden", background: "land", land: { ...LAND0, terrain: "hills", water: "none", flora: "lavender", build: "village", sky: "colorful" } } },
+      { id: "land-castle", name: "Zamek we mgle", set: { camera: "L2", light: "nat-front", lightZone: "L1", time: "day", background: "land", land: { ...LAND0, terrain: "hills", water: "river", flora: "leafy", build: "castle", season: "autumn", weather: "fog" } } },
+      { id: "land-lighthouse", name: "Latarnia w burzy", set: { camera: "R2", light: "nat-back", lightZone: "L2", time: "golden", background: "land", land: { ...LAND0, terrain: "cliffs", water: "none", flora: "meadow", build: "lighthouse", sky: "storm", season: "autumn", weather: "rain" } } },
+      { id: "land-waterfall", name: "Wodospad w dżungli", set: { camera: "B", light: "nat-front", lightZone: "L1", time: "day", background: "land", land: { ...LAND0, terrain: "mountains", water: "waterfall", flora: "jungle", weather: "fog" } } },
+      { id: "land-volcano", name: "Wulkan pod gwiazdami", set: { camera: "L2", light: "nat-back", lightZone: "R1", time: "night", background: "land", land: { ...LAND0, terrain: "volcano", water: "none", flora: "none", sky: "stars", look: "long" } } },
+      { id: "land-island", name: "Rajska wyspa z drona", set: { camera: "D", light: "nat-front", lightZone: "L1", time: "day", background: "land", land: { ...LAND0, terrain: "island", water: "none", flora: "palms", sky: "clear", look: "drone" } } },
+      { id: "land-canyon", name: "Kanion o świcie", set: { camera: "L2", light: "nat-front", lightZone: "L2", time: "golden", background: "land", land: { ...LAND0, terrain: "canyon", water: "river", flora: "none", sky: "colorful" } } },
+      { id: "land-glacier", name: "Lodowiec w panoramie", set: { camera: "L2", light: "nat-front", lightZone: "R1", time: "day", background: "land", land: { ...LAND0, terrain: "glacier", water: "lake", flora: "none", sky: "clear", season: "winter", look: "pano" } } },
+      { id: "land-windmill", name: "Wiatrak i tęcza", set: { camera: "L2", light: "nat-front", lightZone: "L1", time: "day", background: "land", land: { ...LAND0, terrain: "plain", water: "stream", flora: "fields", build: "windmill", weather: "rainbow", look: "tilt" } } },
+      { id: "land-savanna", name: "Sawanna o zachodzie", set: { camera: "L2", light: "nat-back", lightZone: "R2", time: "golden", background: "land", land: { ...LAND0, terrain: "plain", water: "none", flora: "savanna", sky: "colorful" } } },
+      { id: "land-ruins", name: "Ruiny w lesie", set: { camera: "L3", light: "nat-front", lightZone: "L1", time: "day", background: "land", land: { ...LAND0, terrain: "hills", water: "stream", flora: "leafy", build: "ruins", season: "spring", sky: "clear" } } }
     ],
     animal: [
       { id: "dogbeach", name: "Pies na plaży", set: { animal: "dog", animalCoat: "golden", animalPose: "stand", camera: "L2", light: "nat-front", lightZone: "L1", background: "beach", bgv: { beach: "sand" }, time: "golden" } },
@@ -5399,6 +5720,19 @@
     light: "art-front", lightZone: "R2", background: "forest", bgv: { forest: "conifer" }, bga: { forest: ["path"] }, fx: ["fog"], time: "night",
     look: { ...LOOK0, hair: "short" }
   };
+  // Gotowe Manitamu: każde tło aplikacji (każda podstawa wariantów) jako osobny gotowiec; wnętrza i studio w świetle lampy
+  (() => {
+    const INSIDE = ["studio", "room", "cafe", "kitchen"];
+    let k = 0;
+    optionsOf("background").flatMap(o => o.children || [o]).filter(o => fitsBody(o, { subject: "place" }) && o.id !== "land").forEach(o => {
+      const bases = BG_VARIANTS[o.id].filter(v => !v.add);
+      bases.forEach(v => {
+        const inside = INSIDE.includes(o.id), golden = !inside && k++ % 3 === 1;
+        PRESETS.place.push({ id: "bg-" + o.id + "-" + v.id, name: bases.length > 1 ? o.name + " · " + v.name.toLowerCase() : o.name,
+          set: { camera: "L2", light: inside ? "art-front" : golden ? "nat-back" : "nat-front", lightZone: golden ? "R2" : "L1", background: o.id, bgv: { [o.id]: v.id }, time: golden ? "golden" : "day" } });
+      });
+    });
+  })();
   let lastPreset = null;
   function applyPreset(pr) {
     // Kopia głęboka: późniejsze zmiany sceny (cechy, poza zwierzaka) nie mogą psuć gotowca
@@ -5490,7 +5824,8 @@
     scene.time = anyOf(T.time || optionsOf("time").map(o => o.id));
     scene.light = anyOf(leavesOf("light")).id;
     if (scene.subject === "place") {
-      // Manitam: losuje się tylko miejsce, światło i kamera (wyżej i niżej)
+      // Manitam: losuje się tylko miejsce, światło i kamera (wyżej i niżej); zwykle własny krajobraz
+      if (Math.random() < 0.6) randomLand();
     } else if (scene.subject === "animal") {
       CH_RANDOM.animal();
     } else if (scene.subject === "object") {
@@ -5780,6 +6115,22 @@
       () => { scene.sub = k; render(); }, k === "color2" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, prodOpt("color2", prodNow().color2).hex); } : svg => prodThumb(svg, {}),
       () => prodOpt(k, prodNow()[k]).name)));
   }
+  // Konstruktor krajobrazu: grupa części → warianty; miniatura to krajobraz z tą częścią
+  const landThumb = (svg, patch) => renderScene(svg, { ...scene, background: "land", land: { ...landOf(scene), ...patch } }, 100, 100, new Set(TILE_LAYERS.background));
+  function setLand(k, id) {
+    scene.land = { ...landOf(scene), [k]: id };
+    scene.background = "land";
+    scene.fx = [];
+    if (k === "sky" && SKY_TIME[id]) scene.time = SKY_TIME[id];
+    render();
+  }
+  function landTiles(catId) {
+    const sub = scene.sub, on = () => scene.background === "land";
+    if (sub && LAND[sub]) return [backTile(null)].concat(LAND[sub].opts.map(o => tile("opt-land-" + sub + "-" + o.id, o.name, () => on() && landOf(scene)[sub] === o.id,
+      () => setLand(sub, o.id), svg => landThumb(svg, { [sub]: o.id }))));
+    return LAND_CATS[catId].map(k => groupMark(tile("opt-land-" + k, LAND[k].name, () => on() && landOf(scene)[k] !== LAND0[k],
+      () => { scene.sub = k; render(); }, svg => landThumb(svg, {}), () => landOpt(k, landOf(scene)[k]).name)));
+  }
   // Losowe zmiany: Zmutuj (1–2 części), Krzyżówka (głowa i twarz jednego gotowca, reszta drugiego), cały losowy stworek
   function beastMutate(r, n = 2) {
     const out = { ...r }, keys = Object.keys(BEAST).filter(k => k !== "color2" || out.pattern !== "solid");
@@ -5932,8 +6283,10 @@
   function pickLeaf(catId, id) {
     if (catId === "item" && id === "own" && scene.item !== "own" && flow === "free")
       setTimeout(() => say("Własny: bryła w miejscu Twojego produktu. Ustaw kształt i wielkość, a w panelu Maniscryptu dołączysz zdjęcie produktu („Z moim produktem” jest już włączone).", 7000), 300);
+    if (catId === "background" && id === "land" && scene.background !== "land" && flow === "free")
+      setTimeout(() => say("Własny krajobraz: teren, wodę, roślinność, niebo, porę roku i pogodę składasz w grupie Manitam.", 6500), 300);
     scene[catId] = id;
-    if (catId === "background" && BG_VARIANTS[id]) scene.sub = "v:" + id;
+    if (catId === "background" && BG_VARIANTS[id] && id !== "land") scene.sub = "v:" + id;
     render();
   }
   function variantTiles(bg) {
@@ -5954,6 +6307,7 @@
 
   function makeTiles(catId) {
     if (catId === "preset") return presetTiles();
+    if (LAND_CATS[catId]) return landTiles(catId);
     if (catId === "style") return optionsOf("style").map(o => tile("opt-style-" + o.id, o.name, () => scene.style === o.id,
       () => { scene.style = o.id; render(); }, svg => renderScene(svg, { ...scene, style: o.id }, 100, 100, new Set(["ground"]), { styleFrame: true, corners: false })));
     if (catId === "look") return lookTiles();
@@ -6171,6 +6525,7 @@
     { id: "person", label: "Manikun", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["crew", "things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Manito", cats: ["item", "pShape", "pMat", "pDetail", "itemColor", "base"], subjects: ["object"], icon: "item" },
+    { id: "place", label: "Manitam", cats: ["lLand", "lAir", "lLook"], subjects: ["place"], icon: "lLand" },
     { id: "animal", label: "Manimal", cats: ["animal", "bBody", "bHead", "bFace", "bTail", "bCoat", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
@@ -6182,7 +6537,7 @@
   const catById = id => CATEGORIES.find(c => c.id === id);
   const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
-  const GROUP_VALUE = { preset: "preset", person: "body", stuff: "things", object: "item", animal: "animal", scene: "background", camera: "camera", style: "style" };
+  const GROUP_VALUE = { place: "lLand", preset: "preset", person: "body", stuff: "things", object: "item", animal: "animal", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
   const catOff = id => (id === "turn" && (isSelfie(scene.camera) || LYING.includes(scene.pose))) || (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   // from: rodzaj rzędu, w którym stuknięto. Grupa i kategoria mogą mieć to samo id (Kamera, Styl):
@@ -6297,8 +6652,17 @@
     { id: "stuffColor", say: () => `Jaki kolor: ${THING[scene.things[wiz.thingIdx].id].name.toLowerCase()}?`, cat: "thingColor", sub: () => "c:" + wiz.thingIdx, next: () => { wiz.thingIdx = null; return "stuffPick"; }, when: () => level === "expert" && wiz.thingIdx != null && !!scene.things[wiz.thingIdx] },
     { id: "pets", say: "A może zwierzak? Pies, kot, królik albo smok.", cat: "pets" },
     { id: "background", ch: "place", say: "Gdzie jesteśmy?", cat: "background", flat: true },
-    { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background },
-    { id: "fx", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, deszcz…", cat: "fx" },
+    { id: "bgv", say: "A dokładniej?", cat: "background", sub: () => "v:" + scene.background, when: () => scene.background !== "land" },
+    // Własny krajobraz (Manitam): części po kolei; pogoda i ujęcie w Ekspercie
+    { id: "lTerrain", say: "Jaki teren?", cat: "lLand", sub: "terrain", when: () => scene.background === "land" },
+    { id: "lWater", say: "Woda w krajobrazie?", cat: "lLand", sub: "water", when: () => scene.background === "land" },
+    { id: "lFlora", say: "Co rośnie?", cat: "lLand", sub: "flora", when: () => scene.background === "land" },
+    { id: "lBuild", say: "Coś zbudowanego? Chatka, zamek, latarnia…", cat: "lLand", sub: "build", when: () => scene.background === "land" },
+    { id: "lSky", say: "Jakie niebo?", cat: "lAir", sub: "sky", when: () => scene.background === "land" },
+    { id: "lSeason", say: "Pora roku?", cat: "lAir", sub: "season", when: () => scene.background === "land" },
+    { id: "lWeather", say: "Pogoda? Mgła, deszcz, tęcza…", cat: "lAir", sub: "weather", when: () => scene.background === "land" && level === "expert" },
+    { id: "lLookQ", say: "Jak fotografujemy? Długi czas wygładza wodę, dron patrzy z góry.", cat: "lLook", sub: "look", when: () => scene.background === "land" && level === "expert" },
+    { id: "fx", when: () => scene.background !== "land", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, deszcz…", cat: "fx" },
     { id: "time", say: "Pora dnia?", cat: "time", when: () => timeApplies(scene) },
     { id: "light", say: "Jakie światło?", cat: "light", flat: true },
     { id: "shot", ch: "camera", say: "Jak blisko?", cat: "shot" },
@@ -6395,7 +6759,7 @@
       : nameOf("animal") + ", " + low(petCoat(animalIt()).name) + ", " + low(petPose(animalIt()).name),
     person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
     pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(optionOf("arms", armsFor(scene)).name) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
-    place: () => nameOf("background") + ", " + bgLook(scene).map(id => low(bgVar(scene.background, id).name)).join(", ") + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
+    place: () => scene.background === "land" ? "Własny krajobraz: " + landSummary(scene).toLowerCase() + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")) : nameOf("background") + ", " + bgLook(scene).map(id => low(bgVar(scene.background, id).name)).join(", ") + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
     camera: () => `${scene.subject !== "person" ? "" : nameOf("shot") + ", "}${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
     style: () => "Styl " + nameOf("style"),
     stuff: () => (scene.things || []).length ? (scene.things || []).map(it => (it.color ? colorOf(it.color).name.toLowerCase() + " " : "") + THING[it.id].name.toLowerCase()).join(", ")
@@ -6446,13 +6810,15 @@
       scene.items = surfaceOf(scene) && Math.random() < 0.7 ? [{ id: anyOf(DRAWN_ITEMS).id }] : [];
     },
     place() {
-      scene.background = anyOf(leavesOf("background")).id;
+      scene.background = anyOf(leavesOf("background").filter(o => fitsBody(o, scene) && o.id !== "land")).id;
       randomBgLook();
       scene.fx = Math.random() < 0.35 ? [anyOf(FX_LIST).id] : [];
       scene.time = anyOf(optionsOf("time")).id;
       scene.light = anyOf(leavesOf("light").filter(o => lampAllowed(scene) || !o.id.startsWith("art"))).id;
       scene.lightZone = anyOf(lightZones(scene));
       if (scene.time === "night" && scene.look.glasses === "sun") scene.look = { ...scene.look, glasses: "none" };
+      // Manitam: zwykle własny krajobraz z losowych części
+      if (scene.subject === "place" && Math.random() < 0.6) randomLand();
     },
     camera() {
       if (scene.subject === "person") scene.shot = anyOf(["full", "full", "portrait", "face"]);
@@ -7197,7 +7563,7 @@
       PROP_KEYS.forEach(k => { props[k] = tp[k]; });
       for (const k in propAnim) delete propAnim[k];
       const now = performance.now();
-      bgTrans = { old: prev.background, oldLook: bgLook(prev, prev.background), start: now, oldOff: 0, newOff: -1 };
+      bgTrans = { old: prev.background, oldLook: bgDraw(prev, prev.background), start: now, oldOff: 0, newOff: -1 };
       belt = { old: oldSubj ? oldSubj.cloneNode(true) : null, start: now, out: 0, in: 1 };
       ensureLoop();
       return;
@@ -7226,7 +7592,7 @@
     // Nowe miejsce albo inna podstawa tła: dekoracja zjeżdża z góry jak w teatrze (dodatki zmieniają się od razu)
     const newPlace = prev.background !== scene.background;
     if ((newPlace || bgVariant(prev) !== bgVariant(scene)) && !reduceMotion.matches) {
-      bgTrans = { old: prev.background, oldLook: bgLook(prev, prev.background), start: performance.now(), oldOff: 0, newOff: -1 };
+      bgTrans = { old: prev.background, oldLook: bgDraw(prev, prev.background), start: performance.now(), oldOff: 0, newOff: -1 };
       setTimeout(() => sfx("tuk"), 720);
       // Nowe miejsce: Manikun się rozgląda
       if (newPlace && !figAnim && !gaze) playFrames(REACTIONS.bigger());
@@ -7251,6 +7617,8 @@
     if (scene.camera === "D" && scene.shot !== "full") scene.shot = "full";
     // Sezonowe tła są tylko dla Manito
     if (scene.background === "season" && scene.subject !== "object") scene.background = "studio";
+    // Własny krajobraz jest tylko w Manitamie
+    if (scene.background === "land" && scene.subject !== "place") scene.background = "mountains";
     // Selfie tylko z postacią
     if (scene.subject !== "person" && isSelfie(scene.camera)) scene.camera = "L2";
     // Ubiór, który nie pasuje do postaci, wraca do codziennego
@@ -7572,6 +7940,14 @@
       });
       return;
     }
+    if (LAND_CATS[cat]) {
+      LAND_CATS[cat].forEach(k => {
+        const lvl = [...base, opts(cat, null, "opt-land-" + k)];
+        add(LAND[k].name, path, () => jump([...lvl, opts(cat, k)]));
+        LAND[k].opts.forEach(o => add(o.name, [...path, LAND[k].name], () => jump([...lvl, opts(cat, k)], "opt-land-" + k + "-" + o.id), o.en));
+      });
+      return;
+    }
     if (cat === "look") {
       [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || (scene.body === "male" && !isChild())).forEach(([k, name]) => {
         const lvl = [...base, opts(cat, null, "opt-look-" + k)];
@@ -7819,7 +8195,7 @@
       ].filter(Boolean)],
       ["Rzeczy", things.length ? null : "Nic", things],
       ["Scena", null, [
-        ["Tło", treePath(parentName("background", st.background), optionOf("background", st.background).name, bgLook(st).map(id => bgVar(st.background, id).name).join(" + "))],
+        ["Tło", treePath(parentName("background", st.background), optionOf("background", st.background).name, st.background === "land" ? landSummary(st) : bgLook(st).map(id => bgVar(st.background, id).name).join(" + "))],
         ["Elementy", bgExtras(st).length ? bgExtras(st).map(x => FX[x].name).join(", ") : "Brak"],
         timeApplies(st) && ["Pora dnia", optionOf("time", st.time).name],
         ["Światło", treePath(parentName("light", st.light), optionOf("light", st.light).name) + " · " + ZONES[st.lightZone].name]
@@ -7995,7 +8371,7 @@
     const rim = document.getElementById("figRim").cloneNode(true), defs0 = trialSvg.querySelector("defs");
     rim.id = "trialRim";
     const tc = !timeApplies(scene) ? null : { golden: "#FFB070", night: "#8AA6FF" }[scene.time];
-    const RIM_BG = { studio: "#FFFFFF", season: "#FFF2E0", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", desert: "#FFD9A0", park: "#DDEFC4", snowpeaks: "#E6F0FF", kitchen: "#FFF0D8", cafe: "#FFC88C" };
+    const RIM_BG = { land: "#DDE8F8", studio: "#FFFFFF", season: "#FFF2E0", street: "#FFDDB0", rooftop: "#DCE6F4", mountains: "#DDE8F8", forest: "#D2EBB4", beach: "#FFE8BC", meadow: "#E6F4BE", lake: "#CFE6F2", river: "#CFE6F2", room: "#FFE4BC", desert: "#FFD9A0", park: "#DDEFC4", snowpeaks: "#E6F0FF", kitchen: "#FFF0D8", cafe: "#FFC88C" };
     rim.querySelectorAll("[id]").forEach(n => { n.id = "trial-" + n.id; });
     const flood = rim.querySelector("feFlood"), off = rim.querySelector("feOffset");
     flood.setAttribute("flood-color", tc || RIM_BG[scene.background] || "#FFFFFF");
@@ -9689,7 +10065,8 @@
       startStep = "level";
       scene.subject = c.id;
       // Manitam: zamiast pustego studia na start góry o złotej godzinie w naturalnym świetle
-      if (c.id === "place" && scene.background === "studio") Object.assign(scene, { background: "mountains", time: "golden", light: "nat-back", lightZone: "R2" });
+      // Manitam startuje od własnego krajobrazu (części zmienia się w grupie Manitam)
+      if (c.id === "place" && scene.background === "studio") Object.assign(scene, { background: "land", land: { ...LAND0 }, time: "golden", light: "nat-back", lightZone: "R2" });
       playFrames([{ pose: MP.pointLeft, dur: 700 }, { pose: MP.pointLeft, dur: 200 }, { pose: MP.hip, dur: 900 }]);
       // Ostatnio wybrany poziom jest podświetlony
       showStart([...LEVELS.map(l => ({ ...l, pressed: l.id === level })), START_BACK.subject], true);

@@ -690,3 +690,11 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Przy przedmiocie „Własny” panel Maniscryptu otwiera się z włączonym „Z moim produktem” (`ownItem`, `ownPhoto`; gdy użytkownik go wyłączy, zostaje wyłączony do końca wizyty). Przy innych przedmiotach startuje wyłączony.
 - Opis ze zdjęciem i Własnym: „the product from the attached reference photo (a hand-sized cylindrical product), keeping…” – bryła podpowiada skalę i kształt.
 - Wybór „Własny” w Swobodzie: dymek z wyjaśnieniem (bryła w miejscu produktu, zdjęcie w panelu Maniscryptu).
+
+## Manitam: wszystkie tła w Gotowych i konstruktor krajobrazu
+
+- **Gotowe:** poza 6 dawnymi gotowcami Manitam ma osobny gotowiec dla każdego tła aplikacji (każda podstawa wariantów, np. „Ulica · kamienice”, „Pokój · łazienka”, „Studio · packshot”). Lista budowana w kodzie z `BG_VARIANTS`, więc nowe tło samo trafia do Gotowych. Wnętrza i studio w świetle lampy, plener w dzień albo o złotej godzinie. Do tego 12 gotowych własnych krajobrazów („Zorza nad fiordem”, „Latarnia w burzy”, „Rajska wyspa z drona”…).
+- **Własny krajobraz** (tło `land`, tylko Manitam): przepis `scene.land` z 8 części (`LAND`): teren (góry, wzgórza, równina, wydmy, klify, kanion, wyspa, wulkan, lodowiec), woda, roślinność, zabudowa, niebo, pora roku, pogoda i ujęcie (długi czas, panorama, dron, tilt-shift, niebieska godzina). Nowa grupa menu **Manitam** z kategoriami Krajobraz, Niebo i pora, Ujęcie (`LAND_CATS`, `landTiles`); wybór dowolnej części włącza własny krajobraz. Manitam startuje od własnego krajobrazu.
+- Maniscrypt: `landPhrase` („mountain landscape with jagged peaks in winter, covered in snow, with a calm mirror-like lake, pine forest and a small wooden cabin, under green northern lights…”), ujęcie dopisywane w `placeOf`. Gwiazdy i zorza ustawiają noc, kolorowe niebo złotą godzinę.
+- Rysunek `drawLand` (szkic i Próbny kadr): warstwy od nieba do przodu; przepis trafia do rysunku przez `bgDraw` jako lista „część:wariant”. Elementy miejsca (fx) są ukryte przy własnym krajobrazie (pogoda jest w przepisie).
+- Kreator: przy własnym krajobrazie pytania o teren, wodę, roślinność, zabudowę, niebo, porę roku (Ekspert także pogoda i ujęcie). Losowanie i „Zdaj się na mnie” w 60% składają losowy krajobraz. Wyszukiwarka zna nazwy części.
