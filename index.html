@@ -3112,7 +3112,7 @@
     const cur = bgExtras(scene);
     if (id === "none") { scene.fx = []; return; }
     const on = cur.includes(id);
-    if (level !== "expert") { scene.fx = on ? [] : [id]; return; }
+    // Kilka elementów naraz na każdym poziomie (np. neony i latarnia); wykluczają się tylko deszcz i śnieg
     let fx = on ? cur.filter(x => x !== id) : [...cur, id];
     const gone = on ? [] : fx.filter(x => (FX[id].excl || []).includes(x));
     if (gone.length) {
@@ -6802,7 +6802,7 @@
     { id: "lSeason", say: "Pora roku?", cat: "lAir", sub: "season", when: () => scene.background === "land" },
     { id: "lWeather", say: "Pogoda? Mgła, deszcz, tęcza…", cat: "lAir", sub: "weather", when: () => scene.background === "land" && level === "expert" },
     { id: "lLookQ", say: "Jak fotografujemy? Długi czas wygładza wodę, dron patrzy z góry.", cat: "lLook", sub: "look", when: () => scene.background === "land" && level === "expert" },
-    { id: "fx", when: () => scene.background !== "land", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, deszcz…", cat: "fx" },
+    { id: "fx", when: () => scene.background !== "land", say: () => level === "expert" ? "Coś jeszcze w miejscu? Możesz wybrać kilka." : "Dodać coś do miejsca? Rzeka, mgła, neony… Możesz kilka.", cat: "fx" },
     { id: "time", say: "Pora dnia?", cat: "time", when: () => timeApplies(scene) },
     { id: "light", say: "Jakie światło?", cat: "light", flat: true },
     { id: "shot", ch: "camera", say: "Jak blisko?", cat: "shot" },
@@ -6893,11 +6893,13 @@
   const low = s => s.charAt(0).toLowerCase() + s.slice(1);
   const partText = p => scene.wear[p] === "suit" ? "spodnie garniturowe" : low(partValue(p));
   const nameOf = cat => optionOf(cat, scene[cat]).name;
+  // Postać w podsumowaniu: przy dziecku chłopiec albo dziewczynka zamiast mężczyzny i kobiety
+  const bodyName = () => isChild() ? (scene.body === "female" ? "Dziewczynka" : "Chłopiec") : nameOf("body");
   const CH_SUMMARY = {
     object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + (scene.item === "own" ? prodOpt("shape", prodNow().shape).name : nameOf("item")) + ", " + low(nameOf("base")),
     animal: () => scene.animal === "beast" ? "Własny Manimal, " + low(beastOpt("body", beastNow().body).name) + ", " + low(petPose(animalIt()).name)
       : nameOf("animal") + ", " + low(petCoat(animalIt()).name) + ", " + low(petPose(animalIt()).name),
-    person: () => `${nameOf("body")}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
+    person: () => `${bodyName()}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
     pose: () => nameOf("pose") + (armsApply(scene) ? ", " + low(optionOf("arms", armsFor(scene)).name) : "") + (scene.things.length ? (seatOf(scene) ? ", na: " : ", obok: ") + low(THING[scene.things[0].id].name) : ""),
     place: () => scene.background === "land" ? "Własny krajobraz: " + landSummary(scene).toLowerCase() + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")) : nameOf("background") + ", " + bgLook(scene).map(id => low(bgVar(scene.background, id).name)).join(", ") + bgExtras(scene).map(x => ", " + low(FX[x].name)).join("") + (timeApplies(scene) ? ", " + low(nameOf("time")) : "") + ", światło: " + low(nameOf("light")),
     camera: () => `${scene.subject !== "person" ? "" : nameOf("shot") + ", "}${low(nameOf("camera"))}, ${currentFormat().short}` + (scene.mode === "video" && !isSelfie(scene.camera) ? ", " + low(nameOf("motion")) : ""),
@@ -8344,7 +8346,7 @@
     const fmt = FORMATS[st.mode].find(x => x.id === st.format[st.mode]);
     return [
       ["Postać", null, [
-        ["Sylwetka", optionOf("body", st.body).name],
+        ["Sylwetka", isChild(st) ? (st.body === "female" ? "Dziewczynka" : "Chłopiec") : optionOf("body", st.body).name],
         ["Cechy", null, Object.keys(TRAITS).filter(k => traitsOf(st)[k] !== TRAIT0[k]).map(k => [TRAITS[k].name, traitOpt(k, traitsOf(st)[k]).name])],
         ["Głowa", null, head],
         ["Ubiór", st.outfit === "custom" ? "Własny" : "Zestaw " + optionOf("outfit", st.outfit).name, wear],
