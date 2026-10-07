@@ -614,6 +614,9 @@
   /* Kafelki w rzędach: rząd przycina wszystko poza swoją wysokością, więc zewnętrzna poświata wychodziła kwadratowa.
      Tu świeci obrys w środku kafelka (dokładnie jego kształt) i lekko rozjaśnione tło. */
   .row .tile.tut-target { animation: tutGlowIn 1.3s ease-in-out infinite; outline: 2px solid transparent; outline-offset: -2px; }
+  /* Tutorial: kropka palca pokazująca przewijanie rzędu */
+  .tut-finger { position: fixed; z-index: 9999; width: 44px; height: 44px; border-radius: 50%; pointer-events: none; opacity: 0;
+    background: rgba(255, 255, 255, 0.32); border: 2px solid rgba(255, 255, 255, 0.9); box-shadow: 0 0 18px rgba(255, 255, 255, 0.45); transform: translate(-50%, -50%); }
   @keyframes tutGlowIn { 50% { outline-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 24%, #17171D); } }
   body.tutorial .bubble { cursor: pointer; }
   /* Manikun mówi: zdanie, które właśnie słychać, jest wyraźne, pozostałe przygaszone; przycisk z głową lekko się buja */
@@ -10485,7 +10488,7 @@
     { say: "Przełączmy styl. Wróć strzałką do głównych grup.", target: () => rows.bottom && rows.bottom.back,
       done: () => nav.length === 2 && nav[0].kind === "groups" },
     { say: "Stuknij Styl.", target: () => document.getElementById("nav-style"), done: () => topOpts().cat === "style" },
-    { say: "Wybierz Fantasy.", target: () => document.getElementById("opt-style-fantasy"), done: () => scene.style === "fantasy" },
+    { say: "Wybierz Fantasy.", target: () => document.getElementById("opt-style-fantasy"), swipe: true, done: () => scene.style === "fantasy" },
     { say: "Stwórzmy Maniscrypt dla stylu Fantasy.", target: () => document.getElementById("copy"),
       done: () => document.body.classList.contains("sheet-open"), before: () => { tut.copied = false; } },
     { say: "Skopiuj go.", target: () => document.getElementById("sheetCopy"), done: () => tut.copied, after: () => setSheet(false) },
@@ -10542,10 +10545,42 @@
       el.classList.add("tut-target");
       const row = [rows.top, rows.bottom].find(r => r && r.el.contains(el));
       const t = row && row.tiles.find(x => x.btn === el);
-      if (t) scrollToTile(row, t);
+      // Krok ze „swipe”: palec przesuwa listę do celu (pokazuje, że rząd się przewija), raz na krok
+      if (t && st.swipe && tut.swiped !== tut.step) { tut.swiped = tut.step; tutSwipe(row, t); }
+      else if (t) scrollToTile(row, t);
     }
     // Krok zrobiony: dalej dopiero, gdy Manikun skończy mówić (inaczej nowy dymek ucina zdanie)
     if (st.done && st.done() && !navBusy && !voiceBusy) tutNext();
+  }
+  // Pokaz przewijania: kropka palca naciska rząd z prawej i ciągnie go w lewo, rząd jedzie razem z nią aż do kafelka celu
+  function tutSwipe(row, t) {
+    const r = row.el, pad = row.back ? 64 : 8;
+    const to = Math.max(0, Math.min(r.scrollWidth - r.clientWidth, t.btn.offsetLeft - (r.clientWidth - t.btn.offsetWidth) / 2));
+    const from = r.scrollLeft, dist = to - from;
+    if (reduceMotion.matches || Math.abs(dist) < 12) { scrollToTile(row, t); return; }
+    const box = r.getBoundingClientRect(), y = box.top + box.height / 2;
+    const x0 = dist > 0 ? box.right - 50 : box.left + pad + 40, move = Math.sign(dist) * Math.min(Math.abs(dist), box.width - pad - 110);
+    const finger = document.createElement("div");
+    finger.className = "tut-finger";
+    finger.style.left = x0 + "px"; finger.style.top = y + "px";
+    document.body.appendChild(finger);
+    const ease = k => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    const T_IN = 350, T_DRAG = 1300, T_OUT = 350, t0 = performance.now();
+    const step = now => {
+      const e = now - t0;
+      if (e < T_IN) { finger.style.opacity = String(e / T_IN); finger.style.transform = `translate(-50%, -50%) scale(${1.3 - 0.3 * e / T_IN})`; }
+      else if (e < T_IN + T_DRAG) {
+        const k = ease((e - T_IN) / T_DRAG);
+        finger.style.opacity = "1"; finger.style.transform = "translate(-50%, -50%) scale(1)";
+        r.scrollLeft = from + dist * k;
+        finger.style.left = (x0 - move * k) + "px";
+      } else if (e < T_IN + T_DRAG + T_OUT) {
+        r.scrollLeft = to;
+        finger.style.opacity = String(1 - (e - T_IN - T_DRAG) / T_OUT);
+      } else { finger.remove(); return; }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
   function tutNext() {
     const st = TUT_STEPS[tut.step];
