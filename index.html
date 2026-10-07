@@ -5879,7 +5879,7 @@
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     } else {
       // Zablokowana postać i cechy: strój, wygląd i poza losują się pod nie (np. bez zarostu u dziecka)
-      const child = isLocked("traits") ? traitsOf().age === "child" : Math.random() < (T.child ?? 0.12);
+      const child = isLocked("traits") || isLocked("p:traits.age") ? traitsOf().age === "child" : Math.random() < (T.child ?? 0.12);
       if (!isLocked("body")) scene.body = anyOf(optionsOf("body")).id;
       // Zestaw z motywu (albo dowolny), czasem z innymi kolorami i nakryciem głowy
       const sets = optionsOf("outfit").filter(o => fit(o) && (!T.outfit || T.outfit.includes(o.id)));
@@ -5988,31 +5988,57 @@
   // Krócej niż długie przytrzymanie Androida (~500 ms), po którym przeglądarka przerywa dotyk
   const LOCK_MS = 450;
   const locks = new Set();
-  // Kategorie kafelka: kategoria albo wszystkie kategorie grupy, które mają kłódkę
-  function lockCats(t) {
-    if (t.cat) return LOCK_KEYS[t.cat] ? [t.cat] : null;
+  // Kłódka na konkretną część („p:traits.freckles”, „p:look.hair”…) zamiast całej kategorii.
+  // Kafelek części (np. Piegi, Włosy, Mina) blokuje tę część; kafelek opcji (np. Długie) najpierw ją wybiera, potem blokuje.
+  const LOOK_PATHS = { hair: ["hair", "hairPicked", "hairColor"], hairColor: ["hairColor"], beard: ["beard", "beardColor"], beardColor: ["beardColor"],
+    lips: ["lips"], glasses: ["glasses", "glassesColor"], glassesColor: ["glassesColor"], expr: ["expr"], exprg: ["expr"], gaze: ["gaze"] };
+  const looks = k => LOOK_PATHS[k].map(x => "p:look." + x);
+  function lockTargets(t) {
+    const id = t.id || "";
+    let m;
+    if ((m = id.match(/^opt-traits-(\w+)$/))) return { ids: ["p:traits." + m[1]] };
+    if ((m = id.match(/^opt-trait-(\w+)-/))) return { ids: ["p:traits." + m[1]], select: true };
+    if ((m = id.match(/^opt-look-(\w+)$/)) && LOOK_PATHS[m[1]]) return { ids: looks(m[1]) };
+    if ((m = id.match(/^opt-(hair|hairColor|beard|beardColor|lips|glasses|glassesColor|expr|exprg|gaze)-/))) return { ids: looks(m[1]), select: true };
+    if ((m = id.match(/^opt-outfit-grp-(\w+)$/))) return m[1] === "sets" ? { ids: ["outfit"] } : { ids: ["p:wear." + m[1], "p:wc." + m[1]] };
+    if ((m = id.match(/^opt-wear-color-(\w+)$/))) return { ids: ["p:wc." + m[1]] };
+    if ((m = id.match(/^opt-wear-(\w+)-/))) return { ids: ["p:wear." + m[1], "p:wc." + m[1]], select: true };
+    if ((m = id.match(/^opt-(beast|prod|land)-(\w+)$/))) return { ids: ["p:" + m[1] + "." + m[2]] };
+    if ((m = id.match(/^opt-(beast|prod|land)-(\w+)-/))) return { ids: ["p:" + m[1] + "." + m[2]], select: true };
+    if (t.cat) return LOCK_KEYS[t.cat] ? { ids: [t.cat] } : null;
     const g = t.navId && GROUPS.find(x => x.id === t.navId);
     if (!g || g.action) return null;
     const cats = (g.cat ? [g.cat] : groupCats(g).map(c => c.id)).filter(id => LOCK_KEYS[id]);
-    return cats.length ? cats : null;
+    return cats.length ? { ids: cats } : null;
   }
-  const tileLocked = t => { const c = lockCats(t); return !!c && c.every(id => locks.has(id)); };
+  const lockCats = t => { const x = lockTargets(t); return x ? x.ids : null; };
+  // Kafelek opcji pokazuje kłódkę tylko wtedy, gdy to on jest wybrany (zablokowana jest wartość, nie cała lista)
+  const tileLocked = t => { const x = lockTargets(t); return !!x && x.ids.every(id => locks.has(id)) && (!x.select || !!(t.isPressed && t.isPressed())); };
   const isLocked = id => locks.has(id);
   function toggleLock(t) {
-    const cats = lockCats(t), on = !tileLocked(t), label = t.btn.querySelector(".name").textContent;
-    cats.forEach(id => on ? locks.add(id) : locks.delete(id));
+    const x = lockTargets(t), on = !tileLocked(t), label = t.btn.querySelector(".name").textContent;
+    // Opcja: przytrzymanie ją wybiera i blokuje
+    if (on && x.select && t.onClick && !(t.isPressed && t.isPressed())) t.onClick();
+    x.ids.forEach(id => on ? locks.add(id) : locks.delete(id));
     if (navigator.vibrate) { try { navigator.vibrate(on ? [12, 40, 12] : 12); } catch (e) {} }
     sfx(on ? "klap" : "puk");
     t.btn.classList.remove("lock-pop"); void t.btn.offsetWidth; t.btn.classList.add("lock-pop");
     showToast(on ? `Zablokowane: ${label}. Losuj tego nie zmieni.` : `Odblokowane: ${label}.`);
     render();
   }
-  // Losowanie: zablokowane pola wracają po losowaniu reszty (kopie, żeby losowanie nie zmieniło ich w miejscu)
+  // Losowanie: zablokowane pola (całe albo ich części) wracają po losowaniu reszty
+  const copyOf = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
   const lockSnapshot = () => {
     const keys = new Set([...locks].flatMap(id => LOCK_KEYS[id] || []));
-    return Object.fromEntries([...keys].map(k => [k, scene[k] === undefined ? undefined : JSON.parse(JSON.stringify(scene[k]))]));
+    const parts = [...locks].filter(id => id.startsWith("p:")).map(id => id.slice(2).split("."));
+    return { whole: Object.fromEntries([...keys].map(k => [k, copyOf(scene[k])])), parts: parts.map(([a, b]) => [a, b, copyOf((scene[a] || {})[b])]) };
   };
-  const lockRestore = snap => Object.entries(snap).forEach(([k, v]) => { scene[k] = v; });
+  const lockRestore = snap => {
+    Object.entries(snap.whole).forEach(([k, v]) => { scene[k] = v; });
+    snap.parts.forEach(([a, b, v]) => { if (v !== undefined) scene[a] = { ...(scene[a] || {}), [b]: v }; });
+    // Zablokowana część stroju: zestaw staje się własny
+    if (snap.parts.some(([a]) => a === "wear") && !snap.whole.outfit) scene.outfit = "custom";
+  };
 
   // Kafelek: obrazek i opis. redraw() odświeża rysunek, opis i zaznaczenie bez ponownej animacji wejścia.
   // Kafelki trafiają do rzędu, który jest właśnie budowany (tileHost); kliknięcie idzie przez nawigację.
@@ -6034,7 +6060,7 @@
     b.append(svg, txt);
     if (tileHost) tileHost.appendChild(b);
     const t = {
-      btn: b, row: tileRow, id,
+      btn: b, row: tileRow, id, onClick, isPressed,
       redraw() {
         svg.replaceChildren();
         draw(svg);
