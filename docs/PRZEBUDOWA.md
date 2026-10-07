@@ -716,3 +716,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 ## Panel Maniscryptu: kopiowanie na pierwszym miejscu
 
 - Kolejność: Z moją twarzą → **Kopiuj Maniscrypt** (zielony, główny) → generatory („Albo stuknij generator: skopiuje i otworzy jego stronę”) → Premium i **Zrób zdjęcie tutaj** (obramowany, drugi wybór) → Próbny kadr, Udostępnij, Drzewko. Usunięta zamiana kolorów `#copySheet.has-gen`.
+
+## Kłódki: przytrzymanie kafelka blokuje go przed losowaniem
+
+- Przytrzymanie (520 ms) kafelka kategorii albo grupy w Swobodzie przełącza kłódkę (żółta plakietka w rogu, pasek „Zablokowane: Poza. Losuj tego nie zmieni.”, wibracja). Grupa blokuje wszystkie swoje kategorie. Kliknięcie po przytrzymaniu nie otwiera kafelka; ruch palca (przewijanie rzędu) przerywa przytrzymanie.
+- `LOCK_KEYS`: kategoria → pola sceny. `randomize` robi kopię zablokowanych pól na początku i przywraca je na końcu (potem `fixScene`); zablokowana postać i cechy (dziecko) są brane pod uwagę już przy losowaniu stroju i wyglądu.
+- Kłódki znikają przy nowej scenie (powrót do startu). Po drugim losowaniu bez kłódek Manikun raz podpowiada przytrzymanie.

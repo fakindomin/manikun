@@ -482,6 +482,16 @@
   .tile .name { font-weight: 600; font-size: 12.5px; line-height: 1.2; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .tile .value { font-family: var(--mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile:disabled { opacity: 0.35; cursor: default; }
+  /* Kłódka: kafelek zablokowany przed losowaniem (przytrzymanie przełącza) */
+  .tile { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .tile.locked { border-color: rgba(242, 201, 76, 0.55); }
+  .tile.locked::after {
+    content: ""; position: absolute; top: -6px; right: -4px; width: 20px; height: 20px; border-radius: 50%;
+    background: #F2C94C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='11' width='12' height='9' rx='2' fill='%2317171D'/%3E%3Cpath d='M8.5 11V8.5a3.5 3.5 0 0 1 7 0V11' fill='none' stroke='%2317171D' stroke-width='2.2'/%3E%3C/svg%3E") center / 14px no-repeat;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  }
+  .tile.lock-pop { animation: lockPop 360ms var(--ease); }
+  @keyframes lockPop { 50% { transform: scale(1.06); } }
   /* Wybrana opcja */
   .tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 8px 22px var(--accent-soft); }
   .tile[aria-pressed="true"] .value { color: var(--accent); }
@@ -5848,6 +5858,7 @@
     return fx;
   }
   function randomize(quiet = false) {
+    const keep = lockSnapshot();
     const fit = o => fitsBody(o, scene), expert = level === "expert";
     const { th, bg } = pickTheme(), T = th || {};
     remember("bg", bg, 3); if (th) remember("theme", th.id, 3);
@@ -5867,8 +5878,9 @@
       scene.base = anyOf(optionsOf("base")).id;
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     } else {
-      const child = Math.random() < (T.child ?? 0.12);
-      scene.body = anyOf(optionsOf("body")).id;
+      // Zablokowana postać i cechy: strój, wygląd i poza losują się pod nie (np. bez zarostu u dziecka)
+      const child = isLocked("traits") ? traitsOf().age === "child" : Math.random() < (T.child ?? 0.12);
+      if (!isLocked("body")) scene.body = anyOf(optionsOf("body")).id;
       // Zestaw z motywu (albo dowolny), czasem z innymi kolorami i nakryciem głowy
       const sets = optionsOf("outfit").filter(o => fit(o) && (!T.outfit || T.outfit.includes(o.id)));
       const d = dressIn(anyOf(sets.length ? sets : optionsOf("outfit").filter(fit)).id);
@@ -5940,19 +5952,66 @@
     const fav = (T.style || []).filter(id => styles.includes(id));
     scene.style = fav.length && Math.random() < 0.7 ? anyOf(fav) : anyOf(styles);
     remember("style", scene.style, 2);
+    lockRestore(keep);
     lastPreset = null;
     // Pośrednie szkice przy losowaniu: bez odświeżania menu (to najdroższe), tylko podgląd
     if (quiet) { fixScene(); sceneChanged(); } else render();
   }
   // Losuj jak zmiana scenografii w teatrze: Manikun odjeżdża w bok jak na taśmie, nowa dekoracja zjeżdża z góry,
   // potem wjeżdża nowy Manikun (sceneChanged z theatreNext ustawia przejście)
-  let snapScene = false, theatreNext = false;
+  let snapScene = false, theatreNext = false, rollCount = 0;
   function rollRandom() {
     theatreNext = !reduceMotion.matches;
     try { randomize(); } finally { theatreNext = false; }
     sfx("krrr");
     setTimeout(() => sfx("tuk"), 720);
+    // Drugie losowanie bez kłódek: raz podpowiedź o przytrzymaniu kafelka
+    rollCount++;
+    if (rollCount === 2 && !locks.size) {
+      let seen = false;
+      try { seen = localStorage.getItem("manikun-lockhint") === "1"; localStorage.setItem("manikun-lockhint", "1"); } catch (e) {}
+      if (!seen) setTimeout(() => say("Podoba Ci się coś z losowania? Przytrzymaj kafelek, np. Pozę albo Tło. Pojawi się kłódka i kolejne losowanie tego nie zmieni.", 7500), 1400);
+    }
   }
+
+  // ---------- Kłódki: zablokowane kategorie zostają przy losowaniu ----------
+  // Kategoria → pola sceny, które zostają; grupa blokuje wszystkie swoje kategorie
+  const LOCK_KEYS = {
+    body: ["body"], traits: ["traits"], look: ["look"], outfit: ["outfit", "wear", "wc", "wcPicked"], pose: ["pose"], arms: ["arms"], turn: ["turn"],
+    things: ["things"], pets: ["things"], items: ["items"], thingColor: ["things"],
+    item: ["item", "prod"], pShape: ["prod"], pMat: ["prod"], pDetail: ["prod"], itemColor: ["itemColor"], base: ["base"],
+    animal: ["animal", "beast", "animalCoat"], bBody: ["beast"], bHead: ["beast"], bFace: ["beast"], bTail: ["beast"], bCoat: ["beast"], animalPose: ["animalPose"], animalCoat: ["animalCoat"],
+    lLand: ["background", "land"], lAir: ["background", "land", "time"], lLook: ["background", "land"],
+    background: ["background", "bgv", "bga", "land"], fx: ["fx"], time: ["time"], light: ["light", "lightZone"],
+    shot: ["shot"], camera: ["camera"], format: ["format"], motion: ["motion"], style: ["style"]
+  };
+  const LOCK_MS = 520;
+  const locks = new Set();
+  // Kategorie kafelka: kategoria albo wszystkie kategorie grupy, które mają kłódkę
+  function lockCats(t) {
+    if (t.cat) return LOCK_KEYS[t.cat] ? [t.cat] : null;
+    const g = t.navId && GROUPS.find(x => x.id === t.navId);
+    if (!g || g.action) return null;
+    const cats = (g.cat ? [g.cat] : groupCats(g).map(c => c.id)).filter(id => LOCK_KEYS[id]);
+    return cats.length ? cats : null;
+  }
+  const tileLocked = t => { const c = lockCats(t); return !!c && c.every(id => locks.has(id)); };
+  const isLocked = id => locks.has(id);
+  function toggleLock(t) {
+    const cats = lockCats(t), on = !tileLocked(t), label = t.btn.querySelector(".name").textContent;
+    cats.forEach(id => on ? locks.add(id) : locks.delete(id));
+    if (navigator.vibrate) { try { navigator.vibrate(on ? [12, 40, 12] : 12); } catch (e) {} }
+    sfx(on ? "klap" : "puk");
+    t.btn.classList.remove("lock-pop"); void t.btn.offsetWidth; t.btn.classList.add("lock-pop");
+    showToast(on ? `Zablokowane: ${label}. Losuj tego nie zmieni.` : `Odblokowane: ${label}.`);
+    render();
+  }
+  // Losowanie: zablokowane pola wracają po losowaniu reszty (kopie, żeby losowanie nie zmieniło ich w miejscu)
+  const lockSnapshot = () => {
+    const keys = new Set([...locks].flatMap(id => LOCK_KEYS[id] || []));
+    return Object.fromEntries([...keys].map(k => [k, scene[k] === undefined ? undefined : JSON.parse(JSON.stringify(scene[k]))]));
+  };
+  const lockRestore = snap => Object.entries(snap).forEach(([k, v]) => { scene[k] = v; });
 
   // Kafelek: obrazek i opis. redraw() odświeża rysunek, opis i zaznaczenie bez ponownej animacji wejścia.
   // Kafelki trafiają do rzędu, który jest właśnie budowany (tileHost); kliknięcie idzie przez nawigację.
@@ -5980,10 +6039,23 @@
         draw(svg);
         b.setAttribute("aria-pressed", String(isPressed()));
         if (v) v.textContent = value();
+        b.classList.toggle("locked", tileLocked(t));
       }
     };
     b.__tile = t;
-    b.addEventListener("click", () => navTileClick(t, onClick));
+    // Przytrzymanie kafelka grupy albo kategorii: kłódka (losowanie tego nie zmienia); kliknięcie po przytrzymaniu przepada
+    let holdTimer = null, held = false, hx = 0, hy = 0;
+    const holdEnd = () => { clearTimeout(holdTimer); holdTimer = null; };
+    b.addEventListener("pointerdown", e => {
+      held = false;
+      if (!lockCats(t) || (e.pointerType === "mouse" && e.button !== 0)) return;
+      hx = e.clientX; hy = e.clientY;
+      holdTimer = setTimeout(() => { holdTimer = null; held = true; toggleLock(t); }, LOCK_MS);
+    });
+    b.addEventListener("pointermove", e => { if (holdTimer && Math.hypot(e.clientX - hx, e.clientY - hy) > 8) holdEnd(); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(ev => b.addEventListener(ev, holdEnd));
+    b.addEventListener("contextmenu", e => { if (lockCats(t)) e.preventDefault(); });
+    b.addEventListener("click", e => { if (held) { held = false; e.preventDefault(); return; } navTileClick(t, onClick); });
     t.redraw();
     return t;
   }
@@ -10378,6 +10450,8 @@
   // Powrót do siatki 2×2 bez przeładowania: rzędy zjeżdżają, scena płynnie wraca do domyślnej, kafelki wjeżdżają od spodu
   function backToStart() {
     const fast = reduceMotion.matches;
+    // Nowa scena: bez kłódek z poprzedniej
+    locks.clear();
     hush();
     setSheet(false);
     tutGen(false);
