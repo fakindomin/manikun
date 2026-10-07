@@ -7727,6 +7727,8 @@
       }
     });
     if (poseKey(prev) !== poseKey(scene) || prev.body !== scene.body) playFrames([{ pose: curPose(), dur: 950 }]);
+    // Cechy zmieniające sylwetkę (wiek, budowa, wzrost): nowy szkielet od razu, płynnie (wcześniej dopiero przy zmianie stroju)
+    else if (rigOf(prev.body, prev) !== rigOf(scene.body)) playFrames([{ pose: curPose(), dur: 700 }]);
     else if (frameRoom(scene) > frameRoom(prev) + 1e-6) playFrames(REACTIONS.bigger());
     else if (frameRoom(scene) < frameRoom(prev) - 1e-6) playFrames(REACTIONS.smaller());
     else if (prev.outfit !== scene.outfit || prev.wear !== scene.wear || prev.wc !== scene.wc || prev.look !== scene.look) playFrames([{ pose: variant({}, { head: 14, spine: 2 }), dur: 650 }, { pose: variant({}, { head: -12, spine: -1 }), dur: 800 }, back(850)]);
