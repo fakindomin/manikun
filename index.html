@@ -7865,7 +7865,7 @@
           <li>Skopiuj Maniscrypt przyciskiem albo od razu stuknij generator: skopiuje i otworzy stronę.</li>
           <li>W generatorze wklej tekst i wyślij.</li>
         </ol></section>
-        <section><h3>Własna twarz</h3><p>W panelu Maniscryptu włącz „Dołączę zdjęcie swojej twarzy”. W generatorze wklej tekst i dołącz zdjęcie: twarz na wprost, dobrze oświetlona, bez okularów przeciwsłonecznych. Resztę sceny generator weźmie z Maniscryptu.</p></section>
+        <section><h3>Własna twarz albo produkt</h3><p>W panelu Maniscryptu włącz „Z moją twarzą” (Manikun) albo „Z moim produktem” (Manito). W generatorze wklej tekst i dołącz zdjęcie: twarz na wprost, dobrze oświetlona, bez okularów przeciwsłonecznych, albo sam produkt na gładkim tle. Resztę sceny generator weźmie z Maniscryptu.</p></section>
         <section><h3>Generatory zdjęć</h3><div class="gens" data-gens="photo"></div></section>
         <section><h3>Generatory wideo</h3><div class="gens" data-gens="video"></div><small>Stuknięcie w generator kopiuje Maniscrypt bieżącej sceny i otwiera jego stronę.</small></section>
         <section><h3>Wskazówki</h3><ul>
@@ -7877,10 +7877,16 @@
     about: {
       title: "O Manikunie",
       html: `
-        <p class="lead">Manikun to wirtualny reżyser ujęć. Ustawiasz scenę na drewnianym manekinie: postać, ubiór, pozę, kamerę, światło i tło, a Manikun zamienia ją w Maniscrypt, czyli gotowy opis dla generatora zdjęć i wideo AI.</p>
+        <p class="lead">Manikun to wirtualny reżyser ujęć. Ustawiasz scenę: kamerę, światło, tło i styl, a Manikun zamienia ją w Maniscrypt, czyli gotowy opis dla generatora zdjęć i wideo AI.</p>
+        <section><h3>Co ustawiasz</h3><ul>
+          <li><b>Manikun</b>: postać na drewnianym manekinie, ubiór, pozę, twarz i rzeczy wokół.</li>
+          <li><b>Manito</b>: przedmiot do zdjęcia produktowego, także bryłę w miejscu Twojego produktu.</li>
+          <li><b>Manimal</b>: zwierzę albo własnego stworka złożonego z części.</li>
+          <li><b>Manitam</b>: samo miejsce, gotowe tło albo własny krajobraz z części.</li>
+        </ul></section>
         <p>Ponad miliard możliwych ujęć, bez pisania ani jednego słowa po angielsku.</p>
         <section><h3>Podziękowania</h3><p>Głowa 3D na przycisku Manikuna: model „<a href="https://sketchfab.com/3d-models/wooden-mannequin-rigged-8040cfbe4be54693bacbefe992da5cf4" target="_blank" rel="noopener">Wooden Mannequin (Rigged)</a>”, autor: zionmuoria, licencja <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p></section>
-        <section><h3>Wersja</h3><p>Wersja testowa przebudowy. Obiekty, zwierzęta i sceny dowolne są w przygotowaniu.</p></section>`
+        <section><h3>Wersja</h3><p>Wersja testowa. Manikun cały czas się rozwija, a uwagi i pomysły chętnie przyjmiemy na <a href="mailto:kontakt@manikun.pl">kontakt@manikun.pl</a>.</p></section>`
     }
   };
   function openInfo(id) {
@@ -9208,8 +9214,7 @@
   });
 
   // ---------- Start: temat (2×2), potem Kreator albo Swoboda ----------
-  // Na razie działa tylko Postać. Inne tematy: za pierwszym razem żart, potem informacja, że będą wkrótce.
-  // (Kreator obiektów jest w kodzie, odblokowanie to zdjęcie "locked" z kafelka Obiekt)
+  // Start: wszystkie cztery tematy działają (zablokowany temat dostałby żart, potem SOON)
   const ICON = {
     person: '<circle cx="12" cy="5" r="2.6"/><path d="M12 8v6.5M12 10l-4.5 3.5M12 10l4.5 3.5M12 14.5l-3.5 6.5M12 14.5l3.5 6.5"/>',
     object: '<path d="M9.5 21v-9q0-3 2-4V4h1v4q2 1 2 4v9z"/><path d="M5 21h14" class="thin"/>',
@@ -9225,7 +9230,7 @@
   const SUBJECTS = [
     { id: "person", name: "Manikun", desc: "postać: poza, ubiór, twarz" },
     { id: "object", name: "Manito", desc: "przedmiot, podstawa, kolor" },
-    { id: "animal", name: "Manimal", desc: "pies, kot, królik, smok" },
+    { id: "animal", name: "Manimal", desc: "zwierzęta i własne stworki" },
     { id: "place", name: "Manitam", desc: "krajobrazy i miejsca" }
   ];
   const SOON = "Ta opcja będzie dostępna wkrótce. Na razie zróbmy świetną postać!";
