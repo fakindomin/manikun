@@ -740,3 +740,12 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Serwer: tabela `scenes` (migracja `0010_sceny.sql`), `GET/POST /api/scenes`, `DELETE /api/scenes/<id>`, najwyżej 60 scen na konto, scena do 30 000 znaków.
 - **Zakładka w górnym pasku** (`#saveTop`, obok dźwięku): stały przycisk Zapisz scenę (ikona zakładki, jak „zapisz” w Instagramie i Pintereście), po zapisie na chwilę wypełniona na zielono; ukryta na starcie i w tutorialu. Kafelek Zapisz scenę w Swobodzie zostaje.
 - Menu i teksty: „Moje ujęcia” → **„Moje zdjęcia”** (także Regulamin, Prywatność, komunikaty serwera; EN „My photos”).
+
+## Manito: własne menu każdego przedmiotu
+
+- Kategorie Manito to tylko **Przedmiot** i **Podstawa**. Stuknięcie przedmiotu wybiera go i otwiera nad nim jego menu (`itemTiles`, sub `"i"`), a ustawienie – rząd wariantów (sub `"s:<klucz>"`).
+- Własny: Kolor + części bryły (PROD). Inne przedmioty: Kolor, Wielkość (`IO_SIZE`) i opcje z `ITEM_OPTS` (np. Butelka: rodzaj, zamknięcie, etykieta; Zegarek: pasek, tarcza, rodzaj; Danie: danie, dodatek). Opis do Maniscryptu buduje `itemPhrase`.
+- Każdy przedmiot pamięta swoje ustawienia: przy zmianie przedmiotu kolor i opcje odkładane są do `scene.itemMem[id]` (`selectItem`), Własny trzyma bryłę w `scene.prod`.
+- Wielkość skaluje przedmiot na szkicu (`SIZE_K`, `itemK` w `objectPlace`), podstawa zostaje tej samej wielkości.
+- Kreator: przedmiot, potem jego ustawienia (Własny: kształt, proporcje, wielkość, materiał…; inne: rodzaj, w Ekspercie pozostałe opcje i wielkość), kolor, podstawa.
+- Ekipa: Manito zapisuje też opcje (`opt`), a opis w scenie Manikuna jest pełny (np. „a classic wristwatch with a red leather strap and a white dial”).

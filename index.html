@@ -1820,7 +1820,7 @@
   const scene = {
     mode: "photo",
     format: { photo: "4x5", video: "9x16" },
-    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", prod: null, animal: "dog", animalPose: "sit", animalCoat: "golden", beast: null, body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, land: null, fx: [], time: "day", motion: "orbit",
+    subject: "person", style: "real", item: "bottle", base: "pedestal", itemColor: "auto", itemOpt: null, itemMem: {}, prod: null, animal: "dog", animalPose: "sit", animalCoat: "golden", beast: null, body: "male", look: { hair: "short", hairPicked: false, hairColor: "auto", expr: "smile", beard: "none", beardColor: "auto", lips: "none", glasses: "none", glassesColor: "black", gaze: "auto" }, outfit: "casual", wear: { top: "tshirt", outer: "none", bottom: "jeans", hat: "none", shoes: "sneakers", acc: "none" }, wc: { top: "grey", outer: "black", bottom: "denim", hat: "navy", shoes: "white", acc: "burgundy" }, wcPicked: {}, traits: { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" }, pose: "stand", arms: "down", turn: "camera", things: [], items: [], shot: "full", camera: "L2", light: "art-front", lightZone: "R1", background: "studio", bgv: {}, bga: {}, land: null, fx: [], time: "day", motion: "orbit",
     open: null, sub: null
   };
   // Scena domyślna na powrót do startu bez przeładowania strony
@@ -2288,7 +2288,7 @@
     const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
     const parts = scene.subject === "object" ? [
       // Obiekt: zdjęcie produktowe przedmiotu na wybranej podstawie
-      (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + (withPhoto ? "the product from the attached reference photo" + (scene.item === "own" ? " (" + an(prodOpt("size", prodNow().size).en + " " + prodOpt("shape", prodNow().shape).en) + ")" : "") + ", keeping its shape, colours, label and details exactly the same" : ITEMS[scene.item].prompt(scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).word + " ")) + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
+      (!styleOf(scene) || styleOf(scene).photo ? "Product photograph of " : "Product image of ") + (withPhoto ? "the product from the attached reference photo" + (scene.item === "own" ? " (" + an(prodOpt("size", prodNow().size).en + " " + prodOpt("shape", prodNow().shape).en) + ")" : "") + ", keeping its shape, colours, label and details exactly the same" : itemPhrase(scene)) + ", " + optionOf("base", scene.base).prompt + ", the product as the only subject in sharp focus",
       lightPrompt(),
       bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ] : scene.subject === "place" ? [
@@ -5256,6 +5256,61 @@
   // Własne bez wybranego koloru: naturalny kolor materiału (drewno, metal, szkło…), inaczej biały
   const MAT_HEX = { wood: "#B88A5A", metal: "#A8ADB3", chrome: "#C9CDD2", cardboard: "#C8A57A", stone: "#8D8A85", concrete: "#A3A09A", glass: "#CFE3EA", frosted: "#E4ECEE", leather: "#7A4A2E" };
   const itemHex = (st = scene) => st.itemColor !== "auto" ? colorOf(st.itemColor).hex : st.item === "own" ? MAT_HEX[prodOf(st).material] || ITEMS.own.color : ITEMS[st.item].color;
+  // ---------- Manito: własne menu każdego przedmiotu (kolor, wielkość, opcje); każdy przedmiot pamięta swoje ustawienia ----------
+  // Opcja: { id, name, en } – en trafia do opisu (pierwsza opcja domyślna). Kolor przedmiotu to scene.itemColor, opcje scene.itemOpt,
+  // a ustawienia przedmiotów odłożonych na bok scene.itemMem[id] = { color, opt }. Własny ma bryłę w scene.prod (PROD).
+  const IO = (name, opts) => ({ name, opts: opts.map(([id, nm, en]) => ({ id, name: nm, en })) });
+  const ITEM_OPTS = {
+    bottle: { kind: IO("Rodzaj", [["wine", "Wino", "glass wine bottle"], ["beer", "Piwo", "glass beer bottle"], ["oil", "Oliwa", "glass olive oil bottle"], ["water", "Woda", "plastic water bottle"], ["spirit", "Nalewka", "small glass liquor bottle"]]),
+      cap: IO("Zamknięcie", [["screw", "Nakrętka", "with a screw cap"], ["cork", "Korek", "with a cork stopper"], ["swing", "Kapsel z klamrą", "with a swing-top stopper"], ["wax", "Lak", "with a wax-sealed neck"]]),
+      label: IO("Etykieta", [["blank", "Gładka", "with a plain blank label"], ["none", "Bez etykiety", "with no label"], ["logo", "Miejsce na logo", "with a small blank logo area"]]) },
+    serum: { kind: IO("Rodzaj", [["dropper", "Serum z pipetą", "cosmetic serum bottle with a dropper cap"], ["pump", "Z pompką", "cosmetic bottle with a pump dispenser"], ["spray", "Perfumy", "perfume bottle with a spray atomiser"], ["jar", "Słoiczek kremu", "cosmetic cream jar with a lid"], ["tube", "Tubka", "cosmetic squeeze tube"]]),
+      glass: IO("Materiał", [["clear", "Przezroczyste szkło", "clear glass"], ["frosted", "Matowe szkło", "frosted glass"], ["amber", "Bursztynowe szkło", "amber glass"], ["plastic", "Plastik", "matte plastic"]]),
+      label: IO("Etykieta", [["minimal", "Minimalna", "with a minimal blank label"], ["none", "Bez etykiety", "with no label"], ["logo", "Miejsce na logo", "with a small blank logo area"]]) },
+    mug: { material: IO("Materiał", [["ceramic", "Ceramika", "ceramic"], ["stoneware", "Kamionka", "speckled stoneware"], ["enamel", "Emalia", "enamel camping"], ["glass", "Szkło", "clear glass"]]),
+      content: IO("W środku", [["empty", "Pusty", ""], ["coffee", "Kawa z latte art", "filled with coffee with latte art"], ["tea", "Parująca herbata", "filled with steaming tea"], ["cocoa", "Kakao z piankami", "filled with hot cocoa and marshmallows"]]) },
+    sneaker: { kind: IO("Rodzaj", [["running", "Biegowy", "running sneaker"], ["high", "Za kostkę", "high-top sneaker"], ["low", "Minimalistyczny", "minimalist low-top sneaker"], ["retro", "Retro", "retro sneaker"], ["boot", "Trzewik", "leather ankle boot"]]),
+      laces: IO("Sznurówki", [["match", "W kolorze buta", "with matching laces"], ["white", "Białe", "with white laces"], ["none", "Bez sznurówek", "without laces"]]),
+      view: IO("Ujęcie", [["one", "Jeden but", ""], ["pair", "Para", "shown as a pair"]]) },
+    watch: { strap: IO("Pasek", [["leather", "Skórzany", "leather strap"], ["metal", "Bransoleta", "metal bracelet"], ["rubber", "Gumowy", "rubber sports strap"], ["fabric", "Materiałowy", "woven fabric strap"]]),
+      dial: IO("Tarcza", [["white", "Biała", "a white dial"], ["black", "Czarna", "a black dial"], ["blue", "Niebieska", "a blue dial"], ["green", "Zielona", "a green dial"]]),
+      kind: IO("Rodzaj", [["classic", "Klasyczny", "classic wristwatch"], ["diver", "Nurkowy", "diver wristwatch"], ["smart", "Smartwatch", "smartwatch"]]) },
+    bag: { kind: IO("Rodzaj", [["handbag", "Torebka", "handbag"], ["tote", "Shopperka", "tote bag"], ["backpack", "Plecak", "backpack"], ["clutch", "Kopertówka", "clutch bag"], ["cross", "Listonoszka", "crossbody bag"]]),
+      material: IO("Materiał", [["leather", "Skóra", "leather"], ["suede", "Zamsz", "suede"], ["canvas", "Płótno", "canvas"], ["quilted", "Pikowana", "quilted leather"]]) },
+    phone: { view: IO("Strona", [["on", "Ekran włączony", "with the screen on"], ["off", "Ekran wyłączony", "with the screen off"], ["back", "Tył z aparatem", "seen from the back showing the camera"]]),
+      case: IO("Etui", [["none", "Bez etui", ""], ["case", "W etui", "in a protective case"], ["stand", "Na podstawce", "standing on a small stand"]]) },
+    food: { dish: IO("Danie", [["gourmet", "Wykwintne danie", "gourmet dish"], ["burger", "Burger", "juicy burger"], ["pasta", "Makaron", "pasta dish"], ["salad", "Sałatka", "fresh salad"], ["dessert", "Deser", "plated dessert"], ["sushi", "Sushi", "sushi platter"], ["breakfast", "Śniadanie", "breakfast with eggs and toast"]]),
+      garnish: IO("Dodatek", [["herbs", "Zioła", "garnished with fresh herbs"], ["none", "Bez dodatków", ""], ["sauce", "Sos", "with a drizzle of sauce"], ["flowers", "Jadalne kwiaty", "decorated with edible flowers"]]) }
+  };
+  // Wielkość zwykłego przedmiotu (Własny ma swoją w PROD.size); k: skala na szkicu
+  const IO_SIZE = IO("Wielkość", [["auto", "Naturalna", ""], ["tiny", "Miniaturka", "miniature"], ["small", "Mały", "small"], ["large", "Duży", "large"], ["huge", "Olbrzymi", "oversized giant"]]);
+  const SIZE_K = { auto: 1, tiny: 0.45, small: 0.72, hand: 1, medium: 1.3, large: 1.5, huge: 1.8 };
+  const ioKeys = item => item === "own" ? [] : ["size", ...Object.keys(ITEM_OPTS[item] || {})];
+  const ioDef = (item, k) => k === "size" ? IO_SIZE : (ITEM_OPTS[item] || {})[k];
+  const ioOpt = (item, k, id) => { const d = ioDef(item, k); return d ? d.opts.find(o => o.id === id) || d.opts[0] : null; };
+  // Ustawienia bieżącego przedmiotu: zapisane wartości, a brakujące lub nie pasujące do przedmiotu – domyślne
+  const itemOptOf = (st = scene) => Object.fromEntries(ioKeys(st.item).map(k => [k, ioOpt(st.item, k, (st.itemOpt || {})[k]).id]));
+  const itemK = (st = scene) => SIZE_K[st.item === "own" ? prodOf(st).size : itemOptOf(st).size] || 1;
+  // Opis przedmiotu do Maniscryptu: wielkość, kolor, rodzaj i opcje
+  function itemPhrase(st = scene) {
+    const c = st.itemColor !== "auto" && colorOf(st.itemColor) ? colorOf(st.itemColor).word + " " : "";
+    if (st.item === "own") return prodPhrase(prodOf(st), c);
+    const o = itemOptOf(st), en = k => ioOpt(st.item, k, o[k]).en, size = en("size");
+    const P = {
+      bottle: () => `${c}${en("kind")} ${en("cap")}, ${en("label")}`,
+      serum: () => `${c}${en("glass")} ${en("kind")}, ${en("label")}`,
+      mug: () => `${c}${en("material")} coffee mug${en("content") ? " " + en("content") : ""}`,
+      sneaker: () => `${c}${en("kind")} ${en("laces")}${en("view") ? ", " + en("view") : ""}`,
+      watch: () => `${en("kind")} with a ${c}${en("strap")} and ${en("dial")}`,
+      bag: () => `${c}${en("material")} ${en("kind")}`,
+      phone: () => `${c}smartphone${en("view") ? " " + en("view") : ""}${en("case") ? " " + en("case") : ""}`,
+      food: () => `beautifully plated ${en("dish")} on a ${c}plate${en("garnish") ? ", " + en("garnish") : ""}`
+    }[st.item];
+    const body = P ? P() : ITEMS[st.item].prompt(c).replace(/^an? /, "");
+    return an([size, body].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
+  }
+  // Losowe opcje przedmiotu: wielkość zwykle naturalna
+  const randomItemOpt = item => Object.fromEntries(ioKeys(item).map(k => [k, k === "size" && Math.random() < 0.7 ? "auto" : anyOf(ioDef(item, k).opts).id]));
   let itemSeq = 0;
   // Rysuje przedmiot: środek podstawy w (x, yBottom), skala s px na jednostkę
   function drawItem(parent, defs, kind, x, yBottom, s, color, prod = null) {
@@ -5312,7 +5367,8 @@
       const s = Math.min(H * 0.4 / h, W * 0.62 / (x1 - x0)) * far, x = W / 2 - (x0 + x1) / 2 * s;
       return { x: x + x0 * s, y: gy - h * s, w: (x1 - x0) * s, h: h * s, bottom: gy, gy, s, px: x };
     }
-    const gy = H * 0.86, s = H * 0.36 / 100 * (1 - 0.42 * droneFar(st)), bottom = gy - H * BASE_H[st.base] * (1 - 0.42 * droneFar(st));
+    // Wielkość przedmiotu (Malutki … Wielki) skaluje go na szkicu; podstawa zostaje tej samej wielkości
+    const gy = H * 0.86, s = H * 0.36 / 100 * (1 - 0.42 * droneFar(st)) * itemK(st), bottom = gy - H * BASE_H[st.base] * (1 - 0.42 * droneFar(st));
     return { x: W / 2 - 30 * s, y: bottom - 100 * s, w: 60 * s, h: 100 * s, bottom, gy, s };
   }
 
@@ -5826,7 +5882,7 @@
     const set = JSON.parse(JSON.stringify(pr.set));
     // Gotowiec bez fryzury dostaje domyślną dla postaci
     if (set.look) set.look = { ...set.look, hair: set.look.hair || DEFAULT_HAIR_OF[scene.body], hairPicked: !!set.look.hair };
-    Object.assign(scene, { things: [], items: [], fx: [], traits: { ...TRAIT0 }, turn: "camera", ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bga: { ...(set.bga || {}) } });
+    Object.assign(scene, { things: [], items: [], fx: [], traits: { ...TRAIT0 }, turn: "camera", itemOpt: null, ...set, bgv: { ...scene.bgv, ...(set.bgv || {}) }, bga: { ...(set.bga || {}) } });
     lastPreset = pr.id;
     render();
   }
@@ -5918,6 +5974,8 @@
       CH_RANDOM.animal();
     } else if (scene.subject === "object") {
       scene.item = anyOf(optionsOf("item")).id;
+      scene.itemOpt = randomItemOpt(scene.item);
+      if (scene.item === "own") scene.prod = { ...PROD0, shape: anyOf(PROD.shape.opts).id, prop: anyOf(PROD.prop.opts).id, material: anyOf(PROD.material.opts).id, finish: anyOf(PROD.finish.opts).id, top: anyOf(PROD.top.opts).id, color2: anyOf(COLORS).id };
       scene.base = anyOf(optionsOf("base")).id;
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     } else {
@@ -6022,7 +6080,7 @@
   const LOCK_KEYS = {
     body: ["body"], traits: ["traits"], look: ["look"], outfit: ["outfit", "wear", "wc", "wcPicked"], pose: ["pose"], arms: ["arms"], turn: ["turn"],
     things: ["things"], pets: ["things"], items: ["items"], thingColor: ["things"],
-    item: ["item", "prod"], pShape: ["prod"], pMat: ["prod"], pDetail: ["prod"], itemColor: ["itemColor"], base: ["base"],
+    item: ["item", "prod", "itemOpt", "itemColor", "itemMem"], pShape: ["prod"], pMat: ["prod"], pDetail: ["prod"], itemColor: ["itemColor"], base: ["base"],
     animal: ["animal", "beast", "animalCoat"], bBody: ["beast"], bHead: ["beast"], bFace: ["beast"], bTail: ["beast"], bCoat: ["beast"], animalPose: ["animalPose"], animalCoat: ["animalCoat"],
     lLand: ["background", "land"], lAir: ["background", "land", "time"], lLook: ["background", "land"],
     background: ["background", "bgv", "bga", "land"], fx: ["fx"], time: ["time"], light: ["light", "lightZone"],
@@ -6046,6 +6104,10 @@
     if ((m = id.match(/^opt-outfit-grp-(\w+)$/))) return m[1] === "sets" ? { ids: ["outfit"] } : { ids: ["p:wear." + m[1], "p:wc." + m[1]] };
     if ((m = id.match(/^opt-wear-color-(\w+)$/))) return { ids: ["p:wc." + m[1]] };
     if ((m = id.match(/^opt-wear-(\w+)-/))) return { ids: ["p:wear." + m[1], "p:wc." + m[1]], select: true };
+    if (id === "opt-icolor") return { ids: ["itemColor"] };
+    if (id.startsWith("opt-icolor-")) return { ids: ["itemColor"], select: true };
+    if ((m = id.match(/^opt-io-(\w+)$/))) return { ids: ["p:itemOpt." + m[1]] };
+    if ((m = id.match(/^opt-io-(\w+)-/))) return { ids: ["p:itemOpt." + m[1]], select: true };
     if ((m = id.match(/^opt-(beast|prod|land)-(\w+)$/))) return { ids: ["p:" + m[1] + "." + m[2]] };
     if ((m = id.match(/^opt-(beast|prod|land)-(\w+)-/))) return { ids: ["p:" + m[1] + "." + m[2]], select: true };
     if (t.cat) return LOCK_KEYS[t.cat] ? { ids: [t.cat] } : null;
@@ -6488,6 +6550,75 @@
     }));
   }
 
+  // Wybór przedmiotu: ustawienia odłożonego trafiają do pamięci, wybrany wraca do swoich (albo domyślnych)
+  function selectItem(id) {
+    if (id !== scene.item) {
+      scene.itemMem = { ...(scene.itemMem || {}), [scene.item]: { color: scene.itemColor, opt: scene.itemOpt } };
+      const m = scene.itemMem[id];
+      scene.item = id;
+      scene.itemColor = m ? m.color : "auto";
+      scene.itemOpt = m ? m.opt : null;
+      if (id === "own" && flow === "free")
+        setTimeout(() => say("Własny: bryła w miejscu Twojego produktu. Ustaw kształt i wielkość, a w panelu Maniscryptu dołączysz zdjęcie produktu („Z moim produktem” jest już włączone).", 7000), 300);
+    }
+    // Swoboda: nad przedmiotem otwiera się jego menu (Kreator sam prowadzi przez ustawienia)
+    if (!wiz) scene.sub = "i";
+    render();
+  }
+  // Przedmiot na kafelku: s – skala (kafelek wielkości pokazuje różnicę)
+  function itemThumb(svg, st, s = 1) {
+    svg.setAttribute("viewBox", "-6 -8 112 112");
+    el("line", { x1: -6, y1: 100, x2: 106, y2: 100, class: "thin" }, svg);
+    drawItem(svg, el("defs", {}, svg), st.item, 50, 100, s, itemHex(st), st.item === "own" ? prodOf(st) : null);
+  }
+  // Ustawienia przedmiotu: Własny – kolor i części bryły (PROD), inne – kolor, wielkość i ich opcje
+  const itemSetKeys = () => scene.item === "own" ? ["color", ...Object.keys(PROD).filter(k => prodPartOn(prodNow(), k))] : ["color", ...ioKeys(scene.item)];
+  const itemSetName = k => k === "color" ? "Kolor" : scene.item === "own" ? PROD[k].name : ioDef(scene.item, k).name;
+  const itemSetValue = k => k === "color" ? (scene.itemColor === "auto" ? "Domyślny" : colorOf(scene.itemColor).name) : scene.item === "own" ? prodOpt(k, prodNow()[k]).name : ioOpt(scene.item, k, itemOptOf()[k]).name;
+  const itemSetId = k => k === "color" ? "opt-icolor" : scene.item === "own" ? "opt-prod-" + k : "opt-io-" + k;
+  const itemSetDefault = k => k === "color" ? scene.itemColor === "auto" : scene.item === "own" ? prodNow()[k] === PROD0[k] : itemOptOf()[k] === ioDef(scene.item, k).opts[0].id;
+  function itemTiles() {
+    const sub = scene.sub;
+    const sw = hex => svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, hex); };
+    // Opcje jednego ustawienia
+    if (sub && sub.startsWith("s:")) {
+      // Kreator prowadzi sam, więc bez strzałki wstecz
+      const k = sub.slice(2), back = wiz ? null : backTile("i"), B = list => back ? [back].concat(list) : list;
+      if (k === "color") return B([{ id: "auto", name: "Domyślny" }, ...COLORS].map(c => tile("opt-icolor-" + c.id, c.name, () => scene.itemColor === c.id,
+        () => { scene.itemColor = c.id; render(); }, c.id === "auto" ? svg => itemThumb(svg, { ...scene, itemColor: "auto" }) : sw(c.hex))));
+      if (scene.item === "own") {
+        const set = (id) => { scene.prod = { ...prodNow(), [k]: id }; render(); };
+        if (k === "color2") return B(COLORS.map(c => tile("opt-prod-color2-" + c.id, c.name, () => prodNow().color2 === c.id, () => set(c.id), sw(c.hex))));
+        return B(PROD[k].opts.map(o => tile("opt-prod-" + k + "-" + o.id, o.name, () => prodNow()[k] === o.id, () => {
+          if (k === "label" && o.id === "text") {
+            const t = (window.prompt("Jaki napis ma być na etykiecie?", prodNow().text || "") || "").replace(/["\\]/g, "").trim().slice(0, 40);
+            if (!t) return;
+            scene.prod = { ...prodNow(), label: "text", text: t }; render(); return;
+          }
+          set(o.id);
+        }, svg => itemThumb(svg, { ...scene, prod: { ...prodNow(), [k]: o.id } }, k === "size" ? Math.min(1, 0.5 * (SIZE_K[o.id] || 1)) : 1),
+          k === "label" && o.id === "text" && prodNow().text ? () => "„" + prodNow().text + "”" : undefined)));
+      }
+      const def = ioDef(scene.item, k);
+      if (!def) return B([]);
+      return B(def.opts.map(o => tile("opt-io-" + k + "-" + o.id, o.name, () => itemOptOf()[k] === o.id,
+        () => { scene.itemOpt = { ...itemOptOf(), [k]: o.id }; render(); },
+        svg => itemThumb(svg, scene, k === "size" ? Math.min(1, 0.5 * (SIZE_K[o.id] || 1)) : 1))));
+    }
+    // Menu wybranego przedmiotu
+    if (sub === "i") return [backTile(null)].concat(itemSetKeys().map(k => groupMark(tile(itemSetId(k), itemSetName(k), () => !itemSetDefault(k),
+      () => { scene.sub = "s:" + k; render(); },
+      k === "color" ? sw(itemHex()) : k === "color2" ? sw(prodOpt("color2", prodNow().color2).hex) : svg => itemThumb(svg, scene), () => itemSetValue(k)))));
+    // Lista przedmiotów: każdy z zapamiętanymi ustawieniami, stuknięcie otwiera jego menu
+    return optionsOf("item").map(o => {
+      const m = o.id === scene.item ? { color: scene.itemColor, opt: scene.itemOpt } : (scene.itemMem || {})[o.id] || { color: "auto", opt: null };
+      const st = { ...scene, item: o.id, itemColor: m.color, itemOpt: m.opt };
+      // Kreator: zwykły wybór (bez strzałki „dalej”, ustawienia są następnymi pytaniami)
+      const t = tile("opt-item-" + o.id, o.name, () => scene.item === o.id, () => selectItem(o.id), svg => itemThumb(svg, st),
+        () => o.id === "own" ? prodOpt("shape", prodOf(st).shape).name : m.color !== "auto" ? colorOf(m.color).name : "ustawienia");
+      return wiz ? t : groupMark(t);
+    });
+  }
   function makeTiles(catId) {
     if (catId === "preset") return presetTiles();
     if (LAND_CATS[catId]) return landTiles(catId);
@@ -6575,6 +6706,7 @@
     if (PROD_CATS[catId]) return prodTiles(catId);
     if (catId === "animalCoat") return PET_COATS[scene.animal].map(c => tile("opt-animalCoat-" + c.id, c.name, () => animalIt().coat === c.id,
       () => { scene.animalCoat = c.id; render(); }, svg => petThumb(svg, animalIt({ ...scene, animalCoat: c.id }))));
+    if (catId === "item") return itemTiles();
     if (catId === "itemColor") {
       // Kolor przedmiotu: domyślny dla danego przedmiotu albo z palety
       return [{ id: "auto", name: "Domyślny", hex: itemHex({ ...scene, itemColor: "auto" }) }, ...COLORS].map(c => tile("opt-itemColor-" + c.id, c.name,
@@ -6707,7 +6839,7 @@
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Manikun", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     { id: "stuff", label: "Rzeczy", cats: ["crew", "things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
-    { id: "object", label: "Manito", cats: ["item", "pShape", "pMat", "pDetail", "itemColor", "base"], subjects: ["object"], icon: "item" },
+    { id: "object", label: "Manito", cats: ["item", "base"], subjects: ["object"], icon: "item" },
     { id: "place", label: "Manitam", cats: ["lLand", "lAir", "lLook"], subjects: ["place"], icon: "lLand" },
     { id: "animal", label: "Manimal", cats: ["animal", "bBody", "bHead", "bFace", "bTail", "bCoat", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
@@ -6766,17 +6898,27 @@
   const hasHairColor = () => !(LOOK.hair.find(o => o.id === scene.look.hair) || {}).noColor;
   const wornParts = () => PARTS.filter(p => scene.wear[p] && scene.wear[p] !== "none" && !(p === "top" && isDress()));
   const partLabel = p => p === "bottom" && isDress() ? "Sukienka" : WEAR[p].name;
+  // Pytanie Kreatora o n-tą opcję przedmiotu (po wielkości): z nazwy opcji
+  const IO_Q = { kind: "Jaki rodzaj?", cap: "Jakie zamknięcie?", label: "Etykieta?", glass: "Z czego jest?", material: "Z czego jest?", content: "Co jest w środku?",
+    laces: "Jakie sznurówki?", view: "Jak go pokazać?", strap: "Jaki pasek?", dial: "Jaka tarcza?", case: "Etui?", dish: "Jakie danie?", garnish: "Jakie dodatki?" };
+  const ioQ = n => { const k = ioKeys(scene.item)[n + 1]; return IO_Q[k] || ioDef(scene.item, k).name + "?"; };
   const WIZ_Q = [
     // Obiekt (zdjęcie produktowe): przedmiot, kolor, podstawa; dalej wspólne Miejsce, Kamera i Styl
     { id: "item", ch: "object", subj: "object", say: "Co fotografujemy? Własny to bryła pod Twój produkt.", cat: "item" },
-    // Własny: bryła zastępcza pod własny produkt
-    { id: "pmShape", subj: "object", say: "Jaki kształt ma Twój produkt?", cat: "pShape", sub: "shape" },
-    { id: "pmProp", subj: "object", say: "Jakie proporcje?", cat: "pShape", sub: "prop" },
-    { id: "pmMat", subj: "object", say: "Z czego jest?", cat: "pMat", sub: "material" },
-    { id: "pmFinish", subj: "object", say: "Jakie wykończenie?", cat: "pMat", sub: "finish" },
-    { id: "pmTop", subj: "object", say: "Jakie zamknięcie?", cat: "pDetail", sub: "top", when: () => prodPartOn(prodNow(), "top") },
-    { id: "pmLabel", subj: "object", say: "Etykieta? Pusta zostawia czysty produkt do podmiany.", cat: "pDetail", sub: "label" },
-    { id: "itemColor", subj: "object", say: "W jakim kolorze?", cat: "itemColor" },
+    // Potem ustawienia wybranego przedmiotu (jego własne menu). Własny: bryła zastępcza pod własny produkt
+    { id: "pmShape", subj: "object", say: "Jaki kształt ma Twój produkt?", cat: "item", sub: "s:shape", when: () => scene.item === "own" },
+    { id: "pmProp", subj: "object", say: "Jakie proporcje?", cat: "item", sub: "s:prop", when: () => scene.item === "own" },
+    { id: "pmSize", subj: "object", say: "Jak duży jest?", cat: "item", sub: "s:size", when: () => scene.item === "own" },
+    { id: "pmMat", subj: "object", say: "Z czego jest?", cat: "item", sub: "s:material", when: () => scene.item === "own" },
+    { id: "pmFinish", subj: "object", say: "Jakie wykończenie?", cat: "item", sub: "s:finish", when: () => scene.item === "own" && level === "expert" },
+    { id: "pmTop", subj: "object", say: "Jakie zamknięcie?", cat: "item", sub: "s:top", when: () => scene.item === "own" && prodPartOn(prodNow(), "top") },
+    { id: "pmLabel", subj: "object", say: "Etykieta? Pusta zostawia czysty produkt do podmiany.", cat: "item", sub: "s:label", when: () => scene.item === "own" },
+    // Zwykły przedmiot: najważniejsza opcja (rodzaj), w Ekspercie pozostałe i wielkość
+    { id: "io1", subj: "object", say: () => ioQ(0), cat: "item", sub: () => "s:" + ioKeys(scene.item)[1], when: () => scene.item !== "own" && ioKeys(scene.item).length > 1 },
+    { id: "io2", subj: "object", say: () => ioQ(1), cat: "item", sub: () => "s:" + ioKeys(scene.item)[2], when: () => scene.item !== "own" && level === "expert" && ioKeys(scene.item).length > 2 },
+    { id: "io3", subj: "object", say: () => ioQ(2), cat: "item", sub: () => "s:" + ioKeys(scene.item)[3], when: () => scene.item !== "own" && level === "expert" && ioKeys(scene.item).length > 3 },
+    { id: "ioSize", subj: "object", say: "Jaka wielkość? Naturalna to zwykły rozmiar.", cat: "item", sub: "s:size", when: () => scene.item !== "own" && level === "expert" },
+    { id: "itemColor", subj: "object", say: "W jakim kolorze?", cat: "item", sub: "s:color" },
     { id: "base", subj: "object", say: "Na czym stoi?", cat: "base" },
     // Zwierzę: gatunek, umaszczenie, poza
     { id: "animal", ch: "animal", subj: "animal", say: "Jakie zwierzę? Własny to stworek z części: łapy, głowa, oczy, ogon…", cat: "animal" },
@@ -6940,7 +7082,7 @@
   // Postać w podsumowaniu: przy dziecku chłopiec albo dziewczynka zamiast mężczyzny i kobiety
   const bodyName = () => isChild() ? (scene.body === "female" ? "Dziewczynka" : "Chłopiec") : nameOf("body");
   const CH_SUMMARY = {
-    object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + (scene.item === "own" ? prodOpt("shape", prodNow().shape).name : nameOf("item")) + ", " + low(nameOf("base")),
+    object: () => (scene.itemColor === "auto" ? "" : colorOf(scene.itemColor).name + " · ") + (scene.item !== "own" && ioKeys(scene.item).length > 1 ? ioOpt(scene.item, ioKeys(scene.item)[1], itemOptOf()[ioKeys(scene.item)[1]]).name : scene.item === "own" ? prodOpt("shape", prodNow().shape).name : nameOf("item")) + ", " + low(nameOf("base")),
     animal: () => scene.animal === "beast" ? "Własny Manimal, " + low(beastOpt("body", beastNow().body).name) + ", " + low(petPose(animalIt()).name)
       : nameOf("animal") + ", " + low(petCoat(animalIt()).name) + ", " + low(petPose(animalIt()).name),
     person: () => `${bodyName()}, ${scene.outfit === "custom" ? partText(isDress() ? "bottom" : "top") + (isDress() ? "" : " i " + partText("bottom")) : "zestaw " + setName()}`,
@@ -6967,6 +7109,7 @@
       scene.item = anyOf(optionsOf("item")).id;
       // Własny: losowa bryła, materiał i zamknięcie, zawsze z pustą etykietą
       if (scene.item === "own") scene.prod = { ...PROD0, shape: anyOf(PROD.shape.opts).id, prop: anyOf(PROD.prop.opts).id, material: anyOf(PROD.material.opts).id, finish: anyOf(PROD.finish.opts).id, top: anyOf(PROD.top.opts).id, color2: anyOf(COLORS).id };
+      scene.itemOpt = randomItemOpt(scene.item);
       scene.base = anyOf(optionsOf("base")).id;
       scene.itemColor = Math.random() < 0.4 ? "auto" : anyOf(COLORS).id;
     },
@@ -9029,9 +9172,8 @@
     const W = G.W, H = G.H, ob = objectPlace(scene, W, H), out = [];
     if (scene.subject === "object") {
       const own = scene.item === "own";
-      out.push({ id: "item", at: [W / 2, ob.bottom - ob.h * 0.42], go: () => { const c = own ? "pShape" : "itemColor"; sketchGo("object", c); zoomTo("item", c, "object"); } });
+      out.push({ id: "item", at: [W / 2, ob.bottom - ob.h * 0.42], go: () => { const c = "item"; sketchGo("object", c, "i", null, null, "opt-item-" + scene.item); zoomTo("item", c, "object"); } });
       if (scene.base !== "float") out.push({ id: "base", at: [W / 2 + Math.max(W * 0.16, ob.w * 0.85), ob.bottom + G.u * 1.4], go: () => sketchGo("object", "base", null, "opt-base-" + scene.base) });
-      if (own) out.push({ id: "mat", at: [W / 2 - ob.w * 0.18, ob.bottom - ob.h * 0.2], go: () => { sketchGo("object", "pMat"); zoomTo("mat", "pMat", "object"); } });
       return out;
     }
     const it = animalIt(scene), P = ([a, h]) => [ob.px + a * ob.s, ob.gy - h * ob.s];
@@ -9363,7 +9505,7 @@
     }
     const color = scene.itemColor !== "auto" ? scene.itemColor : null;
     return { kind: "object", name: (scene.item === "own" ? "Produkt" : nameOf("item")) + (color ? " · " + colorOf(color).name.toLowerCase() : ""),
-      data: { item: scene.item, color: color || "auto", en: ITEMS[scene.item].prompt(color ? colorOf(color).word + " " : ""), ...(scene.item === "own" ? { prod: prodNow() } : {}) } };
+      data: { item: scene.item, color: color || "auto", en: itemPhrase(scene), ...(scene.item === "own" ? { prod: prodNow() } : { opt: itemOptOf(scene) }) } };
   }
   async function saveToCrew() {
     if (!account || !account.user) { say("Ekipa trzyma się na koncie. Zaloguj się, a scena poczeka.", 4000); setTimeout(goLogin, 1200); return; }
@@ -9389,7 +9531,7 @@
   // Ten sam zwierzak: gatunek z umaszczeniem albo cały przepis własnego stworka
   const petKey = x => x.id + ":" + (x.id === "beast" ? JSON.stringify(beastOf(x)) : x.coat || PET_COATS[x.id][0].id);
   const crewPet = c => ({ id: c.data.animal, coat: c.data.coat, pose: c.data.pose || "sit", ...(c.data.animal === "beast" ? { beast: beastOf(c.data) } : {}) });
-  const sameManito = (x, c) => !!x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto") && JSON.stringify(x.manito.prod || null) === JSON.stringify(c.data.prod || null);
+  const sameManito = (x, c) => !!x.manito && x.manito.item === c.data.item && (x.manito.color || "auto") === (c.data.color || "auto") && JSON.stringify(x.manito.prod || null) === JSON.stringify(c.data.prod || null) && JSON.stringify(x.manito.opt || null) === JSON.stringify(c.data.opt || null);
   const crewInScene = c => c.kind === "animal"
     ? (scene.things || []).some(x => isPet(x) && petKey(x) === petKey(crewPet(c)))
     : (scene.items || []).some(x => sameManito(x, c));
@@ -9414,7 +9556,7 @@
     if (crewInScene(c)) { scene.items = (scene.items || []).filter(x => !sameManito(x, c)); render(); return; }
     // Manito stoi na blacie: bez stołu w scenie dostawiamy stół (zwierzaki zostają)
     if (!surfaceOf(scene)) scene.things = [{ id: "table" }, ...(level === "expert" ? (scene.things || []) : (scene.things || []).filter(isPet))];
-    pickItem({ id: "custom", name: c.name, en: c.data.en || ITEMS[c.data.item].prompt(""), known: true, manito: { item: c.data.item, color: c.data.color || "auto", ...(c.data.prod ? { prod: c.data.prod } : {}) } });
+    pickItem({ id: "custom", name: c.name, en: c.data.en || ITEMS[c.data.item].prompt(""), known: true, manito: { item: c.data.item, color: c.data.color || "auto", ...(c.data.prod ? { prod: c.data.prod } : {}), ...(c.data.opt ? { opt: c.data.opt } : {}) } });
     render(); checkFit();
   }
   function crewTiles() {
