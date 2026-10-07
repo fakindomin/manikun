@@ -727,3 +727,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 ## Układ domyślny tylko w bieżącym temacie
 
 - Kafelek „Układ domyślny” (dwa stuknięcia) nie wraca już do ekranu startowego: `resetLayout` ustawia scenę początkową, ale zostawia temat (Manikun, Manito, Manimal, Manitam), tryb zdjęcie/wideo, poziom i Swobodę; zdejmuje kłódki. Manitam wraca do własnego krajobrazu. Nowa scena od startu: Menu › Nowa scena.
+
+## Smok i stworki w stylu reszty obrazu
+
+- Umaszczenia smoka miały w opisie „cartoon dragon”, więc generator rysował bajkowego smoka obok realistycznej postaci. Słowo usunięte.
+- `creatureStyle`: przy smoku albo własnym stworku (obok Manikuna albo jako Manimal) Maniscrypt dopisuje w stylach fotograficznych (Realistyczny, Kino, Cyberpunk, Vintage, Noir) „the dragon looks like a real living animal photographed in the same scene: lifelike anatomy, realistic skin, scales or fur texture…, not a cartoon, plush toy or 3D figurine”, a w ilustracyjnych (Anime, Komiks, 3D, Akwarela, Fantasy) „drawn in exactly the same … style as the rest of the image”. Zwykłe zwierzęta bez dopisku.

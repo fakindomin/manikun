@@ -1105,8 +1105,8 @@
       { id: "tabby", name: "Pręgowany", hex: "#8E9198", word: "grey tabby cat", stripes: true }, { id: "white", name: "Biały", hex: "#F0EDE6", word: "white cat" }],
     bunny: [{ id: "white", name: "Biały", hex: "#F2EFE8", word: "fluffy white rabbit" }, { id: "grey", name: "Szary", hex: "#9A9A9E", word: "fluffy grey rabbit" },
       { id: "brown", name: "Brązowy", hex: "#9A6A42", word: "fluffy brown rabbit" }],
-    dragon: [{ id: "green", name: "Zielony", hex: "#5EA66A", word: "small friendly green cartoon dragon" }, { id: "red", name: "Czerwony", hex: "#C9523E", word: "small friendly red cartoon dragon" },
-      { id: "purple", name: "Fioletowy", hex: "#8A64C2", word: "small friendly purple cartoon dragon" }, { id: "blue", name: "Niebieski", hex: "#4E86C8", word: "small friendly blue cartoon dragon" }],
+    dragon: [{ id: "green", name: "Zielony", hex: "#5EA66A", word: "small friendly green dragon" }, { id: "red", name: "Czerwony", hex: "#C9523E", word: "small friendly red dragon" },
+      { id: "purple", name: "Fioletowy", hex: "#8A64C2", word: "small friendly purple dragon" }, { id: "blue", name: "Niebieski", hex: "#4E86C8", word: "small friendly blue dragon" }],
     beast: [{ id: "own", name: "Własne", hex: "#C9A060", word: "fantasy creature" }]
   };
   const PET_POSES = [{ id: "sit", name: "Siedzi", word: "sitting" }, { id: "stand", name: "Stoi", word: "standing" }, { id: "lie", name: "Leży", word: "lying down" }];
@@ -2241,6 +2241,16 @@
     const tp = turnPrompt();
     return raw.replace(/, facing the camera/g, "") + (tp ? ", " + tp : "");
   }
+  // Smok i własny stworek: generatory rysują je jak z bajki, nawet gdy reszta jest zdjęciem.
+  // W stylu fotograficznym żywe zwierzę z prawdziwą fakturą, w ilustracyjnym ten sam styl co reszta obrazu.
+  function creatureStyle(st = scene) {
+    const fantasy = st.subject === "animal" ? ["dragon", "beast"].includes(st.animal)
+      : st.subject === "person" && (st.things || []).some(it => it.id === "dragon" || it.id === "beast");
+    if (!fantasy) return "";
+    const sty = styleOf(st), who = (st.subject === "animal" ? st.animal === "dragon" : !(st.things || []).some(it => it.id === "beast")) ? "the dragon" : "the fantasy creature";
+    if (!sty || sty.photo) return who + " looks like a real living animal photographed in the same scene: lifelike anatomy, realistic skin, scales or fur texture, natural proportions, the same lighting, depth of field and film grain as the rest of the photo, not a cartoon, plush toy or 3D figurine";
+    return `${who} drawn in exactly the same ${sty.lead.toLowerCase()} style as the rest of the image`;
+  }
   function buildPromptBody() {
     // Kamera na początku i przypomnienie na końcu: modele najmocniej trzymają się tego, co jest na starcie promptu
     const shot = optionOf("shot", scene.shot), faceShot = isFaceShot(scene);
@@ -2269,6 +2279,7 @@
       lightPrompt(),
       bgPrompt() + (!timeApplies(scene) ? "" : ", " + optionOf("time", scene.time).prompt)
     ];
+    if (creatureStyle()) parts.push(creatureStyle());
     if (scene.mode === "video") parts.push(isSelfie(scene.camera) ? "handheld selfie video filmed by the phone itself, moving slightly with the subject's hand" : optionOf("motion", scene.motion).prompt);
     if (isSelfie(scene.camera)) parts.push("no phone visible in the picture");
     parts.push(currentFormat().prompt, "keep exactly the camera angle, height and viewpoint described at the start", styleOf(scene) ? styleOf(scene).end[scene.mode] : (scene.subject === "object" ? ENDING_OBJECT : scene.subject === "animal" ? ENDING_ANIMAL : scene.subject === "place" ? ENDING_PLACE : ENDING)[scene.mode]);
