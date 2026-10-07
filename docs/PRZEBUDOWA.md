@@ -719,6 +719,6 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 ## Kłódki: przytrzymanie kafelka blokuje go przed losowaniem
 
-- Przytrzymanie (520 ms) kafelka kategorii albo grupy w Swobodzie przełącza kłódkę (żółta plakietka w rogu, pasek „Zablokowane: Poza. Losuj tego nie zmieni.”, wibracja). Grupa blokuje wszystkie swoje kategorie. Kliknięcie po przytrzymaniu nie otwiera kafelka; ruch palca (przewijanie rzędu) przerywa przytrzymanie.
+- Przytrzymanie (450 ms albo „contextmenu” z długiego dotyku na telefonie) kafelka kategorii albo grupy w Swobodzie przełącza kłódkę (żółta plakietka w rogu, pasek „Zablokowane: Poza. Losuj tego nie zmieni.”, wibracja). Grupa blokuje wszystkie swoje kategorie. Kliknięcie po przytrzymaniu nie otwiera kafelka; ruch palca (przewijanie rzędu) przerywa przytrzymanie.
 - `LOCK_KEYS`: kategoria → pola sceny. `randomize` robi kopię zablokowanych pól na początku i przywraca je na końcu (potem `fixScene`); zablokowana postać i cechy (dziecko) są brane pod uwagę już przy losowaniu stroju i wyglądu.
 - Kłódki znikają przy nowej scenie (powrót do startu). Po drugim losowaniu bez kłódek Manikun raz podpowiada przytrzymanie.

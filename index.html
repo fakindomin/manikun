@@ -5985,7 +5985,8 @@
     background: ["background", "bgv", "bga", "land"], fx: ["fx"], time: ["time"], light: ["light", "lightZone"],
     shot: ["shot"], camera: ["camera"], format: ["format"], motion: ["motion"], style: ["style"]
   };
-  const LOCK_MS = 520;
+  // Krócej niż długie przytrzymanie Androida (~500 ms), po którym przeglądarka przerywa dotyk
+  const LOCK_MS = 450;
   const locks = new Set();
   // Kategorie kafelka: kategoria albo wszystkie kategorie grupy, które mają kłódkę
   function lockCats(t) {
@@ -6054,7 +6055,12 @@
     });
     b.addEventListener("pointermove", e => { if (holdTimer && Math.hypot(e.clientX - hx, e.clientY - hy) > 8) holdEnd(); });
     ["pointerup", "pointercancel", "pointerleave"].forEach(ev => b.addEventListener(ev, holdEnd));
-    b.addEventListener("contextmenu", e => { if (lockCats(t)) e.preventDefault(); });
+    // Telefon: długie przytrzymanie to też „contextmenu” (Android po nim przerywa dotyk pointercancel), więc kłódka i tutaj
+    b.addEventListener("contextmenu", e => {
+      if (!lockCats(t)) return;
+      e.preventDefault();
+      if (!held) { holdEnd(); held = true; toggleLock(t); }
+    });
     b.addEventListener("click", e => { if (held) { held = false; e.preventDefault(); return; } navTileClick(t, onClick); });
     t.redraw();
     return t;
