@@ -1198,10 +1198,19 @@
   };
   const petPose = it => BEAST_POSES.find(p => p.id === it.pose) || BEAST_POSES[0];
   // Opis zwierzaka do Maniscryptu: gotowiec – nazwa gatunku; własny – wielkość, tułów i lista części
+  // Własny stworek wielkości dłoni obok postaci w całej sylwetce (w kadrze zajmie kilka pikseli)
+  const tinyPetFar = (st, it) => st.subject === "person" && st.shot === "full" && it.id === "beast" && beastOf(it).size === "tiny";
+  const tinyPetIn = st => (st.things || []).some(it => tinyPetFar(st, it));
   function petDesc(it, lead = null) {
     const art = w => lead != null ? lead + w : an(w);
     if (it.id !== "beast" || beastSameAs(beastOf(it))) return art(petCoat(it).word) + " " + petPose(it).word;
     const r = beastOf(it), o = k => beastOpt(k, r[k]), en = k => o(k).en, col = k => (BEAST_COLORS.find(c => c.id === r[k]) || BEAST_COLORS[0]).word;
+    // Malutki stworek przy całej sylwetce to kilka pikseli: tylko 3–4 cechy widoczne z daleka (sierść, skrzydła, uszy lub rogi, oczy)
+    if (tinyPetFar(scene, it)) {
+      const pat = { stripes: `with ${col("color2")} stripes`, spots: `with ${col("color2")} spots`, patches: `with ${col("color2")} patches`, gradient: `fading into ${col("color2")}`, belly: `with a ${col("color2")} belly` }[r.pattern];
+      const key = [`${col("color")} ${en("cover")}` + (pat ? " " + pat : ""), en("wings"), en("horns") || en("ears"), (EYE_COLORS.find(c => c.id === r.eyeColor) || EYE_COLORS[0]).word + " eyes"].filter(Boolean);
+      return art(`${en("size")} ${en("body")} original fantasy creature`) + " " + petPose(it).word + " (with " + andList(key) + ")";
+    }
     const parts = [];
     if (r.legs === "0") parts.push("no legs");
     else if (r.feet === "tentacles") parts.push([en("legs"), en("legLen"), "tentacles instead of legs"].filter(Boolean).join(" "));
@@ -7587,6 +7596,9 @@
   function sceneChanged() {
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
+    // Raz, gdy malutki stworek trafia do całej sylwetki: Manikun mówi, że szczegóły zginą
+    if (prev && tinyPetIn(scene) && !tinyPetIn(prev) && phase === "director" && !tut)
+      setTimeout(() => say("Malutki stworek przy całej sylwetce zginie w kadrze, więc w Maniscrypcie zostawiam tylko jego najważniejsze cechy. Chcesz szczegółów? Daj mu większy rozmiar.", 7500), 500);
     const tp = targetProps();
     if (theatreNext && prev && shown) {
       // Teatr: kamera, lampa i poza od razu na nowych miejscach; ruch robi tylko dekoracja i taśma z Manikunem
