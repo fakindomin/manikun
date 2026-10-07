@@ -6314,7 +6314,7 @@
     if (catId === "item" && id === "own" && scene.item !== "own" && flow === "free")
       setTimeout(() => say("Własny: bryła w miejscu Twojego produktu. Ustaw kształt i wielkość, a w panelu Maniscryptu dołączysz zdjęcie produktu („Z moim produktem” jest już włączone).", 7000), 300);
     if (catId === "background" && id === "land" && scene.background !== "land" && flow === "free")
-      setTimeout(() => say("Własny krajobraz: teren, wodę, roślinność, niebo, porę roku i pogodę składasz w grupie Manitam.", 6500), 300);
+      setTimeout(() => say("Własny krajobraz: teren, wodę, roślinność, niebo, porę roku i pogodę składasz w grupie Manitam. Punkty na szkicu od razu otwierają kolory.", 7000), 300);
     scene[catId] = id;
     if (catId === "background" && BG_VARIANTS[id] && id !== "land") scene.sub = "v:" + id;
     render();
@@ -8780,13 +8780,40 @@
     const avoid = [...pts.map(q => q.at), G.camPt, G.litPt];
     const cand = [[0.14, 0.16], [0.86, 0.16], [0.5, 0.1], [0.14, 0.5], [0.86, 0.5], [0.3, 0.3], [0.7, 0.3]].map(([x, y]) => [vb[0] + vb[2] * x, vb[1] + vb[3] * y]);
     const far = q => Math.min(...avoid.map(a => Math.hypot(a[0] - q[0], a[1] - q[1])));
-    pts.push({ id: "bg", at: cand.reduce((a, b) => far(b) > far(a) ? b : a) });
+    // Manitam z własnym krajobrazem: punkty na niebie, terenie, wodzie i roślinach otwierają od razu ich kolory
+    if (scene.subject === "place" && scene.background === "land") pts.push(...landHotPts(G));
+    else pts.push({ id: "bg", at: cand.reduce((a, b) => far(b) > far(a) ? b : a) });
     const g = el("g", { "aria-hidden": "true" }, preview), now = performance.now();
     pts.forEach((q, n) => {
       if (q.at[0] < vb[0] || q.at[0] > vb[0] + vb[2] || q.at[1] < vb[1] || q.at[1] > vb[1] + vb[3]) return;
       el("circle", { cx: f(q.at[0]), cy: f(q.at[1]), r: f(u * 2.3), class: "hot-ring", style: `opacity:${f(0.22 + 0.2 * Math.sin(now / 520 + n * 1.3))}` }, g);
-      el("circle", { cx: f(q.at[0]), cy: f(q.at[1]), r: f(u * 0.95), class: "hot-dot" + (zoom && zoom.dir > 0 && zoom.part === q.id ? " on" : "") }, g);
+      el("circle", { cx: f(q.at[0]), cy: f(q.at[1]), r: f(u * 0.95), class: "hot-dot" + ((zoom && zoom.dir > 0 && zoom.part === q.id) || (q.land && landOpenSub() === q.land) ? " on" : "") }, g);
       hotPts.push({ ...q, r: u * 5 });
+    });
+  }
+  // Punkty kolorów własnego krajobrazu: miejsca jak w drawLand (horyzont z drona wyżej); omijają kamerę i światło
+  const landOpenSub = () => { const t = nav[nav.length - 1]; return t && t.kind === "opts" && LAND_CATS[t.cat] ? t.sub : null; };
+  function landHotPts(G) {
+    const r = landOf(scene), W = G.W, H = G.H, hz = r.look === "drone" ? Math.max(H * 0.14, G.hz - H * 0.18) : G.hz, gd = H - hz;
+    const T = { mountains: [0.42, hz - H * 0.12], glacier: [0.42, hz - H * 0.12], volcano: [0.46, hz - H * 0.14], canyon: [0.1, hz + gd * 0.1], cliffs: [0.16, hz + gd * 0.3],
+      island: [0.4, hz - H * 0.02], hills: [0.8, hz - H * 0.035], plain: [0.84, hz + gd * 0.3], dunes: [0.84, hz + gd * 0.3] }[r.terrain] || [0.5, hz + gd * 0.6];
+    const sea = ["cliffs", "island"].includes(r.terrain);
+    const Wt = r.water === "lake" && !sea ? [0.62, hz + gd * 0.14] : r.water === "river" || r.water === "stream" ? [0.5, hz + gd * 0.45] : r.water === "waterfall" ? [0.69, hz + gd * 0.08]
+      : r.water === "pond" ? [0.24, hz + gd * 0.5] : r.water === "sea" && !sea ? [0.5, hz + gd * 0.07] : sea ? [0.72, hz + gd * 0.5] : null;
+    const F = { conifer: [0.06, H * 0.78], leafy: [0.05, H * 0.62], jungle: [0.07, H * 0.86], savanna: [0.76, hz + gd * 0.14 - H * 0.16], lavender: [0.22, hz + gd * 0.72],
+      palms: sea ? [0.48, hz - H * 0.08] : [0.1, H * 0.45], fields: [0.5, hz + gd * 0.12], meadow: r.terrain === "cliffs" ? [0.24, hz - H * 0.16] : r.terrain === "island" ? [0.6, hz - H * 0.01] : [0.3, hz + gd * 0.8] }[r.flora] || null;
+    const out = [{ id: "land", land: "sColor", at: [0.24, hz * 0.32] }, { id: "land", land: "tColor", at: T }];
+    if (Wt) out.push({ id: "land", land: "wColor", at: Wt });
+    if (F) out.push({ id: "land", land: "fColor", at: F });
+    // Punkt pod ikoną kamery albo światła albo za blisko innego: przesuwa się w pierwszą wolną stronę
+    const placed = [], R = G.u * 11, free = a => a[0] > G.u * 3 && a[0] < W - G.u * 3 && a[1] > G.u * 3 && a[1] < H - G.u * 3
+      && ![G.camPt, G.litPt].some(b => b && Math.hypot(b[0] - a[0], b[1] - a[1]) < R) && !placed.some(b => Math.hypot(b[0] - a[0], b[1] - a[1]) < G.u * 6);
+    return out.map(q => {
+      const at0 = [q.at[0] * W, q.at[1]];
+      let at = at0;
+      for (let k = 1; k <= 3 && !free(at); k++) at = [[R * k, 0], [0, R * k], [-R * k, 0], [0, -R * k]].map(([dx, dy]) => [at0[0] + dx, at0[1] + dy]).find(free) || at;
+      placed.push(at);
+      return { ...q, at };
     });
   }
   let lastThingTap = -1;
@@ -8810,6 +8837,7 @@
       else sketchGo("stuff", "things", null, "opt-things-" + it.id);
       lastThingTap = hit.i;
     }
+    else if (hit.land) sketchGo("place", LAND_CATS.lLand.includes(hit.land) ? "lLand" : "lAir", hit.land, null, null, "opt-land-" + hit.land);
     else if (scene.subject === "object") sketchGo("object", "item");
     else if (scene.subject === "animal") sketchGo("animal", "animal");
     else sketchGo("scene", "background", null, "opt-background-" + scene.background);
