@@ -8735,12 +8735,26 @@
   }
   const lerp2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
   // Zbliżenie: kadr podglądu (viewBox) obejmujący część postaci, w proporcjach kadru i w jego granicach
-  function zoomView(G, part, W, H) {
+  // Punkty, które zbliżenie ma objąć: część Manikuna, głowa albo całe zwierzę (Manimal), produkt (Manito)
+  function zoomPts(G, part, W, H) {
+    if (scene.subject === "animal" || scene.subject === "object") {
+      const ob = objectPlace(scene, W, H);
+      if (scene.subject === "animal" && scene.animal === "beast" && (part === "bHead" || part === "bFace")) {
+        const g = beastGeom(beastOf(animalIt(scene)), petPose(animalIt(scene)).id), [hx, hy] = g.head, r = Math.max(g.hrx, g.hry) * 1.7;
+        return [[ob.px + (hx - r) * ob.s, ob.gy - (hy + r) * ob.s], [ob.px + (hx + r) * ob.s, ob.gy - (hy - r) * ob.s]];
+      }
+      return [[ob.x - G.u * 2, ob.y - G.u * 2], [ob.x + ob.w + G.u * 2, (scene.subject === "object" ? ob.bottom : ob.gy) + G.u * 2]];
+    }
+    if (!G.pl || !G.pl.fig.joints) return null;
     const J = G.pl.fig.joints, A = Object.values(J.arms), L = Object.values(J.legs), r = J.headR * 1.9;
-    const pts = (part === "head" ? [[J.head[0] - r, J.head[1] - r], [J.head[0] + r, J.head[1] + r]]
+    return (part === "head" ? [[J.head[0] - r, J.head[1] - r], [J.head[0] + r, J.head[1] + r]]
       : part === "torso" ? [J.neck, J.hip, ...A.map(a => a.S), ...A.map(a => a.E)]
       : part === "arms" ? A.flatMap(a => [a.S, a.E, a.W, a.Hc])
       : L.flatMap(l => [l.H, l.K, l.A, l.T])).map(q => figToSvg(G.pl, q));
+  }
+  function zoomView(G, part, W, H) {
+    const pts = zoomPts(G, part, W, H);
+    if (!pts) return null;
     const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), ar = W / H;
     const w = Math.min(W, Math.max((Math.max(...xs) - Math.min(...xs)) * 1.5, (Math.max(...ys) - Math.min(...ys)) * 1.45 * ar, W * 0.34)), h = w / ar;
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
@@ -8752,18 +8766,19 @@
     const e = reduceMotion.matches ? 1 : easeInOut(clamp((now - zoom.t0) / ZOOM_MS, 0, 1));
     return zoom.dir > 0 ? zoom.p0 + (1 - zoom.p0) * e : zoom.p0 * (1 - e);
   }
-  function zoomTo(part, cat) { zoom = { part, cat, dir: 1, t0: performance.now(), p0: zoomP() }; ensureLoop(); }
+  // group: grupa menu, w której zbliżenie trwa (wyjście z kategorii oddala podgląd)
+  function zoomTo(part, cat, group = "person") { zoom = { part, cat, group, dir: 1, t0: performance.now(), p0: zoomP() }; ensureLoop(); }
   function zoomOut() { if (zoom && zoom.dir > 0) { zoom = { ...zoom, dir: -1, t0: performance.now(), p0: zoomP() }; ensureLoop(); } }
   // Po rysowaniu podglądu: zbliżenie (viewBox) i punkty do stuknięcia na wierzchu
   function sketchOverlay(G, W, H) {
     // Menu wyszło z kategorii zbliżenia: podgląd się oddala
     if (!sketchReady) return;
-    if (zoom && zoom.dir > 0 && !(sketchTapsOn() && nav[0] && nav[0].open === "person" && nav[1] && nav[1].open === zoom.cat)) zoomOut();
+    if (zoom && zoom.dir > 0 && !(sketchTapsOn() && nav[0] && nav[0].open === zoom.group && nav[1] && nav[1].open === zoom.cat)) zoomOut();
     let vb = [0, 0, W, H];
     if (zoom) {
       const p = zoomP();
       if (zoom.dir < 0 && p <= 0) zoom = null;
-      else if (G.pl && G.pl.fig.joints) { const v = zoomView(G, zoom.part, W, H); vb = vb.map((x, i) => x + (v[i] - x) * p); preview.setAttribute("viewBox", vb.map(f).join(" ")); }
+      else { const v = zoomView(G, zoom.part, W, H); if (v) { vb = vb.map((x, i) => x + (v[i] - x) * p); preview.setAttribute("viewBox", vb.map(f).join(" ")); } }
     }
     hotPts = [];
     if (!sketchTapsOn() || drag || belt || bgTrans || pickIndex() != null) return;
@@ -8825,20 +8840,20 @@
     const W = G.W, H = G.H, ob = objectPlace(scene, W, H), out = [];
     if (scene.subject === "object") {
       const own = scene.item === "own";
-      out.push({ id: "item", at: [W / 2, ob.bottom - ob.h * 0.42], go: () => own ? sketchGo("object", "pShape") : sketchGo("object", "itemColor") });
+      out.push({ id: "item", at: [W / 2, ob.bottom - ob.h * 0.42], go: () => { const c = own ? "pShape" : "itemColor"; sketchGo("object", c); zoomTo("item", c, "object"); } });
       if (scene.base !== "float") out.push({ id: "base", at: [W / 2 + Math.max(W * 0.16, ob.w * 0.85), ob.bottom + G.u * 1.4], go: () => sketchGo("object", "base", null, "opt-base-" + scene.base) });
-      if (own) out.push({ id: "mat", at: [W / 2 - ob.w * 0.18, ob.bottom - ob.h * 0.2], go: () => sketchGo("object", "pMat") });
+      if (own) out.push({ id: "mat", at: [W / 2 - ob.w * 0.18, ob.bottom - ob.h * 0.2], go: () => { sketchGo("object", "pMat"); zoomTo("mat", "pMat", "object"); } });
       return out;
     }
     const it = animalIt(scene), P = ([a, h]) => [ob.px + a * ob.s, ob.gy - h * ob.s];
     if (scene.animal === "beast") {
       const g = beastGeom(beastOf(it), petPose(it).id);
       // Głowa: czubek (uszy, rogi), twarz: pysk z przodu; rozsunięte, żeby małą głowę dało się trafić
-      out.push({ id: "bHead", at: P([g.head[0] - g.hrx * 0.35, g.head[1] + g.hry * 1.05]), go: () => sketchGo("animal", "bHead") });
-      out.push({ id: "bFace", at: P([g.head[0] + g.hrx * 1.05, g.head[1] - g.hry * 0.35]), go: () => sketchGo("animal", "bFace") });
-      out.push({ id: "bBody", at: P(g.bp(0.05, 0.35)), go: () => sketchGo("animal", "bBody") });
-      out.push({ id: "bCoat", at: P(g.bp(-0.3, -0.35)), go: () => sketchGo("animal", "bCoat") });
-      out.push({ id: "bTail", at: P(g.bp(-1.05, 0.25)), go: () => sketchGo("animal", "bTail") });
+      out.push({ id: "bHead", at: P([g.head[0] - g.hrx * 0.35, g.head[1] + g.hry * 1.05]), go: () => { sketchGo("animal", "bHead"); zoomTo("bHead", "bHead", "animal"); } });
+      out.push({ id: "bFace", at: P([g.head[0] + g.hrx * 1.05, g.head[1] - g.hry * 0.35]), go: () => { sketchGo("animal", "bFace"); zoomTo("bFace", "bFace", "animal"); } });
+      out.push({ id: "bBody", at: P(g.bp(0.05, 0.35)), go: () => { sketchGo("animal", "bBody"); zoomTo("bBody", "bBody", "animal"); } });
+      out.push({ id: "bCoat", at: P(g.bp(-0.3, -0.35)), go: () => { sketchGo("animal", "bCoat"); zoomTo("bCoat", "bCoat", "animal"); } });
+      out.push({ id: "bTail", at: P(g.bp(-1.05, 0.25)), go: () => { sketchGo("animal", "bTail"); zoomTo("bTail", "bTail", "animal"); } });
     } else {
       out.push({ id: "animal", at: [ob.x + ob.w * 0.5, ob.y + ob.h * 0.35], go: () => sketchGo("animal", "animal", null, "opt-animal-" + scene.animal) });
       out.push({ id: "coat", at: [ob.x + ob.w * 0.35, ob.y + ob.h * 0.7], go: () => sketchGo("animal", "animalCoat") });

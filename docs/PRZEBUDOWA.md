@@ -705,3 +705,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 - `subjectHotPts`: **Manito** – punkt na produkcie (kolor; przy Własnym kształt), drugi przy Własnym (materiał), punkt na podstawie (Podstawa; bez punktu przy „W powietrzu”). **Manimal** – własny stworek: czubek głowy (Głowa), pysk (Twarz), tułów (Ciało), bok (Pokrycie), ogon (Ogon i skrzydła); gotowe zwierzę: punkt na zwierzęciu (Gatunek) i na sierści (Umaszczenie). Położenie z `objectPlace` i `beastGeom`.
 - Punkt tła omija te punkty. Przy Manito na studiu i tle sezonowym otwiera od razu warianty tła.
+- **Przybliżanie:** stuknięcie w głowę lub pysk własnego stworka przybliża jego głowę (`zoomPts`), w produkt Manito przybliża produkt; wyjście z kategorii oddala (zbliżenie pamięta grupę menu: `zoomTo(part, cat, group)`). Ciało, sierść i ogon zostają w pełnym kadrze (zwierzę i tak wypełnia kadr).
