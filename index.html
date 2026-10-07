@@ -1128,22 +1128,23 @@
   const BEAST = {
     body: { name: "Tułów", opts: [{ id: "slim", name: "Smukły", en: "slender" }, { id: "stocky", name: "Krępy", en: "stocky" }, { id: "round", name: "Okrągły", en: "round ball-shaped" },
       { id: "long", name: "Długi", en: "long low" }, { id: "serpent", name: "Wężowy", en: "long serpentine" }] },
-    size: { name: "Wielkość", opts: [{ id: "tiny", name: "Jak mysz", en: "tiny mouse-sized" }, { id: "small", name: "Jak kot", en: "small cat-sized" }, { id: "medium", name: "Jak pies", en: "dog-sized" },
-      { id: "large", name: "Jak koń", en: "large horse-sized" }, { id: "giant", name: "Olbrzym", en: "giant towering" }] },
+    // Wielkość w opisie bez nazw zwierząt i postaci („mouse-sized” zatrzymywało generator jako możliwa cudza postać)
+    size: { name: "Wielkość", opts: [{ id: "tiny", name: "Jak mysz", en: "tiny palm-sized" }, { id: "small", name: "Jak kot", en: "small knee-high" }, { id: "medium", name: "Jak pies", en: "medium-sized" },
+      { id: "large", name: "Jak koń", en: "large chest-high" }, { id: "giant", name: "Olbrzym", en: "giant towering" }] },
     legs: { name: "Nogi", opts: [{ id: "0", name: "Bez nóg", en: "" }, { id: "2", name: "Dwie", en: "two" }, { id: "4", name: "Cztery", en: "four" }, { id: "6", name: "Sześć", en: "six" }, { id: "8", name: "Osiem", en: "eight" }] },
     feet: { name: "Stopy", opts: [{ id: "paws", name: "Łapy", en: "soft paws" }, { id: "claws", name: "Pazury", en: "clawed feet" }, { id: "hooves", name: "Kopyta", en: "hooves" },
       { id: "talons", name: "Szpony", en: "bird talons" }, { id: "flippers", name: "Płetwy", en: "flippers" }, { id: "tentacles", name: "Macki", en: "tentacles" }] },
     legLen: { name: "Długość nóg", opts: [{ id: "short", name: "Krótkie", en: "short" }, { id: "medium", name: "Średnie", en: "" }, { id: "long", name: "Długie", en: "long" }] },
     head: { name: "Głowa", opts: [{ id: "round", name: "Okrągła", en: "" }, { id: "long", name: "Podłużna", en: "a long narrow head" }, { id: "flat", name: "Płaska", en: "a flat wide head" },
-      { id: "big", name: "Duża", en: "an oversized cartoonish head" }] },
+      { id: "big", name: "Duża", en: "an oversized head" }] },
     ears: { name: "Uszy", opts: [{ id: "point", name: "Szpiczaste", en: "pointed ears" }, { id: "flop", name: "Oklapnięte", en: "floppy ears" }, { id: "long", name: "Królicze", en: "long rabbit ears" },
-      { id: "round", name: "Misiowe", en: "small round bear ears" }, { id: "fin", name: "Płetwiaste", en: "fin-like ears" }, { id: "none", name: "Brak", en: "" }] },
+      { id: "round", name: "Misiowe", en: "small fuzzy bear-like ears" }, { id: "fin", name: "Płetwiaste", en: "fin-like ears" }, { id: "none", name: "Brak", en: "" }] },
     horns: { name: "Rogi", opts: [{ id: "none", name: "Brak", en: "" }, { id: "nubs", name: "Różki", en: "small nub horns" }, { id: "ram", name: "Baranie", en: "curled ram horns" },
       { id: "antlers", name: "Poroże", en: "large branching antlers" }, { id: "unicorn", name: "Jednorożec", en: "a single spiral unicorn horn" }] },
     crest: { name: "Grzywa", opts: [{ id: "none", name: "Brak", en: "" }, { id: "mane", name: "Grzywa", en: "a flowing mane" }, { id: "feathers", name: "Czub z piór", en: "a crest of feathers on its head" },
       { id: "spikes", name: "Kolce", en: "a row of spikes along its back" }] },
     eyes: { name: "Oczy", opts: [{ id: "1", name: "Jedno", en: "a single" }, { id: "2", name: "Dwoje", en: "two" }, { id: "3", name: "Troje", en: "three" }, { id: "5", name: "Wiele", en: "many" }] },
-    eyeSize: { name: "Wielkość oczu", opts: [{ id: "small", name: "Małe", en: "small" }, { id: "normal", name: "Zwykłe", en: "" }, { id: "huge", name: "Ogromne", en: "huge cartoonish" }] },
+    eyeSize: { name: "Wielkość oczu", opts: [{ id: "small", name: "Małe", en: "small" }, { id: "normal", name: "Zwykłe", en: "" }, { id: "huge", name: "Ogromne", en: "huge" }] },
     eyeColor: { name: "Kolor oczu", opts: EYE_COLORS },
     pupil: { name: "Źrenice", opts: [{ id: "round", name: "Okrągłe", en: "" }, { id: "slit", name: "Kocie", en: "with vertical slit pupils" }, { id: "goat", name: "Kozie", en: "with horizontal goat-like pupils" },
       { id: "glow", name: "Świecące", en: "glowing" }] },
@@ -1216,7 +1217,8 @@
     if (en("extra")) tail.push(en("extra"));
     const desc = "with " + andList(parts) + ", " + tail.join(", ");
     // Przy postaci opis w nawiasie: dalej w zdaniu idzie miejsce („next to them…”)
-    return art(`${en("size")} ${en("body")} fantasy creature`) + " " + petPose(it).word + (lead != null ? ", " + desc : " (" + desc + ")");
+    // „original”: własny stworek, nie przeróbka znanej postaci (mniej odmów generatora)
+    return art(`${en("size")} ${en("body")} original fantasy creature`) + " " + petPose(it).word + (lead != null ? ", " + desc : " (" + desc + ")");
   }
   // Zwierzę jako temat sceny (kategoria Zwierzę): ten sam opis co zwierzak przy postaci
   const animalIt = (st = scene) => st.animal === "beast"
@@ -1438,7 +1440,7 @@
         { id: "nat-back", name: "Pod światło", short: "Pod światło" }
       ]},
       { id: "artificial", name: "Sztuczne", children: [
-        { id: "art-front", name: "Lampa z przodu", short: "Lampa", prompt: "soft diffused softbox light {from}, gentle shadows" },
+        { id: "art-front", name: "Lampa z przodu", short: "Lampa", prompt: "softbox light {from}, gentle shadows" },
         { id: "art-back", name: "Kontra z tyłu", short: "Kontra", prompt: "strong artificial rim light from a lamp behind the subject {from}, outlining the silhouette, face in soft shadow" }
       ]}
     ]},
@@ -2473,10 +2475,10 @@
     under: { name: "Pod postacią", short: "Pod" },
     front: { name: "Przed", short: "Przed", words: "in front of them" },
     behind: { name: "Za", short: "Za", words: "behind them" },
-    left: { name: "Obok z lewej", short: "Lewo", words: "next to them on the left" },
-    right: { name: "Obok z prawej", short: "Prawo", words: "next to them on the right" },
-    leftFar: { name: "Dalej z lewej", short: "Dalej L", words: "further away on the left", wide: true },
-    rightFar: { name: "Dalej z prawej", short: "Dalej P", words: "further away on the right", wide: true },
+    left: { name: "Obok z lewej", short: "Lewo", words: "next to them, on the left side of the frame" },
+    right: { name: "Obok z prawej", short: "Prawo", words: "next to them, on the right side of the frame" },
+    leftFar: { name: "Dalej z lewej", short: "Dalej L", words: "further away, on the left side of the frame", wide: true },
+    rightFar: { name: "Dalej z prawej", short: "Dalej P", words: "further away, on the right side of the frame", wide: true },
     background: { name: "W tle", short: "W tle", words: "in the background behind them" },
     foreground: { name: "Na pierwszym planie", short: "1. plan", words: "in the foreground, close to the camera", tall: true }
   };

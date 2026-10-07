@@ -706,3 +706,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - `subjectHotPts`: **Manito** – punkt na produkcie (kolor; przy Własnym kształt), drugi przy Własnym (materiał), punkt na podstawie (Podstawa; bez punktu przy „W powietrzu”). **Manimal** – własny stworek: czubek głowy (Głowa), pysk (Twarz), tułów (Ciało), bok (Pokrycie), ogon (Ogon i skrzydła); gotowe zwierzę: punkt na zwierzęciu (Gatunek) i na sierści (Umaszczenie). Położenie z `objectPlace` i `beastGeom`.
 - Punkt tła omija te punkty. Przy Manito na studiu i tle sezonowym otwiera od razu warianty tła.
 - **Przybliżanie:** stuknięcie w głowę lub pysk własnego stworka przybliża jego głowę (`zoomPts`), w produkt Manito przybliża produkt; wyjście z kategorii oddala (zbliżenie pamięta grupę menu: `zoomTo(part, cat, group)`). Ciało, sierść i ogon zostają w pełnym kadrze (zwierzę i tak wypełnia kadr).
+
+## Słowa w Maniscrypcie bez ryzyka odmowy
+
+- Gemini odmówił promptu („interests of third-party content providers”) ze stworkiem „tiny mouse-sized…”. Wielkość Manimala bez nazw zwierząt: palm-sized, knee-high, medium-sized, chest-high, giant towering. Własny stworek to „original fantasy creature”. Bez „cartoonish” (głowa, oczy) i „round bear ears” (okrągłe uszy + kokarda = znana mysz).
+- Uwagi z analizy promptu: strona rzeczy obok postaci jednoznacznie z kadru („next to them, on the right side of the frame”), lampa z przodu bez powtórzeń („softbox light”).
