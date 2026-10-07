@@ -712,3 +712,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Gemini odmówił promptu („interests of third-party content providers”) ze stworkiem „tiny mouse-sized…”. Wielkość Manimala bez nazw zwierząt: palm-sized, knee-high, medium-sized, chest-high, giant towering. Własny stworek to „original fantasy creature”. Bez „cartoonish” (głowa, oczy) i „round bear ears” (okrągłe uszy + kokarda = znana mysz).
 - Uwagi z analizy promptu: strona rzeczy obok postaci jednoznacznie z kadru („next to them, on the right side of the frame”), lampa z przodu bez powtórzeń („softbox light”).
 - **Malutki stworek przy całej sylwetce** (`tinyPetFar`): własny Manimal wielkości dłoni obok Manikuna w ujęciu całej postaci dostaje w Maniscrypcie tylko 3–4 cechy widoczne z daleka (sierść z wzorem, skrzydła, uszy albo rogi, kolor oczu). Gdy taki stworek trafia do kadru, Manikun raz mówi, że szczegóły zginą, i radzi większy rozmiar.
+
+## Panel Maniscryptu: kopiowanie na pierwszym miejscu
+
+- Kolejność: Z moją twarzą → **Kopiuj Maniscrypt** (zielony, główny) → generatory („Albo stuknij generator: skopiuje i otworzy jego stronę”) → Premium i **Zrób zdjęcie tutaj** (obramowany, drugi wybór) → Próbny kadr, Udostępnij, Drzewko. Usunięta zamiana kolorów `#copySheet.has-gen`.
