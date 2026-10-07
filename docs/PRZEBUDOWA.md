@@ -732,3 +732,9 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 - Umaszczenia smoka miały w opisie „cartoon dragon”, więc generator rysował bajkowego smoka obok realistycznej postaci. Słowo usunięte.
 - `creatureStyle`: przy smoku albo własnym stworku (obok Manikuna albo jako Manimal) Maniscrypt dopisuje w stylach fotograficznych (Realistyczny, Kino, Cyberpunk, Vintage, Noir) „the dragon looks like a real living animal photographed in the same scene: lifelike anatomy, realistic skin, scales or fur texture…, not a cartoon, plush toy or 3D figurine”, a w ilustracyjnych (Anime, Komiks, 3D, Akwarela, Fantasy) „drawn in exactly the same … style as the rest of the image”. Zwykłe zwierzęta bez dopisku.
+
+## Moje sceny: zapis całej sceny na koncie
+
+- Kafelek **Zapisz scenę** w Swobodzie (obok Losuj) zapisuje całą scenę (`sceneSnapshot`, jak przy udostępnianiu) z krótkim opisem; bez konta Manikun prosi o zalogowanie.
+- Menu › **Moje sceny** (po zalogowaniu): siatka miniatur rysowanych z zapisanej sceny (`sceneThumb`), stuknięcie wczytuje scenę do edycji (`restoreScene`), krzyżyk usuwa (dwa stuknięcia).
+- Serwer: tabela `scenes` (migracja `0010_sceny.sql`), `GET/POST /api/scenes`, `DELETE /api/scenes/<id>`, najwyżej 60 scen na konto, scena do 30 000 znaków.

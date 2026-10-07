@@ -582,6 +582,32 @@ async function crewDelete(env, user, id) {
   return json({ ok: true });
 }
 
+// ---------- Moje sceny: całe sceny na koncie (najwyżej 60), nowe pierwsze ----------
+const SCENES_MAX = 60;
+async function scenesList(env, user) {
+  const rows = (await env.DB.prepare("SELECT id, title, subject, scene, created_at FROM scenes WHERE user_id = ? ORDER BY created_at DESC").bind(user.id).all()).results;
+  return json({ scenes: rows.map(r => ({ id: r.id, title: r.title || "", subject: r.subject, scene: r.scene, at: r.created_at })) });
+}
+async function scenesAdd(request, env, user) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Zły format zapytania." }, 400); }
+  const scene = typeof body.scene === "string" ? body.scene : "";
+  if (!scene || scene.length > 30000) return json({ error: "Zła scena." }, 400);
+  let parsed;
+  try { parsed = JSON.parse(scene); } catch { return json({ error: "Zła scena." }, 400); }
+  const subject = ["person", "object", "animal", "place"].includes(parsed && parsed.subject) ? parsed.subject : "person";
+  const title = typeof body.title === "string" ? body.title.replace(/[<>"]/g, "").trim().slice(0, 100) : "";
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM scenes WHERE user_id = ?").bind(user.id).first();
+  if (n.n >= SCENES_MAX) return json({ error: "Masz już " + SCENES_MAX + " scen. Usuń którąś w Moich scenach, żeby zapisać nową." }, 409);
+  const id = randomToken(9), t = now();
+  await env.DB.prepare("INSERT INTO scenes (id, user_id, title, subject, scene, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, user.id, title || null, subject, scene, t).run();
+  return json({ id, title, subject, scene, at: t });
+}
+async function scenesDelete(env, user, id) {
+  await env.DB.prepare("DELETE FROM scenes WHERE id = ? AND user_id = ?").bind(id, user.id).run();
+  return json({ ok: true });
+}
+
 // ---------- Udostępnione sceny: krótki link /s/<id> ----------
 // Każdy może udostępnić scenę (bez konta); limit 40 linków dziennie z jednego adresu IP (skrót adresu, nie sam adres)
 const SHARE_DAILY = 40;
@@ -770,6 +796,15 @@ export default {
         if (route === "POST /api/crew") return await crewAdd(request, env, user);
         const m = url.pathname.match(/^\/api\/crew\/([\w-]{6,20})$/);
         if (request.method === "DELETE" && m) return await crewDelete(env, user, m[1]);
+      }
+      if (url.pathname === "/api/scenes" || url.pathname.startsWith("/api/scenes/")) {
+        if (request.method !== "GET" && !sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);
+        const user = await currentUser(request, env);
+        if (!user) return json({ error: "Zaloguj się." }, 401);
+        if (route === "GET /api/scenes") return await scenesList(env, user);
+        if (route === "POST /api/scenes") return await scenesAdd(request, env, user);
+        const m = url.pathname.match(/^\/api\/scenes\/([\w-]{6,20})$/);
+        if (request.method === "DELETE" && m) return await scenesDelete(env, user, m[1]);
       }
       if (route === "POST /api/upload-face") {
         if (!sameOrigin(request, url)) return json({ error: "Niedozwolone źródło." }, 403);

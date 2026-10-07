@@ -281,7 +281,12 @@
   .gen-frame.compare img { clip-path: inset(0 0 0 var(--cut, 50%)); transition: none; }
   .gen-frame.compare .gen-draft { opacity: 1 !important; }
   .gen-frame.compare .gen-trial { opacity: 0 !important; }
-  body.shots-open #shotsScrim, body.gallery-open #galleryScrim { opacity: 1; pointer-events: auto; }
+  body.shots-open #shotsScrim, body.gallery-open #galleryScrim, body.scenes-open #scenesScrim { opacity: 1; pointer-events: auto; }
+  body.scenes-open #scenesSheet { transform: none; }
+  .shots .scene-card { display: block; width: 100%; height: 100%; }
+  .shots .scene-card svg { width: 100%; height: 100%; display: block; }
+  .shots .del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.55); color: #fff; font: 600 13px var(--font); display: grid; place-items: center; cursor: pointer; z-index: 2; aspect-ratio: auto; }
+  .shots .del.armed { width: auto; padding: 0 9px; border-radius: 99px; background: #E5484D; }
   .shots .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px; font-size: 10.5px; line-height: 1.25; color: #fff; text-align: left; background: linear-gradient(transparent, rgba(0,0,0,0.65)); }
   /* Moje ujęcia: siatka zdjęć od AI, nowe (nieobejrzane) z plakietką */
   .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 70dvh; overflow-y: auto; }
@@ -778,6 +783,7 @@
     <span class="menu-label">Scena</span>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
     <button class="menu-item" type="button" id="menuGallery"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="3.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>Galeria przykładów</button>
+    <button class="menu-item" type="button" id="menuScenes" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="12" cy="10" r="2"/><path d="M9 16q3-3.5 6 0"/></svg>Moje sceny</button>
     <button class="menu-item" type="button" id="menuShots" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="menu-badge" id="menuShotsVal" hidden></span></button>
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="menu-val" id="menuLevelVal">Podstawowy</span></button>
     <span class="menu-label">Ustawienia</span>
@@ -931,6 +937,18 @@
     </div>
     <p class="sheet-lead" id="shotsNote">Wczytuję…</p>
     <div class="shots" id="shotsGrid"></div>
+  </section>
+
+  <!-- Moje sceny: zapisane sceny (miniatury rysuje aplikacja), stuknięcie wczytuje scenę do edycji -->
+  <div class="sheet-scrim" id="scenesScrim"></div>
+  <section class="sheet preview" id="scenesSheet" aria-label="Moje sceny" aria-hidden="true">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2>Moje sceny</h2>
+      <button class="icon-btn" type="button" id="scenesClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="sheet-lead" id="scenesNote">Wczytuję…</p>
+    <div class="shots" id="scenesGrid"></div>
   </section>
 
   <!-- Galeria przykładów: zdjęcia wybrane przez autora, każde z „Zrób podobne” -->
@@ -6682,6 +6700,7 @@
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
     { id: "style", label: "Styl", cat: "style", icon: "style" },
     { id: "save", label: "Do ekipy", action: true, subjects: ["animal", "object"] },
+    { id: "keep", label: "Zapisz scenę", action: true },
     { id: "random", label: "Losuj", action: true },
     { id: "reset", label: "Układ domyślny", action: true }
   ];
@@ -7155,6 +7174,14 @@
         svg.setAttribute("viewBox", "0 0 24 24");
         el("circle", { cx: 9, cy: 8, r: 3.2 }, svg); el("path", { d: "M3 20a6 6 0 0 1 12 0" }, svg); el("path", { d: "M18 8v6M15 11h6" }, svg);
       }, () => "zapisz na koncie");
+      t.action = true;
+      return t;
+    }
+    if (g.id === "keep") {
+      const t = tile("nav-keep", "Zapisz scenę", () => false, () => saveMyScene(), svg => {
+        svg.setAttribute("viewBox", "0 0 24 24");
+        el("path", { d: "M6 4h12v16l-6-4-6 4z" }, svg); el("path", { d: "M12 7v6M9 10h6" }, svg);
+      }, () => "Moje sceny");
       t.action = true;
       return t;
     }
@@ -10039,7 +10066,7 @@
     let saved;
     try { saved = JSON.parse(json); } catch (e) { return false; }
     Object.assign(scene, saved, { open: null, sub: null });
-    setView(false); setShots(false); setGallery(false); setGen(false); setSheet(false); setMenu(false);
+    setView(false); setShots(false); setGallery(false); setScenes(false); setGen(false); setSheet(false); setMenu(false);
     if (phase !== "director") enterDirector("free"); else { fixScene(); render(); }
     if (!quiet) setTimeout(() => say("Scena wróciła! Popraw, co chcesz, i zrób kolejne zdjęcie.", 4500), 600);
     return true;
@@ -10063,6 +10090,7 @@
   function syncShotsMenu() {
     const u = account && account.user;
     menuShots.hidden = !u;
+    document.getElementById("menuScenes").hidden = !u;
     menuShotsVal.textContent = shotsUnseen ? shotsUnseen + " " + (shotsUnseen === 1 ? "nowe" : "nowych") : "";
     menuShotsVal.hidden = !u || !shotsUnseen;
     syncBadge();
@@ -10122,6 +10150,82 @@
     if (!d.scene || !restoreScene(d.scene, true)) { render(); showStart(SUBJECTS); greet(); say("Nie znalazłem tej sceny. Ułóż własną – co kręcimy?", 6000); return; }
     setTimeout(() => say("Ktoś udostępnił Ci scenę" + (d.title ? ": " + d.title : "") + ". Zmień, co chcesz, i skopiuj Maniscrypt zielonym przyciskiem.", 7500), reduceMotion.matches ? 100 : 900);
   }
+
+  // ---------- Moje sceny: zapis całej sceny na koncie i lista z miniaturami ----------
+  const scenesGrid = document.getElementById("scenesGrid"), scenesNote = document.getElementById("scenesNote");
+  function setScenes(open) {
+    document.body.classList.toggle("scenes-open", open);
+    document.getElementById("scenesSheet").setAttribute("aria-hidden", String(!open));
+  }
+  async function saveMyScene() {
+    if (!(account && account.user)) { say("Sceny zapisują się na koncie. Zaloguj się przez Google w menu, a potem stuknij Zapisz scenę.", 5500); return; }
+    let d = {};
+    try {
+      d = await (await fetch("/api/scenes", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scene: sceneSnapshot(), title: shareTitle() }) })).json();
+    } catch (e) { d = { error: "Brak połączenia. Spróbuj jeszcze raz." }; }
+    if (d.error) { say(d.error, 5000); return; }
+    sfx("klap");
+    showToast("Zapisane w Moich scenach (menu).");
+  }
+  // Miniatura: scena narysowana jak kafelek gotowca (na chwilę podstawiona w miejsce bieżącej)
+  function sceneThumb(svg, saved) {
+    const fm = (FORMATS[saved.mode] || FORMATS.photo).find(x => x.id === (saved.format || {})[saved.mode]) || FORMATS.photo[0];
+    const W = 90, H = Math.round(90 * fm.h / fm.w);
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    const keep = JSON.parse(JSON.stringify(scene));
+    try { Object.assign(scene, saved, { open: null, sub: null }); renderScene(svg, scene, W, H, new Set(["ground", "background", "things"])); }
+    catch (e) {} finally { Object.keys(scene).forEach(k => { if (!(k in keep)) delete scene[k]; }); Object.assign(scene, keep); }
+  }
+  async function openScenes() {
+    setMenu(false); setScenes(true);
+    scenesNote.textContent = "Wczytuję…"; scenesGrid.replaceChildren();
+    let d = {};
+    try { d = await (await fetch("/api/scenes", { credentials: "same-origin" })).json(); } catch (e) {}
+    const list = d.scenes || [];
+    scenesNote.textContent = d.error ? d.error : list.length ? "Stuknij scenę, żeby wrócić do niej i dalej ją zmieniać." : "Nie masz jeszcze zapisanych scen. Ustaw scenę i stuknij kafelek Zapisz scenę.";
+    list.forEach(it => {
+      let saved = null;
+      try { saved = JSON.parse(it.scene); } catch (e) { return; }
+      const box = document.createElement("div");
+      box.className = "shot-box";
+      box.style.cssText = "position:relative";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "scene-card";
+      b.setAttribute("aria-label", it.title || "Scena");
+      const svg = el("svg", { class: "ink", "aria-hidden": "true" }, b);
+      sceneThumb(svg, saved);
+      const when = new Date(it.at * 1000).toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+      const cap = document.createElement("span");
+      cap.className = "cap";
+      // Podpis krótki: pierwsza część opisu (kto lub co) i data, żeby nie zasłaniał miniatury
+      const head = (it.title || "").split(" · ")[0].split(":")[0].split(",")[0];
+      cap.textContent = (head ? head + " · " : "") + when;
+      b.appendChild(cap);
+      b.addEventListener("click", () => { restoreScene(it.scene, true); setTimeout(() => say("Scena wróciła. Zmieniaj dalej, a nową wersję zapisz kafelkiem Zapisz scenę.", 5000), 600); });
+      // Usuwanie: pierwsze stuknięcie pyta, drugie usuwa
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.setAttribute("aria-label", "Usuń scenę");
+      del.textContent = "✕";
+      let armed = null;
+      del.addEventListener("click", async e => {
+        e.stopPropagation();
+        if (!armed) { del.classList.add("armed"); del.textContent = "Usuń?"; armed = setTimeout(() => { armed = null; del.classList.remove("armed"); del.textContent = "✕"; }, 3000); return; }
+        clearTimeout(armed);
+        try { await fetch("/api/scenes/" + it.id, { method: "DELETE", credentials: "same-origin" }); } catch (x) {}
+        box.remove();
+        if (!scenesGrid.children.length) scenesNote.textContent = "Nie masz już zapisanych scen.";
+      });
+      box.append(b, del);
+      scenesGrid.appendChild(box);
+    });
+  }
+  document.getElementById("menuScenes").addEventListener("click", openScenes);
+  document.getElementById("scenesClose").addEventListener("click", () => setScenes(false));
+  document.getElementById("scenesScrim").addEventListener("click", () => setScenes(false));
 
   // ---------- Galeria przykładów: publiczne zdjęcia z „Zrób podobne” (dodaje je autor z Moich ujęć) ----------
   const galleryGrid = document.getElementById("galleryGrid"), galleryNote = document.getElementById("galleryNote");
