@@ -291,7 +291,7 @@
   .shots .del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.55); color: #fff; font: 600 13px var(--font); display: grid; place-items: center; cursor: pointer; z-index: 2; aspect-ratio: auto; }
   .shots .del.armed { width: auto; padding: 0 9px; border-radius: 99px; background: #E5484D; }
   .shots .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px; font-size: 10.5px; line-height: 1.25; color: #fff; text-align: left; background: linear-gradient(transparent, rgba(0,0,0,0.65)); }
-  /* Moje ujęcia: siatka zdjęć od AI, nowe (nieobejrzane) z plakietką */
+  /* Moje zdjęcia: siatka zdjęć od AI, nowe (nieobejrzane) z plakietką */
   .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 70dvh; overflow-y: auto; }
   .shots button { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; aspect-ratio: 3 / 4; background: var(--stage); cursor: pointer; }
   .shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -798,7 +798,7 @@
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
     <button class="menu-item" type="button" id="menuGallery"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="3.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>Galeria przykładów</button>
     <button class="menu-item" type="button" id="menuScenes" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="12" cy="10" r="2"/><path d="M9 16q3-3.5 6 0"/></svg>Moje sceny</button>
-    <button class="menu-item" type="button" id="menuShots" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje ujęcia<span class="menu-badge" id="menuShotsVal" hidden></span></button>
+    <button class="menu-item" type="button" id="menuShots" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje zdjęcia<span class="menu-badge" id="menuShotsVal" hidden></span></button>
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="menu-val" id="menuLevelVal">Podstawowy</span></button>
     <span class="menu-label">Ustawienia</span>
     <button class="menu-item" type="button" id="menuVoice" role="switch" aria-checked="true"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>Głos Manikuna<span class="menu-val" id="menuVoiceVal">Włączony</span></button>
@@ -943,10 +943,10 @@
   </section>
 
   <div class="sheet-scrim" id="shotsScrim"></div>
-  <section class="sheet preview" id="shotsSheet" aria-label="Moje ujęcia" aria-hidden="true">
+  <section class="sheet preview" id="shotsSheet" aria-label="Moje zdjęcia" aria-hidden="true">
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
-      <h2>Moje ujęcia</h2>
+      <h2>Moje zdjęcia</h2>
       <button class="icon-btn" type="button" id="shotsClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <p class="sheet-lead" id="shotsNote">Wczytuję…</p>
@@ -977,7 +977,7 @@
     <div class="shots" id="galleryGrid"></div>
   </section>
 
-  <!-- Przeglądarka zdjęcia z Moich ujęć: przesuwanie palcem, zapis, udostępnianie, „Zrób podobne”, usuwanie -->
+  <!-- Przeglądarka zdjęcia z Moich zdjęć: przesuwanie palcem, zapis, udostępnianie, „Zrób podobne”, usuwanie -->
   <div class="sheet-scrim" id="viewScrim"></div>
   <section class="sheet preview" id="viewSheet" aria-label="Zdjęcie" aria-hidden="true">
     <div class="sheet-grip" aria-hidden="true"></div>
@@ -986,7 +986,7 @@
       <button class="icon-btn" type="button" id="viewClose" aria-label="Zamknij"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="view-frame" id="viewFrame">
-      <img id="viewImg" alt="Zdjęcie z Moich ujęć">
+      <img id="viewImg" alt="Zdjęcie z Moich zdjęć">
       <button class="view-nav prev" type="button" id="viewPrev" aria-label="Poprzednie">‹</button>
       <button class="view-nav next" type="button" id="viewNext" aria-label="Następne">›</button>
     </div>
@@ -9563,7 +9563,7 @@
   const genImg = document.getElementById("genImg"), genWait = document.getElementById("genWait"), genWaitText = document.getElementById("genWaitText");
   const genNote = document.getElementById("genNote"), genAgain = document.getElementById("genAgain");
   const genSave = document.getElementById("genSave"), genShare = document.getElementById("genShare"), genCompare = document.getElementById("genCompare");
-  // Jedno zlecenie naraz (genJob). Zamknięcie okna go nie przerywa: robi się w tle, a gotowe zdjęcie trafia do Moich ujęć.
+  // Jedno zlecenie naraz (genJob). Zamknięcie okna go nie przerywa: robi się w tle, a gotowe zdjęcie trafia do Moich zdjęć.
   // genJob: { id, prompt, aspect, t0, run }; genBusy: w toku; genReady: gotowe, a okno było zamknięte
   let genRun = 0, genBusy = false, genReady = false, genJob = null;
   const genOpenNow = () => document.body.classList.contains("gen-open");
@@ -9638,7 +9638,7 @@
     headSays.t = setTimeout(() => btn.classList.remove("talking"), 1300);
     if (window.manikunHead && Math.random() < 0.6) window.manikunHead[Math.random() < 0.5 ? "nod" : "tilt"]();
   }
-  // Znaczek na przycisku Manikuna: zdjęcie czeka do obejrzenia (z tego zlecenia albo w Moich ujęciach)
+  // Znaczek na przycisku Manikuna: zdjęcie czeka do obejrzenia (z tego zlecenia albo w Moich zdjęciach)
   const narratorBtn = document.getElementById("narrator");
   let shotsUnseen = 0;
   function syncBadge() { narratorBtn.classList.toggle("has-photo", genReady || shotsUnseen > 0); }
@@ -9739,7 +9739,7 @@
     "Wskazówka: złota godzina daje ciepłe, miękkie światło.",
     "Wskazówka: kamera nisko sprawia, że postać wygląda na bohatera.",
     "Wskazówka: zbliżenie na twarz najlepiej pokazuje emocje.",
-    "Wskazówka: wszystkie swoje zdjęcia znajdziesz w Moich ujęciach.",
+    "Wskazówka: wszystkie swoje zdjęcia znajdziesz w Moich zdjęciach.",
     "Wskazówka: możesz zamknąć to okno i dalej reżyserować.",
     "Wskazówka: dron pokaże całą okolicę z góry.",
     "Wskazówka: zwierzak w kadrze od razu dodaje scenie charakteru.",
@@ -9894,8 +9894,8 @@
       if (genJob) genJob.done = true;
       syncGenBtn();
       genFrame.classList.add("done"); genImg.classList.add("on");
-      genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s! Zdjęcie jest też w Moich ujęciach (menu).", false);
-      genNote.textContent = "W Moich ujęciach zostaje 5 ostatnich zdjęć. Chcesz zachować to na dłużej? Stuknij „Zapisz”.";
+      genState("Gotowe w " + Math.round((Date.now() - t0) / 1000) + " s! Zdjęcie jest też w Moich zdjęciach (menu).", false);
+      genNote.textContent = "W Moich zdjęciach zostaje 5 ostatnich zdjęć. Chcesz zachować to na dłużej? Stuknij „Zapisz”.";
       genAgain.hidden = false;
       if (genOpenNow()) { sfx("klap"); nod("nod"); markSeen(d.id); }
       else genNotify(true, "Zdjęcie gotowe! Stuknij mnie, żeby je zobaczyć.");
@@ -9903,7 +9903,7 @@
     genImg.src = d.url; genJob && (genJob.url = d.url, genJob.id = genJob.id || d.id);
     genSave.hidden = false; genShare.hidden = !canShareFiles(); genCompare.hidden = !document.getElementById("genDraft").firstChild;
   }
-  // Anulowanie: w kolejce Higgsfield zatrzymuje zlecenie i kredyt wraca; gdy już się robi, dokończy się i trafi do Moich ujęć
+  // Anulowanie: w kolejce Higgsfield zatrzymuje zlecenie i kredyt wraca; gdy już się robi, dokończy się i trafi do Moich zdjęć
   genCancel.addEventListener("click", async () => {
     if (!genJob || !genJob.id || !genBusy) return;
     const id = genJob.id;
@@ -9916,7 +9916,7 @@
       genRun++; clearInterval(genTalkTimer); genBusy = false; genJob = null; syncGenBtn();
       genState(d.error || "Anulowano. Kredyt wrócił na konto.", false); genAgain.hidden = false;
     } else if (d.note) {
-      // Nie da się zatrzymać: zamykamy okno, zlecenie kończy się w tle, a zdjęcie ląduje w Moich ujęciach
+      // Nie da się zatrzymać: zamykamy okno, zlecenie kończy się w tle, a zdjęcie ląduje w Moich zdjęciach
       genRun++; clearInterval(genTalkTimer); genBusy = false; genJob = null; syncGenBtn();
       setGen(false);
       say(d.note, 6000);
@@ -10049,7 +10049,7 @@
     btn.disabled = true;
     try {
       const f = await photoFile(url);
-      await navigator.share({ files: [f], title: "Moje ujęcie z Manikuna", text: "Zrobione w Manikunie 🎬 " + location.origin });
+      await navigator.share({ files: [f], title: "Moje zdjęcie z Manikuna", text: "Zrobione w Manikunie 🎬 " + location.origin });
     } catch (e) { if (e && e.name !== "AbortError") showToast("Nie udało się udostępnić"); }
     btn.disabled = false;
   }
@@ -10098,7 +10098,7 @@
     }, reduceMotion.matches ? 100 : 1500);
   }
 
-  // ---------- Moje ujęcia: zdjęcia od AI zapisane na koncie ----------
+  // ---------- Moje zdjęcia: zdjęcia od AI zapisane na koncie ----------
   const menuShots = document.getElementById("menuShots"), menuShotsVal = document.getElementById("menuShotsVal");
   const shotsGrid = document.getElementById("shotsGrid"), shotsNote = document.getElementById("shotsNote");
   function syncShotsMenu() {
@@ -10244,7 +10244,7 @@
   document.getElementById("scenesClose").addEventListener("click", () => setScenes(false));
   document.getElementById("scenesScrim").addEventListener("click", () => setScenes(false));
 
-  // ---------- Galeria przykładów: publiczne zdjęcia z „Zrób podobne” (dodaje je autor z Moich ujęć) ----------
+  // ---------- Galeria przykładów: publiczne zdjęcia z „Zrób podobne” (dodaje je autor z Moich zdjęć) ----------
   const galleryGrid = document.getElementById("galleryGrid"), galleryNote = document.getElementById("galleryNote");
   let galleryList = [], viewMode = "shots";
   function setGallery(open) {
@@ -10290,7 +10290,7 @@
     const d = new Date(ph.at * 1000);
     const gal = viewMode === "gallery";
     document.getElementById("viewTitle").textContent = gal ? (ph.title || "Przykład") : d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" }) + ", " + d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
-    // Galeria: bez zapisu i usuwania (autor ma „Usuń z galerii”); Moje ujęcia: autor może dodać zdjęcie do galerii
+    // Galeria: bez zapisu i usuwania (autor ma „Usuń z galerii”); Moje zdjęcia: autor może dodać zdjęcie do galerii
     document.getElementById("viewSave").hidden = gal;
     const del = document.getElementById("viewDel");
     del.hidden = gal && !(account && account.owner);
@@ -10327,7 +10327,7 @@
       if (ok) { setView(false); openGallery(); }
       return;
     }
-    if (!ph || !confirm("Usunąć to zdjęcie z Moich ujęć? Tego nie da się cofnąć.")) return;
+    if (!ph || !confirm("Usunąć to zdjęcie z Moich zdjęć? Tego nie da się cofnąć.")) return;
     let ok = false;
     try { ok = (await fetch("/api/generate/" + ph.id, { method: "DELETE", credentials: "same-origin" })).ok; } catch (e) {}
     if (!ok) { showToast("Nie udało się usunąć"); return; }
@@ -10339,7 +10339,7 @@
     viewShow();
   });
   menuShots.addEventListener("click", openShots);
-  // Autor: zdjęcie z Moich ujęć do publicznej galerii (z krótkim podpisem)
+  // Autor: zdjęcie z Moich zdjęć do publicznej galerii (z krótkim podpisem)
   document.getElementById("viewPub").addEventListener("click", async () => {
     const ph = shotsList[viewIdx];
     if (!ph) return;

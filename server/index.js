@@ -451,7 +451,7 @@ function imageSize(b) {
   return null;
 }
 
-// Kopia zdjęcia u nas (KV PHOTOS): adresy Higgsfield wygasają, a Moje ujęcia mają zostać
+// Kopia zdjęcia u nas (KV PHOTOS): adresy Higgsfield wygasają, a Moje zdjęcia mają zostać
 async function storePhoto(env, g) {
   if (!env.PHOTOS || g.stored || !g.image_url) return;
   let why = "";
@@ -472,7 +472,7 @@ async function storePhoto(env, g) {
   await env.DB.prepare("UPDATE generations SET detail = ? WHERE id = ?").bind("zapis: " + why, g.id).run();
 }
 
-// Dopytanie Higgsfield o zlecenie w toku i zapis wyniku (wspólne dla okna zdjęcia i Moich ujęć)
+// Dopytanie Higgsfield o zlecenie w toku i zapis wyniku (wspólne dla okna zdjęcia i Moich zdjęć)
 async function refresh(env, g) {
   // Zlecenie Workers AI bez wyniku po 2 minutach: zadanie w tle przerwane, kredyt wraca
   if ((g.status === "queued" || g.status === "in_progress") && !g.request_id && now() - g.created_at > 120) {
@@ -521,7 +521,7 @@ async function generationStatus(env, user, id) {
 }
 
 // Anulowanie: Higgsfield zatrzymuje tylko zlecenia w kolejce (wtedy kredyt wraca);
-// gdy zdjęcie już się robi, nie da się go przerwać, więc dokończy się i trafi do Moich ujęć
+// gdy zdjęcie już się robi, nie da się go przerwać, więc dokończy się i trafi do Moich zdjęć
 async function generationCancel(env, user, id) {
   const g = await env.DB.prepare("SELECT * FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
   if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
@@ -538,11 +538,11 @@ async function generationCancel(env, user, id) {
   g.cancelled = 1;
   if (ok) await refund(env, g, "cancelled", "Anulowano. Kredyt wrócił na konto.");
   const view = genView(g, await balance(env, user.id));
-  if (!ok) view.note = "Generator już robi to zdjęcie i nie da się go zatrzymać. Gdy będzie gotowe, znajdziesz je w Moich ujęciach.";
+  if (!ok) view.note = "Generator już robi to zdjęcie i nie da się go zatrzymać. Gdy będzie gotowe, znajdziesz je w Moich zdjęciach.";
   return json(view);
 }
 
-// Usunięcie zdjęcia z Moich ujęć: kopia w KV znika, wpis zostaje jako „usunięte” (kredytów nie zwracamy)
+// Usunięcie zdjęcia z Moich zdjęć: kopia w KV znika, wpis zostaje jako „usunięte” (kredytów nie zwracamy)
 async function generationDelete(env, user, id) {
   const g = await env.DB.prepare("SELECT id, status FROM generations WHERE id = ? AND user_id = ?").bind(id, user.id).first();
   if (!g) return json({ error: "Nie ma takiego zdjęcia." }, 404);
@@ -557,7 +557,7 @@ async function generationSeen(env, user, id) {
   return json({ ok: true });
 }
 
-// Moje ujęcia: udane zdjęcia (nowe pierwsze); najpierw dopytanie o zlecenia w toku
+// Moje zdjęcia: udane zdjęcia (nowe pierwsze); najpierw dopytanie o zlecenia w toku
 // Ekipa: Manimale i Manito zapisane na koncie (najwyżej 40 na konto)
 const CREW_MAX = 40;
 async function crewList(env, user) {
@@ -651,7 +651,7 @@ async function sharePage(request, env, url, id) {
 }
 
 // ---------- Galeria przykładów: zdjęcia wybrane przez właściciela, publiczne, z „Zrób podobne” ----------
-// Kopia pliku pod pub/<id> (niezależna od Moich ujęć, które trzymają 5 ostatnich)
+// Kopia pliku pod pub/<id> (niezależna od Moich zdjęć, które trzymają 5 ostatnich)
 async function galleryList(env, user) {
   const rows = (await env.DB.prepare("SELECT id, title, scene, aspect, created_at FROM gallery ORDER BY created_at DESC LIMIT 60").all()).results;
   return json({ owner: isOwner(user), photos: rows.map(g => ({ id: g.id, url: "/api/pub/" + g.id, title: g.title, aspect: g.aspect, scene: g.scene, at: g.created_at })) },
@@ -681,7 +681,7 @@ async function galleryDelete(env, id) {
   return json({ ok: true });
 }
 
-// Moje ujęcia: zostaje 5 najnowszych zdjęć, starsze kasujemy (plik z KV i adres), status 'expired'
+// Moje zdjęcia: zostaje 5 najnowszych zdjęć, starsze kasujemy (plik z KV i adres), status 'expired'
 const KEEP_PHOTOS = 5;
 async function prunePhotos(env, userId) {
   const old = (await env.DB.prepare("SELECT id FROM generations WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT -1 OFFSET ?")
