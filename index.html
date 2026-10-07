@@ -7158,7 +7158,7 @@
       // Pierwsze stuknięcie pyta, drugie zaczyna od nowa
       let armed = null;
       const t = tile("nav-reset", "Układ domyślny", () => false, () => {
-        if (armed) { newScene(); return; }
+        if (armed) { clearTimeout(armed); armed = null; t.btn.classList.remove("armed"); resetLayout(); return; }
         t.btn.classList.add("armed");
         armed = setTimeout(() => { armed = null; t.btn.classList.remove("armed"); t.redraw(); }, 3000);
         t.redraw();
@@ -7819,6 +7819,20 @@
 
   // Nowa scena: strona zaczyna od nowa, ale Manikun już się nie przedstawia (użytkownik go zna)
   // Nowa scena bez przeładowania strony: powrót do siatki 2×2, bez ponownego powitania
+  // Układ domyślny: ustawienia wracają do początkowych, ale zostaje to, co fotografujemy (Manikun, Manito, Manimal, Manitam),
+  // tryb (zdjęcie / wideo), poziom i Swoboda; kłódki znikają. Cała nowa scena od startu to Menu › Nowa scena.
+  function resetLayout() {
+    const keep = { subject: scene.subject, mode: scene.mode };
+    Object.assign(scene, JSON.parse(JSON.stringify(SCENE0)), keep);
+    // Manitam: start od własnego krajobrazu, jak przy wyborze na ekranie startowym
+    if (keep.subject === "place") Object.assign(scene, { background: "land", land: { ...LAND0 }, time: "golden", light: "nat-back", lightZone: "R2" });
+    locks.clear();
+    lastPreset = null;
+    zoomOut();
+    sfx("krrr");
+    render();
+    say("Układ domyślny. " + ({ person: "Manikun", object: "Manito", animal: "Manimal", place: "Manitam" }[keep.subject] || "Scena") + " zaczyna od nowa.", 3500);
+  }
   function newScene() {
     wiz = null;
     setMenu(false);

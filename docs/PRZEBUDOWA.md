@@ -723,3 +723,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - `LOCK_KEYS`: kategoria → pola sceny. `randomize` robi kopię zablokowanych pól na początku i przywraca je na końcu (potem `fixScene`); zablokowana postać i cechy (dziecko) są brane pod uwagę już przy losowaniu stroju i wyglądu.
 - Kłódki znikają przy nowej scenie (powrót do startu). Po drugim losowaniu bez kłódek Manikun raz podpowiada przytrzymanie.
 - **Kłódki na konkretne części** (`lockTargets`): kafelek części blokuje tylko ją – Cechy (np. Piegi `p:traits.freckles`), Wygląd (Mina, Włosy z kolorem, Zarost, Usta, Okulary, Spojrzenie), części stroju (góra, dół… z kolorem), części Manimala, Manito i krajobrazu. Przytrzymanie kafelka opcji (np. „Długie proste”) wybiera ją i blokuje; kłódka jest wtedy na tej opcji i na kafelku części. Losowanie przywraca zablokowane części (`p:obiekt.pole`), zablokowana część stroju robi zestaw „własny”.
+
+## Układ domyślny tylko w bieżącym temacie
+
+- Kafelek „Układ domyślny” (dwa stuknięcia) nie wraca już do ekranu startowego: `resetLayout` ustawia scenę początkową, ale zostawia temat (Manikun, Manito, Manimal, Manitam), tryb zdjęcie/wideo, poziom i Swobodę; zdejmuje kłódki. Manitam wraca do własnego krajobrazu. Nowa scena od startu: Menu › Nowa scena.
