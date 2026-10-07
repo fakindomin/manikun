@@ -611,6 +611,10 @@
   body.tutorial .modes { opacity: 0.4; }
   .tile.tut-target, .square.tut-target, .sheet-copy.tut-target { animation: tutGlow 1.3s ease-in-out infinite; }
   @keyframes tutGlow { 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px var(--accent); } }
+  /* Kafelki w rzędach: rząd przycina wszystko poza swoją wysokością, więc zewnętrzna poświata wychodziła kwadratowa.
+     Tu świeci obrys w środku kafelka (dokładnie jego kształt) i lekko rozjaśnione tło. */
+  .row .tile.tut-target { animation: tutGlowIn 1.3s ease-in-out infinite; outline: 2px solid transparent; outline-offset: -2px; }
+  @keyframes tutGlowIn { 50% { outline-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 24%, #17171D); } }
   body.tutorial .bubble { cursor: pointer; }
   /* Manikun mówi: zdanie, które właśnie słychać, jest wyraźne, pozostałe przygaszone; przycisk z głową lekko się buja */
   .bubble.speaking .s { opacity: 0.55; transition: opacity 0.2s; }
