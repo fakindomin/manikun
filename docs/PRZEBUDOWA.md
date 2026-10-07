@@ -700,3 +700,8 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Kreator: przy własnym krajobrazie pytania o teren, wodę, roślinność, zabudowę, niebo, porę roku (Ekspert także pogoda i ujęcie). Losowanie i „Zdaj się na mnie” w 60% składają losowy krajobraz. Wyszukiwarka zna nazwy części.
 - **Kolory krajobrazu:** Kolor terenu, wody, roślin (Krajobraz) i nieba (Niebo i pora): Naturalny albo paleta ubrań + fiolet, turkus, złoto, limonka, magenta (`LAND_COLOR`, `LAND_EXTRA`). Rysunek liczy odcienie od wybranego koloru; Maniscrypt dopisuje „in surreal colours: red mountains, pink water…, a bold unnatural colour palette”. Kolor wody jest też przy klifach i wyspie (morze), kolor roślin znika przy „Bez roślin”. Losowanie raz na kilka razy barwi jedną część.
 - **Punkty kolorów na szkicu:** przy własnym krajobrazie (Swoboda) zamiast jednego punktu tła są cztery: niebo, teren, woda, rośliny (`landHotPts`, położenie zależne od terenu, wody i roślinności; omijają kamerę i światło). Stuknięcie otwiera od razu rząd kolorów tej części; punkt otwartej części świeci.
+
+## Punkty na szkicu w Manito i Manimalu
+
+- `subjectHotPts`: **Manito** – punkt na produkcie (kolor; przy Własnym kształt), drugi przy Własnym (materiał), punkt na podstawie (Podstawa; bez punktu przy „W powietrzu”). **Manimal** – własny stworek: czubek głowy (Głowa), pysk (Twarz), tułów (Ciało), bok (Pokrycie), ogon (Ogon i skrzydła); gotowe zwierzę: punkt na zwierzęciu (Gatunek) i na sierści (Umaszczenie). Położenie z `objectPlace` i `beastGeom`.
+- Punkt tła omija te punkty. Przy Manito na studiu i tle sezonowym otwiera od razu warianty tła.

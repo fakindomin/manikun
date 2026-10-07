@@ -8782,7 +8782,11 @@
     const far = q => Math.min(...avoid.map(a => Math.hypot(a[0] - q[0], a[1] - q[1])));
     // Manitam z własnym krajobrazem: punkty na niebie, terenie, wodzie i roślinach otwierają od razu ich kolory
     if (scene.subject === "place" && scene.background === "land") pts.push(...landHotPts(G));
-    else pts.push({ id: "bg", at: cand.reduce((a, b) => far(b) > far(a) ? b : a) });
+    else {
+      // Manito i Manimal: punkty na przedmiocie lub zwierzęciu (i podstawie); tło omija je tak jak kamerę i światło
+      if (scene.subject === "object" || scene.subject === "animal") { const sp = subjectHotPts(G); pts.push(...sp); avoid.push(...sp.map(q => q.at)); }
+      pts.push({ id: "bg", at: cand.reduce((a, b) => far(b) > far(a) ? b : a) });
+    }
     const g = el("g", { "aria-hidden": "true" }, preview), now = performance.now();
     pts.forEach((q, n) => {
       if (q.at[0] < vb[0] || q.at[0] > vb[0] + vb[2] || q.at[1] < vb[1] || q.at[1] > vb[1] + vb[3]) return;
@@ -8816,6 +8820,31 @@
       return { ...q, at };
     });
   }
+  // Punkty Manito (przedmiot, podstawa) i Manimala (części własnego stworka albo zwierzę i umaszczenie)
+  function subjectHotPts(G) {
+    const W = G.W, H = G.H, ob = objectPlace(scene, W, H), out = [];
+    if (scene.subject === "object") {
+      const own = scene.item === "own";
+      out.push({ id: "item", at: [W / 2, ob.bottom - ob.h * 0.42], go: () => own ? sketchGo("object", "pShape") : sketchGo("object", "itemColor") });
+      if (scene.base !== "float") out.push({ id: "base", at: [W / 2 + Math.max(W * 0.16, ob.w * 0.85), ob.bottom + G.u * 1.4], go: () => sketchGo("object", "base", null, "opt-base-" + scene.base) });
+      if (own) out.push({ id: "mat", at: [W / 2 - ob.w * 0.18, ob.bottom - ob.h * 0.2], go: () => sketchGo("object", "pMat") });
+      return out;
+    }
+    const it = animalIt(scene), P = ([a, h]) => [ob.px + a * ob.s, ob.gy - h * ob.s];
+    if (scene.animal === "beast") {
+      const g = beastGeom(beastOf(it), petPose(it).id);
+      // Głowa: czubek (uszy, rogi), twarz: pysk z przodu; rozsunięte, żeby małą głowę dało się trafić
+      out.push({ id: "bHead", at: P([g.head[0] - g.hrx * 0.35, g.head[1] + g.hry * 1.05]), go: () => sketchGo("animal", "bHead") });
+      out.push({ id: "bFace", at: P([g.head[0] + g.hrx * 1.05, g.head[1] - g.hry * 0.35]), go: () => sketchGo("animal", "bFace") });
+      out.push({ id: "bBody", at: P(g.bp(0.05, 0.35)), go: () => sketchGo("animal", "bBody") });
+      out.push({ id: "bCoat", at: P(g.bp(-0.3, -0.35)), go: () => sketchGo("animal", "bCoat") });
+      out.push({ id: "bTail", at: P(g.bp(-1.05, 0.25)), go: () => sketchGo("animal", "bTail") });
+    } else {
+      out.push({ id: "animal", at: [ob.x + ob.w * 0.5, ob.y + ob.h * 0.35], go: () => sketchGo("animal", "animal", null, "opt-animal-" + scene.animal) });
+      out.push({ id: "coat", at: [ob.x + ob.w * 0.35, ob.y + ob.h * 0.7], go: () => sketchGo("animal", "animalCoat") });
+    }
+    return out;
+  }
   let lastThingTap = -1;
   function sketchTap(p) {
     if (!sketchTapsOn()) return false;
@@ -8838,8 +8867,9 @@
       lastThingTap = hit.i;
     }
     else if (hit.land) sketchGo("place", LAND_CATS.lLand.includes(hit.land) ? "lLand" : "lAir", hit.land, null, null, "opt-land-" + hit.land);
-    else if (scene.subject === "object") sketchGo("object", "item");
-    else if (scene.subject === "animal") sketchGo("animal", "animal");
+    else if (hit.go) hit.go();
+    // Tło: studio i sezon (najczęstsze przy Manito) od razu z wariantami, inne z podświetlonym kafelkiem
+    else if (scene.subject === "object" && ["studio", "season"].includes(scene.background)) sketchGo("scene", "background", "v:" + scene.background, null, null, "opt-background-" + scene.background);
     else sketchGo("scene", "background", null, "opt-background-" + scene.background);
     return true;
   }
