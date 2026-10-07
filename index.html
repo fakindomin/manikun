@@ -92,6 +92,9 @@
   [data-phase="director"] .combos { opacity: 0; pointer-events: none; }
 
   /* ---------- Nagłówek: menu | MANIKUN | dźwięk ---------- */
+  #saveTop.saved svg path { fill: var(--accent); stroke: var(--accent); }
+  #saveTop.saved { animation: lockPop 360ms var(--ease); }
+  body.tutorial #saveTop { display: none; }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; min-height: 36px; }
   .icon-btn {
     width: 36px; height: 36px; flex: none; display: grid; place-items: center; cursor: pointer;
@@ -748,6 +751,10 @@
     <!-- Prawa strona: "Pomiń" (tylko w tutorialu) i dźwięk (domyślnie wyciszony) -->
     <div class="top-right">
     <button class="chip skip" type="button" id="tutSkip">Pomiń <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M10 6l6 6-6 6 M16 12H5"/></svg></button>
+    <!-- Zapisz scenę (Moje sceny): zakładka jak „zapisz” w Instagramie i Pintereście; po zapisie na chwilę wypełniona -->
+    <button class="icon-btn director-only" type="button" id="saveTop" aria-label="Zapisz scenę w Moich scenach" title="Zapisz scenę">
+      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6.5 4h11v16.5L12 16.6l-5.5 3.9z"/></svg>
+    </button>
     <button class="icon-btn director-only" type="button" id="sound" aria-label="Dźwięk" aria-pressed="false">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="sound-off" d="M16 9.5l5 5M21 9.5l-5 5"/><path class="sound-on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
     </button>
@@ -10165,7 +10172,7 @@
     document.getElementById("scenesSheet").setAttribute("aria-hidden", String(!open));
   }
   async function saveMyScene() {
-    if (!(account && account.user)) { say("Sceny zapisują się na koncie. Zaloguj się przez Google w menu, a potem stuknij Zapisz scenę.", 5500); return; }
+    if (!(account && account.user)) { say("Sceny zapisują się na koncie. Zaloguj się przez Google w menu, a potem stuknij zakładkę u góry.", 5500); return; }
     let d = {};
     try {
       d = await (await fetch("/api/scenes", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scene: sceneSnapshot(), title: shareTitle() }) })).json();
@@ -10173,6 +10180,8 @@
     if (d.error) { say(d.error, 5000); return; }
     sfx("klap");
     showToast("Zapisane w Moich scenach (menu).");
+    const st = document.getElementById("saveTop");
+    st.classList.add("saved"); setTimeout(() => st.classList.remove("saved"), 2200);
   }
   // Miniatura: scena narysowana jak kafelek gotowca (na chwilę podstawiona w miejsce bieżącej)
   function sceneThumb(svg, saved) {
@@ -10190,7 +10199,7 @@
     let d = {};
     try { d = await (await fetch("/api/scenes", { credentials: "same-origin" })).json(); } catch (e) {}
     const list = d.scenes || [];
-    scenesNote.textContent = d.error ? d.error : list.length ? "Stuknij scenę, żeby wrócić do niej i dalej ją zmieniać." : "Nie masz jeszcze zapisanych scen. Ustaw scenę i stuknij kafelek Zapisz scenę.";
+    scenesNote.textContent = d.error ? d.error : list.length ? "Stuknij scenę, żeby wrócić do niej i dalej ją zmieniać." : "Nie masz jeszcze zapisanych scen. Ustaw scenę i stuknij zakładkę u góry ekranu.";
     list.forEach(it => {
       let saved = null;
       try { saved = JSON.parse(it.scene); } catch (e) { return; }
@@ -10210,7 +10219,7 @@
       const head = (it.title || "").split(" · ")[0].split(":")[0].split(",")[0];
       cap.textContent = (head ? head + " · " : "") + when;
       b.appendChild(cap);
-      b.addEventListener("click", () => { restoreScene(it.scene, true); setTimeout(() => say("Scena wróciła. Zmieniaj dalej, a nową wersję zapisz kafelkiem Zapisz scenę.", 5000), 600); });
+      b.addEventListener("click", () => { restoreScene(it.scene, true); setTimeout(() => say("Scena wróciła. Zmieniaj dalej, a nową wersję zapisz zakładką u góry.", 5000), 600); });
       // Usuwanie: pierwsze stuknięcie pyta, drugie usuwa
       const del = document.createElement("button");
       del.type = "button";
@@ -10231,6 +10240,7 @@
     });
   }
   document.getElementById("menuScenes").addEventListener("click", openScenes);
+  document.getElementById("saveTop").addEventListener("click", saveMyScene);
   document.getElementById("scenesClose").addEventListener("click", () => setScenes(false));
   document.getElementById("scenesScrim").addEventListener("click", () => setScenes(false));
 

@@ -738,3 +738,4 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Kafelek **Zapisz scenę** w Swobodzie (obok Losuj) zapisuje całą scenę (`sceneSnapshot`, jak przy udostępnianiu) z krótkim opisem; bez konta Manikun prosi o zalogowanie.
 - Menu › **Moje sceny** (po zalogowaniu): siatka miniatur rysowanych z zapisanej sceny (`sceneThumb`), stuknięcie wczytuje scenę do edycji (`restoreScene`), krzyżyk usuwa (dwa stuknięcia).
 - Serwer: tabela `scenes` (migracja `0010_sceny.sql`), `GET/POST /api/scenes`, `DELETE /api/scenes/<id>`, najwyżej 60 scen na konto, scena do 30 000 znaków.
+- **Zakładka w górnym pasku** (`#saveTop`, obok dźwięku): stały przycisk Zapisz scenę (ikona zakładki, jak „zapisz” w Instagramie i Pintereście), po zapisie na chwilę wypełniona na zielono; ukryta na starcie i w tutorialu. Kafelek Zapisz scenę w Swobodzie zostaje.
