@@ -568,10 +568,10 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 
 ## Regulamin, Polityka prywatności, Polityka zwrotów
 - Strony `/regulamin`, `/prywatnosc`, `/zwroty` (pliki `regulamin.html`, `prywatnosc.html`, `zwroty.html`, wspólny styl `prawne.css`), każda po polsku i angielsku (`#en`); wersja polska rozstrzyga.
-- Usługodawca: Dominik Chróścik, kontakt fakindomin@gmail.com. Kredyty nie wygasają; darmowe 5 na start bez zwrotu; zwrot pełny w 14 dni tylko, gdy z pakietu nie powstało żadne zdjęcie (wariant „a”); nieudane zdjęcia — automatyczny zwrot Kredytów; Paddle jako Merchant of Record.
+- Usługodawca: twórca serwisu, kontakt kontakt@manikun.pl. Kredyty nie wygasają; darmowe 5 na start bez zwrotu; zwrot pełny w 14 dni tylko, gdy z pakietu nie powstało żadne zdjęcie (wariant „a”); nieudane zdjęcia — automatyczny zwrot Kredytów; Paddle jako Merchant of Record.
 - W aplikacji: pozycja menu „Regulamin i prywatność” i notka „Logując się, akceptujesz…” pod „Zrób zdjęcie tutaj” (tylko niezalogowanym).
 - Przy płatnościach (do zrobienia): przed przejściem do Paddle pole zgody **niezaznaczone domyślnie**, przycisk zakupu aktywny dopiero po zaznaczeniu: „Wyrażam zgodę na rozpoczęcie świadczenia usługi przed upływem terminu do odstąpienia od umowy i przyjmuję do wiadomości, że z chwilą wygenerowania pierwszego zdjęcia z pakietu tracę prawo do odstąpienia. Akceptuję Regulamin i Politykę zwrotów.” Zapisać w bazie czas zgody i pokazać ją w potwierdzeniu zakupu.
-- Adres usługodawcy (ul. Husarska 1D/5, 62-020 Kruszewnia) dopisany 4.10.2026. Przed płatnościami: dane na stronach zgodne z kontem Paddle; rozważyć najmniejszy pakiet 10 zł (prowizja Paddle 5% + 0,50 $).
+- Dane usługodawcy (imię, nazwisko, adres) usunięte ze stron 7.10.2026 na prośbę właściciela (bez płatności). Przed płatnościami: dopisać dane zgodne z kontem operatora płatności; rozważyć najmniejszy pakiet 10 zł (prowizja Paddle 5% + 0,50 $).
 
 ## Migracja na manikun.pl
 - Kod gotowy: zmienna `CANONICAL_HOST` (np. `manikun.pl`) przekierowuje strony (/, /regulamin, /prywatnosc, /zwroty) i start logowania z innych adresów (workers.dev, www) na adres główny (301). API działa pod każdym adresem. Bez zmiennej nic się nie zmienia. `run_worker_first` obejmuje te strony, żeby przekierowanie działało.
