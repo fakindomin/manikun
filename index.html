@@ -1208,7 +1208,7 @@
       { id: "hat", name: "Kapelusz", en: "wearing a tiny top hat" }, { id: "scarf", name: "Szalik", en: "wearing a knitted scarf" }] }
   };
   // Kategorie konstruktora (widoczne, gdy Gatunek = Własny) i ich części
-  const BEAST_CATS = { bBody: ["body", "size", "legs", "feet", "legLen"], bHead: ["head", "ears", "horns", "crest"], bFace: ["eyes", "eyeSize", "eyeColor", "pupil", "snout", "teeth", "mouth", "mood"], bTail: ["tail", "wings"], bCoat: ["cover", "color", "color2", "pattern", "extra"] };
+  const BEAST_CATS = { bBody: ["body", "size", "legs", "feet", "legLen"], bHead: ["head", "ears", "horns", "crest", "eyes", "eyeSize", "eyeColor", "pupil", "snout", "teeth", "mouth", "mood"], bTail: ["tail", "wings"], bCoat: ["cover", "color", "color2", "pattern", "extra"] };
   const beastOpt = (k, id) => BEAST[k].opts.find(o => o.id === id) || BEAST[k].opts[0];
   // Część bez znaczenia przy innych wyborach (stopy i długość nóg bez nóg, drugi kolor przy jednolitym)
   const beastPartOn = (r, k) => !((k === "feet" || k === "legLen") && r.legs === "0") && !(k === "color2" && r.pattern === "solid");
@@ -1378,7 +1378,6 @@
     // Konstruktor własnego Manimala: części w grupach (kafelki buduje beastTiles)
     { id: "bBody", label: "Ciało", subjects: ["animal"], patch: "#C98A4E", options: [], when: st => st.animal === "beast" },
     { id: "bHead", label: "Głowa", subjects: ["animal"], patch: "#C9A24A", options: [], when: st => st.animal === "beast" },
-    { id: "bFace", label: "Twarz", subjects: ["animal"], patch: "#BB5695", options: [], when: st => st.animal === "beast" },
     { id: "bTail", label: "Ogon i skrzydła", subjects: ["animal"], patch: "#5E7FA3", options: [], when: st => st.animal === "beast" },
     { id: "bCoat", label: "Pokrycie", subjects: ["animal"], patch: "#7DB896", options: [], when: st => st.animal === "beast" },
     // Ekipa (przy Manikunie): Manimale i Manito zapisane na koncie
@@ -5494,11 +5493,14 @@
     }
   }
   // Miejsce przedmiotu w kadrze: ten sam poziom podłoża co Manikun
+  const BEAST_VIEW = { tiny: 0.45, small: 0.7, medium: 1, large: 1.3, giant: 1.6 };
   function objectPlace(st, W, H) {
     if (st.subject === "animal") {
       // Zwierzę stoi na podłożu, wyśrodkowane; skala z jego rozmiaru (tak, by smok i królik były podobnie duże w kadrze)
       const [x0, x1, h] = petBox(animalIt(st)), far = 1 - 0.42 * droneFar(st), gy = H * 0.86;
-      const s = Math.min(H * 0.4 / h, W * 0.62 / (x1 - x0)) * far, x = W / 2 - (x0 + x1) / 2 * s;
+      // Własny stwór: wielkość (Jak mysz … Olbrzym) zmienia go w kadrze, w granicach kadru
+      const it = animalIt(st), k = it.id === "beast" ? BEAST_VIEW[beastOf(it).size] || 1 : 1;
+      const s = Math.min(H * 0.4 * k / h, W * 0.62 * k / (x1 - x0), H * 0.8 / h, W * 0.94 / (x1 - x0)) * far, x = W / 2 - (x0 + x1) / 2 * s;
       return { x: x + x0 * s, y: gy - h * s, w: (x1 - x0) * s, h: h * s, bottom: gy, gy, s, px: x };
     }
     // Wielkość przedmiotu (Malutki … Wielki) skaluje go na szkicu; podstawa zostaje tej samej wielkości
@@ -5817,7 +5819,6 @@
     // Konstruktor: łapa, głowa z okiem, oko, ogon, kropki sierści
     bBody: svg => { el("ellipse", { cx: 12, cy: 11, rx: 8, ry: 4.5 }, svg); el("path", { d: "M7 15v5 M11 15.5v4.5 M14 15.5v4.5 M17.5 15v5" }, svg); },
     bHead: svg => { el("circle", { cx: 12, cy: 13, r: 6.5 }, svg); el("path", { d: "M7.5 8.5 L6 3 L10.5 6.8 M16.5 8.5 L18 3 L13.5 6.8" }, svg); },
-    bFace: svg => { el("ellipse", { cx: 12, cy: 12, rx: 8, ry: 5 }, svg); el("circle", { cx: 12, cy: 12, r: 2.4, style: "fill:currentColor" }, svg); },
     bTail: svg => { el("path", { d: "M4 18 Q14 18 15 10 Q16 4 21 5" }, svg); el("path", { d: "M8 12 Q6 5 12 3 Q11 8 14 9", class: "thin" }, svg); },
     bCoat: svg => { el("circle", { cx: 12, cy: 12, r: 8.5 }, svg); [[9, 9], [15, 10], [11, 15], [16, 15]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.3, style: "fill:currentColor" }, svg)); },
     crew: svg => { el("circle", { cx: 8, cy: 8, r: 3 }, svg); el("circle", { cx: 16.5, cy: 9.5, r: 2.4 }, svg); el("path", { d: "M2.5 19.5a5.5 5.5 0 0 1 11 0 M13 19.5a4 4 0 0 1 8.5 0" }, svg); },
@@ -6215,7 +6216,7 @@
     body: ["body"], traits: ["traits"], look: ["look"], outfit: ["outfit", "wear", "wc", "wcPicked"], pose: ["pose"], arms: ["arms"], turn: ["turn"],
     things: ["things"], pets: ["things"], items: ["items"], thingColor: ["things"],
     item: ["item", "prod", "itemOpt", "itemColor", "itemMem"], pShape: ["prod"], pMat: ["prod"], pDetail: ["prod"], itemColor: ["itemColor"], base: ["base"],
-    animal: ["animal", "beast", "animalCoat"], bBody: ["beast"], bHead: ["beast"], bFace: ["beast"], bTail: ["beast"], bCoat: ["beast"], animalPose: ["animalPose"], animalCoat: ["animalCoat"],
+    animal: ["animal", "beast", "animalCoat"], bBody: ["beast"], bHead: ["beast"], bTail: ["beast"], bCoat: ["beast"], animalPose: ["animalPose"], animalCoat: ["animalCoat"],
     lLand: ["background", "land"], lAir: ["background", "land", "time"], lLook: ["background", "land"],
     background: ["background", "bgv", "bga", "land"], fx: ["fx"], time: ["time"], light: ["light", "lightZone"],
     shot: ["shot"], camera: ["camera"], format: ["format"], motion: ["motion"], style: ["style"]
@@ -6459,9 +6460,11 @@
   // Konstruktor Manimala: kafelki części (grupa → warianty); miniatura to stworek z tą częścią
   const beastNow = () => beastOf({ beast: scene.beast });
   const beastThumb = (svg, patch = {}, zoom = null) => petThumb(svg, { ...animalIt(), beast: { ...beastNow(), ...patch } }, zoom);
-  const BEAST_ZOOM = { bHead: "head", bFace: "face" };
+  const BEAST_ZOOM = { bHead: "head" };
+  // Części pyska (oczy, nos, zęby, mina) pokazują miniaturę z bliska; reszta głowy z dalszego planu
+  const BEAST_FACE = ["eyes", "eyeSize", "eyeColor", "pupil", "snout", "teeth", "mouth", "mood"];
   function beastTiles(catId) {
-    const sub = scene.sub, zoom = k => k === "pattern" || k === "color" || k === "color2" ? null : BEAST_ZOOM[catId] || null;
+    const sub = scene.sub, zoom = k => k === "pattern" || k === "color" || k === "color2" ? null : BEAST_FACE.includes(k) ? "face" : BEAST_ZOOM[catId] || null;
     const set = (k, id) => { scene.beast = { ...beastNow(), [k]: id }; render(); };
     if (sub && BEAST[sub]) return [backTile(null)].concat(BEAST[sub].opts.map(o => tile("opt-beast-" + sub + "-" + o.id, o.name, () => beastNow()[sub] === o.id, () => set(sub, o.id),
       sub === "eyeColor" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, o.hex); } : svg => beastThumb(svg, { [sub]: o.id }, zoom(sub)))));
@@ -6519,7 +6522,7 @@
   function beastCross() {
     const ids = Object.keys(BEAST_FROM), a = anyOf(ids), b = anyOf(ids.filter(x => x !== a));
     const ra = beastFrom(a, anyOf(Object.keys(BEAST_FROM[a].coats))), rb = beastFrom(b, anyOf(Object.keys(BEAST_FROM[b].coats))), out = { ...ra, from: null };
-    BEAST_CATS.bHead.concat(BEAST_CATS.bFace).forEach(k => { out[k] = rb[k]; });
+    BEAST_CATS.bHead.forEach(k => { out[k] = rb[k]; });
     out.tail = anyOf([ra.tail, rb.tail]); out.wings = anyOf([ra.wings, rb.wings]);
     return out;
   }
@@ -6975,7 +6978,7 @@
     { id: "stuff", label: "Rzeczy", cats: ["crew", "things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Manito", cats: ["item", "base"], subjects: ["object"], icon: "item" },
     { id: "place", label: "Manitam", cats: ["lLand", "lAir", "lLook"], subjects: ["place"], icon: "lLand" },
-    { id: "animal", label: "Manimal", cats: ["animal", "bBody", "bHead", "bFace", "bTail", "bCoat", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
+    { id: "animal", label: "Manimal", cats: ["animal", "bBody", "bHead", "bTail", "bCoat", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
     { id: "scene", label: "Scena", cats: ["background", "fx", "time", "light"], icon: "background" },
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
     { id: "style", label: "Styl", cat: "style", icon: "style" },
@@ -7063,8 +7066,8 @@
     { id: "bmFeet", subj: "animal", say: "Na czym chodzi?", cat: "bBody", sub: "feet", when: () => beastNow().legs !== "0" },
     { id: "bmEars", subj: "animal", say: "Jakie uszy?", cat: "bHead", sub: "ears" },
     { id: "bmHorns", subj: "animal", say: "Rogi?", cat: "bHead", sub: "horns" },
-    { id: "bmEyes", subj: "animal", say: "Ile oczu?", cat: "bFace", sub: "eyes" },
-    { id: "bmSnout", subj: "animal", say: "Jaki pysk?", cat: "bFace", sub: "snout" },
+    { id: "bmEyes", subj: "animal", say: "Ile oczu?", cat: "bHead", sub: "eyes" },
+    { id: "bmSnout", subj: "animal", say: "Jaki pysk?", cat: "bHead", sub: "snout" },
     { id: "bmTail", subj: "animal", say: "Jaki ogon?", cat: "bTail", sub: "tail" },
     { id: "bmWings", subj: "animal", say: "Skrzydła?", cat: "bTail", sub: "wings" },
     { id: "bmCover", subj: "animal", say: "Czym jest pokryty?", cat: "bCoat", sub: "cover" },
@@ -9268,7 +9271,7 @@
   function zoomPts(G, part, W, H) {
     if (scene.subject === "animal" || scene.subject === "object") {
       const ob = objectPlace(scene, W, H);
-      if (scene.subject === "animal" && scene.animal === "beast" && (part === "bHead" || part === "bFace")) {
+      if (scene.subject === "animal" && scene.animal === "beast" && part === "bHead") {
         const g = beastGeom(beastOf(animalIt(scene)), petPose(animalIt(scene)).id), [hx, hy] = g.head, r = Math.max(g.hrx, g.hry) * 1.7;
         return [[ob.px + (hx - r) * ob.s, ob.gy - (hy + r) * ob.s], [ob.px + (hx + r) * ob.s, ob.gy - (hy - r) * ob.s]];
       }
@@ -9378,7 +9381,6 @@
       const g = beastGeom(beastOf(it), petPose(it).id);
       // Głowa: czubek (uszy, rogi), twarz: pysk z przodu; rozsunięte, żeby małą głowę dało się trafić
       out.push({ id: "bHead", at: P([g.head[0] - g.hrx * 0.35, g.head[1] + g.hry * 1.05]), go: () => { sketchGo("animal", "bHead"); zoomTo("bHead", "bHead", "animal"); } });
-      out.push({ id: "bFace", at: P([g.head[0] + g.hrx * 1.05, g.head[1] - g.hry * 0.35]), go: () => { sketchGo("animal", "bFace"); zoomTo("bFace", "bFace", "animal"); } });
       out.push({ id: "bBody", at: P(g.bp(0.05, 0.35)), go: () => { sketchGo("animal", "bBody"); zoomTo("bBody", "bBody", "animal"); } });
       out.push({ id: "bCoat", at: P(g.bp(-0.3, -0.35)), go: () => { sketchGo("animal", "bCoat"); zoomTo("bCoat", "bCoat", "animal"); } });
       out.push({ id: "bTail", at: P(g.bp(-1.05, 0.25)), go: () => { sketchGo("animal", "bTail"); zoomTo("bTail", "bTail", "animal"); } });

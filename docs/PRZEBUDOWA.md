@@ -759,3 +759,9 @@ Szkic przedmiotu rysuje się według wybranych opcji (`itemParts`): rodzaj butel
 `TIPS` to reguły sprawdzane po każdej zmianie sceny (`adviseTips` w `sceneChanged`). Każda reguła ma warunek i poziom: 1 to ważne (błąd w scenie), 2 to zwykła rada, 3 to gaduła (ciekawostki i pochwały). Reguła odzywa się raz na sesję, w chwili gdy jej warunek staje się prawdziwy. Rady nie pojawiają się w Kreatorze ani w tutorialu. Między radami jest przerwa: 9 s, a w trybie Gaduła 6 s. Po 15 zmianach bez otwarcia Maniscryptu Manikun przypomina o kopiowaniu.
 
 Gadatliwość ustawia się w panelu, w sekcji Ustawienia, pozycją „Podpowiedzi”. Do wyboru są Cicho (tylko ważne), Normalnie i Gaduła. Wybór zapisuje się w `localStorage` pod kluczem `manikun-tips`. Później reguły może uzupełnić AI.
+
+## Manimal: jedna kategoria Głowa, wielkość na szkicu
+
+Kategorię „Twarz” własnego stwora połączono z kategorią „Głowa”. Głowa ma teraz kształt, uszy, rogi, grzebień, oczy, nos, zęby, pysk i minę. Miniatury części pyska pokazują zbliżenie (`BEAST_FACE`). Na szkicu jest jeden punkt głowy, a pytania Kreatora o oczy i pysk prowadzą do Głowy.
+
+Wielkość stwora (od „Jak mysz” do „Olbrzym”) zmienia jego rozmiar na szkicu (`BEAST_VIEW` w `objectPlace`), ale nie bardziej, niż pozwala kadr.
