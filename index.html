@@ -3090,7 +3090,7 @@
     // Manito z ekipy: ten sam rysunek co w trybie Manito, w skali drobiazgu na blacie
     if (it.manito && ITEMS[it.manito.item]) {
       const hex = it.manito.color && it.manito.color !== "auto" && colorOf(it.manito.color) ? colorOf(it.manito.color).hex : ITEMS[it.manito.item].color;
-      drawItem(g, el("defs", {}, g), it.manito.item, x, y, s * ITEM_SCALE * 0.16, hex, it.manito.prod ? prodOf({ prod: it.manito.prod }) : null);
+      drawItem(g, el("defs", {}, g), it.manito.item, x, y, s * ITEM_SCALE * 0.16, hex, it.manito.prod ? prodOf({ prod: it.manito.prod }) : null, it.manito.opt || null);
       return;
     }
     if (info.sign) { drawSign(g, info.name, info.kind, x, y, s); return; }
@@ -5255,7 +5255,15 @@
   };
   // Własne bez wybranego koloru: naturalny kolor materiału (drewno, metal, szkło…), inaczej biały
   const MAT_HEX = { wood: "#B88A5A", metal: "#A8ADB3", chrome: "#C9CDD2", cardboard: "#C8A57A", stone: "#8D8A85", concrete: "#A3A09A", glass: "#CFE3EA", frosted: "#E4ECEE", leather: "#7A4A2E" };
-  const itemHex = (st = scene) => st.itemColor !== "auto" ? colorOf(st.itemColor).hex : st.item === "own" ? MAT_HEX[prodOf(st).material] || ITEMS.own.color : ITEMS[st.item].color;
+  // Domyślny kolor zależy też od rodzaju: piwo brązowe, woda błękitna, bursztynowe szkło…
+  const NATURAL_HEX = { "bottle:beer": "#6E4220", "bottle:water": "#BFD8E4", "bottle:oil": "#6E7A2E", "bottle:spirit": "#8A5A2E", "serum:amber": "#B8742A", "serum:clear": "#DDE8EC", "mug:glass": "#DDE8EC", "mug:enamel": "#F0EEE8", "watch:metal": "#A8ADB3", "bag:canvas": "#C9B48E", "phone:back": "#2B2C30" };
+  const itemHex = (st = scene) => {
+    if (st.itemColor !== "auto") return colorOf(st.itemColor).hex;
+    if (st.item === "own") return MAT_HEX[prodOf(st).material] || ITEMS.own.color;
+    const o = itemOptOf(st);
+    for (const k of Object.keys(o)) { const h = NATURAL_HEX[st.item + ":" + o[k]]; if (h) return h; }
+    return ITEMS[st.item].color;
+  };
   // ---------- Manito: własne menu każdego przedmiotu (kolor, wielkość, opcje); każdy przedmiot pamięta swoje ustawienia ----------
   // Opcja: { id, name, en } – en trafia do opisu (pierwsza opcja domyślna). Kolor przedmiotu to scene.itemColor, opcje scene.itemOpt,
   // a ustawienia przedmiotów odłożonych na bok scene.itemMem[id] = { color, opt }. Własny ma bryłę w scene.prod (PROD).
@@ -5311,24 +5319,149 @@
   }
   // Losowe opcje przedmiotu: wielkość zwykle naturalna
   const randomItemOpt = item => Object.fromEntries(ioKeys(item).map(k => [k, k === "size" && Math.random() < 0.7 ? "auto" : anyOf(ioDef(item, k).opts).id]));
+  // Rysunek zwykłego przedmiotu zgodny z jego opcjami (rodzaj, zamknięcie, etykieta, zawartość, pasek…).
+  // Części jak w ITEMS: [ścieżka, klasa wypełnienia, transform?] w polu 100×100 (dół = 100, środek x = 50).
+  const cP = (x, y, r) => `M${x - r} ${y} A${r} ${r} 0 1 0 ${x + r} ${y} A${r} ${r} 0 1 0 ${x - r} ${y} Z`;
+  function itemParts(kind, o) {
+    const P = [];
+    if (kind === "bottle") {
+      const B = {
+        wine: ["M39 100 Q37 100 37 96 L37 52 Q37 42 46 36 L46 14 L54 14 L54 36 Q63 42 63 52 L63 96 Q63 100 61 100 Z", 46, 54, 14, [39, 60, 61, 84]],
+        beer: ["M38 100 Q36 100 36 96 L36 62 Q36 50 45 44 L45 24 L55 24 L55 44 Q64 50 64 62 L64 96 Q64 100 62 100 Z", 45, 55, 24, [38, 66, 62, 86]],
+        oil: ["M36 100 L36 48 Q36 42 44 38 L46 20 L54 20 L56 38 Q64 42 64 48 L64 100 Z", 46, 54, 20, [38, 58, 62, 86]],
+        water: ["M33 100 Q31 100 31 96 L31 42 Q31 32 44 28 L44 20 L56 20 L56 28 Q69 32 69 42 L69 96 Q69 100 67 100 Z", 44, 56, 20, [33, 66, 67, 84]],
+        spirit: ["M32 100 Q30 100 30 96 L30 68 Q30 60 44 56 L44 42 L56 42 L56 56 Q70 60 70 68 L70 96 Q70 100 68 100 Z", 44, 56, 42, [34, 72, 66, 90]]
+      }[o.kind] || null;
+      if (!B) return null;
+      const [d, x0, x1, top, [lx0, ly0, lx1, ly1]] = B;
+      P.push([d, "main"]);
+      if (o.kind === "water") P.push([`M31 54 L69 54 M31 60 L69 60 M31 90 L69 90`, "lineL"]);
+      const cx = (x0 + x1) / 2;
+      if (o.cap === "cork") P.push([`M${x0 + 1} ${top - 9} L${x1 - 1} ${top - 9} L${x1 - 1} ${top + 2} L${x0 + 1} ${top + 2} Z`, "cork"]);
+      else if (o.cap === "swing") P.push([`M${x0} ${top - 5} L${x1} ${top - 5} L${x1} ${top + 1} L${x0} ${top + 1} Z`, "white"], [`M${x0 - 2} ${top + 6} L${cx} ${top - 6} L${x1 + 2} ${top + 6}`, "line"]);
+      else if (o.cap === "wax") P.push([`M${x0 - 1} ${top - 6} L${x1 + 1} ${top - 6} L${x1 + 1} ${top + 9} Q${x1 - 1} ${top + 13} ${x1 - 3} ${top + 8} Q${cx} ${top + 14} ${x0 + 2} ${top + 9} L${x0 - 1} ${top + 11} Z`, "red"]);
+      else P.push([`M${x0 - 1} ${top - 8} L${x1 + 1} ${top - 8} L${x1 + 1} ${top + 2} L${x0 - 1} ${top + 2} Z`, "dark"]);
+      if (o.label === "blank") P.push([`M${lx0} ${ly0} L${lx1} ${ly0} L${lx1} ${ly1} L${lx0} ${ly1} Z`, "white"]);
+      else if (o.label === "logo") P.push([cP(50, (ly0 + ly1) / 2, 7), "white"]);
+      return P;
+    }
+    if (kind === "serum") {
+      const label = (x0, y0, x1, y1) => o.label === "minimal" ? [[`M${x0} ${y0} L${x1} ${y0} L${x1} ${y1} L${x0} ${y1} Z`, "white"]] : o.label === "logo" ? [[cP((x0 + x1) / 2, (y0 + y1) / 2, 5), "white"]] : [];
+      if (o.kind === "pump") P.push(["M36 100 Q34 100 34 96 L34 50 Q34 44 40 44 L60 44 Q66 44 66 50 L66 96 Q66 100 64 100 Z", "main"], ["M44 36 L56 36 L56 44 L44 44 Z", "dark"],
+        ["M47 24 L53 24 L53 36 L47 36 Z", "dark"], ["M42 19 L58 19 L58 25 L42 25 Z", "dark"], ["M58 20 L66 20 L66 23 L58 23 Z", "dark"], ...label(40, 62, 60, 84));
+      else if (o.kind === "spray") P.push(["M30 100 L30 64 Q30 56 38 56 L62 56 Q70 56 70 64 L70 100 Z", "main"], ["M45 48 L55 48 L55 56 L45 56 Z", "metal"],
+        ["M40 30 L60 30 L60 48 L40 48 Z", "dark"], ...label(38, 70, 62, 88));
+      else if (o.kind === "jar") P.push(["M24 100 Q22 100 22 96 L22 72 L78 72 L78 96 Q78 100 76 100 Z", "main"], ["M20 60 L80 60 L80 72 L20 72 Z", "dark"], ...label(34, 78, 66, 94));
+      else if (o.kind === "tube") P.push(["M34 28 L66 28 L60 84 L40 84 Z", "main"], ["M33 24 L67 24 L67 30 L33 30 Z", "dark"], ["M41 84 L59 84 L59 100 L41 100 Z", "dark"], ...label(40, 44, 60, 66));
+      else P.push(...ITEMS.serum.parts.slice(0, 3), ...label(40, 64, 60, 84));
+      return P;
+    }
+    if (kind === "mug") {
+      P.push(["M66 56 Q86 56 86 72 Q86 88 66 88 L66 80 Q78 80 78 72 Q78 64 66 64 Z", "main"], ["M26 44 L68 44 L68 94 Q68 100 62 100 L32 100 Q26 100 26 94 Z", "main"]);
+      if (o.material === "stoneware") P.push([[30, 56], [44, 66], [58, 54], [36, 80], [52, 88], [62, 74], [40, 92]].map(([x, y]) => cP(x, y, 1)).join(" "), "dark");
+      P.push([`M26 44 A21 4 0 1 0 68 44 A21 4 0 1 0 26 44 Z`, o.content === "coffee" || o.content === "cocoa" ? "brown" : o.content === "tea" ? "gold" : "dark"]);
+      if (o.material === "enamel") P.push(["M26 44 L68 44 L68 48 L26 48 Z", "dark"]);
+      if (o.content === "coffee") P.push(["M47 44 Q42 40 45 38 Q47 37 47 40 Q47 37 49 38 Q52 40 47 44 Z", "white"]);
+      if (o.content === "cocoa") P.push([cP(38, 43, 2.5) + " " + cP(48, 42, 2.5) + " " + cP(57, 43, 2.5), "white"]);
+      if (o.content === "tea" || o.content === "coffee" || o.content === "cocoa") P.push(["M38 34 Q34 26 40 18 M50 34 Q46 24 52 14 M60 34 Q56 26 62 20", "lineL"]);
+      return P;
+    }
+    if (kind === "sneaker") {
+      const S = {
+        running: ["M10 90 L10 76 Q12 68 22 66 L42 60 Q50 46 62 52 L72 64 Q88 68 92 80 L92 90 Z", "M46 60 L52 70 M54 56 L60 66"],
+        high: ["M12 90 L12 72 Q14 64 24 62 L36 58 L38 34 Q50 28 62 34 L64 58 Q88 64 92 78 L92 90 Z", "M44 40 L56 44 M44 48 L56 52 M46 56 L58 60"],
+        low: ["M10 90 L10 80 Q14 74 26 72 L46 68 Q56 60 66 64 L76 70 Q90 74 92 82 L92 90 Z", "M50 66 L54 72 M58 64 L62 70"],
+        retro: ["M10 90 L10 76 Q12 68 22 66 L42 60 Q50 46 62 52 L72 64 Q88 68 92 80 L92 90 Z", "M46 60 L52 70 M54 56 L60 66"],
+        boot: ["M18 90 L18 40 Q18 34 26 34 L50 34 Q56 34 56 40 L56 62 Q84 66 90 80 L90 90 Z", "M40 40 L52 44 M40 48 L52 52"]
+      }[o.kind] || null;
+      if (!S) return null;
+      const shoe = tr => {
+        const out = [[S[0], "main", tr], ["M8 88 L94 88 L94 100 L8 100 Z", o.kind === "boot" ? "brown" : "sole", tr]];
+        if (o.kind === "retro") out.push(["M28 84 L56 66 M36 86 L64 68", "stripe", tr]);
+        if (o.laces !== "none") out.push([S[1], o.laces === "white" ? "lineL" : "line", tr]);
+        return out;
+      };
+      if (o.view === "pair") P.push(...shoe("translate(12 -10) scale(0.88)"));
+      P.push(...shoe());
+      return P;
+    }
+    if (kind === "watch") {
+      const strap = o.strap === "metal" ? "metal" : "main";
+      P.push(["M40 22 L60 22 L60 100 L40 100 Z", strap]);
+      if (o.strap === "metal") P.push(["M40 30 L60 30 M40 38 L60 38 M40 82 L60 82 M40 90 L60 90", "line"]);
+      if (o.strap === "rubber") P.push([cP(50, 88, 1.4) + " " + cP(50, 94, 1.4), "dark"]);
+      if (o.strap === "fabric") P.push(["M44 22 L44 100 M50 22 L50 100 M56 22 L56 100", "lineL"]);
+      const darkDial = o.dial === "black" || o.dial === "blue" || o.dial === "green";
+      if (o.kind === "smart") P.push(["M32 38 L68 38 Q73 38 73 43 L73 75 Q73 80 68 80 L32 80 Q27 80 27 75 L27 43 Q27 38 32 38 Z", "metal"], ["M32 43 L68 43 L68 75 L32 75 Z", "screenOn"], ["M38 56 L50 56 M38 62 L58 62", "lineL"]);
+      else if (o.kind === "diver") P.push([cP(50, 58, 24), "metal"], [cP(50, 58, 20), "dark"], [cP(50, 58, 15), "dial"], ["M50 58 L50 47 M50 58 L58 62", darkDial ? "lineL" : "line"]);
+      else P.push([cP(50, 58, 22), "metal"], [cP(50, 58, 17), "dial"], ["M50 58 L50 46 M50 58 L58 62", darkDial ? "lineL" : "line"]);
+      return P;
+    }
+    if (kind === "bag") {
+      const quilt = o.material === "quilted" ? (x0, y0, x1, y1) => [[`M${x0} ${y0} L${x1} ${y1} M${(x0 + x1) / 2} ${y0} L${x1} ${(y0 + y1) / 2} M${x0} ${(y0 + y1) / 2} L${(x0 + x1) / 2} ${y1} M${x1} ${y0} L${x0} ${y1} M${(x0 + x1) / 2} ${y0} L${x0} ${(y0 + y1) / 2} M${x1} ${(y0 + y1) / 2} L${(x0 + x1) / 2} ${y1}`, "lineL"]] : () => [];
+      if (o.kind === "tote") P.push(["M32 50 Q32 20 44 20 L44 25 Q37 25 37 50 Z", "dark"], ["M68 50 Q68 20 56 20 L56 25 Q63 25 63 50 Z", "dark"], ["M20 100 L24 50 L76 50 L80 100 Z", "main"], ...quilt(24, 54, 76, 98));
+      else if (o.kind === "backpack") P.push(["M26 96 Q24 100 30 100 L70 100 Q76 100 74 96 L74 46 Q74 26 50 26 Q26 26 26 46 Z", "main"], ["M44 27 Q50 16 56 27", "line"],
+        ["M34 70 L66 70 L66 92 L34 92 Z", "dark"], ["M26 50 L74 50", "line"], ...quilt(30, 34, 70, 66));
+      else if (o.kind === "clutch") P.push(["M14 100 L14 68 L86 68 L86 100 Z", "main"], ["M14 68 L86 68 L50 88 Z", "dark"], ["M46 84 L54 84 L54 90 L46 90 Z", "metal"], ...quilt(16, 90, 84, 99));
+      else if (o.kind === "cross") P.push(["M28 60 L50 8 L72 60", "line"], ["M24 100 L24 64 Q24 58 30 58 L70 58 Q76 58 76 64 L76 100 Z", "main"],
+        ["M24 64 Q24 58 30 58 L70 58 Q76 58 76 64 L76 78 L24 78 Z", "dark"], ["M47 74 L53 74 L53 80 L47 80 Z", "metal"], ...quilt(26, 80, 74, 98));
+      else P.push(...ITEMS.bag.parts, ...quilt(28, 70, 72, 98));
+      return P;
+    }
+    if (kind === "phone") {
+      if (o.case === "case") P.push(["M33 102 Q28 102 28 97 L28 25 Q28 20 33 20 L67 20 Q72 20 72 25 L72 97 Q72 102 67 102 Z", "dark"]);
+      P.push(["M36 100 Q32 100 32 96 L32 28 Q32 24 36 24 L64 24 Q68 24 68 28 L68 96 Q68 100 64 100 Z", "main"]);
+      if (o.view === "back") P.push(["M38 30 L52 30 Q56 30 56 34 L56 48 Q56 52 52 52 L38 52 Q34 52 34 48 L34 34 Q34 30 38 30 Z", "dark"], [cP(41, 37, 3.2) + " " + cP(49, 45, 3.2), "screen"], [cP(50, 76, 4), "light"]);
+      else P.push(["M36 30 L64 30 L64 92 L36 92 Z", o.view === "on" ? "screenOn" : "screen"], ...(o.view === "on" ? [["M40 38 L52 38 M40 44 L60 44 M40 50 L56 50", "lineL"]] : []), [cP(50, 27, 1.5), "dark"]);
+      if (o.case === "stand") P.push(["M36 100 L42 92 L58 92 L64 100 Z", "metal"]);
+      return P;
+    }
+    if (kind === "food") {
+      P.push(["M10 94 Q10 88 50 88 Q90 88 90 94 Q90 100 50 100 Q10 100 10 94 Z", "main"]);
+      const D = {
+        gourmet: () => ITEMS.food.parts.slice(1),
+        burger: () => [["M28 88 Q28 80 50 80 Q72 80 72 88 Z", "food"], ["M26 80 L74 80 L74 73 L26 73 Z", "brown"], ["M24 74 Q36 67 50 71 Q64 67 76 74 Z", "green"],
+          ["M27 70 Q27 50 50 50 Q73 50 73 70 Z", "food"], [cP(42, 58, 1.2) + " " + cP(52, 55, 1.2) + " " + cP(60, 61, 1.2), "white"]],
+        pasta: () => [["M24 90 Q28 70 50 68 Q72 70 76 90 Z", "cream"], ["M30 84 Q40 76 48 84 Q56 76 66 84 M34 78 Q44 72 54 78", "line"], ["M40 74 Q50 66 60 74 Q52 80 40 74 Z", "red"], [cP(52, 70, 2.4), "green"]],
+        salad: () => [["M22 90 Q24 66 50 64 Q76 66 78 90 Z", "green"], ["M30 80 Q38 70 46 80 M52 76 Q60 66 68 78", "lineL"], [cP(40, 74, 3.5) + " " + cP(60, 80, 3.5), "red"], [cP(52, 70, 2.5), "gold"]],
+        dessert: () => [["M28 90 L72 90 L72 62 L28 76 Z", "cream"], ["M28 83 L72 76 M28 88 L72 83", "brown"], [cP(64, 60, 4), "red"]],
+        sushi: () => [30, 50, 70].flatMap(x => [[`M${x - 9} 90 Q${x - 9} 79 ${x} 79 Q${x + 9} 79 ${x + 9} 90 Z`, "white"], [`M${x - 10} 82 Q${x} 72 ${x + 10} 82 Z`, "salmon"]]),
+        breakfast: () => [["M24 90 Q18 76 32 74 Q42 66 50 78 Q56 88 40 90 Z", "white"], [cP(37, 80, 5), "gold"], ["M58 90 L58 70 Q58 62 66 62 L72 62 Q80 62 80 70 L80 90 Z", "food"]]
+      }[o.dish];
+      if (!D) return null;
+      P.push(...D());
+      if (o.garnish === "herbs") P.push([cP(44, 66, 1.6) + " " + cP(56, 64, 1.6) + " " + cP(50, 62, 1.6), "green"]);
+      if (o.garnish === "sauce") P.push(["M30 92 Q40 86 50 92 Q60 98 70 92", "brown"]);
+      if (o.garnish === "flowers") P.push([cP(42, 64, 2.4) + " " + cP(58, 66, 2.4), "pink"], [cP(42, 64, 0.9) + " " + cP(58, 66, 0.9), "gold"]);
+      return P;
+    }
+    return null;
+  }
   let itemSeq = 0;
   // Rysuje przedmiot: środek podstawy w (x, yBottom), skala s px na jednostkę
-  function drawItem(parent, defs, kind, x, yBottom, s, color, prod = null) {
+  function drawItem(parent, defs, kind, x, yBottom, s, color, prod = null, opt = null) {
     const g = el("g", { transform: `translate(${f(x - 50 * s)} ${f(yBottom - 100 * s)}) scale(${f(s)})` }, parent);
     const id = "itm" + (++itemSeq);
     const lg = el("linearGradient", { id, x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
     [[0, shadeHex(color, -0.28)], [0.35, shadeHex(color, 0.18)], [0.7, color], [1, shadeHex(color, -0.35)]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lg));
     const FILL = { main: flatDraw ? color : `url(#${id})`, dark: shadeHex(color, -0.45), light: shadeHex(color, 0.35), sole: "#EDEAE3", metal: "#BFC3C8",
-      face: "#F1EFEA", screen: "#15161A", food: "#B8743C", green: "#6E8B4A", red: "#B3262E", cork: "#B88A5A" };
+      face: "#F1EFEA", screen: "#15161A", food: "#B8743C", green: "#6E8B4A", red: "#B3262E", cork: "#B88A5A",
+      white: "#F4F2EC", brown: "#6B4428", gold: "#E2B23A", salmon: "#F08A5D", cream: "#E9D7B5", pink: "#E88AAE", screenOn: "#3E6FB8",
+      dial: { white: "#F1EFEA", black: "#1E1F23", blue: "#2E4F8A", green: "#2F5E46" }[opt && opt.dial] || "#F1EFEA" };
     const pr = kind === "own" ? prod || prodNow() : null;
     if (pr) FILL.accent = (colorOf(pr.color2) || COLORS[0]).hex;
     // Szkło prześwituje, chrom i metal mają mocniejszy połysk
     const see = pr && (pr.material === "glass" || pr.material === "frosted") ? (pr.material === "glass" ? 0.45 : 0.7) : 1;
-    (pr ? prodParts(pr) : ITEMS[kind].parts).forEach(([d, kindOf]) => {
+    // Zwykły przedmiot: rysunek z jego opcji; szkło i plastik prześwitują
+    const io = !pr && opt ? opt : null;
+    const seeIo = io ? ({ clear: 0.55, frosted: 0.8 }[io.glass] || (kind === "mug" && io.material === "glass" ? 0.5 : kind === "bottle" && io.kind === "water" ? 0.7 : 1)) : 1;
+    (pr ? prodParts(pr) : (io && itemParts(kind, io)) || ITEMS[kind].parts).forEach(([d, kindOf, tr]) => {
       const style = kindOf === "line" ? "fill:none;stroke:#2A2622;stroke-width:1.4"
+        : kindOf === "lineL" ? "fill:none;stroke:#E4E6EA;stroke-width:1.4;opacity:0.85"
+        : kindOf === "stripe" ? "fill:none;stroke:#F4F2EC;stroke-width:3.2;stroke-linecap:round"
         : kindOf === "thick" ? `fill:none;stroke:${FILL.accent || "#2A2622"};stroke-width:3.2;stroke-linecap:round`
-        : `fill:${FILL[kindOf]};stroke:#2A2622;stroke-width:1.2` + (kindOf === "light" ? ";fill-opacity:0.55" : kindOf === "main" && see < 1 ? `;fill-opacity:${see}` : "");
-      el("path", { d, style }, g);
+        : `fill:${FILL[kindOf]};stroke:#2A2622;stroke-width:1.2` + (kindOf === "light" ? ";fill-opacity:0.55" : kindOf === "main" && Math.min(see, seeIo) < 1 ? `;fill-opacity:${Math.min(see, seeIo)}` : "");
+      el("path", tr ? { d, style, transform: tr } : { d, style }, g);
     });
   }
   // Wysokość podstawy nad podłożem (ułamek H) i jej rysunek; przedmiot stoi na jej górze
@@ -5558,7 +5691,7 @@
         drawThing(og, st.animal, ob.px, ob.gy, ob.s, petCoat(animalIt(st)).hex, animalIt(st));
       } else {
         drawBase(og, st.base, W, H, ob.gy, u, false);
-        drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st), prodOf(st));
+        drawItem(og, defs, st.item, W / 2, ob.bottom, ob.s, itemHex(st), prodOf(st), itemOptOf(st));
         drawBase(og, st.base, W, H, ob.gy, u, true);
       }
     }
@@ -6569,7 +6702,7 @@
   function itemThumb(svg, st, s = 1) {
     svg.setAttribute("viewBox", "-6 -8 112 112");
     el("line", { x1: -6, y1: 100, x2: 106, y2: 100, class: "thin" }, svg);
-    drawItem(svg, el("defs", {}, svg), st.item, 50, 100, s, itemHex(st), st.item === "own" ? prodOf(st) : null);
+    drawItem(svg, el("defs", {}, svg), st.item, 50, 100, s, itemHex(st), st.item === "own" ? prodOf(st) : null, itemOptOf(st));
   }
   // Ustawienia przedmiotu: Własny – kolor i części bryły (PROD), inne – kolor, wielkość i ich opcje
   const itemSetKeys = () => scene.item === "own" ? ["color", ...Object.keys(PROD).filter(k => prodPartOn(prodNow(), k))] : ["color", ...ioKeys(scene.item)];
