@@ -749,3 +749,13 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Wielkość skaluje przedmiot na szkicu (`SIZE_K`, `itemK` w `objectPlace`), podstawa zostaje tej samej wielkości.
 - Kreator: przedmiot, potem jego ustawienia (Własny: kształt, proporcje, wielkość, materiał…; inne: rodzaj, w Ekspercie pozostałe opcje i wielkość), kolor, podstawa.
 - Ekipa: Manito zapisuje też opcje (`opt`), a opis w scenie Manikuna jest pełny (np. „a classic wristwatch with a red leather strap and a white dial”).
+
+## Manito: rysunki zgodne z wyglądem
+
+Szkic przedmiotu rysuje się według wybranych opcji (`itemParts`): rodzaj butelki, zamknięcie, pipeta, pompka albo atomizer, zawartość kubka, rodzaj buta i para, pasek i tarcza zegarka, ekran telefonu, danie. Szkło przezroczyste i matowe prześwituje, a zawartość ma naturalny kolor (`NATURAL_HEX`), dopóki nie wybierze się innego.
+
+## Rady Manikuna i gadatliwość
+
+`TIPS` to reguły sprawdzane po każdej zmianie sceny (`adviseTips` w `sceneChanged`). Każda reguła ma warunek i poziom: 1 to ważne (błąd w scenie), 2 to zwykła rada, 3 to gaduła (ciekawostki i pochwały). Reguła odzywa się raz na sesję, w chwili gdy jej warunek staje się prawdziwy. Rady nie pojawiają się w Kreatorze ani w tutorialu. Między radami jest przerwa: 9 s, a w trybie Gaduła 6 s. Po 15 zmianach bez otwarcia Maniscryptu Manikun przypomina o kopiowaniu.
+
+Gadatliwość ustawia się w panelu, w sekcji Ustawienia, pozycją „Podpowiedzi”. Do wyboru są Cicho (tylko ważne), Normalnie i Gaduła. Wybór zapisuje się w `localStorage` pod kluczem `manikun-tips`. Później reguły może uzupełnić AI.

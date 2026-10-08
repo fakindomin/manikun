@@ -802,6 +802,7 @@
     <button class="menu-item" type="button" id="menuLevel"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Poziom<span class="menu-val" id="menuLevelVal">Podstawowy</span></button>
     <span class="menu-label">Ustawienia</span>
     <button class="menu-item" type="button" id="menuVoice" role="switch" aria-checked="true"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>Głos Manikuna<span class="menu-val" id="menuVoiceVal">Włączony</span></button>
+    <button class="menu-item" type="button" id="menuTips"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 4v-4h0.5A2.5 2.5 0 0 1 5 12.5z"/><path d="M9 9.5h6"/></svg>Podpowiedzi<span class="menu-val" id="menuTipsVal">Normalnie</span></button>
     <span class="menu-label">Pomoc</span>
     <button class="menu-item" type="button" id="menuTutorial"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Obejrzyj tutorial</button>
     <button class="menu-item" type="button" id="menuHelp"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5v.5"/></svg>Jak używać Maniscryptu</button>
@@ -8022,9 +8023,72 @@
     return (fmt.w / fmt.h) * (st.shot === "portrait" ? 0.35 : isFaceShot(st) ? 0.15 : 1);
   };
 
+  // Rady Manikuna: reguły sprawdzane po każdej zmianie sceny. Rada pada raz na sesję, gdy jej warunek właśnie stał się prawdą.
+  // lvl: 1 ważna (błąd w scenie), 2 zwykła podpowiedź, 3 gaduła (ciekawostki i pochwały). Gadatliwość ustawia się w panelu.
+  const TIP_LEVELS = ["Cicho", "Normalnie", "Gaduła"];
+  let tipMem = null;
+  const tipChat = () => { if (tipMem === null) { tipMem = 1; try { const v = localStorage.getItem("manikun-tips"); if (v !== null) tipMem = clamp(+v || 0, 0, 2); } catch (e) {} } return tipMem; };
+  const isP = st => st.subject === "person", isO = st => st.subject === "object", isA = st => st.subject === "animal", isL = st => st.subject === "place";
+  const fxOn = (st, id) => (st.fx || []).includes(id);
+  const nightOut = st => timeApplies(st) && isOutdoor(st.background) && st.time === "night";
+  const landOn = st => isL(st) && st.background === "land";
+  const landColored = st => ["tColor", "wColor", "fColor", "sColor"].some(k => landOf(st)[k] !== "auto");
+  const ioOf = (st, item, k) => isO(st) && st.item === item ? itemOptOf(st)[k] : null;
+  const TIPS = [
+    // Postać
+    { id: "childTattoo", lvl: 1, when: st => isP(st) && st.traits.age === "child" && st.traits.tattoo !== "none", say: "Dziecko z tatuażem generatory zwykle odrzucą. Lepiej usuń tatuaż w Cechach." },
+    { id: "childBeard", lvl: 1, when: st => isP(st) && st.traits.age === "child" && st.look.beard !== "none", say: "Dziecko z brodą? Generator się pogubi. Usuń zarost, a wyjdzie naturalnie." },
+    { id: "backFaceShot", lvl: 1, when: st => isP(st) && st.shot === "face" && turnedAway(st), say: "Postać odwrócona tyłem przy zbliżeniu na twarz: twarzy nie będzie widać. Obróć ją do kamery albo zmień kadr." },
+    { id: "sunNight", lvl: 2, when: st => isP(st) && ["sun", "aviator"].includes(st.look.glasses) && nightOut(st), say: "Okulary przeciwsłoneczne w nocy? Jako styl gwiazdy może być, ale jeśli nie o to chodzi, wybierz zwykłe oprawki." },
+    { id: "faceThings", lvl: 2, when: st => isP(st) && st.shot === "face" && st.things.length > 0, say: "Przy zbliżeniu na twarz rzeczy i zwierzaki obok nie zmieszczą się w kadrze. Jeśli mają być widoczne, wybierz całą sylwetkę." },
+    { id: "snowShorts", lvl: 2, when: st => isP(st) && st.wear.bottom === "shorts" && (fxOn(st, "snow") || st.background === "snowpeaks"), say: "Szorty w śniegu? Zimno mi na sam widok. Może długie spodnie i kurtka?" },
+    { id: "selfieFull", lvl: 2, when: st => isP(st) && isSelfie(st.camera) && st.shot === "full", say: "Selfie z ręki rzadko obejmuje całą sylwetkę. Portret będzie bardziej wiarygodny." },
+    { id: "nightDark", lvl: 2, when: st => !isL(st) && nightOut(st) && isNaturalLight(st.light) && !["lamp", "neon", "fire"].some(f => fxOn(st, f)), say: "Nocą naturalne światło to tylko księżyc. Dodaj latarnię, neony albo ognisko, ewentualnie lampę, żeby wszystko było dobrze widać." },
+    { id: "backFace", lvl: 3, when: st => isP(st) && st.shot === "face" && isBackLight(st.light), say: "Światło zza pleców przy samej twarzy daje piękny kontur, ale twarz będzie w cieniu. Chcesz widzieć minę? Daj światło z przodu." },
+    { id: "beachCoat", lvl: 3, when: st => isP(st) && st.background === "beach" && st.time === "day" && st.wear.outer === "coat", say: "Płaszcz na plaży w pełnym słońcu wygląda nietypowo. Jeśli to nie sesja modowa, zdejmij okrycie." },
+    { id: "topLying", lvl: 3, when: st => isP(st) && st.camera === "T" && st.shot === "full" && !LYING.includes(st.pose), say: "Z góry najlepiej wychodzi postać leżąca. Spróbuj pozy na plecach, będzie efektownie." },
+    { id: "goldenBack", lvl: 3, when: st => st.time === "golden" && timeApplies(st) && st.light === "nat-back", say: "Złota godzina pod światło: ciepła poświata na konturach. Świetny wybór." },
+    // Styl
+    { id: "noirColor", lvl: 2, when: st => st.style === "noir" && (isP(st) && Object.values(st.wcPicked || {}).some(Boolean) || isO(st) && st.itemColor !== "auto" || landOn(st) && landColored(st)), say: "Noir jest czarno-biały, więc wybrane kolory znikną. Zostaną tylko jasne i ciemne plamy." },
+    { id: "vintageTech", lvl: 2, when: st => st.style === "vintage" && isO(st) && (st.item === "phone" || ioOf(st, "watch", "kind") === "smart"), say: "Smartfon na zdjęciu z lat siedemdziesiątych? Ciekawy anachronizm. Jeśli ma być naturalnie, wybierz inny styl." },
+    { id: "landColorReal", lvl: 3, when: st => landOn(st) && landColored(st) && (!styleOf(st) || styleOf(st).photo), say: "Kolorowy krajobraz w stylu zdjęcia wyjdzie surrealistycznie. Jeśli o to chodzi, super. Jeśli nie, spróbuj stylu Fantasy." },
+    { id: "drawnProduct", lvl: 3, when: st => isO(st) && ["anime", "toon", "comic", "water"].includes(st.style), say: "Rysowane style upraszczają produkt. Do sklepu lepszy będzie realistyczny, a ten styl zostaw na plakat albo reklamę." },
+    // Manito
+    { id: "bigOnTable", lvl: 1, when: st => isO(st) && itemK(st) >= 1.5 && ["table", "pedestal"].includes(st.base), say: "Tak duży przedmiot nie zmieści się na stole ani cokole. Postaw go na kamieniu, w wodzie albo niech lewituje." },
+    { id: "techWater", lvl: 1, when: st => isO(st) && st.base === "water" && (st.item === "phone" || st.item === "watch" && ioOf(st, "watch", "kind") !== "diver"), say: "Elektronika w wodzie budzi niepokój. Postaw ją na kamieniu albo wybierz zegarek nurkowy." },
+    { id: "packshotLight", lvl: 3, when: st => isO(st) && st.background === "studio" && st.light === "art-back", say: "Kontra daje efektowny kontur, ale klasyczny packshot najlepiej wychodzi z lampą z przodu. Widać wtedy wszystkie szczegóły." },
+    { id: "foodTop", lvl: 3, when: st => isO(st) && st.item === "food" && st.camera !== "T", say: "Jedzenie wygląda świetnie z góry. Spróbuj kamery Z góry." },
+    // Manimal
+    { id: "bigBeast", lvl: 3, when: st => isA(st) && st.animal === "beast" && ["large", "giant"].includes(beastOf({ beast: st.beast }).size), say: "Takim stworem można jeździć! Dodaj go w Manikunie z Ekipy i posadź na nim postać." },
+    // Manitam
+    { id: "auroraDay", lvl: 1, when: st => landOn(st) && ["aurora", "stars"].includes(landOf(st).sky) && st.time !== "night", say: "Zorzę i gwiazdy widać tylko nocą. Ustaw porę dnia na noc." },
+    { id: "rainbowNight", lvl: 1, when: st => landOn(st) && landOf(st).weather === "rainbow" && st.time === "night", say: "Tęczy nie ma w nocy. Wybierz dzień albo złotą godzinę." },
+    { id: "rainClear", lvl: 2, when: st => landOn(st) && ["rain", "snow"].includes(landOf(st).weather) && landOf(st).sky === "clear", say: "Opady z bezchmurnego nieba? Dodaj chmury albo burzę, będzie spójnie." },
+    { id: "winterBloom", lvl: 2, when: st => landOn(st) && landOf(st).season === "winter" && ["lavender", "meadow", "palms", "jungle"].includes(landOf(st).flora), say: "Zimą pod śniegiem tej roślinności nie zobaczysz. Zmień porę roku albo roślinność." },
+    { id: "droneCam", lvl: 3, when: st => landOn(st) && landOf(st).look === "drone" && st.camera !== "D", say: "Ujęcie z drona najlepiej zgrać z kamerą Z drona." }
+  ];
+  const tipFired = new Set();
+  let tipPrev = null, tipAt = -1e9, tipEdits = 0, sayAt = -1e9;
+  function adviseTips() {
+    const now = JSON.parse(JSON.stringify(scene)), prev = tipPrev;
+    tipPrev = now;
+    if (!prev || phase !== "director" || tut || wiz) return;
+    const max = tipChat() + 1, gap = tipChat() === 2 ? 6000 : 9000;
+    if (performance.now() - tipAt < gap) return;
+    const on = r => { try { return !!r.when(now); } catch (e) { return false; } };
+    const was = r => { try { return !!r.when(prev); } catch (e) { return false; } };
+    let tip = TIPS.filter(r => r.lvl <= max && !tipFired.has(r.id) && on(r) && !was(r)).sort((a, b) => a.lvl - b.lvl)[0];
+    // Długo bez kopiowania: przypomnienie, gdzie jest Maniscrypt
+    if (!tip && ++tipEdits >= 15 && max >= 2 && !tipFired.has("copy")) tip = { id: "copy", say: "Masz już niezłą scenę. Gdy będzie gotowa, kliknij Kopiuj Maniscrypt i wklej go do generatora." };
+    if (!tip) return;
+    tipFired.add(tip.id);
+    tipAt = performance.now();
+    setTimeout(() => { if (performance.now() - sayAt > 1200 && phase === "director" && !tut && !wiz) say(tip.say, 6500); }, 700);
+  }
   function sceneChanged() {
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
+    adviseTips();
     // Raz, gdy malutki stworek trafia do całej sylwetki: Manikun mówi, że szczegóły zginą
     if (prev && tinyPetIn(scene) && !tinyPetIn(prev) && phase === "director" && !tut)
       setTimeout(() => say("Malutki stworek przy całej sylwetce zginie w kadrze, więc w Maniscrypcie zostawiam tylko jego najważniejsze cechy. Chcesz szczegółów? Daj mu większy rozmiar.", 7500), 500);
@@ -8815,7 +8879,7 @@
   let sheetPhoto = false, ownPhoto = true;
   const ownItem = () => scene.subject === "object" && scene.item === "own";
   function setSheet(open) {
-    if (open) { sheetPhoto = ownItem() && ownPhoto; syncSheet(); try { if (account) syncGenBtn(); } catch (e) {} }
+    if (open) { tipEdits = 0; sheetPhoto = ownItem() && ownPhoto; syncSheet(); try { if (account) syncGenBtn(); } catch (e) {} }
     document.body.classList.toggle("sheet-open", open);
     sheetEl.setAttribute("aria-hidden", String(!open));
     sheetCopyLabel.textContent = "Kopiuj Maniscrypt";
@@ -9513,6 +9577,7 @@
   }
 
   function say(text, ms = 4500) {
+    sayAt = performance.now();
     bubbleAction = null;
     bubbleEl.classList.remove("offer");
     const r = document.getElementById("narrator").getBoundingClientRect();
@@ -9587,6 +9652,15 @@
     try { localStorage.setItem("manikun-voice", voiceOn ? "1" : "0"); } catch (e) {}
     syncVoiceMenu();
     if (!voiceOn) voiceStop();
+  });
+  // Podpowiedzi: Cicho (tylko ważne), Normalnie, Gaduła (też ciekawostki); kliknięcie zmienia po kolei
+  const menuTipsVal = document.getElementById("menuTipsVal");
+  menuTipsVal.textContent = TIP_LEVELS[tipChat()];
+  document.getElementById("menuTips").addEventListener("click", () => {
+    const n = [1, 2, 0][tipChat()];
+    tipMem = n;
+    try { localStorage.setItem("manikun-tips", String(n)); } catch (e) {}
+    menuTipsVal.textContent = TIP_LEVELS[n];
   });
   // Konto: logowanie przez Google i kredyty (serwer /api na Cloudflare; bez serwera pozycje zostają ukryte)
   const menuAccount = document.getElementById("menuAccount"), menuLogout = document.getElementById("menuLogout");
