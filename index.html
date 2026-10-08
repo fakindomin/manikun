@@ -2051,7 +2051,15 @@
       { id: "auburn", name: "Rude", hex: "#8A3B22", word: "auburn" },
       { id: "blonde", name: "Blond", hex: "#C9A45C", word: "blonde" },
       { id: "platinum", name: "Platyna", hex: "#E3D8B8", word: "platinum blonde" },
-      { id: "grey", name: "Siwe", hex: "#A7A5A0", word: "grey" }
+      { id: "grey", name: "Siwe", hex: "#A7A5A0", word: "grey" },
+      // Farbowane
+      { id: "white", name: "Białe", hex: "#ECEAE4", word: "bleached white", dyed: true },
+      { id: "red", name: "Czerwone", hex: "#B3262E", word: "dyed bright red", dyed: true },
+      { id: "pink", name: "Różowe", hex: "#E58AB0", word: "dyed pastel pink", dyed: true },
+      { id: "violet", name: "Fioletowe", hex: "#7A4AB0", word: "dyed violet", dyed: true },
+      { id: "blue", name: "Niebieskie", hex: "#3A6AC8", word: "dyed blue", dyed: true },
+      { id: "green", name: "Zielone", hex: "#3A9A5A", word: "dyed green", dyed: true },
+      { id: "teal", name: "Turkusowe", hex: "#2FB8B0", word: "dyed turquoise", dyed: true }
     ],
     beard: [
       { id: "none", name: "Gładko", prompt: null },
@@ -2064,7 +2072,13 @@
       { id: "nude", name: "Nude", hex: "#C08A78", prompt: "nude lipstick" },
       { id: "pink", name: "Różowe", hex: "#D0708A", prompt: "soft pink lipstick" },
       { id: "red", name: "Czerwone", hex: "#B3262E", prompt: "classic red lipstick" },
-      { id: "berry", name: "Bordowe", hex: "#6E2233", prompt: "deep berry lipstick" }
+      { id: "berry", name: "Bordowe", hex: "#6E2233", prompt: "deep berry lipstick" },
+      { id: "coral", name: "Koralowe", hex: "#E0705A", prompt: "coral lipstick" },
+      { id: "orange", name: "Pomarańczowe", hex: "#D9602A", prompt: "bright orange lipstick" },
+      { id: "plum", name: "Śliwkowe", hex: "#5E2A4A", prompt: "dark plum lipstick" },
+      { id: "violet", name: "Fioletowe", hex: "#7A3E9A", prompt: "violet lipstick" },
+      { id: "brown", name: "Brązowe", hex: "#7A4A36", prompt: "brown lipstick" },
+      { id: "black", name: "Czarne", hex: "#1E1C1E", prompt: "black lipstick" }
     ],
     // Mina: rysunek twarzy Manikuna, postawa głowy i opis w prompcie. Każda emocja (EXPR_GROUPS niżej) ma poziom łagodny i mocny.
     expr: [
@@ -2095,6 +2109,8 @@
       { id: "clear", name: "Przezroczyste", hex: "#D9DDE0", word: "clear-framed" }
     ]
   };
+  // Oprawki w każdym kolorze z palety ubrań (czarne już są wyżej)
+  COLORS.filter(c => c.id !== "black").forEach(c => LOOK.glassesColor.push({ id: c.id, name: c.name, hex: c.hex, word: c.word + "-framed" }));
   // Zarost ma własny kolor, niezależny od włosów (ta sama paleta)
   LOOK.beardColor = LOOK.hairColor;
   const lookOpt = (key, id) => LOOK[key].find(o => o.id === id);
@@ -6141,11 +6157,11 @@
       Object.assign(scene, d);
       const male = scene.body === "male";
       scene.look = {
-        hair: anyOf(LOOK.hair).id, hairPicked: true, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor).id,
+        hair: anyOf(LOOK.hair).id, hairPicked: true, hairColor: Math.random() < 0.4 ? "auto" : anyOf(LOOK.hairColor.filter(o => !o.dyed)).id,
         expr: randomExpr(),
         beard: male && !child && Math.random() < 0.5 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.beardColor).id,
-        lips: !male && !child && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1)).id : "none",
-        glasses: Math.random() < (expert ? 0.35 : 0.25) ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor).id,
+        lips: !male && !child && Math.random() < 0.4 ? anyOf(LOOK.lips.slice(1, 5)).id : "none",
+        glasses: Math.random() < (expert ? 0.35 : 0.25) ? anyOf(LOOK.glasses.slice(1)).id : "none", glassesColor: anyOf(LOOK.glassesColor.slice(0, 5)).id,
         gaze: Math.random() < 0.6 ? "auto" : anyOf(GAZE.filter(o => !o.expert || expert)).id
       };
       // Cechy: zwykle dorosły o przeciętnej budowie i średnim wzroście, kolor skóry z całej palety, detale od czasu do czasu
@@ -6975,7 +6991,9 @@
   const GROUPS = [
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Manikun", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
-    { id: "stuff", label: "Rzeczy", cats: ["crew", "things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
+    // Ekipa ma własny kafelek tuż obok Manikuna (testerzy nie znajdowali jej w Rzeczach)
+    { id: "crew", label: "Dodaj ekipę", cat: "crew", subjects: ["person"], icon: "crew" },
+    { id: "stuff", label: "Rzeczy", cats: ["things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Manito", cats: ["item", "base"], subjects: ["object"], icon: "item" },
     { id: "place", label: "Manitam", cats: ["lLand", "lAir", "lLook"], subjects: ["place"], icon: "lLand" },
     { id: "animal", label: "Manimal", cats: ["animal", "bBody", "bHead", "bTail", "bCoat", "animalPose", "animalCoat"], subjects: ["animal"], icon: "animal" },
@@ -6990,7 +7008,7 @@
   const catById = id => CATEGORIES.find(c => c.id === id);
   const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
   const groupCats = g => g.cats.filter(id => activeCats().some(c => c.id === id)).map(catById);
-  const GROUP_VALUE = { place: "lLand", preset: "preset", person: "body", stuff: "things", object: "item", animal: "animal", scene: "background", camera: "camera", style: "style" };
+  const GROUP_VALUE = { place: "lLand", preset: "preset", person: "body", stuff: "things", crew: "crew", object: "item", animal: "animal", scene: "background", camera: "camera", style: "style" };
   // Kategoria przygaszona: studio nie ma pory dnia, siedząc ręce są oparte, przy selfie ruch wyznacza ręka z telefonem
   const catOff = id => (id === "turn" && (isSelfie(scene.camera) || LYING.includes(scene.pose))) || (id === "thingColor" && !(scene.things || []).length) || (id === "items" && !surfaceOf(scene)) || (id === "time" && !timeApplies(scene)) || (id === "arms" && !armsApply(scene)) || (id === "motion" && isSelfie(scene.camera));
   // from: rodzaj rzędu, w którym stuknięto. Grupa i kategoria mogą mieć to samo id (Kamera, Styl):
@@ -7259,11 +7277,11 @@
       Object.assign(scene, d);
       const male = scene.body === "male";
       scene.look = {
-        hair: anyOf(LOOK.hair.filter(o => male || o.id !== "bald")).id, hairPicked: true, hairColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.hairColor).id,
+        hair: anyOf(LOOK.hair.filter(o => male || o.id !== "bald")).id, hairPicked: true, hairColor: Math.random() < 0.5 ? "auto" : anyOf(LOOK.hairColor.filter(o => !o.dyed)).id,
         expr: anyOf(["smile", "smile", "neutral", "joy", "thought", "surprise"]),
         beard: male && Math.random() < 0.4 ? anyOf(LOOK.beard.slice(1)).id : "none", beardColor: "auto",
-        lips: !male && Math.random() < 0.3 ? anyOf(LOOK.lips.slice(1)).id : "none",
-        glasses: Math.random() < 0.25 ? anyOf(["round", "rect"]) : "none", glassesColor: anyOf(LOOK.glassesColor).id
+        lips: !male && Math.random() < 0.3 ? anyOf(LOOK.lips.slice(1, 5)).id : "none",
+        glasses: Math.random() < 0.25 ? anyOf(["round", "rect"]) : "none", glassesColor: anyOf(LOOK.glassesColor.slice(0, 5)).id
       };
     },
     pose() {
@@ -9698,7 +9716,7 @@
   });
   document.getElementById("menuBuy").addEventListener("click", () => openShop());
 
-  // ---------- Ekipa: Manimale i Manito zapisane na koncie, do użycia przy Manikunie (Rzeczy › Ekipa) ----------
+  // ---------- Ekipa: Manimale i Manito zapisane na koncie, do użycia przy Manikunie (kafelek Dodaj ekipę) ----------
   let crew = [], crewDel = false;
   async function loadCrew() {
     if (!account || !account.user) { crew = []; return; }
@@ -9734,7 +9752,7 @@
     if (!d.id) { say(d.error || "Nie udało się zapisać.", 4500); return; }
     crew.push(d);
     try { sfx("klap"); } catch (x) {}
-    say("Zapisane w ekipie: " + d.name + ". W scenie z Manikunem znajdziesz " + (e.kind === "animal" ? "go" : "je") + " w Rzeczy › Ekipa.", 6000);
+    say("Zapisane w ekipie: " + d.name + ". W scenie z Manikunem znajdziesz " + (e.kind === "animal" ? "go" : "je") + " pod kafelkiem Dodaj ekipę.", 6000);
     render();
   }
   // Ten sam zwierzak: gatunek z umaszczeniem albo cały przepis własnego stworka

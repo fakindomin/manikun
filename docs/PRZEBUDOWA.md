@@ -615,7 +615,7 @@ Kreator Ekspert ma rozdział „Rzeczy” (Postać › Poza › Rzeczy › Miejs
 - Tabela `crew` (migracja `0008_ekipa.sql`): `id, user_id, kind ('animal'|'object'), name, data (JSON ≤ 1000 znaków), created_at`; do 40 pozycji na konto.
 - API: `GET /api/crew`, `POST /api/crew` (`{kind, name, data}`), `DELETE /api/crew/:id` – tylko zalogowani, zapis tylko z tej samej domeny.
 - Manimal / Manito: kafelek „Do ekipy” zapisuje bieżący gatunek + umaszczenie + pozę albo przedmiot + kolor (bez konta → logowanie, scena wraca po zalogowaniu; duplikaty są pomijane).
-- Manikun: Rzeczy › Ekipa – Manimal dołącza jako zwierzak obok postaci, Manito staje na stole (stół dodawany sam, gdy w scenie nie ma powierzchni). Tryb „Usuń z ekipy”.
+- Manikun: kafelek „Dodaj ekipę” (obok Manikuna) – Manimal dołącza jako zwierzak obok postaci, Manito staje na stole (stół dodawany sam, gdy w scenie nie ma powierzchni). Tryb „Usuń z ekipy”.
 - Polityka prywatności: dopisany punkt „Ekipa”.
 
 ## Konstruktor Manimala (własny stworek z części)
@@ -765,3 +765,9 @@ Gadatliwość ustawia się w panelu, w sekcji Ustawienia, pozycją „Podpowiedz
 Kategorię „Twarz” własnego stwora połączono z kategorią „Głowa”. Głowa ma teraz kształt, uszy, rogi, grzebień, oczy, nos, zęby, pysk i minę. Miniatury części pyska pokazują zbliżenie (`BEAST_FACE`). Na szkicu jest jeden punkt głowy, a pytania Kreatora o oczy i pysk prowadzą do Głowy.
 
 Wielkość stwora (od „Jak mysz” do „Olbrzym”) zmienia jego rozmiar na szkicu (`BEAST_VIEW` w `objectPlace`), ale nie bardziej, niż pozwala kadr.
+
+## Kafelek „Dodaj ekipę” i więcej kolorów
+
+Ekipa nie jest już schowana w Rzeczach. Ma własny kafelek „Dodaj ekipę” w głównym rzędzie, zaraz za Manikunem (grupa `crew` z jedną kategorią).
+
+Oprawki okularów można wybrać w każdym kolorze z palety ubrań. Usta mają kolory: koralowe, pomarańczowe, śliwkowe, fioletowe, brązowe i czarne. Włosy mają odcienie farbowane: białe, czerwone, różowe, fioletowe, niebieskie, zielone i turkusowe. Losowanie dalej wybiera tylko naturalne włosy, klasyczne szminki i klasyczne oprawki.
