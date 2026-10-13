@@ -11087,7 +11087,7 @@
   function tutFinish() {
     try { localStorage.setItem("manikun-tutorial", "done"); } catch (e) {}
     if (tut) clearInterval(tut.timer);
-    tut = null;
+    tut = null; syncHist();
     document.body.classList.remove("tutorial");
     document.querySelectorAll(".tut-target").forEach(x => x.classList.remove("tut-target"));
     backToStart();
