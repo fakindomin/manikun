@@ -771,3 +771,9 @@ Wielkość stwora (od „Jak mysz” do „Olbrzym”) zmienia jego rozmiar na s
 Ekipa nie jest już schowana w Rzeczach. Ma własny kafelek „Dodaj ekipę” w głównym rzędzie, zaraz za Manikunem (grupa `crew` z jedną kategorią).
 
 Oprawki okularów można wybrać w każdym kolorze z palety ubrań. Usta mają kolory: koralowe, pomarańczowe, śliwkowe, fioletowe, brązowe i czarne. Włosy mają odcienie farbowane: białe, czerwone, różowe, fioletowe, niebieskie, zielone i turkusowe. Losowanie dalej wybiera tylko naturalne włosy, klasyczne szminki i klasyczne oprawki.
+
+## Cofnij / ponów
+
+Nad rysunkiem są dwie strzałki, cofnij i ponów, jak w każdym edytorze. Na komputerze działają też skróty: Ctrl+Z cofa, a Ctrl+Shift+Z albo Ctrl+Y ponawia.
+
+Historia (`hist`) zapisuje stan sceny po każdej zmianie w reżyserce, bez pozycji w menu. Mieści do 80 kroków. Zmiany szybsze niż 450 ms jedna po drugiej, na przykład przeciąganie, łączą się w jeden krok. Nowa zmiana po cofnięciu kasuje kroki do ponowienia. Podczas tutorialu strzałki są nieaktywne.
