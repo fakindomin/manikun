@@ -785,3 +785,13 @@ Przy Manikunie rząd główny ma teraz 8 kafelków: Gotowe, Manikun, Ekipa, Rzec
 - Kafelek „Zapisz scenę” usunięty, bo dublował zakładkę w górnym pasku.
 - „Układ domyślny” przeniesiony do panelu (sekcja Scena, widoczny tylko w reżyserce). Reset można cofnąć strzałką nad rysunkiem.
 - „Dodaj ekipę” skrócone do „Ekipa”.
+
+## Dymek: wyłącznik gadania Manikuna
+
+W górnym pasku, obok głośnika, jest ikona dymku (`#chatBtn`). Wyłączony dymek ucisza Manikuna całkowicie: nie ma dymków, głosu ani rad. Wyjątek to Kreator i tutorial, bo bez ich poleceń nie da się przejść dalej. Stan zapisuje się w `localStorage` (`manikun-chat`, a chwila wyłączenia w `manikun-chat-off`).
+
+Po ponownym włączeniu Manikun zawsze coś mówi:
+- jeśli cisza trwała co najmniej 90 s (także po powrocie na stronę), losuje jedną z szalonych kwestii (`CHAT_BACK`, 10 sztuk);
+- jeśli krócej, mówi krótko, że wraca (`CHAT_SHORT`).
+
+Na ekranach węższych niż 380 px napis MANIKUN przesuwa się do lewej, obok menu, żeby zmieściły się trzy ikony po prawej.

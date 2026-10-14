@@ -104,12 +104,20 @@
   #sound .sound-on, #sound[aria-pressed="true"] .sound-off { display: none; }
   #sound[aria-pressed="true"] .sound-on { display: inline; }
   #sound[aria-pressed="true"] { color: var(--accent); }
+  #chatBtn .chat-off, #chatBtn[aria-pressed="false"] .chat-on { display: none; }
+  #chatBtn[aria-pressed="false"] .chat-off { display: inline; }
+  #chatBtn[aria-pressed="true"] { color: var(--accent); }
   .brand {
     position: absolute; left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 7px;
     font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.28em; color: var(--ink);
   }
   .brand .rec { width: 6px; height: 6px; }
+  /* Wąski telefon: trzy ikony po prawej nie mieszczą się obok napisu na środku, więc napis staje przy menu */
+  @media (max-width: 380px) {
+    .brand { position: static; transform: none; margin-right: auto; letter-spacing: 0.16em; font-size: 11px; }
+    .top-right { gap: 6px; }
+  }
 
   /* ---------- Pasek roboczy: narrator, suwak trybu, Maniscrypt ---------- */
   .work { flex: none; display: flex; align-items: center; gap: 10px; }
@@ -762,6 +770,10 @@
     <!-- Zapisz scenę (Moje sceny): zakładka jak „zapisz” w Instagramie i Pintereście; po zapisie na chwilę wypełniona -->
     <button class="icon-btn director-only" type="button" id="saveTop" aria-label="Zapisz scenę w Moich scenach" title="Zapisz scenę">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6.5 4h11v16.5L12 16.6l-5.5 3.9z"/></svg>
+    </button>
+    <!-- Dymek: całkowicie wycisza gadanie Manikuna (Kreator i tutorial dalej mówią, bo bez nich nie da się iść dalej) -->
+    <button class="icon-btn director-only" type="button" id="chatBtn" aria-label="Dymki Manikuna" aria-pressed="true" title="Gadanie Manikuna">
+      <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v6.5a2.5 2.5 0 0 1-2.5 2.5h-5.5l-4.5 4v-4h0A2.5 2.5 0 0 1 4.5 13z"/><path class="chat-on" d="M8.5 9.8h.01M12 9.8h.01M15.5 9.8h.01" style="stroke-width:2.6"/><path class="chat-off" d="M4 3.5l16 17"/></svg>
     </button>
     <button class="icon-btn director-only" type="button" id="sound" aria-label="Dźwięk" aria-pressed="false">
       <svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="sound-off" d="M16 9.5l5 5M21 9.5l-5 5"/><path class="sound-on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
@@ -8456,6 +8468,43 @@
     if (soundOn) { actx(); sfx("tik"); }
   });
 
+  // ---------- Dymki: wyłącznik gadania Manikuna ----------
+  // Wyłączone: Manikun milczy (bez dymków i głosu). Wyjątek: Kreator i tutorial, bo prowadzą krok po kroku.
+  // Włączenie po dłuższej ciszy (CHAT_LONG albo po powrocie na stronę) wita szaloną kwestią.
+  const chatBtn = document.getElementById("chatBtn"), CHAT_LONG = 90000;
+  let chatOn = true, chatOffAt = 0, chatForce = false;
+  try { chatOn = localStorage.getItem("manikun-chat") !== "0"; chatOffAt = +localStorage.getItem("manikun-chat-off") || 0; } catch (e) {}
+  chatBtn.setAttribute("aria-pressed", String(chatOn));
+  const CHAT_BACK = [
+    "Wróciłem! Przez ten czas nauczyłem się żonglować trzema lampami błyskowymi. Dwie się zbiły.",
+    "Uff! Siedziałem cicho tak długo, że kamera zaczęła do mnie mówić. Twierdzi, że to ona jest reżyserem.",
+    "Jestem! W ciszy wymyśliłem film o tosterze, który chciał zostać latarnią morską. Producenci już dzwonią.",
+    "Ktoś mnie wołał? Właśnie kończyłem casting na rolę chmury. Wygrała mgła, ale była bardzo wzruszona.",
+    "Wróciłem z urlopu na Księżycu! Światło tam jest fantastyczne, tylko catering jakiś pusty.",
+    "Milczałem tak długo, że moje drewniane stawy zaczęły nucić. Znają już całą ścieżkę dźwiękową.",
+    "Hej! Pod twoją nieobecność ułożyłem wszystkie kredki według smaku. Niebieska jest najbardziej cytrynowa.",
+    "Jestem! Statyści w tle urządzili strajk i żądają peleryn. Obiecałem im po dwie.",
+    "Tęskniłeś? Ja tak. Rozmawiałem w tym czasie z softboxem. Strasznie rozświetlony gość.",
+    "Wróciłem! Gołąb z planu zdjęciowego nauczył mnie trzech nowych póz. Jedna to stanie na jednej nodze przez godzinę."
+  ];
+  const CHAT_SHORT = ["Jestem z powrotem.", "Znowu mogę gadać!", "Wracam do pracy, szefie."];
+  chatBtn.addEventListener("click", () => {
+    chatOn = !chatOn;
+    chatBtn.setAttribute("aria-pressed", String(chatOn));
+    try { localStorage.setItem("manikun-chat", chatOn ? "1" : "0"); } catch (e) {}
+    if (!chatOn) {
+      chatOffAt = Date.now();
+      try { localStorage.setItem("manikun-chat-off", String(chatOffAt)); } catch (e) {}
+      if (!tut && !wiz) { voiceStop(); hush(); }
+      showToast("Manikun milczy. Stuknij dymek, żeby znów gadał.");
+      return;
+    }
+    const long = !chatOffAt || Date.now() - chatOffAt >= CHAT_LONG;
+    chatForce = true;
+    say(anyOf(long ? CHAT_BACK : CHAT_SHORT), long ? 7000 : 2500);
+    chatForce = false;
+  });
+
   // ---------- Narrator: głowa Manikuna ----------
   // Głowa 3D (head3d.js) ma własne ruchy; bez niej przechyla się rysowana.
   const narratorHead = document.querySelector("#narrator .head");
@@ -9633,6 +9682,8 @@
   }
 
   function say(text, ms = 4500) {
+    // Dymki wyłączone: cisza (Kreator i tutorial mówią dalej)
+    if (!chatOn && !chatForce && !tut && !wiz) return;
     sayAt = performance.now();
     bubbleAction = null;
     bubbleEl.classList.remove("offer");
