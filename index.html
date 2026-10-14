@@ -532,8 +532,6 @@
     background: #0F1013; border: 1px dashed var(--line-strong); box-shadow: 10px 0 14px -4px #0F1013;
   }
   .tile.back > svg { width: 24px; height: 24px; background: none; }
-  .tile.reset.armed { border-color: var(--accent); }
-  .tile.reset.armed .value { color: var(--accent); }
   /* Linia łącząca otwarty kafelek z dołu z wybraną opcją na górze */
   .thread { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
   .row { z-index: 1; }
@@ -806,6 +804,7 @@
     </div>
     <span class="menu-label">Scena</span>
     <button class="menu-item" type="button" id="menuNew"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/></svg><span id="menuNewLabel">Nowa scena</span></button>
+    <button class="menu-item" type="button" id="menuReset" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M7 3v4h4"/><circle cx="12" cy="12" r="1.6" style="fill:currentColor;stroke:none"/></svg>Układ domyślny</button>
     <button class="menu-item" type="button" id="menuGallery"><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="3.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>Galeria przykładów</button>
     <button class="menu-item" type="button" id="menuScenes" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="12" cy="10" r="2"/><path d="M9 16q3-3.5 6 0"/></svg>Moje sceny</button>
     <button class="menu-item" type="button" id="menuShots" hidden><svg viewBox="0 0 24 24" class="ink" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>Moje zdjęcia<span class="menu-badge" id="menuShotsVal" hidden></span></button>
@@ -7007,7 +7006,7 @@
     { id: "preset", label: "Gotowe", cat: "preset", icon: "preset" },
     { id: "person", label: "Manikun", cats: ["body", "traits", "look", "outfit", "pose", "arms", "turn"], subjects: ["person"], icon: "body" },
     // Ekipa ma własny kafelek tuż obok Manikuna (testerzy nie znajdowali jej w Rzeczach)
-    { id: "crew", label: "Dodaj ekipę", cat: "crew", subjects: ["person"], icon: "crew" },
+    { id: "crew", label: "Ekipa", cat: "crew", subjects: ["person"], icon: "crew" },
     { id: "stuff", label: "Rzeczy", cats: ["things", "pets", "items", "thingColor"], subjects: ["person"], icon: "things" },
     { id: "object", label: "Manito", cats: ["item", "base"], subjects: ["object"], icon: "item" },
     { id: "place", label: "Manitam", cats: ["lLand", "lAir", "lLook"], subjects: ["place"], icon: "lLand" },
@@ -7016,9 +7015,8 @@
     { id: "camera", label: "Kamera", cats: ["shot", "camera", "format", "motion"], icon: "camera" },
     { id: "style", label: "Styl", cat: "style", icon: "style" },
     { id: "save", label: "Do ekipy", action: true, subjects: ["animal", "object"] },
-    { id: "keep", label: "Zapisz scenę", action: true },
-    { id: "random", label: "Losuj", action: true },
-    { id: "reset", label: "Układ domyślny", action: true }
+    { id: "random", label: "Losuj", action: true }
+    // Zapis sceny jest pod zakładką w górnym pasku, a układ domyślny w panelu (Scena)
   ];
   const catById = id => CATEGORIES.find(c => c.id === id);
   const activeGroups = () => GROUPS.filter(g => !g.subjects || g.subjects.includes(scene.subject));
@@ -7504,14 +7502,6 @@
       t.action = true;
       return t;
     }
-    if (g.id === "keep") {
-      const t = tile("nav-keep", "Zapisz scenę", () => false, () => saveMyScene(), svg => {
-        svg.setAttribute("viewBox", "0 0 24 24");
-        el("path", { d: "M6 4h12v16l-6-4-6 4z" }, svg); el("path", { d: "M12 7v6M9 10h6" }, svg);
-      }, () => "Moje sceny");
-      t.action = true;
-      return t;
-    }
     if (g.id === "random") {
       const t = tile("nav-random", "Losuj", () => false, () => { rollRandom(); }, svg => {
         svg.setAttribute("viewBox", "0 0 24 24");
@@ -7519,20 +7509,6 @@
         [[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]].forEach(([cx, cy]) => el("circle", { cx, cy, r: 1.1, style: "fill:currentColor" }, svg));
       }, () => "całą scenę");
       t.action = true;
-      return t;
-    }
-    if (g.id === "reset") {
-      // Pierwsze stuknięcie pyta, drugie zaczyna od nowa
-      let armed = null;
-      const t = tile("nav-reset", "Układ domyślny", () => false, () => {
-        if (armed) { clearTimeout(armed); armed = null; t.btn.classList.remove("armed"); resetLayout(); return; }
-        t.btn.classList.add("armed");
-        armed = setTimeout(() => { armed = null; t.btn.classList.remove("armed"); t.redraw(); }, 3000);
-        t.redraw();
-      }, svg => { svg.setAttribute("viewBox", "0 0 24 24"); el("path", { d: "M5 12a7 7 0 1 0 2.1-5" }, svg); el("path", { d: "M7 3v4h4" }, svg); },
-      () => armed ? "Na pewno?" : "od nowa");
-      t.action = true;
-      t.btn.classList.add("reset");
       return t;
     }
     const t = tile("nav-" + g.id, g.label, () => false, null, iconDraw(g.icon), () => valueShort(catById(GROUP_VALUE[g.id])));
@@ -8281,6 +8257,7 @@
   // Menu: wysuwa się z lewej, zamyka stuknięciem obok lub ponownie w przycisk
   const menuBtn = document.getElementById("menuBtn"), menuEl = document.getElementById("menu");
   function setMenu(open) {
+    document.getElementById("menuReset").hidden = phase !== "director";
     if (open) hush();
     else if (wiz && document.body.classList.contains("menu-open")) wizSay();
     document.body.classList.toggle("menu-open", open);
@@ -8305,8 +8282,10 @@
     zoomOut();
     sfx("krrr");
     render();
-    say("Układ domyślny. " + ({ person: "Manikun", object: "Manito", animal: "Manimal", place: "Manitam" }[keep.subject] || "Scena") + " zaczyna od nowa.", 3500);
+    say("Układ domyślny. " + ({ person: "Manikun", object: "Manito", animal: "Manimal", place: "Manitam" }[keep.subject] || "Scena") + " zaczyna od nowa. Cofniesz to strzałką nad rysunkiem.", 4500);
   }
+  // Panel › Układ domyślny: tylko w reżyserce; pomyłkę cofa strzałka nad rysunkiem
+  document.getElementById("menuReset").addEventListener("click", () => { setMenu(false); resetLayout(); });
   function newScene() {
     wiz = null;
     setMenu(false);
@@ -9773,7 +9752,7 @@
   });
   document.getElementById("menuBuy").addEventListener("click", () => openShop());
 
-  // ---------- Ekipa: Manimale i Manito zapisane na koncie, do użycia przy Manikunie (kafelek Dodaj ekipę) ----------
+  // ---------- Ekipa: Manimale i Manito zapisane na koncie, do użycia przy Manikunie (kafelek Ekipa) ----------
   let crew = [], crewDel = false;
   async function loadCrew() {
     if (!account || !account.user) { crew = []; return; }
@@ -9809,7 +9788,7 @@
     if (!d.id) { say(d.error || "Nie udało się zapisać.", 4500); return; }
     crew.push(d);
     try { sfx("klap"); } catch (x) {}
-    say("Zapisane w ekipie: " + d.name + ". W scenie z Manikunem znajdziesz " + (e.kind === "animal" ? "go" : "je") + " pod kafelkiem Dodaj ekipę.", 6000);
+    say("Zapisane w ekipie: " + d.name + ". W scenie z Manikunem znajdziesz " + (e.kind === "animal" ? "go" : "je") + " pod kafelkiem Ekipa.", 6000);
     render();
   }
   // Ten sam zwierzak: gatunek z umaszczeniem albo cały przepis własnego stworka
