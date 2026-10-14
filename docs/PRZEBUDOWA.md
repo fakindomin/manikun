@@ -795,3 +795,14 @@ Po ponownym włączeniu Manikun zawsze coś mówi:
 - jeśli krócej, mówi krótko, że wraca (`CHAT_SHORT`).
 
 Na ekranach węższych niż 380 px napis MANIKUN przesuwa się do lewej, obok menu, żeby zmieściły się trzy ikony po prawej.
+
+## Naturalne ruchy Manikuna
+
+- **Mruganie:** co 2,5–6 s oczy na około 130 ms zamieniają się w kreski powiek, czasem dwa razy z rzędu (`look.blink` w manikun.js).
+- **Drobne ruchy w spoczynku (`IDLE`, `idleLife`):** gdy nikt niczego nie zmienia, co 6,5–12 s Manikun robi coś małego:
+  - rozgląda się, przechyla głowę, kiwa nią albo wzdycha;
+  - przenosi ciężar ciała z nogi na nogę (tylko na stojąco);
+  - przeciąga ramiona (tylko na stojąco, z rękami luźno i bez selfie);
+  - zerka w kamerę albo na lampę.
+  Ten sam ruch nie powtarza się dwa razy z rzędu, a każda zmiana sceny odsuwa kolejny ruch. Ruchy działają tylko przy Manikunie, poza tutorialem, i nie włączają się, gdy użytkownik ma w systemie ustawione ograniczenie animacji.
+- **Oddech:** jego głębokość lekko się zmienia, a całe ciało powoli się kołysze, więc oddech nie chodzi już jak metronom.

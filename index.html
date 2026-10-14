@@ -7906,11 +7906,50 @@
     }
     if (gaze && followGaze(now, dt)) active = true;
     if (zoom && now - zoom.t0 < ZOOM_MS) active = true;
+    idleLife(now);
     // Oddech trwa cały czas: poza animacjami wystarczy ok. 30 klatek na sekundę
     const breathing = !reduceMotion.matches;
     if (active || !breathing || now - lastIdleDraw > 32) { renderPreview(); lastIdleDraw = now; }
     if (active || breathing) ensureLoop(); else lastTick = 0;
   }
+
+  // ---------- Życie w spoczynku: mruganie i drobne ruchy, gdy nikt niczego nie zmienia ----------
+  // Co kilka sekund Manikun robi coś małego: rozgląda się, przenosi ciężar, zerka w kamerę albo na lampę,
+  // kiwa głową, przeciąga się. Każda zmiana sceny odsuwa kolejny ruch, żeby nie przeszkadzał przy pracy.
+  let idleNext = 0, blinkNext = 0, blinkUntil = 0, lastIdleKind = null;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const idleDelay = () => { idleNext = performance.now() + rnd(6500, 12000); };
+  const IDLE = {
+    glance: () => { const s = Math.random() < 0.5 ? 1 : -1; return [{ pose: variant({}, { head: 13 * s, spine: 0.8 * s }), dur: 650 }, { pose: variant({}, { head: 15 * s, spine: 0.8 * s }), dur: 900 }, back(800)]; },
+    look: () => [{ pose: variant({}, { head: 7, spine: 0.5 }), dur: 700 }, { pose: variant({}, { head: -9, spine: -0.5 }), dur: 1300 }, back(900)],
+    tilt: () => [{ pose: variant({}, { head: 8, spine: 1.2 }), dur: 520 }, { pose: variant({}, { head: 9, spine: 1.2 }), dur: 1000 }, back(700)],
+    nod: () => [{ pose: variant({}, { head: 5 }), dur: 230 }, { pose: variant({}, { head: -3 }), dur: 230 }, { pose: variant({}, { head: 3 }), dur: 220 }, back(380)],
+    sigh: () => [{ pose: variant({}, { spine: 2, head: 3 }), dur: 900 }, { pose: variant({}, { spine: -1.2, head: -2 }), dur: 700 }, back(1100)],
+    // Ciężar na jedną nogę i z powrotem (tylko na stojąco)
+    shift: () => { const s = Math.random() < 0.5 ? 1 : -1; return [{ pose: variant({}, { nearThigh: 2.4 * s, farThigh: 2.4 * s, spine: -1.4 * s, head: 2 * s }), dur: 900 }, { pose: variant({}, { nearThigh: 2.6 * s, farThigh: 2.6 * s, spine: -1.5 * s, head: 2 * s }), dur: 1600 }, back(1000)]; },
+    // Przeciągnięcie ramion (tylko z rękami luźno)
+    stretch: () => [{ pose: variant({}, { nearUpper: -9, farUpper: 9, spine: 1.5, head: 4 }), dur: 700 }, { pose: variant({}, { nearUpper: -10, farUpper: 10, spine: 1.8, head: 5 }), dur: 600 }, back(900)],
+    // Zerknięcie w kamerę albo na lampę (głowa sama wraca)
+    camera: () => "camera",
+    light: () => "light"
+  };
+  function idleLife(now) {
+    if (reduceMotion.matches || phase !== "director" || scene.subject !== "person" || tut || drag || belt || bgTrans) { idleNext = 0; return; }
+    // Mruganie: co 2,5–6 s na ~130 ms, czasem podwójnie
+    if (!blinkNext) blinkNext = now + rnd(1500, 4000);
+    if (now >= blinkNext) { blinkUntil = now + 130; blinkNext = now + (Math.random() < 0.15 ? 260 : rnd(2500, 6000)); }
+    if (figAnim || gaze) return;
+    if (!idleNext) { idleDelay(); return; }
+    if (now < idleNext) return;
+    const standing = scene.pose === "stand", armsFree = scene.arms === "down";
+    const kinds = Object.keys(IDLE).filter(k => k !== lastIdleKind && (k !== "shift" || standing) && (k !== "stretch" || (standing && armsFree && !isSelfie(scene.camera))) && (k !== "light" || !isNaturalLight(scene.light)));
+    const k = anyOf(kinds);
+    lastIdleKind = k;
+    const r = IDLE[k]();
+    if (r === "camera" || r === "light") startGaze(r); else playFrames(r);
+    idleDelay();
+  }
+  const blinking = now => now < blinkUntil;
 
   // Fokus na aparacie lub świetle: głowa płynnie, z lekkim opóźnieniem, śledzi obiekt, dopóki się rusza.
   // Po zatrzymaniu Manikun chwilę na niego patrzy i wraca do swojej pozy.
@@ -7963,7 +8002,9 @@
     if (belt) st.belt = belt;
     if (!reduceMotion.matches && scene.subject === "person") {
       const base = shown || baseShown();
-      st.fig = computeFigure(livePose(base.pose, performance.now()), base.rig, clothOf(scene.body));
+      const now = performance.now(), cl = clothOf(scene.body);
+      if (blinking(now) && cl.look) cl.look = { ...cl.look, blink: true };
+      st.fig = computeFigure(livePose(base.pose, now), base.rig, cl);
     } else if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== rigOf(scene.body))) {
       st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
@@ -7997,7 +8038,9 @@
       out[k] = s.x;
     }
     const ts = now / 1000, w = 2 * Math.PI / 3.8;
-    if (out.spine != null) out.spine += 0.8 * Math.sin(w * ts);
+    // Oddech nie jest metronomem: głębokość lekko pływa, a całe ciało powoli się kołysze
+    const deep = 1 + 0.3 * Math.sin(ts * 0.21 + 0.7);
+    if (out.spine != null) out.spine += 0.8 * deep * Math.sin(w * ts) + 0.45 * Math.sin(ts * 0.29 + 1.3) + 0.25 * Math.sin(ts * 0.53);
     if (out.head != null) out.head += 1.4 * Math.sin(w * ts - 0.9) + 0.7 * Math.sin(ts * 0.37);
     if (out.nearUpper != null) { out.nearUpper += 1.2 * Math.sin(w * ts - 0.5); out.farUpper -= 1.2 * Math.sin(w * ts - 0.5); }
     if (out.nearFore != null) { out.nearFore += 0.9 * Math.sin(w * ts - 1.1); out.farFore -= 0.9 * Math.sin(w * ts - 1.1); }
@@ -8152,6 +8195,7 @@
   });
   function sceneChanged() {
     histNote();
+    if (idleNext) idleDelay();
     const prev = lastScene;
     lastScene = { ...scene, format: { ...scene.format } };
     adviseTips();

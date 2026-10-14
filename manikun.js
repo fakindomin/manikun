@@ -470,7 +470,8 @@ function computeFigure(pose, RIG, cloth = null) {
       const line = d => shapes.push({ t: "deco", d, style: `fill:none;${ink}` });
       const fill = (d, c) => shapes.push({ t: "deco", d, style: `fill:${c};${ink}` });
       const blob = (x, y, r, c) => fill(`M${P(x - r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x + r, y)} A${f(r * hx)},${f(r * hx)} 0 1 1 ${P(x - r, y)} Z`, c);
-      const dot = (x, y, r) => blob(x, y, r, "#3B2616");
+      // Mrugnięcie: oczy-kropki na chwilę stają się kreskami powiek
+      const dot = (x, y, r) => look.blink ? line(`M${P(x - r * 1.5, y)} Q${P(x, y - r * 0.6)} ${P(x + r * 1.5, y)}`) : blob(x, y, r, "#3B2616");
       // Owal od (x0, y0) do (x1, y1): otwarte usta
       const oval = (x0, y0, x1, y1, c) => { const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
         fill(`M${P(x0, my)} Q${P(x0, y0)} ${P(mx, y0)} Q${P(x1, y0)} ${P(x1, my)} Q${P(x1, y1)} ${P(mx, y1)} Q${P(x0, y1)} ${P(x0, my)} Z`, c); };
