@@ -3219,7 +3219,9 @@
   // ---------- Ekspert: wskazywanie miejsca rzeczy w kadrze ----------
   let anchorPick = null;
   // Która rzecz czeka na wskazanie: w Kreatorze pytanie „Wskaż na ekranie”, w Swobodzie świeżo dodana albo stuknięta
-  const pickIndex = () => wiz ? (wiz.q === "stuffWhere" ? wiz.thingIdx : null) : anchorPick ? anchorPick.index : null;
+  const pickIndex = () => drag && drag.what === "thing" && drag.grabbed ? drag.i : wiz ? (wiz.q === "stuffWhere" ? wiz.thingIdx : null) : anchorPick ? anchorPick.index : null;
+  // Rzeczy po przestawieniu: rzecz i w punkcie a; rzecz, która tam stała, wraca do automatu (sama znajdzie wolne miejsce)
+  const thingsMoved = (list, i, a) => list.map((it, j) => j === i ? { ...it, anchor: a } : it.anchor === a ? { id: it.id, ...(it.color ? { color: it.color } : {}) } : it);
   function startAnchorPick(i) {
     if (wiz || !scene.things[i]) return;
     anchorPick = { index: i };
@@ -3234,7 +3236,7 @@
   }
   // Rzecz staje w punkcie; rzecz, która tam stała, wraca do automatu (znajdzie sobie wolne miejsce)
   function placeThing(i, a) {
-    scene.things = scene.things.map((it, j) => j === i ? { ...it, anchor: a } : it.anchor === a ? { id: it.id, ...(it.color ? { color: it.color } : {}) } : it);
+    scene.things = thingsMoved(scene.things, i, a);
     sfx("tok");
     react();
     if (wiz) {
@@ -8033,14 +8035,18 @@
     } else if (shown && (figAnim || shown.pose !== curPose() || shown.rig !== rigOf(scene.body))) {
       st.fig = computeFigure(shown.pose, shown.rig, clothOf(scene.body));
     }
-    const grabbed = drag && drag.grabbed ? drag.what : null;
+    const thingDrag = drag && drag.what === "thing" && drag.grabbed;
+    // Przeciągana rzecz stoi na żywo w najbliższym punkcie (inne rzeczy robią jej miejsce)
+    if (thingDrag && drag.near) st.things = thingsMoved(scene.things, drag.i, drag.near);
+    const grabbed = drag && drag.grabbed && !thingDrag ? drag.what : null;
     // Przy zbliżeniu bez narożników i napisu stylu (powiększone zasłaniałyby część postaci)
     previewGeom = renderScene(preview, st, W, H, new Set(layers), { corners: !zoom, lit: true, grab: grabbed, zones: grabbed ? { near: drag.near } : null, pick: pickIndex() });
     sketchOverlay(previewGeom, W, H);
     // Podpis tylko przy przeciąganiu kamery lub lampy
     const ro = document.getElementById("readout");
-    ro.hidden = !grabbed;
-    if (grabbed) ro.textContent = (grabbed === "camera" ? "Kamera" : "Światło") + " → " + camZone(drag.near).name;
+    ro.hidden = !grabbed && !thingDrag;
+    if (thingDrag) ro.textContent = THING[scene.things[drag.i].id].name + " → " + (drag.near ? ANCHORS[drag.near].name : "…");
+    else if (grabbed) ro.textContent = (grabbed === "camera" ? "Kamera" : "Światło") + " → " + camZone(drag.near).name;
   }
 
   // Sprężysty ruch: każdy kąt goni cel jak tłumiona sprężyna (lekki przerzut i dociągnięcie).
@@ -9415,6 +9421,26 @@
   // Przytrzymaj aparat albo lampę ok. 0,35 s, przeciągnij i puść: obiekt kotwiczy się w najbliższej z 8 stref
   let drag = null, previewGeom = null;
   const GRAB_MS = 350;
+  // Rzecz pod palcem: najmniejsza ramka rzeczy, która zawiera punkt (z małym zapasem)
+  function thingAt(p) {
+    const G = previewGeom;
+    if (!G || !G.thingBoxes || !scene.things || !scene.things.length) return null;
+    const pad = G.u * 1.5;
+    const hit = G.thingBoxes.filter(({ i, box: [x0, y0, x1, y1] }) => scene.things[i] && p.x >= x0 - pad && p.x <= x1 + pad && p.y >= y0 - pad && p.y <= y1 + pad);
+    if (!hit.length) return null;
+    hit.sort((a, b) => (a.box[2] - a.box[0]) * (a.box[3] - a.box[1]) - (b.box[2] - b.box[0]) * (b.box[3] - b.box[1]));
+    return hit[0].i;
+  }
+  function grabThing() {
+    if (!drag || drag.what !== "thing" || drag.grabbed) return;
+    clearTimeout(drag.timer);
+    drag.grabbed = true;
+    drag.near = drag.from;
+    zoomOut();
+    sfx("tik");
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+    ensureLoop();
+  }
   function toSvg(e) {
     const pt = preview.createSVGPoint();
     pt.x = e.clientX; pt.y = e.clientY;
@@ -9603,6 +9629,17 @@
       else if (!wiz) endAnchorPick();
       return;
     }
+    // Rzecz albo zwierzak przy Manikunie: przytrzymanie (albo od razu przesunięcie palca) chwyta i przestawia;
+    // krótkie stuknięcie otwiera jej menu jak dotąd
+    // (punkt na postaci leżący na rzeczy, np. tułów nad krzesłem, ma pierwszeństwo)
+    const onFig = hotPts.some(q => q.id !== "thing" && Math.hypot(q.at[0] - p.x, q.at[1] - p.y) < q.r);
+    const ti = scene.subject === "person" && !wiz && !onFig ? thingAt(p) : null;
+    if (ti != null) {
+      preview.setPointerCapture(e.pointerId);
+      drag = { what: "thing", i: ti, sx: e.clientX, sy: e.clientY, grabbed: false, near: null, from: resolveAnchors(scene)[ti], tap: p };
+      drag.timer = setTimeout(() => grabThing(), GRAB_MS);
+      return;
+    }
     // Punkty na szkicu mają pierwszeństwo (są małe i leżą na postaci); obok nich: kamera, światło albo oddalenie zbliżenia
     if (hotPts.some(q => Math.hypot(q.at[0] - p.x, q.at[1] - p.y) < q.r)) { sketchTap(p); return; }
     const near = pt => Math.hypot(pt[0] - p.x, pt[1] - p.y) < r;
@@ -9621,6 +9658,18 @@
   });
   preview.addEventListener("pointermove", e => {
     if (!drag) return;
+    if (drag.what === "thing") {
+      // Rzecz: ruch palca od razu chwyta (bez czekania); potem dociąga się do najbliższego wolnego punktu
+      if (!drag.grabbed) { if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 8) grabThing(); else return; }
+      const p = toSvg(e), pts = previewGeom && previewGeom.pickPts;
+      if (pts) {
+        const keys = Object.keys(pts);
+        const near = keys.reduce((a, b) => Math.hypot(pts[a][0] - p.x, pts[a][1] - p.y) <= Math.hypot(pts[b][0] - p.x, pts[b][1] - p.y) ? a : b, keys[0]);
+        if (near && near !== drag.near) { drag.near = near; sfx("tik"); }
+      }
+      ensureLoop();
+      return;
+    }
     if (!drag.grabbed) {
       if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 10) { clearTimeout(drag.timer); drag = null; }
       return;
@@ -9639,6 +9688,25 @@
     clearTimeout(drag.timer);
     const d = drag;
     drag = null;
+    if (d.what === "thing") {
+      // Krótkie stuknięcie: menu rzeczy (jak dotąd). Upuszczenie: rzecz zostaje w nowym punkcie
+      if (!d.grabbed) {
+        if (!sketchTap(d.tap) && sketchTapsOn()) {
+          const it = scene.things[d.i];
+          if (it) isPet(it) ? sketchGo("stuff", "pets", "pet:" + d.i, null, null, "opt-pets-" + it.id) : sketchGo("stuff", "things", null, "opt-things-" + it.id);
+        }
+        return;
+      }
+      if (d.near && d.near !== d.from) {
+        scene.things = thingsMoved(scene.things, d.i, d.near);
+        sfx("tok");
+        react();
+        render();
+        checkCrowd();
+        checkFit();
+      } else ensureLoop();
+      return;
+    }
     // Krótkie stuknięcie (bez chwytania): kategoria kamery albo światła
     if (!d.grabbed) { if (sketchTapsOn()) { d.what === "camera" ? sketchGo("camera", "camera", null, "opt-camera-" + scene.camera) : sketchGo("scene", "light"); } return; }
     if (gaze) gaze.hold = false;

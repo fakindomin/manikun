@@ -820,3 +820,18 @@ Kolory przedmiotów (Rzeczy › Kolory) są dostępne także na poziomie podstaw
 W Cechy › Kolczyki pierwszym kafelkiem jest „Kolor”. Do wyboru jest 10 kolorów (`EAR_COLORS`): złote, srebrne, różowe złoto, perłowe, czarne, czerwone, niebieskie, zielone, turkusowe i różowe. Kolor widać na rysunku i trafia do Maniscryptu, np. „blue hoop earrings”.
 
 Wybór koloru przy „Brak” zakłada wkrętki. Tak samo działa kafelek „Kolor” przy zaroście (zakłada kilkudniowy zarost) i okularach (zakłada okrągłe). Kafelek „Kolor” jest teraz na tych listach zawsze, a jego próbka odświeża się od razu po wyborze.
+
+## Przesuwanie rzeczy na rysunku
+
+Przy Manikunie każdą rzecz i każdego zwierzaka można przestawić palcem albo myszą. Chwyt następuje po przytrzymaniu (350 ms) albo od razu, gdy palec ruszy się o więcej niż 8 px.
+
+W czasie przeciągania:
+- w kadrze zapalają się dostępne miejsca, czyli punkty kotwic (te same co przy wskazywaniu miejsca w Ekspercie);
+- rzecz na żywo dociąga się do punktu najbliższego palcowi, a rzecz, która tam stała, robi jej miejsce;
+- napis na dole pokazuje „Rzecz → miejsce”.
+
+Po puszczeniu rzecz zostaje w nowym punkcie, a Manikun reaguje. Zmianę można cofnąć strzałką.
+
+Krótkie stuknięcie w rzecz dalej otwiera jej menu. Punkty na samej postaci (np. tułów nad krzesłem) mają pierwszeństwo przed rzeczą pod nimi. W Kreatorze przeciąganie jest wyłączone.
+
+Implementacja: `thingAt`, `grabThing`, `thingsMoved`, `drag.what === "thing"`.
