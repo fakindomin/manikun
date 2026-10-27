@@ -814,3 +814,9 @@ Każdy wybór koloru pokazuje teraz samą próbkę barwy (kółko), a nie miniat
 W listach Włosy, Zarost i Okulary pierwszym kafelkiem jest „Kolor” z bieżącą próbką, tak jak przy ubraniach.
 
 Kolory przedmiotów (Rzeczy › Kolory) są dostępne także na poziomie podstawowym. Kreator dalej pyta o nie tylko w trybie Ekspert, bo cały rozdział Rzeczy jest tam tylko dla Eksperta.
+
+## Kolor kolczyków
+
+W Cechy › Kolczyki pierwszym kafelkiem jest „Kolor”. Do wyboru jest 10 kolorów (`EAR_COLORS`): złote, srebrne, różowe złoto, perłowe, czarne, czerwone, niebieskie, zielone, turkusowe i różowe. Kolor widać na rysunku i trafia do Maniscryptu, np. „blue hoop earrings”.
+
+Wybór koloru przy „Brak” zakłada wkrętki. Tak samo działa kafelek „Kolor” przy zaroście (zakłada kilkudniowy zarost) i okularach (zakłada okrągłe). Kafelek „Kolor” jest teraz na tych listach zawsze, a jego próbka odświeża się od razu po wyborze.

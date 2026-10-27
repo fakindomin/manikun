@@ -439,8 +439,8 @@ function computeFigure(pose, RIG, cloth = null) {
   // Kolczyki w płatku ucha (ucho w widoku 3/4 leży za środkiem głowy): wkrętka albo koło
   if (look && look.earrings && look.view !== "back") {
     const lobe = L(-0.5, -0.38), k = RIG.headRx / 11;
-    if (look.earrings === "hoops") shapes.push({ t: "deco", d: `M${f(lobe[0])},${f(lobe[1])} a${f(2.6 * k)},${f(2.9 * k)} 0 1,0 0.1,0`, style: `fill:none;stroke:#E2B23A;stroke-width:${f(1.5 * k)}` });
-    else shapes.push({ t: "deco", d: `M${f(lobe[0] - 1.5 * k)},${f(lobe[1])} a${f(1.5 * k)},${f(1.5 * k)} 0 1,0 ${f(3 * k)},0 a${f(1.5 * k)},${f(1.5 * k)} 0 1,0 ${f(-3 * k)},0`, style: "fill:#F2DE9A;stroke:#9C7A2E;stroke-width:0.6" });
+    if (look.earrings === "hoops") shapes.push({ t: "deco", d: `M${f(lobe[0])},${f(lobe[1])} a${f(2.6 * k)},${f(2.9 * k)} 0 1,0 0.1,0`, style: `fill:none;stroke:${look.earHex || "#E2B23A"};stroke-width:${f(1.5 * k)}` });
+    else shapes.push({ t: "deco", d: `M${f(lobe[0] - 1.5 * k)},${f(lobe[1])} a${f(1.5 * k)},${f(1.5 * k)} 0 1,0 ${f(3 * k)},0 a${f(1.5 * k)},${f(1.5 * k)} 0 1,0 ${f(-3 * k)},0`, style: `fill:${look.earHex || "#F2DE9A"};stroke:${shadeHex(look.earHex || "#F2DE9A", -0.4)};stroke-width:0.6` });
   }
   if (look && !turned) {
     // Piegi na policzkach i nosie (drobne kropki)

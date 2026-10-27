@@ -2234,9 +2234,18 @@
     height: { name: "Wzrost", options: [{ id: "short", name: "Niski", word: "short" }, { id: "average", name: "Średni" }, { id: "tall", name: "Wysoki", word: "tall" }] },
     freckles: { name: "Piegi", options: [{ id: "none", name: "Brak" }, { id: "yes", name: "Piegi", word: "freckles" }] },
     tattoo: { name: "Tatuaże", options: [{ id: "none", name: "Brak" }, { id: "arm", name: "Na przedramieniu", word: "a tattoo on the forearm" }, { id: "sleeve", name: "Rękawy", word: "full sleeve tattoos on both arms" }] },
-    earrings: { name: "Kolczyki", options: [{ id: "none", name: "Brak" }, { id: "studs", name: "Wkrętki", word: "small stud earrings" }, { id: "hoops", name: "Koła", word: "gold hoop earrings" }] }
+    earrings: { name: "Kolczyki", options: [{ id: "none", name: "Brak" }, { id: "studs", name: "Wkrętki", word: "small stud earrings" }, { id: "hoops", name: "Koła", word: "hoop earrings" }] }
   };
-  const TRAIT0 = { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none" };
+  const TRAIT0 = { skin: "auto", age: "adult", build: "average", height: "average", freckles: "none", tattoo: "none", earrings: "none", earColor: "gold" };
+  // Kolor kolczyków: metale i kilka barw (wybór w Cechy › Kolczyki › Kolor)
+  const EAR_COLORS = [
+    { id: "gold", name: "Złote", hex: "#E2B23A", word: "gold" }, { id: "silver", name: "Srebrne", hex: "#C9CDD2", word: "silver" },
+    { id: "rose", name: "Różowe złoto", hex: "#D9A08A", word: "rose gold" }, { id: "pearl", name: "Perłowe", hex: "#F2EEE4", word: "pearl" },
+    { id: "black", name: "Czarne", hex: "#2B2C30", word: "black" }, { id: "red", name: "Czerwone", hex: "#B3262E", word: "red" },
+    { id: "blue", name: "Niebieskie", hex: "#3A6AC8", word: "blue" }, { id: "green", name: "Zielone", hex: "#3A9A5A", word: "emerald green" },
+    { id: "turquoise", name: "Turkusowe", hex: "#2FB8B0", word: "turquoise" }, { id: "pink", name: "Różowe", hex: "#E58AB0", word: "pink" }
+  ];
+  const earColor = st => EAR_COLORS.find(c => c.id === traitsOf(st).earColor) || EAR_COLORS[0];
   const traitsOf = (st = scene) => ({ ...TRAIT0, ...(st.traits || {}) });
   const traitOpt = (k, id) => TRAITS[k].options.find(o => o.id === id) || TRAITS[k].options.find(o => o.id === TRAIT0[k]);
   const isChild = (st = scene) => traitsOf(st).age === "child";
@@ -2272,7 +2281,7 @@
     const t = traitsOf(st), w = [];
     if (traitOpt("build", t.build).word) w.push(traitOpt("build", t.build).word);
     if (!photo && traitOpt("skin", t.skin).word) w.push(traitOpt("skin", t.skin).word);
-    ["freckles", "tattoo", "earrings"].forEach(k => { const o = traitOpt(k, t[k]); if (o.word) w.push(o.word); });
+    ["freckles", "tattoo", "earrings"].forEach(k => { const o = traitOpt(k, t[k]); if (o.word) w.push(k === "earrings" ? o.word.replace(/(stud|hoop)/, earColor(st).word + " $1") : o.word); });
     return w;
   };
   const bodyPrompt = () => {
@@ -3330,7 +3339,7 @@
     c.shoes = { kind: w.shoes, color: hex("shoes") };
     const tr = traitsOf(st);
     c.look = { ...lookDraw(st.look, bodyId), expr: exprOf(st), view: turnedAway(st) ? turnOf(st) : null,
-      freckles: tr.freckles === "yes", tattoo: tr.tattoo !== "none" ? tr.tattoo : null, earrings: tr.earrings !== "none" ? tr.earrings : null };
+      freckles: tr.freckles === "yes", tattoo: tr.tattoo !== "none" ? tr.tattoo : null, earrings: tr.earrings !== "none" ? tr.earrings : null, earHex: earColor(st).hex };
     return c;
   }
 
@@ -6194,7 +6203,7 @@
       const pick = (k, odds) => Math.random() < odds ? anyOf(TRAITS[k].options.filter(o => o.id !== TRAIT0[k])).id : TRAIT0[k];
       scene.traits = {
         skin: anyOf(TRAITS.skin.options).id, age: child ? "child" : "adult", build: pick("build", 0.45), height: pick("height", 0.4),
-        freckles: pick("freckles", child ? 0.35 : 0.15), tattoo: child ? "none" : pick("tattoo", expert ? 0.25 : 0.12), earrings: pick("earrings", male ? 0.12 : 0.35)
+        freckles: pick("freckles", child ? 0.35 : 0.15), tattoo: child ? "none" : pick("tattoo", expert ? 0.25 : 0.12), earrings: pick("earrings", male ? 0.12 : 0.35), earColor: anyOf(EAR_COLORS.slice(0, 4)).id
       };
       // Rzeczy: najpierw rzecz, potem poza, żeby poza pasowała (siedzisko, oparcie). Ekspert czasem dostaje drugą rzecz do wystroju
       const allThings = THINGS.filter(t => !t.pet).map(t => t.id);
@@ -6652,7 +6661,14 @@
   function traitsTiles() {
     const sub = scene.sub;
     const set = (k, id) => { scene.traits = { ...traitsOf(), [k]: id }; render(); };
-    if (sub && TRAITS[sub]) return [backTile(null)].concat(TRAITS[sub].options.map(o => tile("opt-trait-" + sub + "-" + o.id, o.name,
+    const swS = (hex, dashed) => svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, hex, dashed); };
+    // Kolor kolczyków: osobny poziom pod Kolczykami, z kafelkiem „Kolor” na początku listy kształtów
+    if (sub === "earColor") return [backTile("earrings")].concat(EAR_COLORS.map(c => tile("opt-trait-earColor-" + c.id, c.name,
+      () => traitsOf().earColor === c.id, () => { scene.traits = { ...traitsOf(), earColor: c.id, earrings: traitsOf().earrings === "none" ? "studs" : traitsOf().earrings }; render(); }, swS(c.hex))));
+    // Kafelek „Kolor” jest zawsze (lista nie przebudowuje się po wyborze); kolor przy „Brak” zakłada wkrętki
+    const earPick = sub === "earrings" ? [groupMark(tile("opt-earColor-pick", "Kolor", () => false,
+      () => { scene.sub = "earColor"; render(); }, svg => swS(earColor(scene).hex)(svg), () => earColor(scene).name))] : [];
+    if (sub && TRAITS[sub]) return [backTile(null)].concat(earPick, TRAITS[sub].options.map(o => tile("opt-trait-" + sub + "-" + o.id, o.name,
       () => traitsOf()[sub] === o.id, () => set(sub, o.id),
       // Skóra to kolor: sama próbka odcienia
       sub === "skin" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, o.wood ? o.wood[1] : "#E3B97F", !o.wood); } : svg => traitThumb(svg, sub, o.id))));
@@ -6677,17 +6693,18 @@
     // Kolory: zawsze sama próbka barwy (kółko), „Domyślny/Naturalne” jako kółko przerywane
     const sw = (hex, dashed) => svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, hex, dashed); };
     const hexOf = (key, id, def) => id === "auto" || id === "none" ? def : lookOpt(key, id).hex;
-    // Kafelek „Kolor” na początku listy krojów (włosy, zarost, okulary): od razu widać i zmienia się barwę
+    // Kafelek „Kolor” na początku listy krojów (włosy, zarost, okulary): od razu widać i zmienia się barwę.
+    // Jest zawsze; kolor wybrany przy „Brak” zakłada najprostszy krój (kilkudniowy zarost, okrągłe okulary)
     const colorTile = key => groupMark(tile("opt-" + key + "-pick", "Kolor", () => false, () => { scene.sub = key; render(); },
-      sw(hexOf(key, lk[key], DEFAULT_HAIR), lk[key] === "auto"), () => lk[key] === "auto" ? "Domyślny" : lookOpt(key, lk[key]).name));
+      svg => sw(hexOf(key, lk[key], DEFAULT_HAIR), lk[key] === "auto")(svg), () => lk[key] === "auto" ? "Domyślny" : lookOpt(key, lk[key]).name));
     if (sub === "hair") return [backTile(null)].concat(LOOK.hair.find(o => o.id === lk.hair && !o.noColor) ? [colorTile("hairColor")] : [], LOOK.hair.map(o => tile("opt-hair-" + o.id, o.name, () => lk.hair === o.id,
       () => set({ hair: o.id, hairPicked: true }, o.noColor ? undefined : "hairColor"), svg => headTile(svg, with_({ hair: o.id })))));
     if (sub === "hairColor") return [backTile("hair")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.hairColor].map(o => tile("opt-hairColor-" + o.id, o.name,
       () => lk.hairColor === o.id, () => set({ hairColor: o.id }), sw(o.hex || DEFAULT_HAIR, o.id === "auto"))));
-    if (sub === "beard") return [backTile(null)].concat(lk.beard !== "none" ? [colorTile("beardColor")] : [], LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
+    if (sub === "beard") return [backTile(null)].concat([colorTile("beardColor")], LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
       () => set({ beard: o.id }, o.id === "none" ? undefined : "beardColor"), svg => headTile(svg, with_({ beard: o.id })))));
     if (sub === "beardColor") return [backTile("beard")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.beardColor].map(o => tile("opt-beardColor-" + o.id, o.name,
-      () => lk.beardColor === o.id, () => set({ beardColor: o.id }), sw(o.hex || DEFAULT_HAIR, o.id === "auto"))));
+      () => lk.beardColor === o.id, () => set({ beardColor: o.id, beard: lk.beard === "none" ? "stubble" : lk.beard }), sw(o.hex || DEFAULT_HAIR, o.id === "auto"))));
     // Mina: najpierw emocja (wybiera jej poziom łagodny albo zostawia bieżący), potem rząd z dwoma poziomami
     const exprIn = g => exprGroup(lk.expr) === g ? lk.expr : g.levels[0];
     if (sub === "expr") return [backTile(null)].concat(EXPR_GROUPS.map(g => tile("opt-exprg-" + g.id, g.name, () => exprGroup(lk.expr) === g,
@@ -6696,10 +6713,10 @@
       () => lk.expr === id, () => set({ expr: id }), svg => headTile(svg, with_({ expr: id })))));
     if (sub === "lips") return [backTile(null)].concat(LOOK.lips.map(o => tile("opt-lips-" + o.id, o.name, () => lk.lips === o.id,
       () => set({ lips: o.id }), sw(o.hex || "#C98B7A", o.id === "none"))));
-    if (sub === "glasses") return [backTile(null)].concat(lk.glasses !== "none" ? [colorTile("glassesColor")] : [], LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
+    if (sub === "glasses") return [backTile(null)].concat([colorTile("glassesColor")], LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
       () => set({ glasses: o.id }, o.id === "none" ? undefined : "glassesColor"), svg => headTile(svg, with_({ glasses: o.id === "none" ? "none" : o.id })))));
     if (sub === "glassesColor") return [backTile("glasses")].concat(LOOK.glassesColor.map(o => tile("opt-glassesColor-" + o.id, o.name,
-      () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), sw(o.hex))));
+      () => lk.glassesColor === o.id, () => set({ glassesColor: o.id, glasses: lk.glasses === "none" ? "round" : lk.glasses }), sw(o.hex))));
     if (sub === "gaze") return [backTile(null)].concat(gazeList().map(o => tile("opt-gaze-" + o.id, o.name, () => gazeOpt(scene).id === o.id,
       () => set({ gaze: o.id }), svg => gazeTile(svg, o))));
     const groups = [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || (scene.body === "male" && !isChild()));
