@@ -806,3 +806,11 @@ Na ekranach węższych niż 380 px napis MANIKUN przesuwa się do lewej, obok me
   - zerka w kamerę albo na lampę.
   Ten sam ruch nie powtarza się dwa razy z rzędu, a każda zmiana sceny odsuwa kolejny ruch. Ruchy działają tylko przy Manikunie, poza tutorialem, i nie włączają się, gdy użytkownik ma w systemie ustawione ograniczenie animacji.
 - **Oddech:** jego głębokość lekko się zmienia, a całe ciało powoli się kołysze, więc oddech nie chodzi już jak metronom.
+
+## Kolory zawsze jako próbki
+
+Każdy wybór koloru pokazuje teraz samą próbkę barwy (kółko), a nie miniaturę postaci. Dotyczy to kolorów włosów, zarostu, ust, oprawek okularów, skóry (Cechy), stwora (kolor, drugi kolor, oczy), krajobrazu i przedmiotu Manito. Opcja „Domyślny” albo „Naturalny” ma kółko z przerywaną obwódką.
+
+W listach Włosy, Zarost i Okulary pierwszym kafelkiem jest „Kolor” z bieżącą próbką, tak jak przy ubraniach.
+
+Kolory przedmiotów (Rzeczy › Kolory) są dostępne także na poziomie podstawowym. Kreator dalej pyta o nie tylko w trybie Ekspert, bo cały rozdział Rzeczy jest tam tylko dla Eksperta.

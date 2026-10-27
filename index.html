@@ -1482,7 +1482,7 @@
     // Drobiazgi na blacie: kafelki i wyszukiwarkę buduje kod (katalog ALL_ITEMS, słownik pl → en)
     { id: "items", label: "Na blacie", subjects: ["person"], patch: "#A88A5B", options: [] },
     // Kolory rzeczy (tylko Ekspert): najpierw rzecz, potem paleta
-    { id: "thingColor", label: "Kolory", subjects: ["person"], levels: ["expert"], patch: "#B07A5B", options: [] },
+    { id: "thingColor", label: "Kolory", subjects: ["person"], patch: "#B07A5B", options: [] },
     { id: "shot", label: "Kadr", subjects: ["person"], patch: "#735244", options: [
       { id: "full", name: "Cała sylwetka", short: "Całość", prompt: "Full-body shot, entire body visible from head to feet" },
       { id: "portrait", name: "Portret", short: "Portret", noDrone: true, prompt: "Close-up portrait, head and shoulders in frame" },
@@ -6509,7 +6509,7 @@
     const sub = scene.sub, zoom = k => k === "pattern" || k === "color" || k === "color2" ? null : BEAST_FACE.includes(k) ? "face" : BEAST_ZOOM[catId] || null;
     const set = (k, id) => { scene.beast = { ...beastNow(), [k]: id }; render(); };
     if (sub && BEAST[sub]) return [backTile(null)].concat(BEAST[sub].opts.map(o => tile("opt-beast-" + sub + "-" + o.id, o.name, () => beastNow()[sub] === o.id, () => set(sub, o.id),
-      sub === "eyeColor" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, o.hex); } : svg => beastThumb(svg, { [sub]: o.id }, zoom(sub)))));
+      ["eyeColor", "color", "color2"].includes(sub) && o.hex ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, o.hex); } : svg => beastThumb(svg, { [sub]: o.id }, zoom(sub)))));
     const base = () => { const r = beastNow(); return r.from ? beastFrom(...r.from.split(":")) : BEAST0; };
     return BEAST_CATS[catId].filter(k => beastPartOn(beastNow(), k)).map(k => groupMark(tile("opt-beast-" + k, BEAST[k].name, () => beastNow()[k] !== base()[k],
       () => { scene.sub = k; render(); }, svg => beastThumb(svg, {}, zoom(k)), () => beastOpt(k, beastNow()[k]).name)));
@@ -6551,9 +6551,9 @@
     // Kolor: Naturalny jako miniatura krajobrazu, reszta jako próbki
     const sw = hex => svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, hex); };
     if (sub && LAND[sub]) return [backTile(null)].concat(LAND[sub].opts.map(o => tile("opt-land-" + sub + "-" + o.id, o.name, () => on() && landOf(scene)[sub] === o.id,
-      () => setLand(sub, o.id), o.hex ? sw(o.hex) : svg => landThumb(svg, { [sub]: o.id }))));
+      () => setLand(sub, o.id), o.hex ? sw(o.hex) : LAND[sub].color ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, "#7A8A6A", true); } : svg => landThumb(svg, { [sub]: o.id }))));
     return LAND_CATS[catId].filter(k => landColorOn(landOf(scene), k)).map(k => groupMark(tile("opt-land-" + k, LAND[k].name, () => on() && landOf(scene)[k] !== LAND0[k],
-      () => { scene.sub = k; render(); }, LAND[k].color && landHex(landOf(scene), k) ? sw(landHex(landOf(scene), k)) : svg => landThumb(svg, {}), () => landOpt(k, landOf(scene)[k]).name)));
+      () => { scene.sub = k; render(); }, LAND[k].color ? (landHex(landOf(scene), k) ? sw(landHex(landOf(scene), k)) : svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, "#7A8A6A", true); }) : svg => landThumb(svg, {}), () => landOpt(k, landOf(scene)[k]).name)));
   }
   // Losowe zmiany: Zmutuj (1–2 części), Krzyżówka (głowa i twarz jednego gotowca, reszta drugiego), cały losowy stworek
   function beastMutate(r, n = 2) {
@@ -6653,7 +6653,9 @@
     const sub = scene.sub;
     const set = (k, id) => { scene.traits = { ...traitsOf(), [k]: id }; render(); };
     if (sub && TRAITS[sub]) return [backTile(null)].concat(TRAITS[sub].options.map(o => tile("opt-trait-" + sub + "-" + o.id, o.name,
-      () => traitsOf()[sub] === o.id, () => set(sub, o.id), svg => traitThumb(svg, sub, o.id))));
+      () => traitsOf()[sub] === o.id, () => set(sub, o.id),
+      // Skóra to kolor: sama próbka odcienia
+      sub === "skin" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, o.wood ? o.wood[1] : "#E3B97F", !o.wood); } : svg => traitThumb(svg, sub, o.id))));
     return Object.keys(TRAITS).map(k => groupMark(tile("opt-traits-" + k, TRAITS[k].name, () => traitsOf()[k] !== TRAIT0[k],
       () => { scene.sub = k; render(); }, svg => traitThumb(svg, k, traitsOf()[k]), () => traitOpt(k, traitsOf()[k]).name)));
   }
@@ -6672,14 +6674,20 @@
     const with_ = patch => ({ ...scene.look, ...patch });
     const set = (patch, next) => { scene.look = with_(patch); if (next !== undefined) scene.sub = next; render(); };
     const sub = scene.sub;
-    if (sub === "hair") return [backTile(null)].concat(LOOK.hair.map(o => tile("opt-hair-" + o.id, o.name, () => lk.hair === o.id,
+    // Kolory: zawsze sama próbka barwy (kółko), „Domyślny/Naturalne” jako kółko przerywane
+    const sw = (hex, dashed) => svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, hex, dashed); };
+    const hexOf = (key, id, def) => id === "auto" || id === "none" ? def : lookOpt(key, id).hex;
+    // Kafelek „Kolor” na początku listy krojów (włosy, zarost, okulary): od razu widać i zmienia się barwę
+    const colorTile = key => groupMark(tile("opt-" + key + "-pick", "Kolor", () => false, () => { scene.sub = key; render(); },
+      sw(hexOf(key, lk[key], DEFAULT_HAIR), lk[key] === "auto"), () => lk[key] === "auto" ? "Domyślny" : lookOpt(key, lk[key]).name));
+    if (sub === "hair") return [backTile(null)].concat(LOOK.hair.find(o => o.id === lk.hair && !o.noColor) ? [colorTile("hairColor")] : [], LOOK.hair.map(o => tile("opt-hair-" + o.id, o.name, () => lk.hair === o.id,
       () => set({ hair: o.id, hairPicked: true }, o.noColor ? undefined : "hairColor"), svg => headTile(svg, with_({ hair: o.id })))));
     if (sub === "hairColor") return [backTile("hair")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.hairColor].map(o => tile("opt-hairColor-" + o.id, o.name,
-      () => lk.hairColor === o.id, () => set({ hairColor: o.id }), svg => headTile(svg, with_({ hairColor: o.id })))));
-    if (sub === "beard") return [backTile(null)].concat(LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
+      () => lk.hairColor === o.id, () => set({ hairColor: o.id }), sw(o.hex || DEFAULT_HAIR, o.id === "auto"))));
+    if (sub === "beard") return [backTile(null)].concat(lk.beard !== "none" ? [colorTile("beardColor")] : [], LOOK.beard.map(o => tile("opt-beard-" + o.id, o.name, () => lk.beard === o.id,
       () => set({ beard: o.id }, o.id === "none" ? undefined : "beardColor"), svg => headTile(svg, with_({ beard: o.id })))));
     if (sub === "beardColor") return [backTile("beard")].concat([{ id: "auto", name: "Domyślny" }, ...LOOK.beardColor].map(o => tile("opt-beardColor-" + o.id, o.name,
-      () => lk.beardColor === o.id, () => set({ beardColor: o.id }), svg => headTile(svg, with_({ beardColor: o.id })))));
+      () => lk.beardColor === o.id, () => set({ beardColor: o.id }), sw(o.hex || DEFAULT_HAIR, o.id === "auto"))));
     // Mina: najpierw emocja (wybiera jej poziom łagodny albo zostawia bieżący), potem rząd z dwoma poziomami
     const exprIn = g => exprGroup(lk.expr) === g ? lk.expr : g.levels[0];
     if (sub === "expr") return [backTile(null)].concat(EXPR_GROUPS.map(g => tile("opt-exprg-" + g.id, g.name, () => exprGroup(lk.expr) === g,
@@ -6687,11 +6695,11 @@
     if (sub === "exprLvl") return [backTile("expr")].concat(exprGroup(lk.expr).levels.map(id => tile("opt-expr-" + id, lookOpt("expr", id).name,
       () => lk.expr === id, () => set({ expr: id }), svg => headTile(svg, with_({ expr: id })))));
     if (sub === "lips") return [backTile(null)].concat(LOOK.lips.map(o => tile("opt-lips-" + o.id, o.name, () => lk.lips === o.id,
-      () => set({ lips: o.id }), svg => headTile(svg, with_({ lips: o.id })))));
-    if (sub === "glasses") return [backTile(null)].concat(LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
+      () => set({ lips: o.id }), sw(o.hex || "#C98B7A", o.id === "none"))));
+    if (sub === "glasses") return [backTile(null)].concat(lk.glasses !== "none" ? [colorTile("glassesColor")] : [], LOOK.glasses.map(o => tile("opt-glasses-" + o.id, o.name, () => lk.glasses === o.id,
       () => set({ glasses: o.id }, o.id === "none" ? undefined : "glassesColor"), svg => headTile(svg, with_({ glasses: o.id === "none" ? "none" : o.id })))));
     if (sub === "glassesColor") return [backTile("glasses")].concat(LOOK.glassesColor.map(o => tile("opt-glassesColor-" + o.id, o.name,
-      () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), svg => headTile(svg, with_({ glassesColor: o.id })))));
+      () => lk.glassesColor === o.id, () => set({ glassesColor: o.id }), sw(o.hex))));
     if (sub === "gaze") return [backTile(null)].concat(gazeList().map(o => tile("opt-gaze-" + o.id, o.name, () => gazeOpt(scene).id === o.id,
       () => set({ gaze: o.id }), svg => gazeTile(svg, o))));
     const groups = [["expr", "Mina"], ["gaze", "Spojrzenie"], ["hair", "Włosy"], ["beard", "Zarost"], ["lips", "Usta"], ["glasses", "Okulary"]].filter(([k]) => k !== "beard" || (scene.body === "male" && !isChild()));
@@ -6764,7 +6772,7 @@
       // Kreator prowadzi sam, więc bez strzałki wstecz
       const k = sub.slice(2), back = wiz ? null : backTile("i"), B = list => back ? [back].concat(list) : list;
       if (k === "color") return B([{ id: "auto", name: "Domyślny" }, ...COLORS].map(c => tile("opt-icolor-" + c.id, c.name, () => scene.itemColor === c.id,
-        () => { scene.itemColor = c.id; render(); }, c.id === "auto" ? svg => itemThumb(svg, { ...scene, itemColor: "auto" }) : sw(c.hex))));
+        () => { scene.itemColor = c.id; render(); }, c.id === "auto" ? svg => { svg.setAttribute("viewBox", "0 0 64 64"); swatch(svg, itemHex({ ...scene, itemColor: "auto" }), true); } : sw(c.hex))));
       if (scene.item === "own") {
         const set = (id) => { scene.prod = { ...prodNow(), [k]: id }; render(); };
         if (k === "color2") return B(COLORS.map(c => tile("opt-prod-color2-" + c.id, c.name, () => prodNow().color2 === c.id, () => set(c.id), sw(c.hex))));
